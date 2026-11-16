@@ -11,7 +11,7 @@ jobs:
     name: Verify 5Dollar plan and Brazil competition access
     runs-on: ubuntu-latest
     env:
-      FIVE_DOLLAR_FOOTBALL_API_KEY: ${{ secrets.FIVE_DOLLAR_FOOTBALL_API_KEY }}
+      FIVE_DOLLAR_FOOTBALL_API_KEY: ${{ secrets.FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY || secrets.FIVEDOLLARFOOTBALL_API_KEY || secrets.FIVE_DOLLAR_FOOTBALL_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
