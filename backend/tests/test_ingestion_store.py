@@ -147,6 +147,21 @@ def test_store_records_provider_response_and_normalized_observation(connection) 
             (observation_id,),
         )
 
+    with pytest.raises(IngestionStoreError, match="SOURCE_PUBLICATION_AFTER_RETRIEVAL"):
+        store.record_source_observation(
+            approval,
+            scope_value=competition_id,
+            data_type="fixtures_and_results",
+            entity_type="fixture",
+            provider_entity_id="fixture-future-publication",
+            schema_version="provider-fixture-v1",
+            retrieved_at=now,
+            source_published_at=now + timedelta(seconds=1),
+            availability_basis="SOURCE_PUBLISHED_AT",
+            payload={"fixture_id": "fixture-future-publication"},
+            point_in_time_certifiable=True,
+        )
+
     with pytest.raises(IngestionStoreError, match="PIT_CERTIFICATION_REQUIRES_VERIFIED_PUBLICATION_TIME"):
         store.record_source_observation(
             approval,
