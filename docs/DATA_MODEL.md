@@ -8,6 +8,7 @@ The initial PostgreSQL schema is a provenance-first ingestion store. It is delib
 |---|---|---|
 | `source_approvals` | Exact source/scope rights approval, evidence hash, allowed uses and attribution. | Append-only |
 | `source_approval_status_events` | Approval/revocation events without mutating the original approval. | Append-only |
+| `effective_source_approvals` | Read-only view applying the latest approval/revocation event. | View |
 | `provider_responses` | Raw provider response bytes, SHA-256, endpoint, request metadata and response headers. | Append-only |
 | `provider_request_events` | Request status, rate-limit metadata and response link. | Append-only |
 | `provider_entitlement_observations` | Historical plan, competition access and quota observations. | Append-only |
