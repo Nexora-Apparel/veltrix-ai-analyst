@@ -1,9 +1,9 @@
 # 5Dollar Brazil Serie B — bounded historical collection plan
 
 **Document ID:** VAA-INGEST-PLAN-001  
-**Version:** 1.0  
+**Version:** 1.1  
 **Date:** 2026-11-16  
-**Status:** DESIGN ONLY — not dispatched; no historical collection or database write is authorized by this plan.
+**Status:** LIVE COLLECTION BLOCKED — the persistent budget/checkpoint controls and ephemeral PostgreSQL dry-run are verified; the independent Neon database is not yet provisioned.
 
 ## 1. Objective and strict scope
 
@@ -37,7 +37,8 @@ The candidate interval aligns with the observed AI Midas Brazil Serie B snapshot
 - Each request uses one competition, one date window, one page, and `per_page=100`.
 - No automatic retries. A transient failure is recorded and the run stops for review.
 - Throttle to no more than 5 requests/minute, comfortably below the Community burst limit.
-- The worker must atomically increment a run-level request counter before each network call and refuse request 41.
+- PostgreSQL enforces `request_budget <= 40` with a schema constraint. Each request must first acquire a durable reservation in `import_request_reservations`; a row lock on the import run serializes workers and atomically increments `requests_used` before the HTTP call. Request 41 is rejected by the database-backed budget service.
+- Each reservation has a unique `(import_run_id, request_key)` and a canonical request-parameter hash. A repeated identical key returns `created=false`; the caller must not issue HTTP for that reservation again. Reusing a key with different request data is a hard conflict.
 - Do not make status, competition-discovery, odds, or other provider calls inside this collection run.
 
 If the required pages exceed the 40-request ceiling, stop with a resumable incomplete run. Do not silently raise the ceiling or widen the plan.
@@ -73,7 +74,7 @@ Every run must have:
 - row count, pagination metadata, duplicate count, invalid count and quarantine count;
 - terminal state: COMPLETED, INCOMPLETE_BUDGET, STOPPED_PROVIDER_ERROR, STOPPED_SCHEMA_DRIFT, or STOPPED_RIGHTS.
 
-A page is checkpointed only after its raw response evidence and normalized records are committed in the same database transaction. Replaying a page must be idempotent by provider + provider record ID + observation identity; do not create duplicate fixture identities or overwrite immutable source sightings.
+A page checkpoint is durable and can be recovered in deterministic window order after process interruption. Persist response evidence and normalized records before marking a window complete. Replaying a page must be idempotent by provider + provider record ID + observation identity; do not create duplicate fixture identities or overwrite immutable source sightings. A reservation already created before a crash is never refunded; if its response/checkpoint is missing, stop for reconciliation rather than silently issuing a duplicate request.
 
 No cross-provider fixture merge is allowed during ingestion. Provider-local IDs remain authoritative until a separately reviewed crosswalk exists.
 
@@ -106,15 +107,17 @@ Every rejected record must be retained in a quarantine record with a reason code
 
 ## 8. Database and execution gate
 
-This plan does not provision a database or authorize live collection.
+The repository now contains migration `003_import_request_reservations.sql`, the atomic `PostgresRequestBudget` service, and deterministic checkpoint recovery reads. CI run [#43921580933](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43921580933) passed all 72 backend tests, Ruff lint, Android debug build and APK artifact upload. Its PostgreSQL-backed dry-run simulated the 34 windows with 40 reservations (34 first pages plus six second pages), recovered all 34 checkpoints, and rejected reservation 41 without making external provider calls. Additional tests cover duplicate-key concurrency, paused runs, provider stop conditions, and the database-level `request_budget <= 40` constraint.
 
-Before execution:
-1. Provision a separate private PostgreSQL database for VELTRIX AI ANALYST; never reuse the legacy VELTRIX Football database.
-2. Apply the checksum-verified migrations with the explicit expected database name and remote opt-in.
-3. Register and verify the effective 5Dollar source approval for this exact competition, data types, use and terms evidence.
-4. Test the full ingestion/checkpoint transaction path against ephemeral PostgreSQL.
-5. Run a dry-run that enumerates the 34 date windows and proves the request counter refuses request 41.
-6. Execute the pilot only after all preceding checks pass.
+**Live execution remains blocked because the separate Neon resource does not exist yet.** The only Neon organization available to the connected account is `Vercel: Nexora Apparel`, which is managed by Vercel. Direct Neon project creation was rejected by the provider. The Neon Marketplace integration is installed on the Vercel team, but resource provisioning is exposed through Vercel Marketplace/CLI rather than the available Neon project-creation action. The existing `VELTRIXFOOTBALL` database/project is not to be reused.
+
+Before live collection:
+1. Provision a separate Neon resource/project through the Vercel Marketplace integration for VELTRIX AI ANALYST; do not attach or reuse the legacy VELTRIXFOOTBALL database.
+2. Obtain its connection string securely and configure it as a secret; never commit it or paste it into source files.
+3. Apply the checksum-verified migrations with the explicit expected database name and remote opt-in; verify `current_database()` is exactly `veltrix_ai_analyst` and inspect the migration ledger.
+4. Register and verify the effective 5Dollar source approval for this exact competition, data types, use and terms evidence.
+5. Run the controlled DB dry-run against the new independent database, including checkpoint recovery, duplicate reservation behaviour, 40-request ceiling and stop conditions.
+6. Execute the historical pilot only after all preceding checks pass.
 
 ## 9. Acceptance criteria
 
@@ -131,8 +134,10 @@ The pilot is accepted only if:
 
 ## 10. Current execution state
 
-- Plan written: yes.
-- Provider requests made for this plan: zero.
-- Database provisioned: no.
+- Plan written: yes; v1.1.
+- Provider requests made for this plan: zero (the only provider call was the earlier bounded two-day probe, not this collection).
+- Ephemeral PostgreSQL dry-run: passed; 34 checkpoints recovered, exactly 40 simulated reservations accepted, request 41 rejected.
+- CI: run #43921580933 passed 72 backend tests, Ruff, Android debug build and APK upload.
+- Independent Neon database provisioned: no; Vercel-managed organization requires Marketplace resource provisioning.
 - Historical import: not started.
 - Models/predictions changed: no.
