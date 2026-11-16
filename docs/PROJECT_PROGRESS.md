@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16 (run 3 completed and automatic validator passed; historical dataset remains non-PIT)nd read-only Neon preflight passed; manual historical-import dispatch is the remaining blocker)  
+**Last updated:** 2026-11-16 (run 3 completed and automatic validator passed; historical dataset remains non-PIT)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
