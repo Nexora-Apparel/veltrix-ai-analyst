@@ -1,4 +1,6 @@
 from datetime import UTC, datetime
+from hashlib import sha256
+from pathlib import Path
 
 from app.providers.approvals import (
     AIMIDAS_BRAZIL_SERIE_B_APPROVAL,
@@ -69,3 +71,11 @@ def test_ai_midas_approval_is_file_specific_and_noncommercial() -> None:
 
     assert allowed.allowed is True
     assert raw_export.allowed is False
+
+
+
+def test_5dollar_approval_evidence_hash_matches_committed_review() -> None:
+    repository_root = Path(__file__).resolve().parents[2]
+    evidence = repository_root / "docs" / "providers" / "5DOLLAR_TERMS_REVIEW.md"
+
+    assert sha256(evidence.read_bytes()).hexdigest() == FIVEDOLLAR_COMMUNITY_APPROVAL.evidence_sha256
