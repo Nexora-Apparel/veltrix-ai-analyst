@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from urllib.parse import urlparse
 
 import psycopg
 
@@ -18,6 +19,7 @@ def apply_migrations(
     database_url: str,
     *,
     expected_database: str,
+    allow_remote: bool = False,
     migrations_dir: Path = DEFAULT_MIGRATIONS_DIR,
 ) -> list[str]:
     """Apply ordered SQL migrations exactly once and reject target/checksum drift."""
@@ -25,6 +27,11 @@ def apply_migrations(
         raise MigrationError("DATABASE_URL_REQUIRED")
     if not expected_database.strip():
         raise MigrationError("EXPECTED_DATABASE_NAME_REQUIRED")
+    parsed_url = urlparse(database_url)
+    if parsed_url.scheme not in {"postgres", "postgresql"}:
+        raise MigrationError("DATABASE_URL_MUST_USE_POSTGRESQL")
+    if parsed_url.hostname not in {"localhost", "127.0.0.1", "::1"} and not allow_remote:
+        raise MigrationError("REMOTE_DATABASE_MIGRATIONS_DISABLED")
     migration_files = sorted(migrations_dir.glob("*.sql"))
     if not migration_files:
         raise MigrationError("NO_SQL_MIGRATIONS_FOUND")
