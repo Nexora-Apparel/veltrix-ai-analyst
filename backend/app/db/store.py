@@ -463,27 +463,49 @@ class PostgresIngestionStore:
             ),
         ).fetchone()
         if inserted is not None:
-            return int(inserted[0])
+            observation_id = int(inserted[0])
+        else:
+            existing = self.connection.execute(
+                """
+                SELECT id
+                FROM veltrix_ai_analyst.source_observations
+                WHERE provider = %s AND source_id = %s AND data_type = %s
+                  AND entity_type = %s AND provider_entity_id = %s AND payload_sha256 = %s
+                """,
+                (
+                    approval.provider,
+                    approval.source_id,
+                    data_type,
+                    entity_type,
+                    provider_entity_id,
+                    payload_hash,
+                ),
+            ).fetchone()
+            if existing is None:
+                raise IngestionStoreError("SOURCE_OBSERVATION_IDEMPOTENCY_LOOKUP_FAILED")
+            observation_id = int(existing[0])
 
-        existing = self.connection.execute(
+        self.connection.execute(
             """
-            SELECT id
-            FROM veltrix_ai_analyst.source_observations
-            WHERE provider = %s AND source_id = %s AND data_type = %s
-              AND entity_type = %s AND provider_entity_id = %s AND payload_sha256 = %s
+            INSERT INTO veltrix_ai_analyst.source_observation_sightings (
+                source_observation_id, provider_response_id, retrieved_at,
+                source_published_at, available_at, availability_basis,
+                point_in_time_certifiable, payload_sha256
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
             """,
             (
-                approval.provider,
-                approval.source_id,
-                data_type,
-                entity_type,
-                provider_entity_id,
+                observation_id,
+                provider_response_id,
+                retrieved_at,
+                source_published_at,
+                available_at,
+                availability_basis,
+                point_in_time_certifiable,
                 payload_hash,
             ),
-        ).fetchone()
-        if existing is None:
-            raise IngestionStoreError("SOURCE_OBSERVATION_IDEMPOTENCY_LOOKUP_FAILED")
-        return int(existing[0])
+        )
+        return observation_id
 
     def upsert_provider_competition(
         self,
