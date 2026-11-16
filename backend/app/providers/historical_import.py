@@ -456,11 +456,14 @@ def _replay_captured_page(
         SELECT r.window_start, r.window_end, r.page_number, r.endpoint,
                r.params_sha256, r.reserved_at, r.provider_response_id,
                p.http_status, p.raw_body, p.response_sha256, p.request_params,
-               p.endpoint, p.fetched_at,
-               EXISTS (
-                   SELECT 1
+               p.endpoint, p.fetched_at, p.provider, p.source_id,
+               p.rights_approval_id,
+               (
+                   SELECT COUNT(*) = 1
                    FROM veltrix_ai_analyst.provider_request_events e
                    WHERE e.provider_response_id = r.provider_response_id
+                     AND e.provider = '5DollarFootballAPI'
+                     AND e.source_id = '5dollarfootballapi'
                      AND e.endpoint = r.endpoint
                      AND e.request_params = p.request_params
                      AND e.http_status = p.http_status
@@ -478,9 +481,28 @@ def _replay_captured_page(
     expected = (window.start_at, window.end_at, page_number, endpoint, params_hash)
     if tuple(evidence[:5]) != expected:
         raise HistoricalImportError("CAPTURED_RESPONSE_RESERVATION_SCOPE_MISMATCH")
+    persister.last_request = {
+        "request_key": request_key,
+        "window_start": window.start_at,
+        "window_end": window.end_at,
+        "page_number": page_number,
+        "endpoint": endpoint,
+        "request_params": params,
+    }
     if evidence[6] is None:
         return None
-    if evidence[7] != 200 or not evidence[13]:
+    persister.last_response_id = int(evidence[6])
+    persister.last_http_status = evidence[7]
+    persister.last_response_sha256 = (
+        str(evidence[9]).strip() if evidence[9] is not None else None
+    )
+    if (
+        evidence[7] != 200
+        or not evidence[16]
+        or evidence[13] != PROVIDER_NAME
+        or evidence[14] != SOURCE_ID
+        or evidence[15] != IMPORT_APPROVAL.approval_id
+    ):
         raise HistoricalImportError("CAPTURED_RESPONSE_NOT_SUCCESSFULLY_LINKED")
     raw_body = bytes(evidence[8] or b"")
     digest = hashlib.sha256(raw_body).hexdigest() if raw_body else None
@@ -505,19 +527,8 @@ def _replay_captured_page(
     fetched_at = evidence[12]
     try:
         fixtures = tuple(_normalize_fixture(item, fetched_at) for item in rows)
-    except ProviderError:
+    except (ProviderError, TypeError, ValueError, KeyError):
         raise HistoricalImportError("CAPTURED_RESPONSE_FIXTURE_NORMALIZATION_FAILED") from None
-    persister.last_request = {
-        "request_key": request_key,
-        "window_start": window.start_at,
-        "window_end": window.end_at,
-        "page_number": page_number,
-        "endpoint": endpoint,
-        "request_params": params,
-    }
-    persister.last_response_id = int(evidence[6])
-    persister.last_response_sha256 = digest
-    persister.last_http_status = 200
     persister({
         "raw_body": raw_body,
         "provider_response_id": int(evidence[6]),
