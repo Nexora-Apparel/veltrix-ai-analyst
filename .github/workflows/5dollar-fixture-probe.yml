@@ -2,6 +2,11 @@ name: 5Dollar Brazil Serie B fixture endpoint probe
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/5dollar-fixture-probe.yml'
+      - 'scripts/probe_5dollar_brazil_fixtures.py'
 
 permissions:
   contents: read
