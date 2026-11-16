@@ -427,7 +427,6 @@ class FiveDollarFootballProvider:
         competitions = list(dict.fromkeys(str(value).strip() for value in (competition_ids or [])))
         if any(not value for value in competitions):
             raise ValueError("competition_ids cannot contain blank IDs")
-        retrieved_at = datetime.now(UTC)
         fixtures: list[ProviderFixture] = []
 
         async with httpx.AsyncClient(
