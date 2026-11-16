@@ -146,3 +146,53 @@
 - [x] Migration 004 applied to Neon database `veltrix_ai_analyst`; SHA-256 `567fc4c0f85e0b228591bda0888b76a82b92cb799b129197d8e4aae3404997cf`; five columns and unique request-key constraint verified.
 - [ ] Live collection remains locked until `VELTRIX_AI_ANALYST_DATABASE_URL` is securely configured as a GitHub Actions secret.
 - [x] No 5Dollar historical requests, odds calls, fixture imports, model training or prediction publication occurred.
+
+
+---
+
+## 14. Latest authoritative checkpoint — 2026-11-16
+
+This section supersedes older queue entries above where they describe the importer, quarantine, Neon provisioning, or migration status as incomplete.
+
+### Implemented and merged
+- PR #1 and PR #2: provenance-first PostgreSQL schema and runtime ingestion store.
+- PR #3: fixed-scope, resumable Brazil Serie B historical importer and manual-only workflow.
+- PR #4: raw HTTP response capture and failed-page quarantine; unresolved quarantines block automatic resume.
+- Migration 004 applied to the dedicated Neon database; SHA-256 `567fc4c0f85e0b228591bda0888b76a82b92cb799b129197d8e4aae3404997cf`.
+- Importer implementation: `backend/app/providers/historical_import.py`.
+- CLI: `scripts/collect_brazil_serie_b_history.py`.
+- Workflow: `.github/workflows/historical-brazil-serie-b.yml`.
+- CI #43944083287 passed 82 backend tests, Ruff, Android debug build and APK artifact upload. The importer integration tests use mocked HTTP; this is not a live provider collection.
+
+### Database state
+- Dedicated Neon resource: `young-wind-27772160`.
+- Database identity: `veltrix_ai_analyst`, PostgreSQL 18.7.
+- Migrations 001–004 are applied and checksum-verified.
+- The Vercel CLI's sensitive environment pull redacted `DATABASE_URL`; the Python migration runner was not executed. Migrations were applied through the authenticated Neon SQL connection and verified in the migration ledger.
+- Neon-backed rehearsal run 2 is PAUSED with `DRY_RUN_ONLY_NO_PROVIDER_HTTP`: 34 contiguous checkpoints, 40 simulated reservations, all checkpoints recovered, request 41 rejected, zero fixture rows and zero 5Dollar HTTP requests. This rehearsal consumed no provider quota.
+
+### Current blocker — GitHub Actions database secret
+- Required GitHub Actions environment: `veltrix-historical-import`.
+- Required environment secret: `VELTRIX_AI_ANALYST_DATABASE_URL`.
+- It must contain the dedicated `veltrix_ai_analyst` database URI, not the integration's `neondb` URI.
+- GitHub connector does not expose repository/environment secret write APIs in this session. Do not attempt to transmit the credential through chat, source code, workflow inputs, logs, or artifacts.
+- Secure setup instructions: `docs/GITHUB_ACTIONS_DATABASE_SECRET_SETUP.md`.
+
+### Hard safety state
+- Live historical import: **LOCKED**.
+- Historical 5Dollar requests under this collection plan: **0**.
+- Imported fixture rows: **0**.
+- Odds requests: **0**.
+- Model training/prediction publication: **not started**.
+- Request budget remains **40 maximum**, no automatic retries, 12-second minimum request spacing.
+- No use of the VELTRIX FOOTBALL 2.0 database, prediction logic, priors, or model artefacts.
+
+### Next execution sequence
+1. Configure the dedicated database URI as the GitHub environment secret.
+2. Add/run a zero-provider-request preflight that checks database identity, migrations 001–004, approval scope and quarantine state without creating fixture rows.
+3. Verify the secret-backed runner can connect to the exact dedicated database; output sanitized checks only.
+4. Review the preflight and collection envelope before any live workflow dispatch.
+5. If a provider request fails, preserve the raw response, quarantine it, pause the run and reconcile manually. Never retry a reserved request or exceed 40 calls.
+
+### Documentation discipline
+Every subsequent implementation, migration, CI result, provider call, import count, blocker, or scope decision must be recorded in this register and the relevant dated ledger. Never update status to PASSED based only on code inspection or a mocked test.
