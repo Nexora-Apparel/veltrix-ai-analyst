@@ -631,8 +631,21 @@ async def run_brazil_serie_b_historical_import(
                 reason_code=None,
             )
     except Exception as exc:
-        if current_persister is not None:
-            current_persister.quarantine_current_page(exc)
+        if current_persister is not None and current_persister.last_request is not None:
+            with psycopg.connect(database_url, autocommit=True) as quarantine_connection:
+                quarantine_persister = FixturePagePersister(
+                    quarantine_connection,
+                    import_run_id=import_run_id,
+                    approval=approval,
+                    window=current_persister.window,
+                )
+                quarantine_persister.last_request = current_persister.last_request
+                quarantine_persister.last_response_id = current_persister.last_response_id
+                quarantine_persister.last_response_sha256 = (
+                    current_persister.last_response_sha256
+                )
+                quarantine_persister.last_http_status = current_persister.last_http_status
+                quarantine_persister.quarantine_current_page(exc)
         with psycopg.connect(database_url) as connection:
             row = connection.execute(
                 "SELECT status FROM veltrix_ai_analyst.import_runs WHERE id = %s",
