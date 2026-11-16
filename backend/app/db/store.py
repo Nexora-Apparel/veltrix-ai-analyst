@@ -185,7 +185,12 @@ class PostgresIngestionStore:
             """,
             (approval.approval_id,),
         ).fetchone()
-        if existing is None or tuple(existing) != expected:
+        if existing is not None:
+            existing_values = list(existing)
+            existing_values[10] = str(existing_values[10]).strip()
+        else:
+            existing_values = []
+        if tuple(existing_values) != expected:
             raise EvidenceConflict("SOURCE_APPROVAL_ID_ALREADY_EXISTS_WITH_DIFFERENT_EVIDENCE")
         return approval.approval_id
 
