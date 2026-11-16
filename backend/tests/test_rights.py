@@ -1,5 +1,5 @@
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
@@ -154,6 +154,7 @@ def test_record_scope_checks_provider_source_and_data_type() -> None:
         scope_type="competition_id",
         scope_value="league-1",
         data_type="fixtures_and_results",
+        at_utc=datetime(2026, 11, 16, tzinfo=UTC),
     )
 
     assert decision.allowed is True
@@ -164,6 +165,7 @@ def test_record_scope_checks_provider_source_and_data_type() -> None:
         scope_type="competition_id",
         scope_value="league-1",
         data_type="fixtures_and_results",
+        at_utc=datetime(2026, 11, 16, tzinfo=UTC),
     )
     assert wrong_source.reason_code == "SOURCE_APPROVAL_IDENTITY_MISMATCH"
 
