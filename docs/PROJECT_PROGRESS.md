@@ -64,3 +64,12 @@
 - Do not infer whole-season coverage from an 8-row two-day sample.
 - Keep API keys, raw provider payloads and private data out of the public repository and CI artifacts.
 - Preserve the independent model rebuild boundary from VELTRIX FOOTBALL 2.0.
+
+
+### 5Dollar adapter contract audit — 2026-11-16
+- [x] Compared the bounded fixture probe route and query parameters with `backend/app/providers/five_dollar.py`; route and request parameter names match.
+- [x] Confirmed the adapter normalizes all sampled top-level fixture field families: IDs, league, teams, kickoff, status, goals, corners and cards.
+- [x] Added offline tests in `backend/tests/test_five_dollar_observed_contract.py` for the observed eight-row pagination envelope, exact route/query, mapped field families and `kickoff_ts` fallback.
+- [x] No additional provider calls were made; test data is synthetic and does not contain the raw provider payload.
+- [ ] CI run #43917944552 is pending/in progress at the time of this update; do not treat the test addition as validated until backend tests, Ruff and Android build finish successfully.
+- [ ] Next: complete CI verification, then design a request-budgeted resumable historical collection plan. Do not start a bulk pull.
