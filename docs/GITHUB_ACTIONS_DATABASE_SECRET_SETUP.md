@@ -55,7 +55,7 @@ Before any live dispatch, review the preflight output and the collection plan. A
 
 ## Current state
 
-This document records setup instructions only. It does not assert that the GitHub secret has been configured or that a live import has run. The historical import remains locked until the secret is configured and the zero-provider-request preflight succeeds.
+The environment secret was reported saved on 2026-11-16. Its value is not exposed in repository documentation. A successful Actions preflight is still required to validate it. No live import has run.
 
 
 ## Automated read-only preflight
