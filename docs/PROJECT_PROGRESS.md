@@ -196,3 +196,12 @@ This section supersedes older queue entries above where they describe the import
 
 ### Documentation discipline
 Every subsequent implementation, migration, CI result, provider call, import count, blocker, or scope decision must be recorded in this register and the relevant dated ledger. Never update status to PASSED based only on code inspection or a mocked test.
+
+
+### Post-import quality gate — 2026-11-16
+- [x] PR #5 merged at `c477516c804b0de4a8b825d29ded13fd5ea22f22`: read-only validator checks exact DB/source/date scope, 34 checkpoints, request budget and canonical hashes, raw response linkage/checksums, rights approval, fixture integrity and non-PIT provenance.
+- [x] Manual workflow runs the quality validator automatically after successful import completion.
+- [x] Operator instructions added: `docs/HISTORICAL_IMPORT_OPERATOR_RUNBOOK.md`.
+- [x] CI #43946317661 passed 82 backend tests, Ruff, Android debug build and APK artifact upload.
+- [ ] Live historical collection remains locked until GitHub Actions environment secret `VELTRIX_AI_ANALYST_DATABASE_URL` is configured with the dedicated `veltrix_ai_analyst` URI.
+- [x] No historical 5Dollar API calls, odds calls, fixture imports, model training or prediction publication occurred.
