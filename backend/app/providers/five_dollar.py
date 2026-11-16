@@ -74,13 +74,23 @@ def _time_windows(start: datetime, end: datetime) -> list[datetime]:
 
 
 def _optional_int(value: Any) -> int | None:
-    if value is None or isinstance(value, bool):
+    if value is None:
         return None
-    try:
-        result = int(value)
-    except (TypeError, ValueError, OverflowError):
+    if isinstance(value, bool):
+        raise ProviderAPIError("5DollarFootballAPI returned a boolean where an integer was expected")
+    if isinstance(value, int) and value >= 0:
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    raise ProviderAPIError("5DollarFootballAPI returned an invalid non-negative integer field")
+
+
+def _optional_bool(value: Any, field_name: str) -> bool | None:
+    if value is None:
         return None
-    return result if result >= 0 else None
+    if isinstance(value, bool):
+        return value
+    raise ProviderAPIError(f"5DollarFootballAPI returned an invalid {field_name} field")
 
 
 def _kickoff(item: dict[str, Any]) -> datetime:
@@ -206,13 +216,25 @@ class FiveDollarFootballProvider:
             transport=self._transport,
             follow_redirects=False,
         ) as client:
-            response = await client.get(
-                "status",
-                headers={"Authorization": f"Bearer {self._api_key}", "Accept": "application/json"},
-            )
+            try:
+                response = await client.get(
+                    "status",
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "Accept": "application/json",
+                    },
+                )
+            except httpx.HTTPError as exc:
+                raise ProviderAPIError(
+                    f"5DollarFootballAPI network request failed ({type(exc).__name__})"
+                ) from None
         if response.status_code == 429:
             retry_after = response.headers.get("Retry-After")
-            raise ProviderRateLimitError(float(retry_after) if retry_after else None)
+            try:
+                retry_seconds = float(retry_after) if retry_after else None
+            except ValueError:
+                retry_seconds = None
+            raise ProviderRateLimitError(retry_seconds)
         if response.status_code >= 400:
             raise ProviderAPIError(f"5DollarFootballAPI returned HTTP {response.status_code}")
         try:
@@ -332,13 +354,9 @@ class FiveDollarFootballProvider:
                             country_name=(
                                 str(country["name"]) if country.get("name") is not None else None
                             ),
-                            is_popular=(
-                                bool(row["is_popular"]) if row.get("is_popular") is not None else None
-                            ),
-                            has_standings=(
-                                bool(row["has_standings"])
-                                if row.get("has_standings") is not None
-                                else None
+                            is_popular=_optional_bool(row.get("is_popular"), "is_popular"),
+                            has_standings=_optional_bool(
+                                row.get("has_standings"), "has_standings"
                             ),
                             last_fixture_at=last_fixture_at,
                             seasons=season_names,
@@ -376,7 +394,9 @@ class FiveDollarFootballProvider:
         if end <= start:
             raise ValueError("end_at must be later than start_at")
 
-        competitions = list(dict.fromkeys(str(value) for value in (competition_ids or [])))
+        competitions = list(dict.fromkeys(str(value).strip() for value in (competition_ids or [])))
+        if any(not value for value in competitions):
+            raise ValueError("competition_ids cannot contain blank IDs")
         retrieved_at = datetime.now(UTC)
         fixtures: list[ProviderFixture] = []
 
