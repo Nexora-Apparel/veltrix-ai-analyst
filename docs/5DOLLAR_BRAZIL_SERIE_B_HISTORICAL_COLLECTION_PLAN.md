@@ -3,7 +3,7 @@
 **Document ID:** VAA-INGEST-PLAN-001  
 **Version:** 1.3  
 **Date:** 2026-11-16  
-**Status:** IMPORTER MERGED — dedicated Neon database and migrations are verified; the resumable, rights-aware importer and manual GitHub Actions workflow are merged. Live collection remains locked pending secure GitHub database-secret configuration and final preflight.
+**Status:** IMPORTER AND QUALITY GATE MERGED — dedicated Neon database, four migrations, resumable importer, failed-page quarantine and post-import validator are merged. Live collection remains locked pending secure GitHub database-secret configuration.
 
 ## 1. Objective and strict scope
 
@@ -205,3 +205,21 @@ The importer is implemented, but live collection is still locked until GitHub Ac
 See `docs/GITHUB_ACTIONS_DATABASE_SECRET_SETUP.md` for secure configuration instructions. After setup, run a separate preflight that checks exact database identity, migrations 001–004, source approval and quarantine state while making zero provider requests and zero fixture writes. Do not use the collection workflow as a connection test.
 
 **Current live-collection state: LOCKED.** Historical provider requests under this plan: 0. Imported fixture rows: 0. Odds requests: 0. Model training and prediction publication: not started. The 40-request ceiling, no-retry rule and 12-second spacing remain unchanged.
+
+
+## 14. Post-import quality gate — 2026-11-16
+
+PR #5 merged at `c477516c804b0de4a8b825d29ded13fd5ea22f22`. CI run [#43946317661](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43946317661) passed 82 backend tests, Ruff, Android debug build and APK upload.
+
+The read-only validator checks:
+- exact dedicated database identity, provider/source and historical boundaries;
+- all 34 exact, contiguous, completed date checkpoints;
+- reservation count, request-key format, canonical parameter SHA-256 and the 40-request ceiling;
+- request-event linkage to raw provider responses and response-body SHA-256;
+- approved source rights, competition scope, permitted data types/use, attribution and non-commercial restrictions;
+- fixture observation sightings, persisted fixture counts, kickoff boundaries and completed-match score completeness;
+- retrieval-time-only provenance, no false point-in-time certification, and zero unresolved quarantine.
+
+The manual historical import workflow now runs this validator automatically after the importer returns a completed run ID. Paused/failed runs do not reach validation. The operator runbook is `docs/HISTORICAL_IMPORT_OPERATOR_RUNBOOK.md`.
+
+Live collection remains disabled until the dedicated database URI is securely configured as GitHub Actions environment secret `VELTRIX_AI_ANALYST_DATABASE_URL`. No historical provider calls or fixture imports have been made.
