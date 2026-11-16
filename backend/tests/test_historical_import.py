@@ -9,11 +9,16 @@ import psycopg
 import pytest
 
 from app.db.migrations import apply_migrations
+from app.db.request_budget import PostgresRequestBudget
+from app.db.store import PostgresIngestionStore
 from app.providers import historical_import, historical_validation
+from app.providers.collection_plan import DateWindow
 from app.providers.five_dollar import FiveDollarFootballProvider
 from app.providers.historical_import import (
     IMPORT_APPROVAL,
+    FixturePagePersister,
     HistoricalImportError,
+    _replay_captured_page,
     run_brazil_serie_b_historical_import,
 )
 
@@ -255,3 +260,140 @@ def test_malformed_provider_page_is_saved_and_quarantined(
         ),
     ):
         historical_validation.validate_brazil_serie_b_import(connection, run_id)
+
+
+def test_resume_replays_reserved_response_without_repeating_provider_http(
+    database_url: str,
+) -> None:
+    window = DateWindow(
+        start_at=datetime(2026, 8, 29, tzinfo=UTC),
+        end_at=datetime(2026, 9, 5, tzinfo=UTC),
+    )
+    now = datetime.now(UTC)
+    params = {
+        "start_time": int(window.start_at.timestamp()),
+        "end_time": int(window.end_at.timestamp()),
+        "status": "all",
+        "page": 1,
+        "per_page": 100,
+    }
+    endpoint = "/leagues/522514093/fixtures"
+    request_key = (
+        f"522514093:{window.start_at.isoformat()}:{window.end_at.isoformat()}:page:1"
+    )
+    with psycopg.connect(database_url) as connection:
+        store = PostgresIngestionStore(connection)
+        run_id = store.create_import_run(
+            IMPORT_APPROVAL,
+            scope_value="522514093",
+            data_type="fixtures_and_results",
+            import_type="historical_backfill",
+            boundary_start=historical_import.BOUNDARY_START,
+            boundary_end=historical_import.BOUNDARY_END,
+            request_budget=40,
+            importer_version="replay-regression-test",
+            started_at=now,
+        )
+        store.save_checkpoint(
+            import_run_id=run_id,
+            window_start=window.start_at,
+            window_end=window.end_at,
+            status="RUNNING",
+            cursor_value="1",
+        )
+
+    with psycopg.connect(database_url, autocommit=True) as connection:
+        reservation = PostgresRequestBudget(connection).reserve(
+            import_run_id=run_id,
+            request_key=request_key,
+            window_start=window.start_at,
+            window_end=window.end_at,
+            page_number=1,
+            endpoint=endpoint,
+            request_params=params,
+            reserved_at=now,
+        )
+        assert reservation.created is True
+        persister = FixturePagePersister(
+            connection,
+            import_run_id=run_id,
+            approval=IMPORT_APPROVAL,
+            window=window,
+        )
+        body = __import__("json").dumps(
+            {
+                "success": 1,
+                "data": [_fixture(99887766, "2026-08-30T12:00:00+00:00")],
+                "pagination": {
+                    "page": 1,
+                    "per_page": 100,
+                    "count": 1,
+                    "has_more": False,
+                },
+            },
+            separators=(",", ":"),
+        ).encode()
+        response_id = persister.record_raw_response(
+            {
+                "request_key": request_key,
+                "window_start": window.start_at,
+                "window_end": window.end_at,
+                "page_number": 1,
+                "endpoint": endpoint,
+                "request_params": params,
+                "request_started_at": now,
+                "fetched_at": now,
+                "http_status": 200,
+                "raw_body": body,
+                "response_headers": {"x-request-id": "replay-regression-response"},
+            }
+        )
+        assert response_id is not None
+        has_more = _replay_captured_page(
+            connection,
+            import_run_id=run_id,
+            window=window,
+            page_number=1,
+            persister=persister,
+        )
+        assert has_more is False
+
+        linked_response = connection.execute(
+            """
+            SELECT provider_response_id
+            FROM veltrix_ai_analyst.import_request_reservations
+            WHERE import_run_id = %s AND request_key = %s
+            """,
+            (run_id, request_key),
+        ).fetchone()
+        checkpoint = connection.execute(
+            """
+            SELECT status, records_seen, records_inserted, requests_used
+            FROM veltrix_ai_analyst.import_checkpoints
+            WHERE import_run_id = %s AND window_start = %s AND window_end = %s
+            """,
+            (run_id, window.start_at, window.end_at),
+        ).fetchone()
+        fixture = connection.execute(
+            """
+            SELECT provider_fixture_id
+            FROM veltrix_ai_analyst.provider_fixtures
+            WHERE provider = '5DollarFootballAPI'
+              AND source_id = '5dollarfootballapi'
+              AND provider_fixture_id = '99887766'
+            """
+        ).fetchone()
+        request_count = connection.execute(
+            """
+            SELECT COUNT(*) FROM veltrix_ai_analyst.provider_request_events
+            WHERE provider = '5DollarFootballAPI'
+              AND source_id = '5dollarfootballapi'
+              AND provider_response_id = %s
+            """,
+            (response_id,),
+        ).fetchone()[0]
+
+    assert linked_response == (response_id,)
+    assert checkpoint == ("COMPLETED", 1, 1, 1)
+    assert fixture == ("99887766",)
+    assert request_count == 1
