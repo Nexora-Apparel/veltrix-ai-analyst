@@ -31,6 +31,10 @@ class EvidenceConflict(IngestionStoreError):
     """Raised when an existing immutable source approval differs from its evidence."""
 
 
+class WatermarkConflict(IngestionStoreError):
+    """Raised when an optimistic sync-watermark update loses a race."""
+
+
 class PostgresIngestionStore:
     """Write source evidence and provider projections with fail-closed rights checks.
 
@@ -844,6 +848,282 @@ class PostgresIngestionStore:
                 last_error_code,
             ),
         )
+
+    def record_provider_request_event(
+        self,
+        approval: SourceApproval,
+        *,
+        scope_value: str,
+        data_type: str,
+        endpoint: str,
+        request_params: Mapping[str, Any],
+        started_at: datetime,
+        finished_at: datetime | None,
+        http_status: int | None,
+        retry_after_seconds: float | None = None,
+        quota_remaining: int | None = None,
+        provider_response_id: int | None = None,
+    ) -> int:
+        self._require_aware(started_at, "REQUEST_STARTED_AT")
+        self._require_aware(finished_at, "REQUEST_FINISHED_AT")
+        if finished_at is not None and finished_at < started_at:
+            raise IngestionStoreError("REQUEST_FINISHED_BEFORE_STARTED")
+        if http_status is not None and not 100 <= http_status <= 599:
+            raise IngestionStoreError("INVALID_HTTP_STATUS")
+        self._reject_sensitive_request_params(request_params)
+        self._authorize(
+            approval,
+            scope_value=scope_value,
+            data_type=data_type,
+            purpose=DataUsePurpose.COLLECTION,
+            at_utc=started_at,
+        )
+        if provider_response_id is not None:
+            response = self.connection.execute(
+                "SELECT provider, source_id FROM veltrix_ai_analyst.provider_responses WHERE id = %s",
+                (provider_response_id,),
+            ).fetchone()
+            if response is None or tuple(response) != (approval.provider, approval.source_id):
+                raise IngestionStoreError("PROVIDER_RESPONSE_IDENTITY_MISMATCH")
+        params_json, _ = self._canonical_json(request_params)
+        row = self.connection.execute(
+            """
+            INSERT INTO veltrix_ai_analyst.provider_request_events (
+                provider, source_id, endpoint, request_params, http_status,
+                retry_after_seconds, quota_remaining, provider_response_id,
+                started_at, finished_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (
+                approval.provider,
+                approval.source_id,
+                endpoint,
+                Jsonb(json.loads(params_json)),
+                http_status,
+                retry_after_seconds,
+                quota_remaining,
+                provider_response_id,
+                started_at,
+                finished_at,
+            ),
+        ).fetchone()
+        if row is None:
+            raise IngestionStoreError("PROVIDER_REQUEST_EVENT_CREATE_FAILED")
+        return int(row[0])
+
+    def record_entitlement_observation(
+        self,
+        approval: SourceApproval,
+        *,
+        plan_code: str,
+        entitlement_status: str,
+        competition_ids: list[str],
+        checked_at: datetime,
+        provider_response_id: int | None,
+        country_pack_code: str | None = None,
+        rate_limit_hour: int | None = None,
+        rate_limit_minute: int | None = None,
+        quota_remaining: int | None = None,
+    ) -> int:
+        self._authorize(
+            approval,
+            scope_value="account_status",
+            data_type="account_entitlements",
+            purpose=DataUsePurpose.STORAGE,
+            at_utc=checked_at,
+        )
+        if len(set(competition_ids)) != len(competition_ids):
+            raise IngestionStoreError("DUPLICATE_ENTITLEMENT_COMPETITION_IDS")
+        if any(not value.strip() or value == "*" for value in competition_ids):
+            raise IngestionStoreError("INVALID_ENTITLEMENT_COMPETITION_ID")
+        if provider_response_id is not None:
+            response = self.connection.execute(
+                "SELECT provider, source_id FROM veltrix_ai_analyst.provider_responses WHERE id = %s",
+                (provider_response_id,),
+            ).fetchone()
+            if response is None or tuple(response) != (approval.provider, approval.source_id):
+                raise IngestionStoreError("PROVIDER_RESPONSE_IDENTITY_MISMATCH")
+        evidence_payload = {
+            "plan_code": plan_code,
+            "entitlement_status": entitlement_status,
+            "competition_ids": sorted(competition_ids),
+            "country_pack_code": country_pack_code,
+            "rate_limit_hour": rate_limit_hour,
+            "rate_limit_minute": rate_limit_minute,
+            "quota_remaining": quota_remaining,
+        }
+        _, evidence_hash = self._canonical_json(evidence_payload)
+        row = self.connection.execute(
+            """
+            INSERT INTO veltrix_ai_analyst.provider_entitlement_observations (
+                provider, source_id, plan_code, entitlement_status, country_pack_code,
+                competition_ids, rate_limit_hour, rate_limit_minute, quota_remaining,
+                provider_response_id, evidence_sha256, checked_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (provider, source_id, checked_at, evidence_sha256) DO NOTHING
+            RETURNING id
+            """,
+            (
+                approval.provider,
+                approval.source_id,
+                plan_code,
+                entitlement_status,
+                country_pack_code,
+                Jsonb(sorted(competition_ids)),
+                rate_limit_hour,
+                rate_limit_minute,
+                quota_remaining,
+                provider_response_id,
+                evidence_hash,
+                checked_at,
+            ),
+        ).fetchone()
+        if row is not None:
+            return int(row[0])
+        existing = self.connection.execute(
+            """
+            SELECT id
+            FROM veltrix_ai_analyst.provider_entitlement_observations
+            WHERE provider = %s AND source_id = %s AND checked_at = %s
+              AND evidence_sha256 = %s
+            """,
+            (approval.provider, approval.source_id, checked_at, evidence_hash),
+        ).fetchone()
+        if existing is None:
+            raise IngestionStoreError("ENTITLEMENT_IDEMPOTENCY_LOOKUP_FAILED")
+        return int(existing[0])
+
+    def append_import_event(
+        self,
+        *,
+        import_run_id: int,
+        event_type: str,
+        event_at: datetime,
+        details: Mapping[str, Any],
+    ) -> int:
+        self._require_aware(event_at, "IMPORT_EVENT_AT")
+        details_json, _ = self._canonical_json(details)
+        row = self.connection.execute(
+            """
+            INSERT INTO veltrix_ai_analyst.import_run_events (
+                import_run_id, event_type, event_at, details
+            ) VALUES (%s, %s, %s, %s)
+            RETURNING id
+            """,
+            (import_run_id, event_type, event_at, Jsonb(json.loads(details_json))),
+        ).fetchone()
+        if row is None:
+            raise IngestionStoreError("IMPORT_EVENT_CREATE_FAILED")
+        return int(row[0])
+
+    def finish_import_run(
+        self,
+        *,
+        import_run_id: int,
+        status: str,
+        finished_at: datetime,
+        requests_used: int,
+        records_seen: int,
+        records_inserted: int,
+        records_duplicate: int,
+        records_rejected: int,
+        records_quarantined: int,
+        manifest_sha256: str | None = None,
+        reason_code: str | None = None,
+    ) -> None:
+        self._require_aware(finished_at, "IMPORT_FINISHED_AT")
+        if status not in {"COMPLETED", "PARTIAL", "FAILED", "PAUSED"}:
+            raise IngestionStoreError("INVALID_TERMINAL_IMPORT_STATUS")
+        updated = self.connection.execute(
+            """
+            UPDATE veltrix_ai_analyst.import_runs
+            SET status = %s, finished_at = %s, requests_used = %s,
+                records_seen = %s, records_inserted = %s, records_duplicate = %s,
+                records_rejected = %s, records_quarantined = %s,
+                manifest_sha256 = %s, reason_code = %s
+            WHERE id = %s AND status IN ('PLANNED', 'RUNNING')
+            RETURNING id
+            """,
+            (
+                status,
+                finished_at,
+                requests_used,
+                records_seen,
+                records_inserted,
+                records_duplicate,
+                records_rejected,
+                records_quarantined,
+                manifest_sha256,
+                reason_code,
+                import_run_id,
+            ),
+        ).fetchone()
+        if updated is None:
+            raise IngestionStoreError("IMPORT_RUN_NOT_OPEN")
+        self.append_import_event(
+            import_run_id=import_run_id,
+            event_type=status,
+            event_at=finished_at,
+            details={
+                "requests_used": requests_used,
+                "records_seen": records_seen,
+                "records_inserted": records_inserted,
+                "records_duplicate": records_duplicate,
+                "records_rejected": records_rejected,
+                "records_quarantined": records_quarantined,
+                "reason_code": reason_code,
+            },
+        )
+
+    def advance_watermark(
+        self,
+        *,
+        provider: str,
+        source_id: str,
+        data_class: str,
+        scope: str,
+        cursor_value: str | None,
+        updated_at: datetime,
+        expected_version: int | None,
+    ) -> int:
+        self._require_aware(updated_at, "WATERMARK_UPDATED_AT")
+        if expected_version is None:
+            row = self.connection.execute(
+                """
+                INSERT INTO veltrix_ai_analyst.sync_watermarks (
+                    provider, source_id, data_class, scope, cursor_value, version, updated_at
+                ) VALUES (%s, %s, %s, %s, %s, 0, %s)
+                ON CONFLICT (provider, source_id, data_class, scope) DO NOTHING
+                RETURNING version
+                """,
+                (provider, source_id, data_class, scope, cursor_value, updated_at),
+            ).fetchone()
+            if row is None:
+                raise WatermarkConflict("WATERMARK_ALREADY_EXISTS")
+            return int(row[0])
+
+        row = self.connection.execute(
+            """
+            UPDATE veltrix_ai_analyst.sync_watermarks
+            SET cursor_value = %s, version = version + 1, updated_at = %s
+            WHERE provider = %s AND source_id = %s AND data_class = %s
+              AND scope = %s AND version = %s
+            RETURNING version
+            """,
+            (
+                cursor_value,
+                updated_at,
+                provider,
+                source_id,
+                data_class,
+                scope,
+                expected_version,
+            ),
+        ).fetchone()
+        if row is None:
+            raise WatermarkConflict("WATERMARK_VERSION_CONFLICT")
+        return int(row[0])
 
     def quarantine_record(
         self,
