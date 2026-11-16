@@ -117,7 +117,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
         migrations_dir=migrations_dir,
     )
     assert set(applied).issubset(
-        {"001_provenance_ingestion.sql", "002_source_observation_sightings.sql"}
+        {"001_provenance_ingestion.sql", "002_source_observation_sightings.sql", "003_import_request_reservations.sql"}
     )
 
     assert apply_migrations(
@@ -146,6 +146,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
         assert {
             "001_provenance_ingestion.sql",
             "002_source_observation_sightings.sql",
+            "003_import_request_reservations.sql",
         }.issubset(migration_versions)
 
         assert {
@@ -165,6 +166,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "sync_watermarks",
             "ingestion_quarantine",
             "import_run_events",
+            "import_request_reservations",
         }.issubset(tables)
 
         suffix = uuid4().hex
