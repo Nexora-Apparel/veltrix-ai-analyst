@@ -137,6 +137,16 @@ def test_store_records_provider_response_and_normalized_observation(connection) 
     ).fetchone()
     assert sightings == (2,)
 
+    with pytest.raises(psycopg.errors.RaiseException), connection.transaction():
+        connection.execute(
+            """
+            UPDATE veltrix_ai_analyst.source_observation_sightings
+            SET availability_basis = 'UNVERIFIED'
+            WHERE source_observation_id = %s
+            """,
+            (observation_id,),
+        )
+
     with pytest.raises(IngestionStoreError, match="PIT_CERTIFICATION_REQUIRES_VERIFIED_PUBLICATION_TIME"):
         store.record_source_observation(
             approval,
