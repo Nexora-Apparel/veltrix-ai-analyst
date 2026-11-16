@@ -4,7 +4,7 @@
 **Version:** 1.0  
 **Date:** 2026-11-16  
 **Stage:** 2 — Data integrations and historical migration  
-**Status:** Specification; no provider coverage run or historical import is certified by this document.
+**Status:** Specification with a completed, bounded 5Dollar account/Brazil competition preflight and a verified AI Midas descriptive snapshot; no historical 5Dollar import or model-eligible coverage is certified.
 
 ## 1. Purpose
 
@@ -70,8 +70,8 @@ Retrieval time must never be substituted for source publication time. Event time
 - Source: `aimidas1/aimidas1`, pinned commit `29baca362a34ce5dcd3924b07ec9c7d5139d83fc`.
 - File: `advanced stats/Brazil Serie B 2026.csv`.
 - Expected raw bytes: 192,284; 738 team-match rows; 369 matches; 20 teams; dates 2026-03-21 to 2026-11-08.
-- Pin SHA-1 was reverified against GitHub's returned blob metadata; local raw-byte SHA-256 execution remains pending.
-- One match is quarantined for inconsistent team-row scores; 368 other matches are candidates for further review.
+- Capture executed in GitHub Actions run [#43882958891](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43882958891); raw bytes 192,284; SHA-256 `55b0c00629abd2d4ff3c31659ada950b67ffc2752609284b32c15c99f71152ab`; Git blob SHA-1 `b6bdb94c053d2149e6232fb100e1f158e46e4533`.
+- One match (Náutico 0-3 CRB, 2026-11-07) is quarantined for inconsistent team-row scores; 368 other matches are descriptive-data candidates, not pre-match features.
 - Rights: non-commercial only; attribution required; raw redistribution prohibited.
 - Timestamp class: EVENT_TIME plus RETRIEVED_AT only; SOURCE_PUBLISHED_AT unavailable.
 - Eligibility: historical descriptive/reconciliation only until a pre-match availability timeline is independently established. Not PIT-certified; not eligible as pre-match model features.
@@ -79,11 +79,13 @@ Retrieval time must never be substituted for source publication time. Event time
 
 ### 5DollarFootballAPI — Community
 
-- Prior account evidence: Community plan, 300 requests/hour and 20 requests/minute burst; seven competitions in prior qualification. This is not a fresh verification for the new repository.
-- Prior 365-day qualification: 2,496 finished fixtures, 26 pages, 28 requests under a 40-request cap, no duplicates/rejections. Do not repeat this full pull merely to reconfirm access.
-- Current new-repository credential and account/competition listing: NOT_CHECKED.
+- New-repository secret `FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY` was consumed by the manual verification workflow; no credential value was printed.
+- Run [#43884649616](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43884649616), completed successfully on 2026-11-16.
+- Account plan: `community`; reported limits: 300 requests/hour, 20-request/minute burst; reported `usage.today`: 0 at the time returned by the status endpoint.
+- Brazil competition listing: 2 entries; Brazil Serie B visible as provider competition ID `522514093`.
+- This proves account and competition-list visibility only. It does not prove fixture/result endpoint access, season/date coverage, field completeness, or historical completeness.
+- Prior 365-day qualification in the legacy environment: 2,496 finished fixtures, 26 pages, 28 requests under a 40-request cap, no duplicates/rejections. Do not repeat this full pull merely to reconfirm access.
 - Historical odds ticks: prior Community endpoint returned HTTP 403 and sampled timestamp coverage was inadequate; not qualified for CLV.
-- Next check is a bounded account-status and Brazil competition-list preflight only. No fixture history or odds bulk requests during that check.
 
 ## 7. Cross-provider identity rules
 
@@ -117,7 +119,6 @@ A VERIFIED coverage record may still be RESTRICTED for pre-match modelling, odds
 
 ## 10. Next execution
 
-1. Complete AI Midas private snapshot capture and raw SHA-256 verification in a trusted local environment.
-2. Run the new repository's 5Dollar account/Brazil competition preflight after the credential is configured as a GitHub Actions secret.
-3. Populate measured competition/field/date records from bounded evidence; do not infer missing values.
-4. Use the resulting manifest to define the historical request budget and resumable import plan.
+1. Design a strictly bounded 5Dollar Brazil Serie B fixture/result endpoint probe to establish actual endpoint access and response schema; do not start a season backfill.
+2. Populate measured competition/field/date records from bounded evidence; do not infer missing values.
+3. Define the historical request budget and resumable import plan from measured pagination and quota evidence.
