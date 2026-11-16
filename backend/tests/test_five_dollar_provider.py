@@ -272,3 +272,54 @@ def test_malformed_score_is_rejected_instead_of_silently_truncated() -> None:
                 competition_ids=["77"],
             )
         )
+
+
+
+def test_unknown_fixture_never_exposes_partial_goals_as_final_score() -> None:
+    row = fixture_row(504, "2026-11-16T10:00:00+00:00")
+    row["status"] = "unknown"
+    row["status_reason"] = "result_unconfirmed"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=response_payload([row]))
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    results = asyncio.run(
+        provider.fetch_fixtures(
+            datetime(2026, 11, 16, tzinfo=UTC),
+            datetime(2026, 11, 16, 12, tzinfo=UTC),
+            competition_ids=["77"],
+        )
+    )
+
+    assert results[0].status == "unknown"
+    assert results[0].status_reason == "result_unconfirmed"
+    assert results[0].home_goals is None
+    assert results[0].away_goals is None
+
+
+def test_finished_fixture_without_both_scores_is_downgraded_to_unknown() -> None:
+    row = fixture_row(505, "2026-11-16T10:00:00+00:00")
+    row["goals"] = {"home": None, "away": None}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=response_payload([row]))
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    results = asyncio.run(
+        provider.fetch_fixtures(
+            datetime(2026, 11, 16, tzinfo=UTC),
+            datetime(2026, 11, 16, 12, tzinfo=UTC),
+            competition_ids=["77"],
+        )
+    )
+
+    assert results[0].status == "unknown"
+    assert results[0].home_goals is None
+    assert results[0].away_goals is None
