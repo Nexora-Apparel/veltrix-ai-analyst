@@ -1,9 +1,11 @@
+import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+import httpx
 import psycopg
 import pytest
 
@@ -17,6 +19,7 @@ from app.db.request_budget import (
 from app.db.store import PostgresIngestionStore
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
 from app.providers.collection_plan import build_date_windows
+from app.providers.five_dollar import FiveDollarFootballProvider, ProviderAPIError
 
 
 @pytest.fixture
@@ -256,3 +259,64 @@ def test_controlled_collection_dry_run_resumes_34_checkpoints_and_stops_at_40(
 def test_database_rejects_request_budget_above_40(database_url: str) -> None:
     with pytest.raises(psycopg.errors.CheckViolation):
         make_run(database_url, 41)
+
+
+
+def test_persistent_budget_is_enforced_at_provider_http_boundary(
+    database_url: str,
+) -> None:
+    run_id = make_run(database_url, 1)
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(
+            200,
+            json={
+                "success": 1,
+                "data": [],
+                "pagination": {
+                    "page": 1,
+                    "per_page": 100,
+                    "count": 0,
+                    "has_more": False,
+                },
+            },
+        )
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    start = datetime(2026, 3, 21, tzinfo=UTC)
+    end = datetime(2026, 3, 28, tzinfo=UTC)
+
+    with psycopg.connect(database_url, autocommit=True) as quota_connection:
+        reserver = PostgresRequestBudget(quota_connection).callback_for_run(run_id)
+        asyncio.run(
+            provider.fetch_fixtures(
+                start,
+                end,
+                competition_ids=["522514093"],
+                request_reserver=reserver,
+                require_request_reservation=True,
+            )
+        )
+        with pytest.raises(ProviderAPIError, match="request reservation already exists"):
+            asyncio.run(
+                provider.fetch_fixtures(
+                    start,
+                    end,
+                    competition_ids=["522514093"],
+                    request_reserver=reserver,
+                    require_request_reservation=True,
+                )
+            )
+
+    assert requests == 1
+    with psycopg.connect(database_url) as conn:
+        assert conn.execute(
+            "SELECT requests_used FROM veltrix_ai_analyst.import_runs WHERE id = %s",
+            (run_id,),
+        ).fetchone() == (1,)
