@@ -4,6 +4,7 @@ from pathlib import Path
 
 from app.providers.approvals import (
     AIMIDAS_BRAZIL_SERIE_B_APPROVAL,
+    FIVEDOLLAR_ACCOUNT_APPROVAL,
     FIVEDOLLAR_COMMUNITY_APPROVAL,
 )
 from app.providers.rights import DataUsePurpose, evaluate_source_use
@@ -79,3 +80,29 @@ def test_5dollar_approval_evidence_hash_matches_committed_review() -> None:
     evidence = repository_root / "docs" / "providers" / "5DOLLAR_TERMS_REVIEW.md"
 
     assert sha256(evidence.read_bytes()).hexdigest() == FIVEDOLLAR_COMMUNITY_APPROVAL.evidence_sha256
+
+
+
+def test_5dollar_account_approval_is_limited_to_account_metadata() -> None:
+    approval = FIVEDOLLAR_ACCOUNT_APPROVAL
+
+    assert approval.scope_values == frozenset({"account_status", "competition_catalogue"})
+    assert approval.data_types == frozenset({"account_entitlements", "competition_catalogue"})
+    assert approval.commercial_use_allowed is False
+    assert approval.raw_redistribution_allowed is False
+
+    allowed = evaluate_source_use(
+        approval,
+        DataUsePurpose.COLLECTION,
+        scope_value="competition_catalogue",
+        at_utc=datetime(2026, 11, 16, tzinfo=UTC),
+    )
+    denied = evaluate_source_use(
+        approval,
+        DataUsePurpose.COLLECTION,
+        scope_value="fixtures",
+        at_utc=datetime(2026, 11, 16, tzinfo=UTC),
+    )
+
+    assert allowed.allowed is True
+    assert denied.allowed is False

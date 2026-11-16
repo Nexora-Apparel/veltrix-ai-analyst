@@ -89,6 +89,7 @@ The presence of opening/closing prices in an API response does not automatically
 - [x] Prior code confirms read-only single-file snapshot capture and identity-reconciliation workflow.
 - [x] Reimplement a minimal single-file snapshot collector in this repository; it stores raw files only outside Git in a private/local data directory.
 - [x] Add row-level score reconciliation and match-level quarantine so inconsistent source results cannot be silently imported.
+- [x] Separate 5Dollar rights scopes in code: account status/catalogue metadata uses an account-resource approval; fixture/team/competition records require one of the seven exact entitled competition IDs.
 - [ ] Verify the exact source file bytes/hash again before ingesting.
 - [ ] Review schema and fields before mapping; do not assume every column is a pre-match feature.
 - [ ] Confirm whether other pinned AI Midas CSVs are in scope before collecting them.
