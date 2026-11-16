@@ -31,3 +31,7 @@ FROM candidates c
 WHERE r.import_run_id = c.import_run_id
   AND r.request_key = c.request_key
   AND c.response_count = 1;
+
+ALTER TABLE veltrix_ai_analyst.import_request_reservations
+    ADD CONSTRAINT import_request_reservations_response_unique
+    UNIQUE (provider_response_id);
