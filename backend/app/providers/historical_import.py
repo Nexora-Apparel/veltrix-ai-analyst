@@ -6,7 +6,6 @@ and checkpointed before the adapter advances to the next page.
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import os
@@ -18,6 +17,8 @@ import psycopg
 
 from app.db.request_budget import PostgresRequestBudget, RequestBudgetExceeded
 from app.db.store import PostgresIngestionStore
+from dataclasses import replace
+
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
 from app.providers.collection_plan import DateWindow, build_date_windows
 from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
@@ -35,6 +36,10 @@ BOUNDARY_START = datetime(2026, 3, 21, tzinfo=UTC)
 BOUNDARY_END = datetime(2026, 11, 9, tzinfo=UTC)
 REQUEST_BUDGET = 40
 IMPORTER_VERSION = "brazil-serie-b-resumable-v1"
+IMPORT_APPROVAL = replace(
+    FIVEDOLLAR_COMMUNITY_APPROVAL,
+    approval_id="approval-5dollar-ai-analyst-historical-2026-11-16",
+)
 SCHEMA_VERSION = "5dollar-fixture-v1"
 
 
@@ -326,7 +331,7 @@ async def run_brazil_serie_b_historical_import(
     api_key: str,
     execute: bool = False,
     import_run_id: int | None = None,
-    approval: SourceApproval = FIVEDOLLAR_COMMUNITY_APPROVAL,
+    approval: SourceApproval = IMPORT_APPROVAL,
     provider: FiveDollarFootballProvider | None = None,
 ) -> int:
     """Run or resume the fixed, non-commercial Brazil Serie B historical import.
@@ -338,7 +343,7 @@ async def run_brazil_serie_b_historical_import(
         raise HistoricalImportError("LIVE_COLLECTION_NOT_EXPLICITLY_ENABLED")
     if not api_key.strip():
         raise HistoricalImportError("FIVEDOLLAR_COMMUNITY_API_KEY_REQUIRED")
-    if approval.approval_id != FIVEDOLLAR_COMMUNITY_APPROVAL.approval_id:
+    if approval.approval_id != IMPORT_APPROVAL.approval_id:
         raise HistoricalImportError("UNRECOGNIZED_SOURCE_APPROVAL")
     if COMPETITION_ID not in approval.scope_values:
         raise HistoricalImportError("COMPETITION_NOT_IN_APPROVED_SOURCE_SCOPE")
@@ -372,14 +377,18 @@ async def run_brazil_serie_b_historical_import(
                 (import_run_id,),
             ).fetchone()
             expected = (
-                REQUEST_BUDGET,
                 BOUNDARY_START,
                 BOUNDARY_END,
                 PROVIDER_NAME,
                 SOURCE_ID,
                 approval.approval_id,
             )
-            if row is None or tuple(row[1:]) != expected:
+            if (
+                row is None
+                or row[1] != REQUEST_BUDGET
+                or int(row[2]) > REQUEST_BUDGET
+                or tuple(row[3:]) != expected
+            ):
                 raise HistoricalImportError("IMPORT_RUN_IDENTITY_OR_ENVELOPE_MISMATCH")
             if row[0] not in {"PAUSED", "RUNNING"}:
                 raise HistoricalImportError("IMPORT_RUN_NOT_RESUMABLE")
@@ -397,7 +406,7 @@ async def run_brazil_serie_b_historical_import(
     active_provider = provider or FiveDollarFootballProvider(api_key=api_key)
     try:
         with (
-            psycopg.connect(database_url) as store_connection,
+            psycopg.connect(database_url, autocommit=True) as store_connection,
             psycopg.connect(database_url, autocommit=True) as quota_connection,
         ):
             store = PostgresIngestionStore(store_connection)
