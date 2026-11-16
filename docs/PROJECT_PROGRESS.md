@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16 (provider HTTP boundary is reservation-gated; 76-test PostgreSQL/Android CI passed)  
+**Last updated:** 2026-11-16 (dedicated Neon database migrated; 40-request DB dry-run passed; live importer remains gated)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -117,3 +117,15 @@
 - [x] Final CI run [#43922283499](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43922283499) passed: 76 backend tests, Ruff, Android debug build and APK artifact upload.
 - [ ] No production Neon resource exists yet. The Vercel-managed Neon organization rejects direct project creation; provisioning must be performed through the installed Vercel Marketplace Neon integration.
 - [ ] No real historical collection request has been made; keep collection blocked until the separate DB is provisioned, migrated, identity-verified and dry-run tested.
+
+
+### Dedicated Neon database and dry-run — 2026-11-16
+- [x] Vercel CLI authorization and project linking verified.
+- [x] Dedicated Neon resource `young-wind-27772160`; database `veltrix_ai_analyst`; PostgreSQL 18.7. Exact database identity verified.
+- [x] Migrations 001–003 applied through Neon SQL transactions; checksums recorded and read back from `public.schema_migrations`. See `docs/ledger/2026-11-16-neon-migrations-and-dry-run.md`.
+- [x] Existing reviewed 5Dollar Community approval registered for the documented competition and data scope.
+- [x] Corrected Neon-backed dry-run run ID 2: 34 contiguous checkpoints, 40 simulated reservations, 34 recoverable checkpoints, request 41 rejected, provider-compatible idempotency key format, zero provider HTTP calls and zero fixture rows.
+- [x] Initial rehearsal run ID 1 marked FAILED after detecting millisecond formatting in idempotency keys; no provider calls were made. Corrected run ID 2 is PAUSED with `DRY_RUN_ONLY_NO_PROVIDER_HTTP`.
+- [ ] Python migration runner was not executed because Vercel CLI environment pull redacted the sensitive `DATABASE_URL`; migrations were applied directly through Neon SQL and checksums verified.
+- [ ] Live historical collection remains gated on a tested resumable importer/orchestrator and secure configuration of the dedicated DB connection for the GitHub Actions runner. Vercel integration-generated URL variables currently target `neondb`, not `veltrix_ai_analyst`.
+- [x] No historical 5Dollar API calls, odds calls, fixture imports, model training or prediction publication.
