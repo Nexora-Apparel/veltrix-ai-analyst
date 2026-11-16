@@ -17,8 +17,7 @@ CREATE TABLE veltrix_ai_analyst.ingestion_quarantine (
     details JSONB NOT NULL DEFAULT '{}'::jsonb
         CHECK (jsonb_typeof(details) = 'object'),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (import_run_id, entity_type, provider_entity_id, reason_code),
-    UNIQUE (import_run_id, request_key, reason_code)
+    UNIQUE (import_run_id, request_key)
 );
 
 CREATE INDEX ingestion_quarantine_run_created_idx
