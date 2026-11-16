@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from datetime import UTC, datetime
 
@@ -320,7 +321,7 @@ def test_resume_replays_reserved_response_without_repeating_provider_http(
             approval=IMPORT_APPROVAL,
             window=window,
         )
-        body = __import__("json").dumps(
+        body = json.dumps(
             {
                 "success": 1,
                 "data": [_fixture(99887766, "2026-08-30T12:00:00+00:00")],
