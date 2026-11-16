@@ -116,7 +116,9 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
         expected_database=expected_database,
         migrations_dir=migrations_dir,
     )
-    assert set(applied).issubset({"001_provenance_ingestion.sql"})
+    assert set(applied).issubset(
+        {"001_provenance_ingestion.sql", "002_source_observation_sightings.sql"}
+    )
 
     assert apply_migrations(
         database_url,
@@ -143,6 +145,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "provider_request_events",
             "provider_entitlement_observations",
             "source_observations",
+            "source_observation_sightings",
             "provider_competitions",
             "provider_teams",
             "provider_fixtures",
