@@ -82,10 +82,41 @@ class ProviderFixture(StrictModel):
         return self
 
 
+class ProviderCompetition(StrictModel):
+    """Normalized competition metadata with provider-local identity."""
+
+    provenance: SourceProvenance
+    competition_id: str = Field(min_length=1, max_length=160)
+    name: str = Field(min_length=1, max_length=200)
+    country_code: str | None = Field(default=None, max_length=32)
+    country_name: str | None = Field(default=None, max_length=120)
+    is_popular: bool | None = None
+    has_standings: bool | None = None
+    last_fixture_at: datetime | None = None
+    seasons: tuple[str, ...] = ()
+
+    @field_validator("last_fixture_at")
+    @classmethod
+    def last_fixture_must_be_timezone_aware(
+        cls, value: datetime | None
+    ) -> datetime | None:
+        if value is not None and value.utcoffset() is None:
+            raise ValueError("last_fixture_at must include a timezone offset")
+        return value
+
+
 class FootballDataProvider(Protocol):
     """Minimal async contract implemented by each football data provider."""
 
     provider_name: str
+
+    async def fetch_competitions(
+        self,
+        country_code: str | None = None,
+        active_since: datetime | None = None,
+    ) -> Sequence[ProviderCompetition]:
+        """Return normalized competitions visible to this provider account."""
+        ...
 
     async def fetch_fixtures(
         self,
