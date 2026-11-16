@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -21,11 +22,21 @@ class ReservationConflict(RequestBudgetError):
     """Raised when an idempotency key is reused with different request data."""
 
 
+@dataclass(frozen=True)
+class RequestReservation:
+    """A durable reservation; only newly created reservations may send HTTP."""
+
+    reservation_id: int
+    created: bool
+
+
 class PostgresRequestBudget:
     """Reserve quota in PostgreSQL before making an external provider call.
 
-    Use a dedicated connection with autocommit=True. Each reservation is
+    Use a dedicated connection with autocommit=True. Each new reservation is
     committed independently, so process interruption never refunds a request.
+    The import-run row lock serializes all reservations for a run, including
+    duplicate idempotency keys submitted concurrently.
     """
 
     def __init__(self, connection: psycopg.Connection[Any]) -> None:
@@ -54,7 +65,7 @@ class PostgresRequestBudget:
         endpoint: str,
         request_params: dict[str, Any],
         reserved_at: datetime | None = None,
-    ) -> int:
+    ) -> RequestReservation:
         for field, value in (
             ("WINDOW_START", window_start),
             ("WINDOW_END", window_end),
@@ -74,6 +85,18 @@ class PostgresRequestBudget:
         timestamp = reserved_at or datetime.now(UTC)
 
         with self.connection.transaction():
+            state = self.connection.execute(
+                """
+                SELECT status, requests_used, request_budget
+                FROM veltrix_ai_analyst.import_runs
+                WHERE id = %s
+                FOR UPDATE
+                """,
+                (import_run_id,),
+            ).fetchone()
+            if state is None:
+                raise RequestBudgetError("IMPORT_RUN_NOT_FOUND")
+
             existing = self.connection.execute(
                 """
                 SELECT id, window_start, window_end, page_number, endpoint, params_sha256
@@ -86,28 +109,24 @@ class PostgresRequestBudget:
                 expected = (window_start, window_end, page_number, endpoint, params_hash)
                 if tuple(existing[1:]) != expected:
                     raise ReservationConflict("REQUEST_KEY_REUSED_WITH_DIFFERENT_PAYLOAD")
-                return int(existing[0])
+                return RequestReservation(int(existing[0]), created=False)
 
-            run = self.connection.execute(
+            if state[0] != "RUNNING":
+                raise RequestBudgetError("IMPORT_RUN_NOT_RUNNING")
+            if state[1] >= state[2]:
+                raise RequestBudgetExceeded("PERSISTED_REQUEST_BUDGET_EXHAUSTED")
+
+            updated = self.connection.execute(
                 """
                 UPDATE veltrix_ai_analyst.import_runs
                 SET requests_used = requests_used + 1
-                WHERE id = %s
-                  AND status = 'RUNNING'
+                WHERE id = %s AND status = 'RUNNING'
                   AND requests_used < request_budget
                 RETURNING requests_used
                 """,
                 (import_run_id,),
             ).fetchone()
-            if run is None:
-                state = self.connection.execute(
-                    "SELECT status, requests_used, request_budget FROM veltrix_ai_analyst.import_runs WHERE id = %s",
-                    (import_run_id,),
-                ).fetchone()
-                if state is None:
-                    raise RequestBudgetError("IMPORT_RUN_NOT_FOUND")
-                if state[0] != "RUNNING":
-                    raise RequestBudgetError("IMPORT_RUN_NOT_RUNNING")
+            if updated is None:
                 raise RequestBudgetExceeded("PERSISTED_REQUEST_BUDGET_EXHAUSTED")
 
             row = self.connection.execute(
@@ -125,4 +144,4 @@ class PostgresRequestBudget:
             ).fetchone()
             if row is None:
                 raise RequestBudgetError("REQUEST_RESERVATION_INSERT_FAILED")
-            return int(row[0])
+            return RequestReservation(int(row[0]), created=True)
