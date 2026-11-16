@@ -529,7 +529,7 @@ class PostgresIngestionStore:
                 )
             observation_id = int(existing[0])
 
-        self.connection.execute(
+        sighting = self.connection.execute(
             """
             INSERT INTO veltrix_ai_analyst.source_observation_sightings (
                 source_observation_id, provider_response_id, retrieved_at,
@@ -537,6 +537,7 @@ class PostgresIngestionStore:
                 point_in_time_certifiable, payload_sha256
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING
+            RETURNING id
             """,
             (
                 observation_id,
@@ -548,7 +549,32 @@ class PostgresIngestionStore:
                 point_in_time_certifiable,
                 payload_hash,
             ),
-        )
+        ).fetchone()
+        if sighting is None:
+            existing_sighting = self.connection.execute(
+                """
+                SELECT source_published_at, available_at, availability_basis,
+                       point_in_time_certifiable, payload_sha256
+                FROM veltrix_ai_analyst.source_observation_sightings
+                WHERE source_observation_id = %s
+                  AND provider_response_id IS NOT DISTINCT FROM %s
+                  AND retrieved_at = %s
+                """,
+                (observation_id, provider_response_id, retrieved_at),
+            ).fetchone()
+            expected_sighting = (
+                source_published_at,
+                available_at,
+                availability_basis,
+                point_in_time_certifiable,
+                payload_hash,
+            )
+            if existing_sighting is None:
+                raise IngestionStoreError("SOURCE_OBSERVATION_SIGHTING_LOOKUP_FAILED")
+            if str(existing_sighting[4]).strip() != payload_hash or tuple(
+                existing_sighting[:4]
+            ) != expected_sighting[:4]:
+                raise EvidenceConflict("SOURCE_OBSERVATION_SIGHTING_CONFLICT")
         return observation_id
 
     def upsert_provider_competition(
