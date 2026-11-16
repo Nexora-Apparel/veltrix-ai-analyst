@@ -343,3 +343,13 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [ ] Add regression tests proving a captured HTTP 200 page is replayed without provider HTTP, the reservation is not repeated, and malformed/missing/mismatched captured responses fail closed into quarantine.
 - [ ] Re-run CI, then resume only run ID 3. Do not create a new import run or repeat the reserved request.
 - **Current state:** 23/34 windows complete; 247 fixtures inserted; 24/40 requests used; one captured response awaits checkpoint reconciliation; 10 windows pending; import incomplete and not validated.
+
+
+### Captured-response replay implementation pass — 2026-11-16
+- [x] Added an initial replay path in `backend/app/providers/historical_import.py` in commit `200ec0e7c6816926264c8a2fbddfc45d6ea29028`.
+- [x] The path validates the expected request envelope, HTTP 200 linkage, raw-body SHA-256, JSON success/data/pagination structure and fixture normalization, then uses the existing transactional page persister.
+- [x] Pagination continues at the next page only when the replayed page reports `has_more=true`; the captured page itself is not fetched again.
+- [ ] **Not release-ready:** response evidence is currently correlated through request-event endpoint/params/time rather than a first-class foreign-key link from the durable reservation. Add reservation-to-response identity and a safe migration/backfill for run 3 before allowing resume.
+- [ ] Add database-backed regression tests for exact replay, no HTTP on replay, atomic checkpoint/fixture writes, ambiguous/missing/hash-mismatched evidence, and pagination.
+- [ ] Run full CI (backend tests, Ruff, Android debug build); inspect results and fix all failures.
+- **Safety state:** run 3 remains paused; no new provider calls, no new import run, no model training, and no publication. The initial code commit is not evidence that recovery is validated.
