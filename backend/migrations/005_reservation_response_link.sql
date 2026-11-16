@@ -3,8 +3,8 @@ ALTER TABLE veltrix_ai_analyst.import_request_reservations
     ADD COLUMN provider_response_id BIGINT
         REFERENCES veltrix_ai_analyst.provider_responses(id) ON DELETE RESTRICT;
 
--- Safely backfill only reservations with exactly one matching response event.
--- Ambiguous or absent evidence remains NULL and is rejected by replay.
+-- Reconstruct the importer's exact canonical request payload. Only backfill
+-- when one response event matches this reservation's exact window and page.
 WITH candidates AS (
     SELECT
         r.import_run_id,
@@ -14,15 +14,26 @@ WITH candidates AS (
     FROM veltrix_ai_analyst.import_request_reservations r
     JOIN veltrix_ai_analyst.provider_request_events e
       ON e.endpoint = r.endpoint
-     AND e.request_params = (
-         SELECT p.request_params
-         FROM veltrix_ai_analyst.provider_responses p
-         WHERE p.id = e.provider_response_id
+     AND e.request_params = jsonb_build_object(
+         'start_time', EXTRACT(EPOCH FROM r.window_start)::BIGINT,
+         'end_time', EXTRACT(EPOCH FROM r.window_end)::BIGINT,
+         'status', 'all',
+         'page', r.page_number,
+         'per_page', 100
      )
      AND e.started_at >= r.reserved_at
+     AND e.started_at <= r.reserved_at + INTERVAL '5 minutes'
      AND e.provider = '5DollarFootballAPI'
      AND e.source_id = '5dollarfootballapi'
+     AND e.http_status = 200
      AND e.provider_response_id IS NOT NULL
+    JOIN veltrix_ai_analyst.provider_responses p
+      ON p.id = e.provider_response_id
+     AND p.provider = e.provider
+     AND p.source_id = e.source_id
+     AND p.endpoint = e.endpoint
+     AND p.request_params = e.request_params
+     AND p.http_status = e.http_status
     GROUP BY r.import_run_id, r.request_key
 )
 UPDATE veltrix_ai_analyst.import_request_reservations r
