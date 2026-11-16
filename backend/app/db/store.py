@@ -204,7 +204,12 @@ class PostgresIngestionStore:
         ).fetchone()
         if existing is not None:
             existing_values = list(existing)
+            # These SourceApproval fields are sets. PostgreSQL JSONB arrays
+            # preserve order, so compare their canonical sorted representations.
+            existing_values[3] = sorted(existing_values[3])
+            existing_values[4] = sorted(existing_values[4])
             existing_values[10] = str(existing_values[10]).strip()
+            existing_values[15] = sorted(existing_values[15])
         else:
             existing_values = []
         if tuple(existing_values) != expected:

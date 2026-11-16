@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16 (resumable importer merged; CI passed; live collection remains locked)  
+**Last updated:** 2026-11-16 (historical import attempt safely stopped at approval evidence comparison; PR #10 opened to fix JSONB array ordering)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -15,6 +15,15 @@
 - **Not built:** secure GitHub Actions connection to dedicated Neon database, live historical import, football feature pipeline, model training/calibration, prediction API, Android product flows, production deployment.
 - **No prediction model has been trained or certified.**
 - **Project isolation:** no legacy VELTRIX FOOTBALL 2.0 prediction logic, weights, priors, calibration or decision rules are reused.
+
+## Historical import attempt #1 — BLOCKED BEFORE PROVIDER HTTP
+
+- Workflow run [#43954509888](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43954509888), job [#133605398471](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43954509888/job/133605398471), was manually dispatched on 2026-11-16 and failed in `PostgresIngestionStore.sync_source_approval()` with `SOURCE_APPROVAL_ID_ALREADY_EXISTS_WITH_DIFFERENT_EVIDENCE`.
+- Root cause: `scope_values`, `data_types`, and `permitted_uses` are semantic sets in `SourceApproval`, but are stored as JSONB arrays. The comparison sorted the in-memory sets but compared them to persisted arrays in their original order. The registered approval values were semantically identical; ordering alone caused the false conflict.
+- Read-only Neon verification confirmed the registered approval's provider, source, scope, seven competition IDs, data types, approved status, terms evidence hash, permitted uses, non-commercial restriction and attribution/raw-redistribution flags match the code grant.
+- Failure occurred while creating the import run, before the fixture request loop. Read-only counters after failure: 0 fixture request events, 0 fixture response records, 0 imported provider fixtures. The two existing import runs, 80 request reservations and 68 checkpoints are the prior DB-only dry-run/rehearsal records; they are not provider HTTP calls.
+- PR [#10](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/10) canonicalizes the three stored JSONB arrays before comparing them and adds a PostgreSQL regression test that reverses all three arrays. It does not modify or broaden the rights grant.
+- **Collection remains paused.** Do not rerun until PR #10 CI passes, the fix is merged, and a read-only approval consistency preflight succeeds.
 
 ## Stage 2 — Verified evidence
 

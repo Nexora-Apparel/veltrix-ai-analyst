@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import psycopg
 import pytest
+from psycopg.types.json import Jsonb
 
 from app.db.migrations import apply_migrations
 from app.db.store import (
@@ -575,3 +576,52 @@ def test_store_advances_sync_watermark_with_optimistic_versioning(connection) ->
             updated_at=now + timedelta(seconds=2),
             expected_version=0,
         )
+
+
+def test_store_approval_comparison_ignores_json_array_order(connection) -> None:
+    approval = new_approval()
+    store = PostgresIngestionStore(connection)
+
+    # Insert the immutable grant with semantically identical but differently
+    # ordered JSONB arrays. Approval rows are append-only, so seed the test
+    # state at insertion rather than attempting an UPDATE.
+    connection.execute(
+        """
+        INSERT INTO veltrix_ai_analyst.source_approvals (
+            approval_id, provider, source_id, scope_type, scope_values, data_types,
+            status, rights_basis, terms_url, terms_version, evidence_uri,
+            evidence_sha256, reviewed_at, reviewer_id, valid_from, valid_until,
+            permitted_uses, commercial_use_allowed, attribution_required,
+            attribution_text, attribution_url, raw_redistribution_allowed
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+        )
+        """,
+        (
+            approval.approval_id,
+            approval.provider,
+            approval.source_id,
+            approval.scope_type,
+            Jsonb(sorted(approval.scope_values, reverse=True)),
+            Jsonb(sorted(approval.data_types, reverse=True)),
+            approval.status.value,
+            approval.rights_basis,
+            approval.terms_url,
+            approval.terms_version,
+            approval.evidence_uri,
+            approval.evidence_sha256,
+            approval.reviewed_at_utc,
+            approval.reviewer_id,
+            approval.valid_from_utc,
+            approval.valid_until_utc,
+            Jsonb(sorted((use.value for use in approval.permitted_uses), reverse=True)),
+            approval.commercial_use_allowed,
+            approval.attribution_required,
+            approval.attribution_text,
+            approval.attribution_url,
+            approval.raw_redistribution_allowed,
+        ),
+    )
+
+    assert store.sync_source_approval(approval) == approval.approval_id
