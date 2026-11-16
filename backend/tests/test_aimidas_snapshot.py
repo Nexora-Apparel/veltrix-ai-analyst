@@ -47,10 +47,14 @@ def test_snapshot_audit_verifies_match_pair_and_score_orientation() -> None:
     assert audit["point_in_time_certifiable"] is False
 
 
-def test_snapshot_audit_rejects_team_score_mismatch() -> None:
+def test_snapshot_audit_quarantines_team_score_mismatch() -> None:
     raw = sample_csv().replace(b"Home FC,2,1", b"Home FC,1,1")
-    with pytest.raises(SnapshotError, match="TEAM_SCORE_ORIENTATION_MISMATCH"):
-        audit_csv(raw, sample_spec(raw))
+    audit = audit_csv(raw, sample_spec(raw))
+
+    assert audit["score_mismatch_row_count"] == 1
+    assert audit["quarantined_match_count"] == 1
+    assert audit["eligible_match_count"] == 0
+    assert audit["score_anomalies"][0]["reason_code"] == "TEAM_SCORE_MISMATCH"
 
 
 def test_snapshot_audit_rejects_duplicate_team_rows() -> None:
