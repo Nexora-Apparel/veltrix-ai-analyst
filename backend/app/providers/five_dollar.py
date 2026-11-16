@@ -6,7 +6,9 @@ responses. API keys are read only at runtime from FIVE_DOLLAR_FOOTBALL_API_KEY.
 """
 from __future__ import annotations
 
+import asyncio
 import os
+import time
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -207,6 +209,7 @@ class FiveDollarFootballProvider:
         base_url: str = DEFAULT_BASE_URL,
         timeout_seconds: float = 20.0,
         max_pages_per_window: int = MAX_PAGES_PER_WINDOW,
+        min_request_interval_seconds: float = 0.0,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         configured_key = (
@@ -222,6 +225,10 @@ class FiveDollarFootballProvider:
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
         self._max_pages_per_window = max_pages_per_window
+        if min_request_interval_seconds < 0:
+            raise ValueError("min_request_interval_seconds cannot be negative")
+        self._min_request_interval_seconds = min_request_interval_seconds
+        self._last_fixture_request_at: float | None = None
         self._transport = transport
 
     async def fetch_account_status(self) -> dict[str, Any]:
@@ -467,6 +474,11 @@ class FiveDollarFootballProvider:
                             f"{competition_id or 'global'}:"
                             f"{window_start.isoformat()}:{window_end.isoformat()}:page:{page}"
                         )
+                        if self._min_request_interval_seconds and self._last_fixture_request_at is not None:
+                            elapsed = time.monotonic() - self._last_fixture_request_at
+                            delay = self._min_request_interval_seconds - elapsed
+                            if delay > 0:
+                                await asyncio.sleep(delay)
                         if request_reserver is not None:
                             reserved = request_reserver(
                                 request_key,
@@ -482,6 +494,7 @@ class FiveDollarFootballProvider:
                                     "refusing to repeat the HTTP request"
                                 )
 
+                        self._last_fixture_request_at = time.monotonic()
                         request_started_at = datetime.now(UTC)
                         try:
                             response = await client.get(
