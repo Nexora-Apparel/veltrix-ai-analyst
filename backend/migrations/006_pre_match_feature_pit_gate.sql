@@ -56,7 +56,10 @@ BEGIN
     FROM veltrix_ai_analyst.source_observation_sightings s
     WHERE s.id = NEW.source_sighting_id;
 
-    IF NOT FOUND OR sighting.source_observation_id <> NEW.source_observation_id THEN
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'PRE_MATCH_SOURCE_SIGHTING_NOT_FOUND';
+    END IF;
+    IF sighting.source_observation_id <> NEW.source_observation_id THEN
         RAISE EXCEPTION 'PRE_MATCH_SOURCE_SIGHTING_MISMATCH';
     END IF;
 
@@ -95,8 +98,9 @@ BEGIN
     IF NOT FOUND
        OR approval.status <> 'APPROVED'
        OR approval.valid_from > NEW.prediction_cutoff_at
-       OR (approval.valid_until IS NOT NULL AND approval.valid_until <= NEW.prediction_cutoff_at) THEN
-        RAISE EXCEPTION 'PRE_MATCH_SOURCE_RIGHTS_NOT_APPROVED_AT_CUTOFF';
+       OR (approval.valid_until IS NOT NULL AND approval.valid_until <= NEW.prediction_cutoff_at)
+       OR NOT (approval.permitted_uses @> '["FEATURE_ENGINEERING", "MODEL_TRAINING"]'::jsonb) THEN
+        RAISE EXCEPTION 'PRE_MATCH_SOURCE_RIGHTS_NOT_APPROVED_FOR_MODEL_FEATURES';
     END IF;
 
     SELECT e.status, e.effective_at
@@ -107,8 +111,10 @@ BEGIN
     ORDER BY e.effective_at DESC, e.id DESC
     LIMIT 1;
 
-    IF FOUND AND latest_approval_event.status <> 'APPROVED' THEN
-        RAISE EXCEPTION 'PRE_MATCH_SOURCE_RIGHTS_REVOKED_AT_CUTOFF';
+    IF FOUND THEN
+        IF latest_approval_event.status <> 'APPROVED' THEN
+            RAISE EXCEPTION 'PRE_MATCH_SOURCE_RIGHTS_REVOKED_AT_CUTOFF';
+        END IF;
     END IF;
 
     RETURN NEW;
