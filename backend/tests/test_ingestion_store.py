@@ -478,6 +478,19 @@ def test_store_persists_account_entitlements_and_rate_limit_events(connection) -
     )
     assert request_event_id > 0
 
+    catalogue_observation_id = store.record_source_observation(
+        competition_approval,
+        scope_value="522514093",
+        data_type="competition_catalogue",
+        entity_type="competition",
+        provider_entity_id="522514093",
+        schema_version="provider-competition-v1",
+        retrieved_at=now,
+        payload={"competition_id": "522514093", "name": "Brazil Serie B"},
+        provider_response_id=account_response_id,
+    )
+    assert catalogue_observation_id > 0
+
     entitlement = connection.execute(
         """
         SELECT plan_code, entitlement_status, rate_limit_hour, rate_limit_minute,
