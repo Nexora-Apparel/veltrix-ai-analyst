@@ -18,3 +18,9 @@ CREATE TABLE veltrix_ai_analyst.import_request_reservations (
 
 CREATE INDEX import_request_reservations_run_idx
     ON veltrix_ai_analyst.import_request_reservations(import_run_id, reserved_at);
+
+-- The initial historical collection envelope is deliberately hard-capped at 40
+-- requests in the database, so application misconfiguration cannot raise it.
+ALTER TABLE veltrix_ai_analyst.import_runs
+    ADD CONSTRAINT import_runs_request_budget_ceiling
+    CHECK (request_budget <= 40);
