@@ -11,8 +11,8 @@
 ## 1. Executive status
 
 - **Overall stage:** Stage 2 of 10 — Data integrations and historical data migration
-- **Current workstream:** Stage 2 provider adapters, historical source qualification, provenance and private snapshot capture.
-- **Implementation status:** Stage 1 is complete. A new 5DollarFootballAPI adapter, provider-neutral contracts, a pinned AI Midas Brazil Serie B snapshot collector, provider qualification documentation, and mocked tests have been committed. Latest CI verification is pending after the most recent lint fixes.
+- **Current workstream:** Stage 2 provider adapters, source-rights enforcement, historical source qualification, provenance and private snapshot capture.
+- **Implementation status:** Stage 1 is complete. The 5DollarFootballAPI adapter, provider-neutral contracts, fail-closed source-rights evaluator, pinned AI Midas Brazil Serie B snapshot collector, qualification documentation and mocked tests are committed. CI run #43856574834 passed 21 backend tests, lint, Android debug compilation and APK artifact upload. A newer CI run is checking the additional rights and settled-score invariants.
 - **Release status:** Not deployed. No production database, live provider import, authentication, or prediction functionality exists yet.
 - **Next milestone:** Obtain a clean CI pass, verify the new repository's 5Dollar Community credential, then build the rights-aware historical ingestion and persistence layer.
 
@@ -60,18 +60,20 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [x] Kotlin/Jetpack Compose Android foundation and initial screen committed.
 - [x] GitHub Actions CI committed for backend tests/lint and Android debug APK.
 - [x] CI runs #43853169748 and #43853312298 passed backend tests/lint and Android debug compilation.
-- [x] Later Stage 2 CI run #43855693423 passed the 20-test backend suite and lint; Android build and artifact upload passed. Subsequent changes to lint rules and snapshot tests are being rechecked in the latest run.
+- [x] Stage 2 CI run #43856574834 passed 21 backend tests, Ruff lint, Android debug APK compilation and artifact upload.
+- [ ] Reverify the latest rights/score-invariant changes in CI run #43856824326.
 
 ### Stage 2 — CURRENT WORK
-- [x] Provider-neutral provenance, competition and fixture contracts.
+- [x] Provider-neutral source-provenance, competition and fixture contracts with timezone-aware timestamps and settled-score invariants.
 - [x] 5DollarFootballAPI adapter for account status, competition discovery, fixtures/results, pagination, rate-limit handling and moved competition IDs.
 - [x] League-specific historical endpoint used for bounded competition backfills; global endpoint is split into maximum 24-hour windows.
-- [x] Mocked tests for 5Dollar auth headers, pagination, result fields, account status, rate limits, moved IDs and date-window behaviour.
+- [x] Mocked tests for 5Dollar authentication, pagination, results, account status, rate limits, moved IDs, window boundaries and unsettled-score handling.
+- [x] Fail-closed rights evaluator: exact source scope, permitted use, approval validity, non-commercial restrictions, attribution and raw-redistribution controls.
 - [x] AI Midas pinned Brazil Serie B 2026 snapshot collector with Git blob/SHA-256, row, match, team, date-range and score-orientation validation.
-- [x] Raw AI Midas snapshots are restricted to private/local paths outside the public repository; the collector records a manifest and makes no database/model writes.
+- [x] Raw AI Midas snapshots are restricted to private/local paths outside the public repository; the collector records a rights/provenance manifest and makes no database/model writes.
 - [x] Provider qualification register updated with prior account evidence, rights conditions, source limitations and reuse decisions.
 - [x] Manual 5Dollar account-access workflow and local AI Midas snapshot command committed.
-- [ ] Verify the latest backend lint and Android build after the most recent code changes.
+- [ ] Verify the latest backend lint and Android build after the most recent rights and settled-score changes.
 - [ ] Configure the existing 5Dollar Community credential as a repository secret and run the manual access check.
 - [ ] Capture the pinned AI Midas file locally and verify the actual source hash.
 - [ ] Design and implement rights-aware persistence, immutable source evidence, import manifests, checkpoints and quarantine.
@@ -192,7 +194,7 @@ Add new decisions with dates. Do not silently overwrite material architectural d
 
 ## 12. Next execution queue
 
-1. Get a clean CI pass for the latest provider and AI Midas snapshot changes.
+1. Get a clean CI pass for the latest rights and settled-score changes.
 2. Add the existing 5Dollar Community credential to the new repository secrets and run the manual account/league check.
 3. Run the AI Midas snapshot command locally to capture and verify the pinned Brazil Serie B file; keep it under `.local-data/`.
 4. Adapt the reviewed Phase 2 evidence-store design: source approvals, provider responses, entitlement observations, immutable source observations, import manifests, checkpoints and quarantine.
