@@ -35,7 +35,7 @@ The test fixture is synthetic and is not represented as a copy of the provider's
 
 - Test commit: `447edf17383b095ba020ddb016369613b93a2736`.
 - CI run: [#43917944552](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43917944552).
-- CI status at ledger creation: queued/in progress; no test or lint success is claimed until the run completes.
+- Final CI status: run #43917944552 completed successfully. Backend tests passed, Ruff lint passed, Android debug APK assembled and artifact upload passed.
 
 ## Remaining qualification limits
 
