@@ -51,11 +51,22 @@ class ProviderFixture(StrictModel):
 
     provenance: SourceProvenance
     competition_id: str = Field(min_length=1, max_length=160)
+    competition_name: str | None = Field(default=None, max_length=200)
     season_id: str | None = Field(default=None, max_length=100)
     home_team_id: str = Field(min_length=1, max_length=160)
+    home_team_name: str | None = Field(default=None, max_length=200)
     away_team_id: str = Field(min_length=1, max_length=160)
+    away_team_name: str | None = Field(default=None, max_length=200)
     kickoff_at: datetime
     status: FixtureStatus = "unknown"
+    home_goals: int | None = Field(default=None, ge=0)
+    away_goals: int | None = Field(default=None, ge=0)
+    home_corners: int | None = Field(default=None, ge=0)
+    away_corners: int | None = Field(default=None, ge=0)
+    home_yellow_cards: int | None = Field(default=None, ge=0)
+    away_yellow_cards: int | None = Field(default=None, ge=0)
+    home_red_cards: int | None = Field(default=None, ge=0)
+    away_red_cards: int | None = Field(default=None, ge=0)
 
     @field_validator("kickoff_at")
     @classmethod
