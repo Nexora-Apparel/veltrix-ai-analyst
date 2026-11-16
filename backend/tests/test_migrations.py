@@ -137,7 +137,10 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
         }
         assert {
             "source_approvals",
+            "source_approval_status_events",
+            "effective_source_approvals",
             "provider_responses",
+            "provider_request_events",
             "provider_entitlement_observations",
             "source_observations",
             "provider_competitions",
@@ -147,6 +150,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "import_checkpoints",
             "sync_watermarks",
             "ingestion_quarantine",
+            "import_run_events",
         }.issubset(tables)
 
         suffix = uuid4().hex
