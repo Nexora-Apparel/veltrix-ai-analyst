@@ -217,3 +217,23 @@ Every subsequent implementation, migration, CI result, provider call, import cou
 - [ ] Run the read-only preflight from the Actions page to verify the saved secret and runner connectivity.
 - [x] No provider requests, reservation writes, fixture writes, odds calls or model operations were performed during this correction.
 - [x] Historical collection remains **LOCKED**.
+
+
+---
+
+## 15. Authoritative read-only preflight result — 2026-11-16
+
+The secret-backed GitHub Actions preflight has now completed successfully. This section supersedes the older statements above that describe runner secret validation or read-only preflight execution as pending.
+
+- [x] Run [#43949967262](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43949967262) completed with conclusion `success`; job [#133589528998](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43949967262/job/133589528998).
+- [x] Runner connected using GitHub environment secret `VELTRIX_AI_ANALYST_DATABASE_URL` and verified exact database identity `veltrix_ai_analyst` (PostgreSQL 18.7).
+- [x] Project schema and migrations 001–004/checksums passed.
+- [x] Registered 5Dollar approval/scope passed.
+- [x] Unresolved quarantines: 0; active import runs: 0.
+- [x] Side effects: provider HTTP requests 0; database writes 0; fixture rows written 0.
+- [x] The Actions secret is validated; its value remains private and is not recorded.
+- **Gate status:** read-only infrastructure preflight PASSED.
+- **Live historical collection status: LOCKED.** The preflight is not an import authorization. A separate explicit user go-ahead is required before dispatching the historical collection workflow.
+- On any later authorized collection, enforce the existing Brazil Serie B-only scope, fixtures/results only, 40-request hard ceiling, durable pre-request reservations, no retries, 12-second minimum spacing, and quarantine/pause on failures. No odds calls or model training are authorized by this preflight.
+
+Detailed evidence: `docs/ledger/2026-11-16-read-only-preflight-passed.md`.
