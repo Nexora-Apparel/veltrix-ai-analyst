@@ -6,8 +6,9 @@ prediction logic.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Literal, Protocol, Sequence
+from typing import Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -64,7 +65,7 @@ class ProviderFixture(StrictModel):
         return value
 
     @model_validator(mode="after")
-    def teams_must_be_distinct(self) -> "ProviderFixture":
+    def teams_must_be_distinct(self) -> ProviderFixture:
         if self.home_team_id == self.away_team_id:
             raise ValueError("home_team_id and away_team_id must be different")
         return self
