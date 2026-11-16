@@ -13,11 +13,7 @@ from typing import Any
 
 import httpx
 
-from app.providers.contracts import (
-    ProviderCompetition,
-    ProviderFixture,
-    SourceProvenance,
-)
+from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
 
 
 DEFAULT_BASE_URL = "https://api.5dollarfootballapi.com/v1"
