@@ -169,8 +169,19 @@ The merged implementation adds:
 
 The PostgreSQL end-to-end test uses `httpx.MockTransport`; all 34 pages are simulated. It verifies 34 persisted response records, 34 fixture rows, 34 completed checkpoints, and 34/40 reserved requests. CI made no real provider requests.
 
-**Failure boundary:** non-success HTTP responses, invalid JSON and malformed page schemas stop before normalized page persistence. Their durable reservation is not refunded, and the run pauses rather than retrying. A reservation without a committed response/checkpoint requires manual reconciliation. Before live execution, add raw-error-response capture and quarantine so malformed/error response evidence is retained as well as successful pages.
+**Failure boundary:** non-success HTTP responses, invalid JSON and malformed page schemas stop before normalized page persistence. Their durable reservation is not refunded, and the run pauses rather than retrying. A reservation without a committed response/checkpoint requires manual reconciliation. PR #4 now captures raw HTTP responses before validation and quarantines failed pages. Runs with unresolved quarantined pages cannot be resumed automatically.
 
 **Live execution remains locked.** Configure `VELTRIX_AI_ANALYST_DATABASE_URL` as a GitHub Actions environment secret containing the dedicated `veltrix_ai_analyst` database URI, not the integration-generated `neondb` URI. The existing Community API key secret is consumed at runtime and is not embedded in source. Complete final preflight; do not start historical collection until the raw-error evidence/quarantine gate is addressed.
 
 The importer uses immutable approval ID `approval-5dollar-ai-analyst-historical-2026-11-16`, derived from the reviewed Community approval with the same scope and evidence. It is synchronized by the importer before a new run is created; the earlier approval row remains unchanged.
+
+
+## 13. Failed-page evidence and quarantine — 2026-11-16
+
+PR #4 merged at `cabdf8c2cfd831ad67cf9979ddb783b77906b5a4`. CI run #43944083287 passed 82 backend tests, Ruff, Android debug build and APK artifact upload.
+
+Migration `004_ingestion_quarantine.sql` was applied to the dedicated Neon database. SHA-256: `567fc4c0f85e0b228591bda0888b76a82b92cb799b129197d8e4aae3404997cf`. The migration ledger, five added columns and unique request-key constraint were verified. Existing quarantine rows: zero.
+
+Raw HTTP response evidence is now persisted before status, JSON and schema validation. Normalized observations and checkpoints are committed separately. Failed pages are quarantined with response ID/checksum/status when available; the request reservation is never refunded. Runs with unresolved quarantined pages cannot be resumed automatically and require manual reconciliation.
+
+Live collection remains locked pending secure configuration of GitHub Actions secret `VELTRIX_AI_ANALYST_DATABASE_URL`. No 5Dollar historical requests or fixture rows have been created.
