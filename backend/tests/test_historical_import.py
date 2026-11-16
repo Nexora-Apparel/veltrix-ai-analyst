@@ -47,6 +47,14 @@ def _fixture(fixture_id: int, kickoff: str) -> dict[str, object]:
     }
 
 
+def test_importer_uses_the_exact_registered_community_approval() -> None:
+    assert IMPORT_APPROVAL.approval_id == "approval-5dollar-community-fixtures-2026-11-12"
+    assert IMPORT_APPROVAL.provider == "5DollarFootballAPI"
+    assert IMPORT_APPROVAL.source_id == "5dollarfootballapi"
+    assert "522514093" in IMPORT_APPROVAL.scope_values
+    assert "fixtures_and_results" in IMPORT_APPROVAL.data_types
+
+
 def test_historical_import_persists_page_evidence_and_checkpoints(
     database_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
