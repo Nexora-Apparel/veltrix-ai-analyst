@@ -296,6 +296,15 @@ class FixturePagePersister:
                 updated_at is not None and updated_at > reserved_at
             ):
                 return False
+            existing_quarantine = self.connection.execute(
+                """
+                SELECT 1 FROM veltrix_ai_analyst.ingestion_quarantine
+                WHERE import_run_id = %s AND request_key = %s
+                """,
+                (self.import_run_id, request_key),
+            ).fetchone()
+            if existing_quarantine is not None:
+                return False
             details = {
                 "request_key": request_key,
                 "endpoint": endpoint,
@@ -304,7 +313,7 @@ class FixturePagePersister:
                 "window_end": window_end.isoformat(),
                 "error_type": type(error).__name__,
                 "http_status": self.last_http_status,
-                "response_received": self.last_response_id is not None,
+                "response_received": self.last_http_status is not None,
                 "response_sha256": self.last_response_sha256,
             }
             inserted = self.connection.execute(
@@ -342,12 +351,12 @@ class FixturePagePersister:
                 window_start=window_start,
                 window_end=window_end,
                 status="FAILED",
-                records_seen=self.records_seen + 1,
+                records_seen=self.records_seen,
                 records_inserted=self.records_inserted,
                 records_duplicate=self.records_duplicate,
                 records_rejected=self.records_rejected,
-                records_quarantined=self.records_quarantined + 1,
-                requests_used=self.requests_used + 1,
+                records_quarantined=self.records_quarantined,
+                requests_used=self.requests_used,
                 cursor_value=str(page_number),
                 response_sha256=self.last_response_sha256,
                 last_error_code=reason_code,
