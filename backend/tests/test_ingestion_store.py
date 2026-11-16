@@ -1,7 +1,7 @@
-from dataclasses import replace
-from datetime import UTC, datetime, timedelta
 import hashlib
 import os
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import psycopg
@@ -10,6 +10,7 @@ import pytest
 from app.db.migrations import apply_migrations
 from app.db.store import EvidenceConflict, IngestionStoreError, PostgresIngestionStore, RightsDenied
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
+from app.providers.rights import SourceApproval
 from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
 
 
@@ -24,7 +25,7 @@ def connection():
         yield conn
 
 
-def new_approval() -> object:
+def new_approval() -> SourceApproval:
     suffix = uuid4().hex
     return replace(
         FIVEDOLLAR_COMMUNITY_APPROVAL,
