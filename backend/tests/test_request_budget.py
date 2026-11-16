@@ -249,3 +249,9 @@ def test_controlled_collection_dry_run_resumes_34_checkpoints_and_stops_at_40(
             "SELECT requests_used, request_budget FROM veltrix_ai_analyst.import_runs WHERE id = %s",
             (run_id,),
         ).fetchone() == (40, 40)
+
+
+
+def test_database_rejects_request_budget_above_40(database_url: str) -> None:
+    with pytest.raises(psycopg.errors.CheckViolation):
+        make_run(database_url, 41)
