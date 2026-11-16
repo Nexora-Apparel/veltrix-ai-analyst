@@ -612,8 +612,9 @@ async def run_brazil_serie_b_historical_import(
                     page_number: int,
                     endpoint: str,
                     request_params: dict[str, str | int],
+                    tracked_persister: FixturePagePersister = persister,
                 ) -> bool:
-                    persister.last_request = {
+                    tracked_persister.last_request = {
                         "request_key": request_key,
                         "window_start": window_start,
                         "window_end": window_end,
@@ -621,9 +622,9 @@ async def run_brazil_serie_b_historical_import(
                         "endpoint": endpoint,
                         "request_params": dict(request_params),
                     }
-                    persister.last_response_id = None
-                    persister.last_response_sha256 = None
-                    persister.last_http_status = None
+                    tracked_persister.last_response_id = None
+                    tracked_persister.last_response_sha256 = None
+                    tracked_persister.last_http_status = None
                     return reserver(
                         request_key,
                         window_start,
