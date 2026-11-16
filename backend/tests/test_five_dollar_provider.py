@@ -470,3 +470,91 @@ def test_existing_reservation_refuses_duplicate_http_request() -> None:
 
     assert reservation_calls == 2
     assert requests == 1
+
+
+
+def test_response_observer_receives_raw_page_evidence_and_resume_page() -> None:
+    requests: list[int] = []
+    observed: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        page = int(request.url.params["page"])
+        requests.append(page)
+        return httpx.Response(
+            200,
+            json=response_payload(
+                [fixture_row(900 + page, "2026-11-16T10:00:00+00:00")],
+                has_more=False,
+            ),
+            headers={"X-Request-Id": f"request-page-{page}"},
+        )
+
+    def reserve(
+        request_key: str,
+        window_start: datetime,
+        window_end: datetime,
+        page_number: int,
+        endpoint: str,
+        request_params: dict[str, str | int],
+    ) -> bool:
+        return True
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    results = asyncio.run(
+        provider.fetch_fixtures(
+            datetime(2026, 11, 16, tzinfo=UTC),
+            datetime(2026, 11, 17, tzinfo=UTC),
+            competition_ids=["522514093"],
+            request_reserver=reserve,
+            require_request_reservation=True,
+            response_observer=observed.append,
+            start_page=2,
+        )
+    )
+
+    assert requests == [2]
+    assert len(results) == 1
+    assert len(observed) == 1
+    page = observed[0]
+    assert page["page_number"] == 2
+    assert page["request_key"].endswith(":page:2")
+    assert page["endpoint"] == "/leagues/522514093/fixtures"
+    assert page["http_status"] == 200
+    assert isinstance(page["raw_body"], bytes) and page["raw_body"]
+    assert page["response_headers"]["x-request-id"] == "request-page-2"
+    assert len(page["fixtures"]) == 1
+    assert page["has_more"] is False
+
+
+
+def test_historical_request_spacing_is_enforced_between_pages() -> None:
+    import time
+
+    request_times: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        request_times.append(time.monotonic())
+        page = int(request.url.params["page"])
+        return httpx.Response(
+            200,
+            json=response_payload([], has_more=page == 1),
+        )
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        min_request_interval_seconds=0.02,
+        transport=httpx.MockTransport(handler),
+    )
+    asyncio.run(
+        provider.fetch_fixtures(
+            datetime(2026, 11, 16, tzinfo=UTC),
+            datetime(2026, 11, 17, tzinfo=UTC),
+            competition_ids=["522514093"],
+        )
+    )
+
+    assert len(request_times) == 2
+    assert request_times[1] - request_times[0] >= 0.015
