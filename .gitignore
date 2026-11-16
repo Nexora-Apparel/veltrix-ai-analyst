@@ -26,3 +26,7 @@ local.properties
 
 # Editors
 .vscode/
+
+# Private source snapshots and local datasets
+.local-data/
+data/private/
