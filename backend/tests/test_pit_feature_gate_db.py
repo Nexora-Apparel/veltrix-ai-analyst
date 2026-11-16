@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import os
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -12,9 +11,6 @@ from psycopg.types.json import Jsonb
 from app.db.migrations import apply_migrations
 from app.db.store import PostgresIngestionStore
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
-
-pytestmark = pytest.mark.integration
-
 
 @pytest.fixture
 def database_url() -> str:
@@ -33,8 +29,6 @@ def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
     published_at = now - timedelta(hours=2)
     cutoff_at = now - timedelta(hours=1)
     marker = uuid4().hex
-    payload_hash = hashlib.sha256(f"pit-test-{marker}".encode()).hexdigest()
-
     with psycopg.connect(database_url) as connection:
         store = PostgresIngestionStore(connection)
         with connection.transaction():
