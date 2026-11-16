@@ -43,3 +43,15 @@ Live collection remains blocked until the resumable importer/orchestrator is imp
 - Odds calls: 0.
 - Fixture rows imported: 0.
 - Model training/predictions: none.
+
+
+## Migration 004 and failed-page quarantine — 2026-11-16
+
+- PR #4 merged at `cabdf8c2cfd831ad67cf9979ddb783b77906b5a4`.
+- CI #43944083287 passed 82 backend tests, Ruff and Android build.
+- Migration `004_ingestion_quarantine.sql` applied transactionally to Neon database `veltrix_ai_analyst`; checksum was recorded in `public.schema_migrations` and read back.
+- Added five columns to the existing `ingestion_quarantine` table: `entity_type`, `request_key`, `http_status`, `provider_response_id`, `response_sha256`.
+- Added unique constraint `ingestion_quarantine_run_request_key_unique`.
+- Verified all five columns, the unique constraint and zero pre-existing quarantine rows.
+- The importer persists raw HTTP response evidence and request events before parsing. Failed/malformed pages are quarantined with response linkage when available; request reservations are not refunded and unresolved quarantines block automatic resume.
+- No historical provider requests or fixture imports were made.
