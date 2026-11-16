@@ -76,6 +76,34 @@ def validate_brazil_serie_b_import(
     if records_seen != records_inserted + records_duplicate + records_rejected + records_quarantined:
         failures.append("IMPORT_COUNTER_RECONCILIATION_FAILED")
 
+    approval = connection.execute(
+        """
+        SELECT status, scope_type, scope_values, data_types, permitted_uses,
+               commercial_use_allowed, attribution_required,
+               raw_redistribution_allowed,
+               valid_from <= NOW() AND (valid_until IS NULL OR valid_until > NOW())
+        FROM veltrix_ai_analyst.source_approvals
+        WHERE approval_id = %s
+        """,
+        (approval_id,),
+    ).fetchone()
+    if approval is None:
+        failures.append("RIGHTS_APPROVAL_MISSING")
+    else:
+        approval_status, scope_type, scope_values, data_types, permitted_uses, commercial, attribution, raw_redistribution, currently_valid = approval
+        if approval_status != "APPROVED":
+            failures.append("RIGHTS_APPROVAL_NOT_ACTIVE")
+        if scope_type != "competition_id" or COMPETITION_ID not in scope_values:
+            failures.append("RIGHTS_COMPETITION_SCOPE_MISMATCH")
+        if "fixtures_and_results" not in data_types:
+            failures.append("RIGHTS_DATA_TYPE_NOT_APPROVED")
+        if not {"COLLECTION", "STORAGE", "HISTORICAL_IMPORT"}.issubset(set(permitted_uses)):
+            failures.append("RIGHTS_PURPOSE_NOT_APPROVED")
+        if commercial is not False or attribution is not True or raw_redistribution is not False:
+            failures.append("RIGHTS_USE_RESTRICTIONS_MISMATCH")
+        if not currently_valid:
+            failures.append("RIGHTS_APPROVAL_OUTSIDE_VALIDITY")
+
     expected_windows = build_date_windows(
         BOUNDARY_START, BOUNDARY_END, window_days=7
     )
