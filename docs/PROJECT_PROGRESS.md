@@ -12,7 +12,7 @@
 
 - **Overall stage:** Stage 1 of 10 — Architecture and repository foundation
 - **Current workstream:** Initial backend and native Android foundations, repository security rules, architecture documentation, and CI setup.
-- **Implementation status:** Initial FastAPI liveness endpoint and test, Kotlin/Jetpack Compose Android placeholder app, Gradle configuration, CI workflow, security policy, and architecture documentation have been committed. CI/build execution has not yet been verified.
+- **Implementation status:** Initial FastAPI liveness endpoint and test, Kotlin/Jetpack Compose Android placeholder app, Gradle configuration, CI workflow, security policy, and architecture documentation have been committed. GitHub Actions run #43853169748: backend tests and lint passed; Android debug build is still running at the latest check.
 - **Release status:** Not deployed. No database, provider integrations, authentication, or prediction functionality exists yet.
 - **Next milestone:** Verify CI and builds, fix any failures, then complete Stage 1 exit criteria.
 
@@ -61,7 +61,8 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [x] GitHub Actions workflow committed for backend tests/lint and Android debug build.
 
 ### In progress
-- [ ] Observe CI workflow results and resolve any backend or Android build failures.
+- [x] Backend CI tests and lint pass in GitHub Actions run #43853169748.
+- [ ] Complete Android debug build in GitHub Actions run #43853169748 and resolve any compilation failure.
 - [ ] Verify the repository tree and confirm the Android build is reproducible.
 - [ ] Add backend configuration conventions and API contract tests as needed.
 - [ ] Complete Stage 1 exit review after successful verification.
@@ -163,7 +164,7 @@ Add new decisions with dates. Do not silently overwrite material architectural d
 
 ## 11. Blockers and risks
 
-- **Build verification pending:** the GitHub Actions workflow has been committed, but successful CI results have not yet been observed.
+- **Android build pending:** backend tests and lint pass; the Android debug build remains in progress in GitHub Actions run #43853169748.
 - **Incomplete product implementation:** current backend and Android code are minimal foundations, not a working football analysis application.
 - **Provider coverage and terms:** must be verified before Stage 2 integrations are approved.
 - **Historical data quality:** imports may contain missing IDs, incomplete timestamps, or inconsistent competition naming.
@@ -174,8 +175,8 @@ No active external blocker has been verified at this point.
 
 ## 12. Next execution queue
 
-1. Inspect the first GitHub Actions run and record its exact result.
-2. Fix any failing backend tests, lint checks, Android SDK setup, or Gradle compilation.
+1. Finish and verify Android debug build in GitHub Actions run #43853169748.
+2. Fix any Android compilation failures and rerun CI.
 3. Verify a successful clean Android debug build and backend test run.
 4. Add configuration and API-contract foundations only where required for Stage 1.
 5. Record CI run identifiers and close Stage 1 only when all exit criteria pass.
