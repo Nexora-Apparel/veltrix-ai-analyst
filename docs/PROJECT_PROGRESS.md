@@ -370,3 +370,12 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - **Current state:** run 3 remains RUNNING in Neon; 23/34 checkpoints complete; 247 fixtures persisted; 24/40 requests reserved; the interrupted page awaits replay; 10 later windows pending; 0 quarantine rows at last inspection.
 - **Next action:** manually dispatch [Controlled Brazil Serie B Historical Import](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/historical-brazil-serie-b.yml) with `confirm_collection=COLLECT_BRAZIL_SERIE_B` and `resume_run_id=3`. The workflow applies migration 005 first, then resumes run 3. Do not leave resume_run_id blank; that would start a new run.
 - **No model training, odds collection, calibration, or prediction publication is enabled by this recovery.** The run must complete and its automatic validator must pass before the collected data is accepted.
+
+
+### Neon migration 005 applied and run 3 recovery link verified — 2026-11-16
+- [x] Applied `005_reservation_response_link.sql` to the dedicated Neon database `veltrix_ai_analyst` and inserted its exact checksum into `public.schema_migrations`.
+- [x] Read-only verification: migration checksum matches; run 3 has 24/24 reservations linked to captured response IDs; interrupted Aug 29–Sep 5 page 1 links to response ID 24; 23 completed windows remain; 247 fixture rows remain; quarantine count is 0.
+- [x] The migration backfill identified exactly one matching HTTP 200 response for every run 3 reservation. No provider HTTP calls were made and no fixture/checkpoint/run status rows were changed by the migration.
+- **READY TO RESUME:** workflow [Controlled Brazil Serie B Historical Import](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/historical-brazil-serie-b.yml), select **Run workflow**, set `confirm_collection=COLLECT_BRAZIL_SERIE_B`, and set `resume_run_id=3`. Do not leave the resume ID blank.
+- The workflow migration step is idempotent: it will verify migration 005's checksum and skip reapplying it, then resume run 3. The remaining 10 windows are within the existing 40-request budget; current usage is 24/40.
+- Automatic post-import validation remains mandatory. Import is not yet complete or validated; no odds collection or model training is authorized.
