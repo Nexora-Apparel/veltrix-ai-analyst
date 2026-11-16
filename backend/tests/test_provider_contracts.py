@@ -64,3 +64,19 @@ def test_fixture_rejects_unexpected_fields() -> None:
 
     with pytest.raises(ValidationError):
         ProviderFixture.model_validate(data)
+
+
+
+def test_finished_fixture_requires_both_final_scores() -> None:
+    data = valid_fixture()
+    data["status"] = "finished"
+    with pytest.raises(ValidationError):
+        ProviderFixture.model_validate(data)
+
+
+def test_unsettled_fixture_cannot_carry_final_scores() -> None:
+    data = valid_fixture()
+    data["home_goals"] = 1
+    data["away_goals"] = 0
+    with pytest.raises(ValidationError):
+        ProviderFixture.model_validate(data)
