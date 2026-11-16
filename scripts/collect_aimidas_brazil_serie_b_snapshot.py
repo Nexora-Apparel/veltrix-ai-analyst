@@ -8,11 +8,14 @@ from pathlib import Path
 from app.providers.aimidas_snapshot import collect_snapshot
 
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--output-dir",
-        default=".local-data/aimidas/brazil-serie-b-2026",
+        default=str(REPOSITORY_ROOT / ".local-data" / "aimidas" / "brazil-serie-b-2026"),
         help="Local private data directory; do not commit its contents.",
     )
     args = parser.parse_args()
