@@ -349,3 +349,124 @@ def test_auth_permission_and_server_failures_stop_without_retry(status_code: int
         )
 
     assert requests == 1
+
+
+
+def test_historical_fetch_requires_request_reserver_before_network() -> None:
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(200, json=response_payload([]))
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    with pytest.raises(
+        ProviderConfigurationError,
+        match="HISTORICAL_COLLECTION_REQUIRES_PERSISTENT_REQUEST_RESERVATION",
+    ):
+        asyncio.run(
+            provider.fetch_fixtures(
+                datetime(2026, 11, 16, tzinfo=UTC),
+                datetime(2026, 11, 17, tzinfo=UTC),
+                competition_ids=["522514093"],
+                require_request_reservation=True,
+            )
+        )
+
+    assert requests == 0
+
+
+def test_historical_fetch_reserves_each_page_before_http_request() -> None:
+    events: list[str] = []
+    reservations: list[tuple[str, str, int]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        events.append("http")
+        page = int(request.url.params["page"])
+        rows = [fixture_row(601 + page, "2026-11-16T10:00:00+00:00")]
+        return httpx.Response(
+            200,
+            json=response_payload(rows, has_more=page == 1),
+        )
+
+    def reserve(
+        request_key: str,
+        window_start: datetime,
+        window_end: datetime,
+        page_number: int,
+        endpoint: str,
+        request_params: dict[str, str | int],
+    ) -> bool:
+        events.append("reserve")
+        reservations.append((request_key, endpoint, page_number))
+        assert window_start == datetime(2026, 11, 16, tzinfo=UTC)
+        assert window_end == datetime(2026, 11, 17, tzinfo=UTC)
+        assert endpoint == "/leagues/522514093/fixtures"
+        assert request_params["per_page"] == 100
+        return True
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    results = asyncio.run(
+        provider.fetch_fixtures(
+            datetime(2026, 11, 16, tzinfo=UTC),
+            datetime(2026, 11, 17, tzinfo=UTC),
+            competition_ids=["522514093"],
+            request_reserver=reserve,
+            require_request_reservation=True,
+        )
+    )
+
+    assert len(results) == 2
+    assert events == ["reserve", "http", "reserve", "http"]
+    assert [item[2] for item in reservations] == [1, 2]
+    assert len({item[0] for item in reservations}) == 2
+
+
+def test_existing_reservation_refuses_duplicate_http_request() -> None:
+    requests = 0
+    reservation_calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(
+            200,
+            json=response_payload([fixture_row(701, "2026-11-16T10:00:00+00:00")], has_more=True),
+        )
+
+    def reserve(
+        request_key: str,
+        window_start: datetime,
+        window_end: datetime,
+        page_number: int,
+        endpoint: str,
+        request_params: dict[str, str | int],
+    ) -> bool:
+        nonlocal reservation_calls
+        reservation_calls += 1
+        return reservation_calls == 1
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    with pytest.raises(ProviderAPIError, match="request reservation already exists"):
+        asyncio.run(
+            provider.fetch_fixtures(
+                datetime(2026, 11, 16, tzinfo=UTC),
+                datetime(2026, 11, 17, tzinfo=UTC),
+                competition_ids=["522514093"],
+                request_reserver=reserve,
+                require_request_reservation=True,
+            )
+        )
+
+    assert reservation_calls == 2
+    assert requests == 1
