@@ -76,6 +76,9 @@ class FixturePagePersister:
         )
         self.records_seen = int(checkpoint["records_seen"]) if checkpoint else 0
         self.records_inserted = int(checkpoint["records_inserted"]) if checkpoint else 0
+        self.records_duplicate = int(checkpoint["records_duplicate"]) if checkpoint else 0
+        self.records_rejected = int(checkpoint["records_rejected"]) if checkpoint else 0
+        self.records_quarantined = int(checkpoint["records_quarantined"]) if checkpoint else 0
         self.requests_used = int(checkpoint["requests_used"]) if checkpoint else 0
         self.last_request: dict[str, Any] | None = None
         self.last_response_id: int | None = None
@@ -331,14 +334,20 @@ class FixturePagePersister:
             ).fetchone()
             if inserted is None:
                 return False
+            self.records_seen += 1
+            self.records_quarantined += 1
+            self.requests_used += 1
             self.store.save_checkpoint(
                 import_run_id=self.import_run_id,
                 window_start=window_start,
                 window_end=window_end,
                 status="FAILED",
-                records_seen=1,
-                records_quarantined=1,
-                requests_used=0,
+                records_seen=self.records_seen + 1,
+                records_inserted=self.records_inserted,
+                records_duplicate=self.records_duplicate,
+                records_rejected=self.records_rejected,
+                records_quarantined=self.records_quarantined + 1,
+                requests_used=self.requests_used + 1,
                 cursor_value=str(page_number),
                 response_sha256=self.last_response_sha256,
                 last_error_code=reason_code,
@@ -513,6 +522,7 @@ async def run_brazil_serie_b_historical_import(
         api_key=api_key,
         min_request_interval_seconds=12.0,
     )
+    current_persister: FixturePagePersister | None = None
     try:
         with (
             psycopg.connect(database_url, autocommit=True) as store_connection,
@@ -531,6 +541,7 @@ async def run_brazil_serie_b_historical_import(
                     approval=approval,
                     window=window,
                 )
+                current_persister = persister
                 store.save_checkpoint(
                     import_run_id=import_run_id,
                     window_start=window.start_at,
@@ -541,13 +552,42 @@ async def run_brazil_serie_b_historical_import(
                     requests_used=persister.requests_used,
                     cursor_value=str(start_page),
                 )
+                def reserve_page(
+                    request_key: str,
+                    window_start: datetime,
+                    window_end: datetime,
+                    page_number: int,
+                    endpoint: str,
+                    request_params: dict[str, str | int],
+                ) -> bool:
+                    persister.last_request = {
+                        "request_key": request_key,
+                        "window_start": window_start,
+                        "window_end": window_end,
+                        "page_number": page_number,
+                        "endpoint": endpoint,
+                        "request_params": dict(request_params),
+                    }
+                    persister.last_response_id = None
+                    persister.last_response_sha256 = None
+                    persister.last_http_status = None
+                    return reserver(
+                        request_key,
+                        window_start,
+                        window_end,
+                        page_number,
+                        endpoint,
+                        request_params,
+                    )
+
                 await active_provider.fetch_fixtures(
                     window.start_at,
                     window.end_at,
                     competition_ids=[COMPETITION_ID],
-                    request_reserver=reserver,
+                    request_reserver=reserve_page,
                     require_request_reservation=True,
                     response_observer=persister,
+                    raw_response_observer=persister.record_raw_response,
                     start_page=start_page,
                 )
                 refreshed = next(
@@ -565,6 +605,8 @@ async def run_brazil_serie_b_historical_import(
                 reason_code=None,
             )
     except Exception as exc:
+        if current_persister is not None:
+            current_persister.quarantine_current_page(exc)
         with psycopg.connect(database_url) as connection:
             row = connection.execute(
                 "SELECT status FROM veltrix_ai_analyst.import_runs WHERE id = %s",
