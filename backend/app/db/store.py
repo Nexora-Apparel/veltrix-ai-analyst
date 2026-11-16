@@ -378,15 +378,31 @@ class PostgresIngestionStore:
 
         existing = self.connection.execute(
             """
-            SELECT id
+            SELECT id, endpoint, request_params, http_status, response_headers,
+                   quota_limit, quota_remaining, quota_reset_at, rights_approval_id,
+                   fetched_at, retention_until, raw_body
             FROM veltrix_ai_analyst.provider_responses
             WHERE provider = %s AND source_id = %s AND request_id = %s
               AND response_sha256 = %s
             """,
             (approval.provider, approval.source_id, request_id, response_hash),
         ).fetchone()
+        expected_metadata = (
+            endpoint,
+            dict(request_params),
+            http_status,
+            safe_headers,
+            quota_limit,
+            quota_remaining,
+            quota_reset_at,
+            approval.approval_id,
+            fetched_at,
+            retention_until,
+        )
         if existing is None:
             raise IngestionStoreError("PROVIDER_RESPONSE_IDEMPOTENCY_LOOKUP_FAILED")
+        if tuple(existing[1:11]) != expected_metadata or bytes(existing[11]) != raw_body:
+            raise EvidenceConflict("PROVIDER_REQUEST_ID_REUSED_WITH_DIFFERENT_RESPONSE_EVIDENCE")
         return int(existing[0])
 
     def record_source_observation(
@@ -485,7 +501,7 @@ class PostgresIngestionStore:
         else:
             existing = self.connection.execute(
                 """
-                SELECT id
+                SELECT id, schema_version, rights_approval_id, payload
                 FROM veltrix_ai_analyst.source_observations
                 WHERE provider = %s AND source_id = %s AND data_type = %s
                   AND entity_type = %s AND provider_entity_id = %s AND payload_sha256 = %s
@@ -501,6 +517,14 @@ class PostgresIngestionStore:
             ).fetchone()
             if existing is None:
                 raise IngestionStoreError("SOURCE_OBSERVATION_IDEMPOTENCY_LOOKUP_FAILED")
+            if (
+                existing[1] != schema_version
+                or existing[2] != approval.approval_id
+                or existing[3] != json.loads(payload_json)
+            ):
+                raise EvidenceConflict(
+                    "SOURCE_OBSERVATION_ID_REUSED_WITH_DIFFERENT_SCHEMA_OR_RIGHTS"
+                )
             observation_id = int(existing[0])
 
         self.connection.execute(
