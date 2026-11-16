@@ -390,3 +390,18 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [ ] **Data-use boundary remains:** provider publication/availability timestamps were not established. Imported observations are not eligible as pre-match training features, CLV evidence, or point-in-time backtests. Use for descriptive/result-history work only unless separate timestamp evidence establishes eligibility.
 - [ ] Next stage: build source-quality/coverage and fixture canonicalization audits, then a strictly point-in-time feature eligibility pipeline. Do not train or publish predictions from this dataset as-is.
 - [ ] AI Midas snapshot remains a separate descriptive candidate source with its own anomaly quarantine; do not merge it blindly with the 5Dollar import.
+
+
+### Fixture coverage, identity and PIT gate audit — 2026-11-16
+- [x] Read-only Neon audit of import run 3: 374 fixtures, 34/34 completed windows, each window count reconciles with its checkpoint; no empty windows.
+- [x] Competition scope is provider ID `522514093` / Brazil Serie B. The provider catalogue row lacks country, season and last-fixture metadata; observed fixture counts do not prove schedule completeness.
+- [x] Score/status audit: 370 FINISHED with complete scores; 4 UNKNOWN with no scores; no contradictory non-finished scores.
+- [x] Team audit: 21 provider IDs; no blank names or missing FK links; 6 home and 3 away label differences are diacritic/transliteration variants. Flagged two separate IDs `America MG` / `América Mineiro` with a near-simultaneous Goiás fixture pair as an unresolved alias/duplicate candidate.
+- [x] Duplicate audit: no exact duplicate provider IDs, no duplicate competition/kickoff/team-ID key groups, and no raw-name same-order near-time matches. The alias collision remains a separate unresolved candidate.
+- [x] PIT audit: 0/374 source observations have publication or availability timestamps; 0 are PIT-certifiable. All 1,031 sightings are `RETRIEVED_AT_ONLY`, non-certifiable. The automatic validator's `non_pit_observations=0` field is not PIT certification.
+- [x] Added the audit and canonical fixture design to `docs/ledger/2026-11-16-fixture-coverage-integrity-pit-audit.md`.
+- [x] Added a pure fail-closed Python publication-evidence policy and unit tests.
+- [x] Added migration `006_pre_match_feature_pit_gate.sql`: append-only pre-match feature input table with a database trigger requiring the exact sighting to have verified publication time, captured successful response, matching payload hash, availability before cutoff, and approved FEATURE_ENGINEERING + MODEL_TRAINING rights.
+- [x] Added a PostgreSQL integration test for accepted publication evidence and rejected retrieval-only evidence.
+- [ ] CI and review pending. Migration 006 is not applied to Neon; feature pipeline remains unimplemented and all current 5Dollar records remain excluded.
+- [ ] Canonical team/competition/fixture tables and reviewed provider identity crosswalks are designed but not yet materialized. No automatic entity matching or merge is enabled.
