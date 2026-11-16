@@ -215,3 +215,37 @@ def test_fetch_competitions_normalizes_country_and_season_metadata() -> None:
     assert competitions[0].name == "Brazil Serie B"
     assert competitions[0].country_code == "BR"
     assert competitions[0].seasons == ("2026", "2025")
+
+
+def test_account_status_returns_plan_and_quota_metadata() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "success": 1,
+                "data": {
+                    "plan": "community",
+                    "limits": {
+                        "rate_limit": 300,
+                        "rate_window_seconds": 3600,
+                        "burst_per_minute": 20,
+                    },
+                    "usage": {"today": 17},
+                },
+            },
+        )
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    status = asyncio.run(provider.fetch_account_status())
+
+    assert requests[0].url.path == "/v1/status"
+    assert status["plan"] == "community"
+    assert status["limits"]["rate_limit"] == 300
+    assert status["limits"]["burst_per_minute"] == 20
+    assert status["usage"]["today"] == 17
