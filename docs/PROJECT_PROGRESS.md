@@ -246,9 +246,10 @@ Detailed evidence: `docs/ledger/2026-11-16-read-only-preflight-passed.md`.
 A pre-collection code audit found that `backend/app/providers/historical_import.py` derived a second approval ID (`approval-5dollar-ai-analyst-historical-2026-11-16`) even though the database preflight had verified the existing registered grant `approval-5dollar-community-fixtures-2026-11-12`. The scope and rights fields were copied from the same reviewed Community approval, but maintaining two IDs weakened the approval chain and made the code diverge from the preflight's canonical record.
 
 - [x] Identified the mismatch before any historical import request was made.
-- [x] Correction prepared on branch `fix/canonical-5dollar-approval-binding`: importer now uses the canonical `FIVEDOLLAR_COMMUNITY_APPROVAL` object directly; no derived approval ID.
+- [x] Correction merged via PR [#8](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/8), merge commit `71eedf3abeedcd0312d7f7038b5e9541b7af5484`: importer now uses the canonical `FIVEDOLLAR_COMMUNITY_APPROVAL` object directly; no derived approval ID.
 - [x] Added regression test asserting exact approval ID, provider, source, competition scope and fixtures/results data type.
 - [x] Updated collection plan to prohibit derived duplicate approval IDs.
-- [ ] CI, review and merge pending.
+- [x] CI #43952346445 passed backend tests, Ruff lint, Android debug build and APK artifact upload.
+- [x] Read-only Neon query confirmed the canonical registered approval row matches the complete source approval definition used by the importer.
 - [x] No provider HTTP calls or database writes were made during this audit/correction.
-- **Live historical collection remains LOCKED** until this correction is merged and validated, and a separate explicit user authorization is received.
+- **Live historical collection remains LOCKED** pending separate explicit user authorization.
