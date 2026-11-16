@@ -10,7 +10,9 @@ import pytest
 
 from app.db.migrations import apply_migrations
 from app.providers.five_dollar import FiveDollarFootballProvider
+import app.providers.historical_import as historical_import
 from app.providers.historical_import import (
+    HistoricalImportError,
     IMPORT_APPROVAL,
     run_brazil_serie_b_historical_import,
 )
@@ -49,6 +51,7 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
     database_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
+    monkeypatch.setattr(historical_import, "EXPECTED_DATABASE_NAME", "veltrix_test")
     requests: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -146,7 +149,7 @@ def test_live_import_requires_both_explicit_execution_gates(
     database_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", raising=False)
-    with pytest.raises(Exception, match="LIVE_COLLECTION_NOT_EXPLICITLY_ENABLED"):
+    with pytest.raises(HistoricalImportError, match="LIVE_COLLECTION_NOT_EXPLICITLY_ENABLED"):
         asyncio.run(
             run_brazil_serie_b_historical_import(
                 database_url,
