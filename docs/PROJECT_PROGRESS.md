@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16 (initial readiness audit)  
+**Last updated:** 2026-11-16 (snapshot capture blocker and coverage-manifest specification)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -80,8 +80,8 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [x] Migration runner requires an explicit expected database name, blocks legacy VELTRIX Football database names and requires opt-in for remote migrations.
 - [x] CI validates the schema against ephemeral PostgreSQL 16, including append-only history, score constraints and effective rights revocation.
 - [x] PR #1 CI run #43858717326 passed 44 backend tests, Ruff lint, Android debug compilation and APK artifact upload.
-- [ ] Configure the existing 5Dollar Community credential as a repository secret and run the manual access check.
-- [ ] Capture the pinned AI Midas file into private/local storage and verify the actual source hash.
+- [ ] Configure the existing 5Dollar Community credential as a repository secret and run the manual access check. No secret value was accessed or tested in this session.
+- [ ] Capture the pinned AI Midas file into private/local storage and verify the actual source hash. The current connector cannot transfer the pinned binary into the trusted local runtime; see `docs/ledger/2026-11-16-snapshot-capture-and-coverage-manifest.md`.
 - [x] Implement runtime PostgreSQL writers for approvals, provider responses, observations/sightings, provider entities, entitlements, request events, import runs/checkpoints/finalization, watermarks and quarantine (PR #2).
 - [x] Enforce effective approval status at event time, exact source scope, response-header sanitization, rejection of credential-like request parameters and source-publication timestamp integrity.
 - [x] PR #2 merged as `f3bec93`; CI run #43860443460 passed 52 backend tests, Ruff lint, Android debug build and APK artifact upload.
@@ -232,6 +232,13 @@ Add new decisions with dates. Do not silently overwrite material architectural d
 6. Apply checksum-verified migrations to that exact new database with explicit remote opt-in.
 7. Implement the bounded ingestion orchestrator and test it against ephemeral PostgreSQL before real imports.
 8. After Stage 2 source qualification, define Stage 3 football-intelligence features and the offline chronological evaluation harness before implementing models.
+
+### Execution-order continuation — 2026-11-16
+- [x] Re-inspected the AI Midas collector, its integrity checks, tests, the 5Dollar verifier and CI workflow before execution.
+- [ ] AI Midas local capture remains blocked because the connected GitHub reader cannot transfer the pinned binary into a trusted local runtime; no capture or SHA-256 execution is claimed.
+- [x] Added `docs/DATA_COVERAGE_MANIFEST.md` (VAA-DATA-002 v1.0), defining field-level coverage, timestamp classes, intended-use gates, cross-provider identity rules and quota controls. This is a specification, not measured provider coverage.
+- [x] Added `docs/ledger/2026-11-16-snapshot-capture-and-coverage-manifest.md` documenting the blocker, required local command, expected integrity checks and zero-quota actions.
+- [x] No provider calls, database operations, imports or model operations were performed.
 
 ## 13. Update protocol
 
