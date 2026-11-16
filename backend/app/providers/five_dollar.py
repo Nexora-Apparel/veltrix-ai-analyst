@@ -13,7 +13,11 @@ from typing import Any
 
 import httpx
 
-from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
+from app.providers.contracts import (
+    ProviderCompetition,
+    ProviderFixture,
+    SourceProvenance,
+)
 
 
 DEFAULT_BASE_URL = "https://api.5dollarfootballapi.com/v1"
@@ -88,7 +92,7 @@ def _kickoff(item: dict[str, Any]) -> datetime:
     raw = item.get("kickoff_utc")
     if isinstance(raw, str) and raw.strip():
         try:
-            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(raw)
         except ValueError as exc:
             raise ProviderAPIError("5DollarFootballAPI returned an invalid kickoff_utc") from exc
         if parsed.utcoffset() is None:
@@ -282,7 +286,7 @@ class FiveDollarFootballProvider:
                     if last_fixture_at is not None:
                         try:
                             last_fixture_at = datetime.fromisoformat(
-                                str(last_fixture_at).replace("Z", "+00:00")
+                                str(last_fixture_at)
                             )
                         except ValueError:
                             raise ProviderAPIError(
