@@ -302,3 +302,33 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - Workflow requires a manual `workflow_dispatch` input `confirm_collection=COLLECT_BRAZIL_SERIE_B`; optional `resume_run_id` should remain blank because no live import run has been created.
 - The connected GitHub toolset exposes workflow reads and reruns but no workflow-dispatch action. Therefore the manual dispatch must be submitted through the workflow page; no provider HTTP request has been initiated in this session.
 - After dispatch, verify actual request reservations and workflow logs; then run `scripts/validate_brazil_serie_b_import.py` for the resulting run. Any validation failure blocks model training. No odds collection or model training is authorized by this import step.
+
+
+---
+
+## 2026-11-16 — Live historical import interrupted; partial progress verified
+
+### GitHub Actions evidence
+- Workflow run [#43957601456](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43957601456), job [#133616186995](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43957601456/job/133616186995), was manually dispatched on `main` at 2026-11-16T21:11:59Z.
+- Run conclusion: `cancelled`; job import step conclusion: `cancelled`; automatic validation step: `skipped`.
+- Logs show setup and dependency installation succeeded. The bounded importer process ran until GitHub reported `The operation was canceled` at 2026-11-16T21:32:16Z. No Python traceback, HTTP error or provider schema error was emitted before termination.
+- Cancellation cause/initiator is not established by the available job log; do not attribute it to the user or GitHub timeout without further evidence.
+
+### Read-only Neon recovery inspection
+- Target verified: Neon project/resource `young-wind-27772160`, database `veltrix_ai_analyst`.
+- Live import run ID: `3`; database status remains `RUNNING` because the runner was terminated before normal importer finalization.
+- Scope remains 5DollarFootballAPI Brazil Serie B competition `522514093`, interval `[2026-03-21T00:00:00Z, 2026-11-09T00:00:00Z)`, 34 weekly windows, request budget 40.
+- 23 of 34 checkpoints are `COMPLETED`; their totals are 247 records seen, 247 inserted, 0 duplicate, 0 rejected, 0 quarantined, and 23 checkpointed requests.
+- The next checkpoint, `[2026-08-29T00:00:00Z, 2026-09-05T00:00:00Z)`, remains `RUNNING`; 10 later windows remain `PENDING`.
+- The reservation ledger contains 24 reservations for run 3; run counter reports 24 requests used. Provider request and response ledgers each contain 24 entries for this run's execution period.
+- The 24th request returned HTTP 200 and its raw response was persisted (response ID 24; SHA-256 `7a47acbe19ace32b0965d55a4246ff1ba87a8efad182d70d65502120a042fbfa`). Its window checkpoint was not confirmed completed before cancellation.
+- Across the dedicated provider fixture table, 247 rows exist for this provider/source/competition; earliest kickoff 2026-03-21T20:00:00Z and latest 2026-08-28T23:30:00Z.
+- Quarantine table count remains 0.
+- Inspection queries were read-only. No database mutation, retry, or second provider request was made during recovery inspection.
+
+### Recovery decision
+- Do not start a new import run and do not restart from the beginning.
+- Resume the existing import run ID `3` only, after confirming the importer safely reconciles the reserved/HTTP-200 but uncheckpointed request for the Aug 29–Sep 5 window. The existing reservation must not authorize a duplicate HTTP request.
+- Workflow input on the next manual dispatch: `confirm_collection=COLLECT_BRAZIL_SERIE_B`; `resume_run_id=3`.
+- The automatic post-import validator must complete successfully before this dataset can be accepted. No odds collection, model training, calibration or prediction publication is authorized by this partial import.
+- Import remains **INCOMPLETE / NOT VALIDATED**.
