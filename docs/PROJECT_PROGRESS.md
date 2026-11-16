@@ -213,6 +213,7 @@ Every subsequent implementation, migration, CI result, provider call, import cou
 - [x] Verified that approval belongs to `5DollarFootballAPI` / `5dollarfootballapi`, includes competition `522514093`, and permits fixtures/results plus competition/team catalogue data; it is non-commercial, requires attribution and disallows raw redistribution.
 - [x] Corrected preflight approval binding and added a regression test.
 - [x] Reconfirmed database identity `veltrix_ai_analyst`, PostgreSQL 18.7, migration checksums 001–004, zero unresolved 5Dollar quarantine rows and zero PLANNED/RUNNING 5Dollar import runs.
-- [ ] PR #7 must pass CI before merge. After merge, run the read-only preflight to verify the saved secret and runner connectivity.
+- [x] PR #7 merged after CI run #43949016507 passed backend tests, Ruff lint and Android debug APK build/upload. Squash merge: `34f3e27dbdf9c3ddd17e9ab4fe0f92589ff00e32`.
+- [ ] Run the read-only preflight from the Actions page to verify the saved secret and runner connectivity.
 - [x] No provider requests, reservation writes, fixture writes, odds calls or model operations were performed during this correction.
 - [x] Historical collection remains **LOCKED**.
