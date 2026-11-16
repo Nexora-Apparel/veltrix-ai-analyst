@@ -12,6 +12,7 @@ from app.db.migrations import apply_migrations
 from app.db.store import PostgresIngestionStore
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
 
+
 @pytest.fixture
 def database_url() -> str:
     url = os.getenv("DATABASE_URL", "")
