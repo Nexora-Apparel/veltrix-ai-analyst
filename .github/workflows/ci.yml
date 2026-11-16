@@ -36,7 +36,7 @@ jobs:
       - name: Run tests
         run: pytest
       - name: Run lint
-        run: ruff check --diff app tests
+        run: ruff check app tests
 
   android:
     name: Android debug build
