@@ -173,7 +173,7 @@ The PostgreSQL end-to-end test uses `httpx.MockTransport`; all 34 pages are simu
 
 **Live execution remains locked.** Configure `VELTRIX_AI_ANALYST_DATABASE_URL` as a GitHub Actions environment secret containing the dedicated `veltrix_ai_analyst` database URI, not the integration-generated `neondb` URI. The existing Community API key secret is consumed at runtime and is not embedded in source. Complete final preflight; do not start historical collection until the raw-error evidence/quarantine gate is addressed.
 
-The importer uses immutable approval ID `approval-5dollar-ai-analyst-historical-2026-11-16`, derived from the reviewed Community approval with the same scope and evidence. It is synchronized by the importer before a new run is created; the earlier approval row remains unchanged.
+**Approval binding correction:** the importer must use the exact pre-existing registered approval ID `approval-5dollar-community-fixtures-2026-11-12` from `backend/app/providers/approvals.py`. Do not derive or create a second approval ID for this same source grant. The successful read-only preflight verifies that exact database record. A regression test now locks the importer to the canonical approval ID.
 
 
 ## 13. Failed-page evidence and quarantine — 2026-11-16
