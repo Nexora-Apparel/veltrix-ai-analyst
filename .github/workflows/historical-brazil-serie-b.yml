@@ -45,11 +45,21 @@ jobs:
       - name: Install importer
         run: python -m pip install -e backend
       - name: Run bounded historical import
+        id: import
         shell: bash
         run: |
           set -euo pipefail
           if [[ -n "$RESUME_RUN_ID" ]]; then
-            python scripts/collect_brazil_serie_b_history.py --execute --resume-run-id "$RESUME_RUN_ID"
+            IMPORT_OUTPUT="$(python scripts/collect_brazil_serie_b_history.py --execute --resume-run-id "$RESUME_RUN_ID")"
           else
-            python scripts/collect_brazil_serie_b_history.py --execute
+            IMPORT_OUTPUT="$(python scripts/collect_brazil_serie_b_history.py --execute)"
           fi
+          printf '%s\n' "$IMPORT_OUTPUT"
+          RUN_ID="$(printf '%s\n' "$IMPORT_OUTPUT" | sed -n 's/^HISTORICAL_IMPORT_FINISHED:run_id=//p' | tail -n 1)"
+          if [[ ! "$RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "Importer did not return a valid completed run ID" >&2
+            exit 1
+          fi
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+      - name: Validate historical import
+        run: python scripts/validate_brazil_serie_b_import.py --run-id "${{ steps.import.outputs.run_id }}"

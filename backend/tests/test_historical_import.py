@@ -9,7 +9,7 @@ import psycopg
 import pytest
 
 from app.db.migrations import apply_migrations
-from app.providers import historical_import
+from app.providers import historical_import, historical_validation
 from app.providers.five_dollar import FiveDollarFootballProvider
 from app.providers.historical_import import (
     IMPORT_APPROVAL,
@@ -52,6 +52,7 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
 ) -> None:
     monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
     monkeypatch.setattr(historical_import, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    monkeypatch.setattr(historical_validation, "EXPECTED_DATABASE_NAME", "veltrix_test")
     requests: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -143,6 +144,12 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
     assert response_count == 34
     assert fixture_count == 34
     assert linked_observations >= 34
+    with psycopg.connect(database_url) as connection:
+        report = historical_validation.validate_brazil_serie_b_import(connection, run_id)
+    assert report["passed"] is True
+    assert report["checkpoints"] == 34
+    assert report["request_events_with_raw_response"] == 34
+    assert report["fixture_sightings"] == 34
 
 
 def test_live_import_requires_both_explicit_execution_gates(
@@ -166,6 +173,7 @@ def test_malformed_provider_page_is_saved_and_quarantined(
 ) -> None:
     monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
     monkeypatch.setattr(historical_import, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    monkeypatch.setattr(historical_validation, "EXPECTED_DATABASE_NAME", "veltrix_test")
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -231,3 +239,11 @@ def test_malformed_provider_page_is_saved_and_quarantined(
     assert quarantine[2] is not None
     assert quarantine[3] is not None
     assert bytes(raw_body) == b'{"success":1,"data":'
+    with (
+        psycopg.connect(database_url) as connection,
+        pytest.raises(
+            historical_validation.HistoricalValidationError,
+            match="IMPORT_RUN_NOT_COMPLETED",
+        ),
+    ):
+        historical_validation.validate_brazil_serie_b_import(connection, run_id)
