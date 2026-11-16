@@ -12,6 +12,7 @@ def main() -> int:
         applied = apply_migrations(
             database_url,
             expected_database=os.getenv("EXPECTED_DATABASE_NAME", ""),
+            allow_remote=os.getenv("ALLOW_REMOTE_MIGRATIONS", "").casefold() == "true",
         )
     except MigrationError as exc:
         print(f"MIGRATION_FAILED:{exc}")
