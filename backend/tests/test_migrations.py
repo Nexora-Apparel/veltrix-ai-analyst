@@ -159,39 +159,59 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
         now = datetime.now(UTC)
 
         with pytest.raises(psycopg.errors.CheckViolation), connection.transaction():
-                connection.execute(
-                    """
-                    INSERT INTO veltrix_ai_analyst.provider_fixtures (
-                        provider, source_id, provider_fixture_id, provider_competition_id,
-                        home_team_provider_id, away_team_provider_id, kickoff_at, status,
-                        source_observation_id, rights_approval_id, first_seen_at, last_seen_at
-                    ) VALUES (
-                        'test-provider', %s, %s, 'league-1',
-                        %s, %s, %s, 'FINISHED', %s, %s, %s, %s
-                    )
-                    """,
-                    (
-                        source_id,
-                        f"fixture-{suffix}",
-                        f"home-{suffix}",
-                        f"away-{suffix}",
-                        now,
-                        observation_id,
-                        approval_id,
-                        now,
-                        now,
-                    ),
+            connection.execute(
+                """
+                INSERT INTO veltrix_ai_analyst.provider_fixtures (
+                    provider, source_id, provider_fixture_id, provider_competition_id,
+                    home_team_provider_id, away_team_provider_id, kickoff_at, status,
+                    source_observation_id, rights_approval_id, first_seen_at, last_seen_at
+                ) VALUES (
+                    'test-provider', %s, %s, 'league-1',
+                    %s, %s, %s, 'FINISHED', %s, %s, %s, %s
                 )
+                """,
+                (
+                    source_id,
+                    f"fixture-{suffix}",
+                    f"home-{suffix}",
+                    f"away-{suffix}",
+                    now,
+                    observation_id,
+                    approval_id,
+                    now,
+                    now,
+                ),
+            )
 
         with pytest.raises(psycopg.errors.RaiseException), connection.transaction():
-                connection.execute(
-                    """
-                    UPDATE veltrix_ai_analyst.source_observations
-                    SET payload = '{"tampered":true}'::jsonb
-                    WHERE id = %s
-                    """,
-                    (observation_id,),
-                )
+            connection.execute(
+                """
+                UPDATE veltrix_ai_analyst.source_observations
+                SET payload = '{"tampered":true}'::jsonb
+                WHERE id = %s
+                """,
+                (observation_id,),
+            )
+
+        revoked_at = datetime.now(UTC)
+        connection.execute(
+            """
+            INSERT INTO veltrix_ai_analyst.source_approval_status_events (
+                approval_id, status, evidence_uri, evidence_sha256, effective_at, reason_code
+            ) VALUES (%s, 'REVOKED', 'https://example.test/revocation', %s, %s, 'TEST_REVOCATION')
+            """,
+            (approval_id, "b" * 64, revoked_at),
+        )
+        effective_status = connection.execute(
+            """
+            SELECT effective_status
+            FROM veltrix_ai_analyst.effective_source_approvals
+            WHERE approval_id = %s
+            """,
+            (approval_id,),
+        ).fetchone()
+        assert effective_status is not None
+        assert effective_status[0] == "REVOKED"
 
 
 def test_migration_runner_rejects_wrong_database_target() -> None:
