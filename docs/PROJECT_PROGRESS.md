@@ -11,10 +11,10 @@
 ## 1. Executive status
 
 - **Overall stage:** Stage 2 of 10 — Data integrations and historical data migration
-- **Current workstream:** Stage 2 provider adapters, source-rights enforcement, historical qualification, private snapshot capture and PostgreSQL persistence foundation.
-- **Implementation status:** Stage 1 is complete. Provider adapters, rights evaluation, pinned AI Midas snapshot capture, exact source approvals, and a provenance-first PostgreSQL schema/migration runner are implemented. The database foundation is under PR #1; its CI validation is pending.
-- **Release status:** Not deployed. No production database, live provider import, authentication, or prediction functionality exists yet.
-- **Next milestone:** Obtain a clean CI pass, verify the new repository's 5Dollar Community credential, then build the rights-aware historical ingestion and persistence layer.
+- **Current workstream:** Stage 2 runtime persistence writers, provider ingestion and historical data capture.
+- **Implementation status:** Stage 1 is complete. Provider adapters, exact source approvals, rights enforcement, AI Midas snapshot validation/quarantine, and the provenance-first PostgreSQL schema are committed. PR #1 merged as `c219b4d`. CI run #43858717326 passed 44 backend tests, Ruff lint, Android debug build and APK artifact upload.
+- **Release status:** Not deployed. No private database is provisioned, no historical data has been imported into the new database, and prediction functionality does not exist yet.
+- **Next milestone:** Build the runtime PostgreSQL ingestion store and bounded provider import workflow; verify the new repository's 5Dollar credential before live account checks.
 
 ## 2. What is established
 
@@ -75,20 +75,20 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [x] Raw AI Midas snapshots are restricted to private/local paths outside the public repository; the collector records a rights/provenance manifest and makes no database/model writes.
 - [x] Provider qualification register updated with prior account evidence, rights conditions, source limitations and reuse decisions.
 - [x] Manual 5Dollar account-access workflow and local AI Midas snapshot command committed.
-- [x] PostgreSQL provenance-first schema migration and checksum-verified runner added on PR #1.
-- [x] Migration runner requires an explicit expected database name and blocks legacy VELTRIX Football database names.
-- [x] CI configured with an ephemeral PostgreSQL 16 service and migration integration tests.
-- [ ] Verify PR #1 migration SQL, integration tests, lint and Android build; merge only after all checks pass.
+- [x] PostgreSQL provenance-first schema migration and checksum-verified runner merged in PR #1 (`c219b4d`).
+- [x] Migration runner requires an explicit expected database name, blocks legacy VELTRIX Football database names and requires opt-in for remote migrations.
+- [x] CI validates the schema against ephemeral PostgreSQL 16, including append-only history, score constraints and effective rights revocation.
+- [x] PR #1 CI run #43858717326 passed 44 backend tests, Ruff lint, Android debug compilation and APK artifact upload.
 - [ ] Configure the existing 5Dollar Community credential as a repository secret and run the manual access check.
-- [ ] Capture the pinned AI Midas file locally and verify the actual source hash.
-- [ ] Design and implement rights-aware persistence, immutable source evidence, import manifests, checkpoints and quarantine.
+- [ ] Capture the pinned AI Midas file into private/local storage and verify the actual source hash.
+- [ ] Implement runtime PostgreSQL writers for approvals, provider responses, observations, provider entities, import runs and checkpoints.
+- [ ] Provision a new private PostgreSQL database after the connection target and credentials are configured.
 - [ ] Implement bounded incremental historical ingestion only after database and provider checks are complete.
 
 ### Not yet built
 - Android authentication, API integration, navigation, local persistence, and product screens.
 - FastAPI authentication and domain APIs.
-- A provisioned PostgreSQL instance and a production connection; the schema/migration foundation exists but is not deployed.
-- Runtime database writers and an actual private PostgreSQL instance; the schema and migration runner are in PR #1.
+- A provisioned private PostgreSQL instance and production connection; only the schema and migration runner are implemented.
 - Live 5Dollar provider qualification from the new repository.
 - Historical AI Midas snapshot capture and private persistence.
 - Additional odds-provider integration and timestamp qualification.
@@ -186,31 +186,31 @@ No accuracy, profitability, or positive-ROI claim is permitted without independe
 | 2026-11-16 | A row-level score mismatch was detected in one AI Midas match; the snapshot collector quarantines the full match instead of trusting inconsistent goals. |
 | 2026-11-16 | PostgreSQL ingestion schema is isolated under `veltrix_ai_analyst`; migrations require an explicit expected database name and block legacy VELTRIX Football database names. |
 | 2026-11-16 | PR #1 opened for PostgreSQL 16 migration validation; no database provisioning or historical import is part of the PR. |
+| 2026-11-16 | PR #1 merged as `c219b4d`; CI run #43858717326 passed 44 backend tests, lint, Android debug build and artifact upload. |
 
 Add new decisions with dates. Do not silently overwrite material architectural decisions; record the reason for changes.
 
 ## 11. Blockers and risks
 
 - **Manual credential step:** the new repository still needs the 5Dollar Community key added as a GitHub Actions secret named `FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY` (or `FIVEDOLLARFOOTBALL_API_KEY`). The value must not be sent in chat or committed. The manual workflow is ready.
-- **AI Midas availability:** the pinned CSV is publicly retrievable without an API key, but its actual snapshot has not yet been captured in this environment or persisted to a private database.
+- **AI Midas snapshot storage:** the pinned CSV has been inspected through GitHub and its quality anomaly identified, but the raw snapshot has not yet been captured into private/local storage or persisted to a database.
 - **Point-in-time limitation:** AI Midas Brazil Serie B team statistics have no verified publication timestamp and cannot be treated as pre-match features.
 - **Source anomaly:** one AI Midas Brazil Serie B match has inconsistent row-level scores; the collector quarantines that match.
 - **Odds limitation:** neither the 5Dollar Community historical odds endpoint nor the AI Midas average-odds fields are currently certified for bookmaker-specific closing-price or CLV analysis.
-- **Database not provisioned:** the new schema and migration runner are in PR #1, but no database has been provisioned or connected. Do not reuse the old Neon database; prior Phase 2 evidence reports zero historical match rows and a quota-exceeded connection during a separate AI Midas reconciliation.
+- **Database not provisioned:** the new schema and migration runner are merged, but no database has been provisioned or connected. Do not reuse the old Neon database; prior Phase 2 evidence reports zero historical match rows and a quota-exceeded connection during a separate AI Midas reconciliation.
 - **Incomplete product implementation:** current backend and Android code are foundations, not a working football analysis application.
 - **Global coverage:** quality will vary; restricted competitions must remain unpublished until evidence improves.
 - **Cost/quota control:** use the existing 5Dollar historical qualification as baseline, then incremental sync, caching, deduplication and explicit request budgets.
 
 ## 12. Next execution queue
 
-1. Get a clean CI pass for the latest rights and settled-score changes.
+1. Implement the runtime PostgreSQL store and writers against the merged schema, with integration tests on ephemeral PostgreSQL.
 2. Add the existing 5Dollar Community credential to the new repository secrets and run the manual account/league check.
-3. Run the AI Midas snapshot command locally to capture and verify the pinned Brazil Serie B file; keep it under `.local-data/`.
-4. Complete and merge PR #1 after PostgreSQL 16 integration tests, lint and Android CI pass.
-5. Provision a new private PostgreSQL database only after a connection target and credentials are configured; never reuse the legacy database.
-6. Connect the persistence layer to the source approvals, provider responses, entitlement observations, immutable source observations, import manifests, checkpoints and quarantine.
-7. Implement bounded historical import for the seven already-qualified 5Dollar competitions, subject to current account recheck.
-8. Add AI Midas data to private storage as non-commercial, non-PIT historical evidence; keep its post-match stats out of pre-match feature sets until availability is proven.
+3. Run the AI Midas snapshot command to capture the pinned Brazil Serie B file into `.local-data/`; verify the hash and quarantine the known inconsistent match.
+4. Provision a new private PostgreSQL database only after the connection target and credentials are configured; never reuse the legacy database.
+5. Apply the checksum-verified migration with the explicit database name and remote opt-in safeguards.
+6. Implement bounded historical import for the seven already-qualified 5Dollar competitions, subject to current account recheck.
+7. Persist AI Midas data as non-commercial, non-PIT historical evidence; keep post-match stats out of pre-match feature sets.
 
 ## 13. Update protocol
 
