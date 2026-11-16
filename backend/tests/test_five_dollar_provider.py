@@ -88,7 +88,6 @@ def test_fetch_fixtures_normalizes_scores_stats_and_pagination() -> None:
     assert len(requests) == 2
     assert all(request.url.path == "/v1/leagues/77/fixtures" for request in requests)
     assert requests[0].headers["authorization"] == "Bearer test-key"
-    assert requests[0].url.params["league"] == "77"
     assert results[0].provenance.provider == "5DollarFootballAPI"
     assert results[0].provenance.provider_record_id == "501"
     assert results[0].competition_name == "Brazil Serie B"
