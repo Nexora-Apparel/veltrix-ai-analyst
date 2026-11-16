@@ -272,3 +272,11 @@ This file is the canonical project progress record. Keep it current as the proje
 - [x] Recorded evidence in `docs/ledger/2026-11-16-5dollar-community-preflight.md` and updated `docs/DATA_COVERAGE_MANIFEST.md`.
 - [ ] Fixture/results endpoint access, date/season coverage, field completeness and timestamps remain unverified. Next step is a bounded fixture/results probe, not bulk history ingestion.
 - No historical fixtures, odds, database writes, or model operations were performed.
+
+
+### 5Dollar fixture endpoint probe prepared — 2026-11-16
+- [x] Added `scripts/probe_5dollar_brazil_fixtures.py`: one request maximum, one page, fixed 2026-11-07 to 2026-11-09 UTC interval, no retries, no pagination, no odds, no DB writes.
+- [x] Added manual workflow `.github/workflows/5dollar-fixture-probe.yml`; only a sanitized manifest is uploaded (7-day retention), never the raw response or credential.
+- [x] Probe source and workflow committed in 53da6fc35b18682b3120717a3b07d67991672861; detailed protocol in `docs/ledger/2026-11-16-5dollar-fixture-probe-prepared.md`.
+- [ ] Workflow dispatch and execution pending. The connected GitHub tool supports file operations but does not expose the Actions workflow_dispatch operation. Manual dispatch is required; the existing repository secret is already configured, and no new key setup is needed.
+- No fixture endpoint call, historical data import, database write, odds request, or model operation has yet occurred.
