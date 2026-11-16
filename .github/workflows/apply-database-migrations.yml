@@ -1,0 +1,106 @@
+name: Apply checksum-verified database migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_migrations:
+        description: Type APPLY_CHECKSUM_VERIFIED_MIGRATIONS to authorize schema migrations
+        required: true
+        type: choice
+        options:
+          - NO
+          - APPLY_CHECKSUM_VERIFIED_MIGRATIONS
+        default: NO
+
+concurrency:
+  group: veltrix-ai-analyst-database-migrations
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: inputs.confirm_migrations == 'APPLY_CHECKSUM_VERIFIED_MIGRATIONS'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: veltrix-historical-import
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install migration runner
+        run: python -m pip install -e .
+      - name: Apply ordered checksum-verified migrations
+        env:
+          DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+        run: |
+          python - <<'PY'
+          import os
+          from app.db.migrations import apply_migrations
+
+          applied = apply_migrations(
+              os.environ["DATABASE_URL"],
+              expected_database="veltrix_ai_analyst",
+              allow_remote=True,
+          )
+          print("MIGRATIONS_APPLIED:", ",".join(applied) if applied else "none")
+          if "006_pre_match_feature_pit_gate.sql" not in applied:
+              print("Migration 006 was already applied with a matching checksum.")
+          PY
+      - name: Verify migration 006 checksum ledger and database objects
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import psycopg
+
+          migration = Path("migrations/006_pre_match_feature_pit_gate.sql")
+          expected_checksum = hashlib.sha256(migration.read_bytes()).hexdigest()
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != "veltrix_ai_analyst":
+                  raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
+              row = connection.execute(
+                  "SELECT checksum FROM public.schema_migrations WHERE version = %s",
+                  (migration.name,),
+              ).fetchone()
+              if row is None or row[0].strip() != expected_checksum:
+                  raise SystemExit("MIGRATION_006_CHECKSUM_VERIFICATION_FAILED")
+              objects = connection.execute(
+                  """
+                  SELECT
+                    to_regclass('veltrix_ai_analyst.pre_match_feature_observations'),
+                    to_regprocedure('veltrix_ai_analyst.enforce_pre_match_feature_pit()')
+                  """
+              ).fetchone()
+              if objects[0] is None or objects[1] is None:
+                  raise SystemExit("MIGRATION_006_OBJECT_VERIFICATION_FAILED")
+              triggers = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM pg_trigger t
+                  JOIN pg_class c ON c.oid = t.tgrelid
+                  JOIN pg_namespace n ON n.oid = c.relnamespace
+                  WHERE n.nspname = 'veltrix_ai_analyst'
+                    AND c.relname = 'pre_match_feature_observations'
+                    AND NOT t.tgisinternal
+                    AND t.tgname IN (
+                      'pre_match_feature_pit_guard',
+                      'pre_match_feature_observations_append_only'
+                    )
+                  """
+              ).fetchone()[0]
+              if triggers != 2:
+                  raise SystemExit("MIGRATION_006_TRIGGER_VERIFICATION_FAILED")
+          print("MIGRATION_006_VERIFIED:", expected_checksum)
+          PY

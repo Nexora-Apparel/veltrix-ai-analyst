@@ -1,0 +1,24 @@
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_manual_migration_workflow_uses_checksum_runner_and_exact_database() -> None:
+    workflow = (ROOT / ".github/workflows/apply-database-migrations.yml").read_text()
+    assert "workflow_dispatch:" in workflow
+    assert "APPLY_CHECKSUM_VERIFIED_MIGRATIONS" in workflow
+    assert 'from app.db.migrations import apply_migrations' in workflow
+    assert 'expected_database="veltrix_ai_analyst"' in workflow
+    assert "allow_remote=True" in workflow
+    assert "FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY" not in workflow
+    assert "collect_brazil_serie_b_history.py" not in workflow
+
+
+def test_manual_migration_workflow_verifies_migration_006_objects() -> None:
+    workflow = (ROOT / ".github/workflows/apply-database-migrations.yml").read_text()
+    assert "006_pre_match_feature_pit_gate.sql" in workflow
+    assert "MIGRATION_006_CHECKSUM_VERIFICATION_FAILED" in workflow
+    assert "pre_match_feature_observations" in workflow
+    assert "enforce_pre_match_feature_pit()" in workflow
+    assert "pre_match_feature_pit_guard" in workflow
+    assert "pre_match_feature_observations_append_only" in workflow
