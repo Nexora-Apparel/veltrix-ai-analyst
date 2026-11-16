@@ -10,11 +10,11 @@
 
 ## 1. Executive status
 
-- **Overall stage:** Stage 1 of 10 — Architecture and repository foundation
-- **Current workstream:** Initial backend and native Android foundations, repository security rules, architecture documentation, and CI setup.
-- **Implementation status:** Initial FastAPI liveness endpoint and test, Kotlin/Jetpack Compose Android placeholder app, Gradle configuration, CI workflow, security policy, and architecture documentation have been committed. GitHub Actions run #43853169748: backend tests and lint passed; Android debug build is still running at the latest check.
-- **Release status:** Not deployed. No database, provider integrations, authentication, or prediction functionality exists yet.
-- **Next milestone:** Verify CI and builds, fix any failures, then complete Stage 1 exit criteria.
+- **Overall stage:** Stage 2 of 10 — Data integrations and historical data migration
+- **Current workstream:** Define provider-neutral ingestion contracts and provenance requirements before implementing individual provider adapters.
+- **Implementation status:** Stage 1 foundation is committed and verified. GitHub Actions runs #43853169748 and #43853312298 both completed successfully, including backend tests/lint and Android debug APK compilation.
+- **Release status:** Not deployed. No live provider integrations, database persistence, authentication, or prediction functionality exists yet.
+- **Next milestone:** Implement and test provider-neutral data contracts, then inspect and validate each approved provider's current API contract and data rights before integration.
 
 ## 2. What is established
 
@@ -36,8 +36,8 @@ The following decisions and project foundations have been established:
 
 | Stage | Name | Scope / exit condition | Status |
 |---|---|---|---|
-| 1 | Architecture and repository foundation | Document architecture, security/data rules, repo structure, development workflow, and establish tested Android/backend skeletons. | **IN PROGRESS** |
-| 2 | Data integrations and historical migration | Implement provider adapters, ingestion, normalization, provenance, deduplication, incremental sync, caching, and validated historical import. | NOT STARTED |
+| 1 | Architecture and repository foundation | Document architecture, security/data rules, repo structure, development workflow, and establish tested Android/backend skeletons. | **COMPLETED** |
+| 2 | Data integrations and historical migration | Implement provider adapters, ingestion, normalization, provenance, deduplication, incremental sync, caching, and validated historical import. | **IN PROGRESS** |
 | 3 | Football intelligence | Build reliable team, player, competition, fixture, form, availability, and match-context representations. | NOT STARTED |
 | 4 | New statistical prediction engine | Develop and independently evaluate goal and outcome models, features, probability generation, and calibration. | NOT STARTED |
 | 5 | AI research and tactical intelligence | Add evidence-grounded research for lineups, injuries, tactics, schedule load, travel, and material data gaps. | NOT STARTED |
@@ -49,7 +49,7 @@ The following decisions and project foundations have been established:
 
 A stage is not complete merely because files exist. Its exit condition must be met and supported by tests, reports, or other verifiable evidence.
 
-## 4. Current work — Stage 1
+## 4. Current work — Stage 2
 
 ### Completed within Stage 1
 - [x] Repository created and verified; public visibility confirmed.
@@ -66,6 +66,14 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [ ] Verify the repository tree and confirm the Android build is reproducible.
 - [ ] Add backend configuration conventions and API contract tests as needed.
 - [ ] Complete Stage 1 exit review after successful verification.
+
+### Current Stage 2 work
+- [ ] Define normalized provider contracts and source provenance models.
+- [ ] Add contract tests for timestamp correctness and fixture identity integrity.
+- [ ] Inspect existing approved provider integrations and their current API schemas.
+- [ ] Verify provider terms, quota limits, field provenance, and historical coverage.
+- [ ] Implement one provider adapter at a time with fixtures/mocks and repeatable tests.
+- [ ] Design canonical persistence and migration only after normalized contracts are stable.
 
 ### Not yet built
 - Android authentication, API integration, navigation, local persistence, and product screens.
@@ -159,12 +167,13 @@ No accuracy, profitability, or positive-ROI claim is permitted without independe
 | 2026-11-16 | Product is a personal-use, cloud-backed native Android app. |
 | 2026-11-16 | Prediction intelligence will be rebuilt from scratch; only inspected non-prediction infrastructure/data utilities may be reused. |
 | 2026-11-16 | Initial FastAPI, Android Compose, CI, security, README, and architecture foundations committed to main. |
+| 2026-11-16 | Stage 1 passed backend tests/lint and Android debug compilation in CI runs #43853169748 and #43853312298; Stage 1 marked complete and Stage 2 started. |
 
 Add new decisions with dates. Do not silently overwrite material architectural decisions; record the reason for changes.
 
 ## 11. Blockers and risks
 
-- **Android build pending:** backend tests and lint pass; the Android debug build remains in progress in GitHub Actions run #43853169748.
+- **Provider validation pending:** no individual data provider has yet been integrated or certified in this repository.
 - **Incomplete product implementation:** current backend and Android code are minimal foundations, not a working football analysis application.
 - **Provider coverage and terms:** must be verified before Stage 2 integrations are approved.
 - **Historical data quality:** imports may contain missing IDs, incomplete timestamps, or inconsistent competition naming.
@@ -175,11 +184,11 @@ No active external blocker has been verified at this point.
 
 ## 12. Next execution queue
 
-1. Finish and verify Android debug build in GitHub Actions run #43853169748.
-2. Fix any Android compilation failures and rerun CI.
-3. Verify a successful clean Android debug build and backend test run.
-4. Add configuration and API-contract foundations only where required for Stage 1.
-5. Record CI run identifiers and close Stage 1 only when all exit criteria pass.
+1. Define provider-neutral normalized fixture and provenance contracts.
+2. Add automated tests for required identifiers, timezone-aware timestamps, and invalid fixtures.
+3. Inspect and validate approved provider API contracts, terms, quotas, and coverage.
+4. Implement the first provider adapter without committing credentials.
+5. Design database persistence and incremental ingestion after the contracts are tested.
 
 ## 13. Update protocol
 
