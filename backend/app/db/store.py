@@ -70,11 +70,14 @@ class PostgresIngestionStore:
         forbidden = {
             "api_key",
             "apikey",
+            "x_api_key",
             "authorization",
             "access_token",
+            "auth_token",
             "token",
             "password",
             "secret",
+            "api_secret",
             "client_secret",
         }
         if isinstance(value, Mapping):
@@ -86,6 +89,16 @@ class PostgresIngestionStore:
         elif isinstance(value, (list, tuple)):
             for child in value:
                 PostgresIngestionStore._reject_sensitive_request_params(child)
+
+    @staticmethod
+    def _validate_endpoint(endpoint: str) -> None:
+        if (
+            not endpoint.strip()
+            or "://" in endpoint
+            or "?" in endpoint
+            or "#" in endpoint
+        ):
+            raise IngestionStoreError("ENDPOINT_MUST_BE_PATH_ONLY")
 
     @staticmethod
     def _safe_response_headers(headers: Mapping[str, Any] | None) -> dict[str, str]:
@@ -311,7 +324,8 @@ class PostgresIngestionStore:
         self._require_aware(fetched_at, "FETCHED_AT")
         self._require_aware(quota_reset_at, "QUOTA_RESET_AT")
         self._require_aware(retention_until, "RETENTION_UNTIL")
-        if not endpoint.strip() or not request_id.strip() or not raw_body:
+        self._validate_endpoint(endpoint)
+        if not request_id.strip() or not raw_body:
             raise IngestionStoreError("PROVIDER_RESPONSE_REQUIRED_FIELDS_MISSING")
         if not 100 <= http_status <= 599:
             raise IngestionStoreError("INVALID_HTTP_STATUS")
@@ -866,6 +880,7 @@ class PostgresIngestionStore:
     ) -> int:
         self._require_aware(started_at, "REQUEST_STARTED_AT")
         self._require_aware(finished_at, "REQUEST_FINISHED_AT")
+        self._validate_endpoint(endpoint)
         if finished_at is not None and finished_at < started_at:
             raise IngestionStoreError("REQUEST_FINISHED_BEFORE_STARTED")
         if http_status is not None and not 100 <= http_status <= 599:
@@ -926,6 +941,9 @@ class PostgresIngestionStore:
         rate_limit_minute: int | None = None,
         quota_remaining: int | None = None,
     ) -> int:
+        self._require_aware(checked_at, "ENTITLEMENT_CHECKED_AT")
+        if not plan_code.strip() or not entitlement_status.strip():
+            raise IngestionStoreError("ENTITLEMENT_IDENTITY_REQUIRED")
         self._authorize(
             approval,
             scope_value="account_status",
@@ -1003,6 +1021,8 @@ class PostgresIngestionStore:
         details: Mapping[str, Any],
     ) -> int:
         self._require_aware(event_at, "IMPORT_EVENT_AT")
+        if not event_type.strip():
+            raise IngestionStoreError("IMPORT_EVENT_TYPE_REQUIRED")
         details_json, _ = self._canonical_json(details)
         row = self.connection.execute(
             """
@@ -1088,6 +1108,8 @@ class PostgresIngestionStore:
         expected_version: int | None,
     ) -> int:
         self._require_aware(updated_at, "WATERMARK_UPDATED_AT")
+        if any(not value.strip() for value in (provider, source_id, data_class, scope)):
+            raise IngestionStoreError("WATERMARK_IDENTITY_REQUIRED")
         if expected_version is None:
             row = self.connection.execute(
                 """
@@ -1136,6 +1158,8 @@ class PostgresIngestionStore:
         source_observation_id: int | None = None,
         import_run_id: int | None = None,
     ) -> int:
+        if any(not value.strip() for value in (provider, source_id, provider_entity_id, reason_code)):
+            raise IngestionStoreError("QUARANTINE_IDENTITY_REQUIRED")
         details_json, _ = self._canonical_json(details)
         row = self.connection.execute(
             """
