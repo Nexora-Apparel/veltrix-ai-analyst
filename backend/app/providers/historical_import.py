@@ -230,6 +230,41 @@ class FixturePagePersister:
                 quota_remaining=self._quota_int(headers, "x-ratelimit-remaining"),
                 provider_response_id=response_id,
             )
+            request_key = str(response["request_key"])
+            if response_id is not None:
+                linked = self.connection.execute(
+                    """
+                    UPDATE veltrix_ai_analyst.import_request_reservations
+                    SET provider_response_id = %s
+                    WHERE import_run_id = %s AND request_key = %s
+                      AND window_start = %s AND window_end = %s
+                      AND page_number = %s AND endpoint = %s
+                      AND provider_response_id IS NULL
+                    RETURNING id
+                    """,
+                    (
+                        response_id,
+                        self.import_run_id,
+                        request_key,
+                        response["window_start"],
+                        response["window_end"],
+                        response["page_number"],
+                        response["endpoint"],
+                    ),
+                ).fetchone()
+                if linked is None:
+                    existing = self.connection.execute(
+                        """
+                        SELECT provider_response_id
+                        FROM veltrix_ai_analyst.import_request_reservations
+                        WHERE import_run_id = %s AND request_key = %s
+                        """,
+                        (self.import_run_id, request_key),
+                    ).fetchone()
+                    if existing is None or existing[0] != response_id:
+                        raise HistoricalImportError(
+                            "RESERVATION_RESPONSE_LINK_CONFLICT"
+                        )
         self.last_response_id = response_id
         self.last_response_sha256 = response_hash
         self.last_http_status = int(response["http_status"])
@@ -416,40 +451,46 @@ def _replay_captured_page(
     params_hash = hashlib.sha256(
         json.dumps(params, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
-    row = connection.execute(
+    evidence = connection.execute(
         """
         SELECT r.window_start, r.window_end, r.page_number, r.endpoint,
-               r.params_sha256, r.reserved_at,
-               e.http_status, e.provider_response_id,
+               r.params_sha256, r.reserved_at, r.provider_response_id,
                p.http_status, p.raw_body, p.response_sha256, p.request_params,
-               p.endpoint, p.fetched_at
+               p.endpoint, p.fetched_at,
+               EXISTS (
+                   SELECT 1
+                   FROM veltrix_ai_analyst.provider_request_events e
+                   WHERE e.provider_response_id = r.provider_response_id
+                     AND e.endpoint = r.endpoint
+                     AND e.request_params = p.request_params
+                     AND e.http_status = p.http_status
+                     AND e.started_at >= r.reserved_at
+               ) AS has_matching_event
         FROM veltrix_ai_analyst.import_request_reservations r
-        LEFT JOIN veltrix_ai_analyst.provider_request_events e
-          ON e.endpoint = r.endpoint
-         AND e.request_params = %s
-         AND e.started_at >= r.reserved_at
-         AND e.provider_response_id IS NOT NULL
         LEFT JOIN veltrix_ai_analyst.provider_responses p
-          ON p.id = e.provider_response_id
+          ON p.id = r.provider_response_id
         WHERE r.import_run_id = %s AND r.request_key = %s
-        ORDER BY e.started_at
         """,
-        (Jsonb(params), import_run_id, request_key),
-    ).fetchall()
-    if not row:
+        (import_run_id, request_key),
+    ).fetchone()
+    if evidence is None:
         return None
-    if len(row) != 1:
-        raise HistoricalImportError("CAPTURED_RESPONSE_EVIDENCE_AMBIGUOUS")
-    evidence = row[0]
     expected = (window.start_at, window.end_at, page_number, endpoint, params_hash)
     if tuple(evidence[:5]) != expected:
         raise HistoricalImportError("CAPTURED_RESPONSE_RESERVATION_SCOPE_MISMATCH")
-    if evidence[6] != 200 or evidence[8] != 200 or evidence[7] is None:
+    if evidence[6] is None:
+        return None
+    if evidence[7] != 200 or not evidence[13]:
         raise HistoricalImportError("CAPTURED_RESPONSE_NOT_SUCCESSFULLY_LINKED")
-    raw_body = bytes(evidence[9] or b"")
+    raw_body = bytes(evidence[8] or b"")
     digest = hashlib.sha256(raw_body).hexdigest() if raw_body else None
-    stored_digest = str(evidence[10]).strip() if evidence[10] is not None else None
-    if not raw_body or digest != stored_digest or evidence[11] != params or evidence[12] != endpoint:
+    stored_digest = str(evidence[9]).strip() if evidence[9] is not None else None
+    if (
+        not raw_body
+        or digest != stored_digest
+        or evidence[10] != params
+        or evidence[11] != endpoint
+    ):
         raise HistoricalImportError("CAPTURED_RESPONSE_INTEGRITY_OR_PARAMS_MISMATCH")
     try:
         payload = json.loads(raw_body)
@@ -461,10 +502,10 @@ def _replay_captured_page(
     pagination = payload.get("pagination") or {}
     if not isinstance(rows, list) or not isinstance(pagination, dict):
         raise HistoricalImportError("CAPTURED_RESPONSE_SCHEMA_INVALID")
-    fetched_at = evidence[13]
+    fetched_at = evidence[12]
     try:
         fixtures = tuple(_normalize_fixture(item, fetched_at) for item in rows)
-    except (TypeError, ValueError, KeyError):
+    except ProviderError:
         raise HistoricalImportError("CAPTURED_RESPONSE_FIXTURE_NORMALIZATION_FAILED") from None
     persister.last_request = {
         "request_key": request_key,
@@ -474,12 +515,12 @@ def _replay_captured_page(
         "endpoint": endpoint,
         "request_params": params,
     }
-    persister.last_response_id = int(evidence[7])
+    persister.last_response_id = int(evidence[6])
     persister.last_response_sha256 = digest
     persister.last_http_status = 200
     persister({
         "raw_body": raw_body,
-        "provider_response_id": int(evidence[7]),
+        "provider_response_id": int(evidence[6]),
         "fixtures": fixtures,
         "has_more": bool(pagination.get("has_more", False)),
         "page_number": page_number,
