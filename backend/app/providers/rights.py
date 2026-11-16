@@ -138,11 +138,11 @@ def evaluate_source_use(
         return RightsDecision(False, "SOURCE_RIGHTS_NOT_APPROVED", approval.approval_id)
     if scope_value not in approval.scope_values:
         return RightsDecision(False, "SOURCE_SCOPE_NOT_APPROVED", approval.approval_id)
-    if evaluated_at < approval.valid_from_utc.astimezone(timezone.utc):
+    if evaluated_at < approval.valid_from_utc.astimezone(UTC):
         return RightsDecision(False, "SOURCE_APPROVAL_NOT_YET_VALID", approval.approval_id)
     if (
         approval.valid_until_utc is not None
-        and evaluated_at >= approval.valid_until_utc.astimezone(timezone.utc)
+        and evaluated_at >= approval.valid_until_utc.astimezone(UTC)
     ):
         return RightsDecision(False, "SOURCE_APPROVAL_EXPIRED", approval.approval_id)
     if purpose is DataUsePurpose.RAW_REDISTRIBUTION and not approval.raw_redistribution_allowed:
@@ -174,7 +174,7 @@ def evaluate_record_scope(
 ) -> RightsDecision:
     """Reject records whose provider, source, type, scope or approval validity fails."""
     _require_aware(at_utc, "RIGHTS_EVALUATION_TIME")
-    evaluated_at = at_utc.astimezone(timezone.utc)
+    evaluated_at = at_utc.astimezone(UTC)
     if provider != approval.provider or source_id != approval.source_id:
         return RightsDecision(False, "SOURCE_APPROVAL_IDENTITY_MISMATCH", approval.approval_id)
     if scope_type != approval.scope_type or scope_value not in approval.scope_values:
@@ -183,11 +183,11 @@ def evaluate_record_scope(
         return RightsDecision(False, "SOURCE_DATA_TYPE_NOT_APPROVED", approval.approval_id)
     if approval.status is not ApprovalStatus.APPROVED:
         return RightsDecision(False, "SOURCE_RIGHTS_NOT_APPROVED", approval.approval_id)
-    if evaluated_at < approval.valid_from_utc.astimezone(timezone.utc):
+    if evaluated_at < approval.valid_from_utc.astimezone(UTC):
         return RightsDecision(False, "SOURCE_APPROVAL_NOT_YET_VALID", approval.approval_id)
     if (
         approval.valid_until_utc is not None
-        and evaluated_at >= approval.valid_until_utc.astimezone(timezone.utc)
+        and evaluated_at >= approval.valid_until_utc.astimezone(UTC)
     ):
         return RightsDecision(False, "SOURCE_APPROVAL_EXPIRED", approval.approval_id)
     return RightsDecision(True, "SOURCE_RECORD_SCOPE_APPROVED", approval.approval_id)
