@@ -1,7 +1,7 @@
 import hashlib
 import json
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -216,6 +216,25 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
         ).fetchone()
         assert effective_status is not None
         assert effective_status[0] == "REVOKED"
+
+        connection.execute(
+            """
+            INSERT INTO veltrix_ai_analyst.source_approval_status_events (
+                approval_id, status, evidence_uri, evidence_sha256, effective_at, reason_code
+            ) VALUES (%s, 'APPROVED', 'https://example.test/future-reapproval', %s, %s, 'FUTURE_EVENT')
+            """,
+            (approval_id, "c" * 64, datetime.now(UTC) + timedelta(days=1)),
+        )
+        still_revoked = connection.execute(
+            """
+            SELECT effective_status
+            FROM veltrix_ai_analyst.effective_source_approvals
+            WHERE approval_id = %s
+            """,
+            (approval_id,),
+        ).fetchone()
+        assert still_revoked is not None
+        assert still_revoked[0] == "REVOKED"
 
 
 def test_migration_runner_rejects_wrong_database_target() -> None:
