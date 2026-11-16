@@ -82,6 +82,20 @@ CREATE TABLE veltrix_ai_analyst.source_approval_status_events (
     UNIQUE (approval_id, status, evidence_sha256)
 );
 
+CREATE OR REPLACE VIEW veltrix_ai_analyst.effective_source_approvals AS
+SELECT
+    approval.*,
+    COALESCE(latest_event.status, approval.status) AS effective_status,
+    COALESCE(latest_event.effective_at, approval.valid_from) AS effective_status_at
+FROM veltrix_ai_analyst.source_approvals AS approval
+LEFT JOIN LATERAL (
+    SELECT event.status, event.effective_at
+    FROM veltrix_ai_analyst.source_approval_status_events AS event
+    WHERE event.approval_id = approval.approval_id
+    ORDER BY event.effective_at DESC, event.id DESC
+    LIMIT 1
+) AS latest_event ON TRUE;
+
 CREATE TABLE veltrix_ai_analyst.provider_responses (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     provider TEXT NOT NULL,
