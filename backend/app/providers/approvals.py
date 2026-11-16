@@ -23,7 +23,9 @@ FIVEDOLLAR_COMMUNITY_APPROVAL = SourceApproval(
             "4212821298",  # Spain La Liga
         }
     ),
-    data_types=frozenset({"fixtures_and_results"}),
+    data_types=frozenset(
+        {"fixtures_and_results", "competition_catalogue", "team_catalogue"}
+    ),
     status=ApprovalStatus.APPROVED,
     permitted_uses=frozenset(
         {
@@ -35,6 +37,39 @@ FIVEDOLLAR_COMMUNITY_APPROVAL = SourceApproval(
             DataUsePurpose.MODEL_TRAINING,
             DataUsePurpose.MODEL_VALIDATION,
             DataUsePurpose.BENCHMARKING,
+            DataUsePurpose.CACHE,
+            DataUsePurpose.PUBLIC_DISPLAY,
+        }
+    ),
+    commercial_use_allowed=False,
+    terms_url="https://5dollarfootballapi.com/terms",
+    terms_version="October 2026",
+    evidence_uri="docs/providers/5DOLLAR_TERMS_REVIEW.md",
+    evidence_sha256="e818940f894b924ec3e25fbf36e3a43e3969b17d509b21b7a476ddf14a10d879",
+    rights_basis="TERMS",
+    reviewed_at_utc=datetime(2026, 11, 12, tzinfo=UTC),
+    reviewer_id="project-owner",
+    valid_from_utc=datetime(2026, 11, 12, tzinfo=UTC),
+    attribution_required=True,
+    attribution_text="Football data by 5DollarFootballAPI",
+    attribution_url="https://5dollarfootballapi.com",
+    raw_redistribution_allowed=False,
+)
+
+
+FIVEDOLLAR_ACCOUNT_APPROVAL = SourceApproval(
+    approval_id="approval-5dollar-community-account-metadata-2026-11-12",
+    provider="5DollarFootballAPI",
+    source_id="5dollarfootballapi",
+    scope_type="account_resource",
+    scope_values=frozenset({"account_status", "competition_catalogue"}),
+    data_types=frozenset({"account_entitlements", "competition_catalogue"}),
+    status=ApprovalStatus.APPROVED,
+    permitted_uses=frozenset(
+        {
+            DataUsePurpose.COLLECTION,
+            DataUsePurpose.STORAGE,
+            DataUsePurpose.INTERNAL_ANALYSIS,
             DataUsePurpose.CACHE,
             DataUsePurpose.PUBLIC_DISPLAY,
         }
