@@ -8,12 +8,12 @@ import httpx
 import psycopg
 import pytest
 
+from app.providers import historical_import
 from app.db.migrations import apply_migrations
 from app.providers.five_dollar import FiveDollarFootballProvider
-import app.providers.historical_import as historical_import
 from app.providers.historical_import import (
-    HistoricalImportError,
     IMPORT_APPROVAL,
+    HistoricalImportError,
     run_brazil_serie_b_historical_import,
 )
 
