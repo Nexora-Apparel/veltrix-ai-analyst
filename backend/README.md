@@ -77,3 +77,17 @@ The runner verifies each SQL file's SHA-256, refuses database-name mismatches, b
 It explicitly blocks the legacy `veltrix-football` database names. CI validates
 the migration against an ephemeral PostgreSQL 16 service. No production database
 has been provisioned or connected by this commit.
+
+## Runtime ingestion store
+
+`app.db.store.PostgresIngestionStore` is the rights-aware persistence boundary.
+It writes immutable source approvals, raw provider responses, source observations,
+provider-local competition/team/fixture projections, import runs/checkpoints and
+quarantine records. It validates exact source scope and effective approval status
+before writes, strips sensitive response headers, rejects secret-like request
+parameters, and prevents provider identity mismatches.
+
+The store accepts an existing `psycopg.Connection`; the caller owns transaction
+boundaries. It does not create a production connection or perform automatic
+provider downloads. Live ingestion is enabled only after a private database and
+provider credentials have been configured and verified.
