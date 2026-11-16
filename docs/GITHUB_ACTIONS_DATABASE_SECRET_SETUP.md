@@ -56,3 +56,19 @@ Before any live dispatch, review the preflight output and the collection plan. A
 ## Current state
 
 This document records setup instructions only. It does not assert that the GitHub secret has been configured or that a live import has run. The historical import remains locked until the secret is configured and the zero-provider-request preflight succeeds.
+
+
+## Automated read-only preflight
+
+The user confirmed on 2026-11-16 that the GitHub environment secret was saved. The value remains private and has not been validated by a GitHub Actions runner yet.
+
+After the preflight workflow is merged into `main`, run **Actions → Brazil Serie B Historical Import Preflight → Run workflow**. This is separate from the live importer and has no 5Dollar API key or collection confirmation input.
+
+The script performs a read-only PostgreSQL transaction and checks:
+- URI target and `current_database()` both identify `veltrix_ai_analyst`;
+- project schema and migration checksums 001–004;
+- registered approval `approval-5dollar-community-fixtures-2026-11-12` is effective, non-commercial, attributed and includes Brazil Serie B competition `522514093` plus the approved fixture/result and catalogue data types;
+- no unresolved 5Dollar quarantine rows;
+- no PLANNED or RUNNING 5Dollar import run.
+
+It reports sanitized checks only and makes zero provider requests, zero reservations, zero fixture writes and zero database mutations. A passing preflight does not itself authorize collection.
