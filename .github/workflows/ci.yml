@@ -13,12 +13,14 @@ on:
       - "scripts/verify_5dollar_access.py"
       - "scripts/collect_aimidas_brazil_serie_b_snapshot.py"
       - "scripts/apply_migrations.py"
+      - "scripts/collect_brazil_serie_b_history.py"
       - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "backend/**"
       - "android/**"
+      - "scripts/collect_brazil_serie_b_history.py"
       - ".github/workflows/ci.yml"
 
 permissions:
@@ -60,7 +62,7 @@ jobs:
       - name: Run tests
         run: pytest
       - name: Run lint
-        run: ruff check app tests ../scripts/verify_5dollar_access.py ../scripts/collect_aimidas_brazil_serie_b_snapshot.py ../scripts/apply_migrations.py
+        run: ruff check app tests ../scripts/verify_5dollar_access.py ../scripts/collect_aimidas_brazil_serie_b_snapshot.py ../scripts/apply_migrations.py ../scripts/collect_brazil_serie_b_history.py
 
   android:
     name: Android debug build
