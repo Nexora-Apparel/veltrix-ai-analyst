@@ -1,0 +1,55 @@
+name: Controlled Brazil Serie B Historical Import
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_collection:
+        description: Type COLLECT_BRAZIL_SERIE_B to authorize the bounded import
+        required: true
+        type: choice
+        options:
+          - NO
+          - COLLECT_BRAZIL_SERIE_B
+        default: NO
+      resume_run_id:
+        description: Optional PAUSED import run ID to resume
+        required: false
+        type: string
+
+concurrency:
+  group: veltrix-brazil-serie-b-historical-import
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    if: inputs.confirm_collection == 'COLLECT_BRAZIL_SERIE_B'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: veltrix-historical-import
+    env:
+      VELTRIX_AI_ANALYST_DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY: ${{ secrets.FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY }}
+      VELTRIX_ENABLE_HISTORICAL_COLLECTION: "true"
+      RESUME_RUN_ID: ${{ inputs.resume_run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install importer
+        run: python -m pip install -e backend
+      - name: Run bounded historical import
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$RESUME_RUN_ID" ]]; then
+            python scripts/collect_brazil_serie_b_history.py --execute --resume-run-id "$RESUME_RUN_ID"
+          else
+            python scripts/collect_brazil_serie_b_history.py --execute
+          fi
