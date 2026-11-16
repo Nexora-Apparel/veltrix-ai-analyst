@@ -353,3 +353,20 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [ ] Add database-backed regression tests for exact replay, no HTTP on replay, atomic checkpoint/fixture writes, ambiguous/missing/hash-mismatched evidence, and pagination.
 - [ ] Run full CI (backend tests, Ruff, Android debug build); inspect results and fix all failures.
 - **Safety state:** run 3 remains paused; no new provider calls, no new import run, no model training, and no publication. The initial code commit is not evidence that recovery is validated.
+
+
+---
+
+## 2026-11-16 — Run 3 captured-response recovery fix merged
+
+- [x] PR [#11](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/11) merged by squash; merge commit `ff8e59c52d9ff5c189570a9a174287d0a5ec66fe`.
+- [x] CI run [#43962841690](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43962841690) completed successfully: backend tests passed, Ruff passed, Android debug build and APK artifact upload passed.
+- [x] Added migration `005_reservation_response_link.sql`, checksum `f890cab29b59c1dd930041ef8af760a7dfa01bf09d48e1684377436652f652b8`. It adds a foreign-key response link and unique constraint, and backfills only exact window/page HTTP 200 evidence with one unambiguous match.
+- [x] Captured HTTP responses are linked to their exact durable reservation in the same transaction as response/event persistence.
+- [x] Resume replays the exact reservation-bound response only after validating request window/page/hash, provider/source/approval identity, matching request event, response status, JSON envelope, and raw-body SHA-256. Fixture observations and checkpoint remain atomic.
+- [x] Added PostgreSQL integration regression test `test_resume_replays_reserved_response_without_repeating_provider_http`; complete CI passed.
+- [x] Updated the manual collection workflow to run the checksum-verified migration runner against the dedicated `veltrix_ai_analyst` database before importer execution. It does not log credentials.
+- [x] Read-only Neon query confirmed run 3 still has 24 reservations and all 24 HTTP 200 response events uniquely match their exact reserved window/page; the interrupted Aug 29–Sep 5 page has exactly one reservation. No writes/provider calls were made by this inspection.
+- **Current state:** run 3 remains RUNNING in Neon; 23/34 checkpoints complete; 247 fixtures persisted; 24/40 requests reserved; the interrupted page awaits replay; 10 later windows pending; 0 quarantine rows at last inspection.
+- **Next action:** manually dispatch [Controlled Brazil Serie B Historical Import](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/historical-brazil-serie-b.yml) with `confirm_collection=COLLECT_BRAZIL_SERIE_B` and `resume_run_id=3`. The workflow applies migration 005 first, then resumes run 3. Do not leave resume_run_id blank; that would start a new run.
+- **No model training, odds collection, calibration, or prediction publication is enabled by this recovery.** The run must complete and its automatic validator must pass before the collected data is accepted.
