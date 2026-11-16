@@ -1,5 +1,6 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -9,12 +10,12 @@ import pytest
 from app.db.migrations import apply_migrations
 from app.db.request_budget import (
     PostgresRequestBudget,
+    RequestBudgetError,
     RequestBudgetExceeded,
     ReservationConflict,
 )
 from app.db.store import PostgresIngestionStore
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
-from app.providers.rights import SourceApproval
 
 
 @pytest.fixture
@@ -28,7 +29,7 @@ def database_url() -> str:
 
 
 def make_run(database_url: str, budget: int) -> int:
-    approval = SourceApproval.model_validate(FIVEDOLLAR_COMMUNITY_APPROVAL.model_dump())
+    approval = replace(\n        FIVEDOLLAR_COMMUNITY_APPROVAL,\n        approval_id=f\"test-budget-approval-{uuid4().hex}\",\n        source_id=f\"test-budget-source-{uuid4().hex}\",\n    )
     with psycopg.connect(database_url) as conn:
         run_id = PostgresIngestionStore(conn).create_import_run(
             approval,
@@ -125,7 +126,7 @@ def test_reservation_refuses_non_running_run(database_url: str) -> None:
         )
     now = datetime.now(UTC)
     with psycopg.connect(database_url, autocommit=True) as conn:
-        with pytest.raises(Exception, match="IMPORT_RUN_NOT_RUNNING"):
+        with pytest.raises(RequestBudgetError, match="IMPORT_RUN_NOT_RUNNING"):
             PostgresRequestBudget(conn).reserve(
                 import_run_id=run_id,
                 request_key=uuid4().hex,
