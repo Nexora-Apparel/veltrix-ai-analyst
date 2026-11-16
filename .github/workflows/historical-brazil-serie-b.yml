@@ -44,6 +44,11 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - name: Install importer
         run: python -m pip install -e backend
+      - name: Apply checksum-verified database migrations
+        env:
+          DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+        run: |
+          python -c "import os; from app.db.migrations import apply_migrations; print('MIGRATIONS_APPLIED:', ','.join(apply_migrations(os.environ['DATABASE_URL'], expected_database='veltrix_ai_analyst', allow_remote=True)))"
       - name: Run bounded historical import
         id: import
         shell: bash
