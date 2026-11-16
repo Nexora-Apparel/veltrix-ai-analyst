@@ -8,7 +8,13 @@ import psycopg
 import pytest
 
 from app.db.migrations import apply_migrations
-from app.db.store import EvidenceConflict, IngestionStoreError, PostgresIngestionStore, RightsDenied
+from app.db.store import (
+    EvidenceConflict,
+    IngestionStoreError,
+    PostgresIngestionStore,
+    RightsDenied,
+    WatermarkConflict,
+)
 from app.providers.approvals import FIVEDOLLAR_ACCOUNT_APPROVAL, FIVEDOLLAR_COMMUNITY_APPROVAL
 from app.providers.rights import SourceApproval
 from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
@@ -479,3 +485,40 @@ def test_store_persists_account_entitlements_and_rate_limit_events(connection) -
         (request_event_id,),
     ).fetchone()
     assert request_event == (429, 60.0, 0)
+
+
+
+def test_store_advances_sync_watermark_with_optimistic_versioning(connection) -> None:
+    store = PostgresIngestionStore(connection)
+    suffix = uuid4().hex
+    key = {
+        "provider": "test-provider",
+        "source_id": f"test-source-{suffix}",
+        "data_class": "fixtures",
+        "scope": "competition:522514093",
+    }
+    now = datetime.now(UTC)
+
+    first_version = store.advance_watermark(
+        **key,
+        cursor_value="2026-11-01T00:00:00Z",
+        updated_at=now,
+        expected_version=None,
+    )
+    assert first_version == 0
+
+    second_version = store.advance_watermark(
+        **key,
+        cursor_value="2026-11-02T00:00:00Z",
+        updated_at=now + timedelta(seconds=1),
+        expected_version=0,
+    )
+    assert second_version == 1
+
+    with pytest.raises(WatermarkConflict, match="WATERMARK_VERSION_CONFLICT"):
+        store.advance_watermark(
+            **key,
+            cursor_value="stale-cursor",
+            updated_at=now + timedelta(seconds=2),
+            expected_version=0,
+        )
