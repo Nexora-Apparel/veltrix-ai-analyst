@@ -73,3 +73,12 @@
 - [x] No additional provider calls were made; test data is synthetic and does not contain the raw provider payload.
 - [ ] CI run #43917944552 is pending/in progress at the time of this update; do not treat the test addition as validated until backend tests, Ruff and Android build finish successfully.
 - [ ] Next: complete CI verification, then design a request-budgeted resumable historical collection plan. Do not start a bulk pull.
+
+
+### 5Dollar collection budget design — 2026-11-16
+- [x] Added `docs/5DOLLAR_BRAZIL_SERIE_B_HISTORICAL_COLLECTION_PLAN.md` (VAA-INGEST-PLAN-001 v1.0).
+- [x] Plan is limited to Brazil Serie B provider ID `522514093`, candidate interval 2026-03-21 to 2026-11-09 UTC, fixture/results only.
+- [x] Set a hard 40-fixture-request ceiling, seven-day non-overlapping windows, page size 100, no retries, and explicit stop/checkpoint rules.
+- [x] Documented source-rights, attribution, four-day result-availability proxy and non-PIT restrictions.
+- [ ] Plan is design-only: no collection requests, database provisioning, imports or model operations have been performed under it.
+- [ ] CI run #43917944552 backend tests and Ruff passed; Android debug build was still in progress at this update.
