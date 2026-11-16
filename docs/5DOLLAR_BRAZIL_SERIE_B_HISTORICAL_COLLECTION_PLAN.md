@@ -1,7 +1,7 @@
 # 5Dollar Brazil Serie B — bounded historical collection plan
 
 **Document ID:** VAA-INGEST-PLAN-001  
-**Version:** 1.1  
+**Version:** 1.2  
 **Date:** 2026-11-16  
 **Status:** LIVE COLLECTION BLOCKED — the persistent budget/checkpoint controls and ephemeral PostgreSQL dry-run are verified; the independent Neon database is not yet provisioned.
 
@@ -39,6 +39,7 @@ The candidate interval aligns with the observed AI Midas Brazil Serie B snapshot
 - Throttle to no more than 5 requests/minute, comfortably below the Community burst limit.
 - PostgreSQL enforces `request_budget <= 40` with a schema constraint. Each request must first acquire a durable reservation in `import_request_reservations`; a row lock on the import run serializes workers and atomically increments `requests_used` before the HTTP call. Request 41 is rejected by the database-backed budget service.
 - Each reservation has a unique `(import_run_id, request_key)` and a canonical request-parameter hash. A repeated identical key returns `created=false`; the caller must not issue HTTP for that reservation again. Reusing a key with different request data is a hard conflict.
+- `FiveDollarFootballProvider.fetch_fixtures` now accepts a request-reserver callback and a `require_request_reservation` mode. The historical path must set the requirement to true. The callback runs immediately before every page request; a missing callback or an existing reservation blocks the HTTP call.
 - Do not make status, competition-discovery, odds, or other provider calls inside this collection run.
 
 If the required pages exceed the 40-request ceiling, stop with a resumable incomplete run. Do not silently raise the ceiling or widen the plan.
@@ -107,7 +108,7 @@ Every rejected record must be retained in a quarantine record with a reason code
 
 ## 8. Database and execution gate
 
-The repository now contains migration `003_import_request_reservations.sql`, the atomic `PostgresRequestBudget` service, and deterministic checkpoint recovery reads. CI run [#43921580933](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43921580933) passed all 72 backend tests, Ruff lint, Android debug build and APK artifact upload. Its PostgreSQL-backed dry-run simulated the 34 windows with 40 reservations (34 first pages plus six second pages), recovered all 34 checkpoints, and rejected reservation 41 without making external provider calls. Additional tests cover duplicate-key concurrency, paused runs, provider stop conditions, and the database-level `request_budget <= 40` constraint.
+The repository now contains migration `003_import_request_reservations.sql`, the atomic `PostgresRequestBudget` service, and deterministic checkpoint recovery reads. CI run [#43922283499](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43922283499) passed all 76 backend tests, Ruff lint, Android debug build and APK artifact upload. Its PostgreSQL-backed dry-run simulated the 34 windows with 40 reservations (34 first pages plus six second pages), recovered all 34 checkpoints, and rejected reservation 41 without making external provider calls. A separate integration test proved the actual provider HTTP boundary uses the persisted budget: first reservation sent one mocked HTTP request; replay of the same page was blocked before a second request. Additional tests cover duplicate-key concurrency, paused runs, provider stop conditions, and the database-level `request_budget <= 40` constraint.
 
 **Live execution remains blocked because the separate Neon resource does not exist yet.** The only Neon organization available to the connected account is `Vercel: Nexora Apparel`, which is managed by Vercel. Direct Neon project creation was rejected by the provider. The Neon Marketplace integration is installed on the Vercel team, but resource provisioning is exposed through Vercel Marketplace/CLI rather than the available Neon project-creation action. The existing `VELTRIXFOOTBALL` database/project is not to be reused.
 
@@ -137,7 +138,7 @@ The pilot is accepted only if:
 - Plan written: yes; v1.1.
 - Provider requests made for this plan: zero (the only provider call was the earlier bounded two-day probe, not this collection).
 - Ephemeral PostgreSQL dry-run: passed; 34 checkpoints recovered, exactly 40 simulated reservations accepted, request 41 rejected.
-- CI: run #43921580933 passed 72 backend tests, Ruff, Android debug build and APK upload.
+- CI: run #43922283499 passed 76 backend tests, Ruff, Android debug build and APK upload.
 - Independent Neon database provisioned: no; Vercel-managed organization requires Marketplace resource provisioning.
 - Historical import: not started.
 - Models/predictions changed: no.
