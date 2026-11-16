@@ -5,8 +5,8 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import psycopg
-from psycopg.types.json import Jsonb
 import pytest
+from psycopg.types.json import Jsonb
 
 from app.db.migrations import apply_migrations
 from app.db.store import PostgresIngestionStore
@@ -105,12 +105,14 @@ def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
                 ),
             )
 
-            with pytest.raises(
-                psycopg.errors.RaiseException,
-                match="PRE_MATCH_SOURCE_PUBLICATION_EVIDENCE_REQUIRED",
+            with (
+                pytest.raises(
+                    psycopg.errors.RaiseException,
+                    match="PRE_MATCH_SOURCE_PUBLICATION_EVIDENCE_REQUIRED",
+                ),
+                connection.transaction(),
             ):
-                with connection.transaction():
-                    connection.execute(
+                connection.execute(
                         """
                         INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
                             source_observation_id, source_sighting_id, feature_key,
