@@ -15,6 +15,7 @@ from app.db.request_budget import (
     ReservationConflict,
 )
 from app.db.store import PostgresIngestionStore
+from app.providers.collection_plan import build_date_windows
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
 
 
@@ -166,3 +167,85 @@ def test_reservation_refuses_non_running_run(database_url: str) -> None:
             endpoint="/v1/leagues/522514093/fixtures",
             request_params={"page": 1},
         )
+
+
+
+def test_controlled_collection_dry_run_resumes_34_checkpoints_and_stops_at_40(
+    database_url: str,
+) -> None:
+    run_id = make_run(database_url, 40)
+    windows = build_date_windows(
+        datetime(2026, 3, 21, tzinfo=UTC),
+        datetime(2026, 11, 9, tzinfo=UTC),
+    )
+    assert len(windows) == 34
+
+    with psycopg.connect(database_url) as store_connection:
+        store = PostgresIngestionStore(store_connection)
+        for index, window in enumerate(windows):
+            with psycopg.connect(database_url, autocommit=True) as quota_connection:
+                first = PostgresRequestBudget(quota_connection).reserve(
+                    import_run_id=run_id,
+                    request_key=f"window-{index}-page-1",
+                    window_start=window.start_at,
+                    window_end=window.end_at,
+                    page_number=1,
+                    endpoint="/v1/leagues/522514093/fixtures",
+                    request_params={"page": 1, "per_page": 100},
+                )
+                assert first.created
+
+            requests_for_window = 1
+            cursor = "page=1"
+            if index < 6:
+                with psycopg.connect(database_url, autocommit=True) as quota_connection:
+                    second = PostgresRequestBudget(quota_connection).reserve(
+                        import_run_id=run_id,
+                        request_key=f"window-{index}-page-2",
+                        window_start=window.start_at,
+                        window_end=window.end_at,
+                        page_number=2,
+                        endpoint="/v1/leagues/522514093/fixtures",
+                        request_params={"page": 2, "per_page": 100},
+                    )
+                    assert second.created
+                requests_for_window = 2
+                cursor = "page=2"
+
+            store.save_checkpoint(
+                import_run_id=run_id,
+                window_start=window.start_at,
+                window_end=window.end_at,
+                status="COMPLETED",
+                records_seen=0,
+                requests_used=requests_for_window,
+                cursor_value=cursor,
+            )
+
+        recovered = PostgresIngestionStore(store_connection).load_checkpoints(
+            import_run_id=run_id
+        )
+        assert len(recovered) == 34
+        assert all(checkpoint["status"] == "COMPLETED" for checkpoint in recovered)
+        assert sum(checkpoint["requests_used"] for checkpoint in recovered) == 40
+
+    last_window = windows[-1]
+    with (
+        psycopg.connect(database_url, autocommit=True) as quota_connection,
+        pytest.raises(RequestBudgetExceeded, match="PERSISTED_REQUEST_BUDGET_EXHAUSTED"),
+    ):
+        PostgresRequestBudget(quota_connection).reserve(
+            import_run_id=run_id,
+            request_key="window-33-page-2",
+            window_start=last_window.start_at,
+            window_end=last_window.end_at,
+            page_number=2,
+            endpoint="/v1/leagues/522514093/fixtures",
+            request_params={"page": 2, "per_page": 100},
+        )
+
+    with psycopg.connect(database_url) as conn:
+        assert conn.execute(
+            "SELECT requests_used, request_budget FROM veltrix_ai_analyst.import_runs WHERE id = %s",
+            (run_id,),
+        ).fetchone() == (40, 40)
