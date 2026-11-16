@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16  
+**Last updated:** 2026-11-16 (initial readiness audit)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -12,9 +12,9 @@
 
 - **Overall stage:** Stage 2 of 10 — Data integrations and historical data migration
 - **Current workstream:** Stage 2 provider ingestion orchestration, private database connection and historical capture.
-- **Implementation status:** Stage 1 is complete. Provider adapters, exact source approvals, rights enforcement, AI Midas snapshot validation/quarantine, PostgreSQL schema and runtime ingestion store are merged. PR #1 (`c219b4d`) passed 44 backend tests; PR #2 (`f3bec93`) passed 52 backend tests, Ruff lint, Android debug build and APK artifact upload.
+- **Implementation status:** Stage 1 is complete. Provider adapters, exact source approvals, rights enforcement, AI Midas snapshot validation/quarantine, PostgreSQL schema and runtime ingestion store are merged. PR #1 (`c219b4d`) passed 44 backend tests; PR #2 (`f3bec93`) passed 52 backend tests, Ruff lint, Android debug build and APK artifact upload. The hybrid ML architecture is documented in `docs/ML_MODEL_ARCHITECTURE.md`, but no prediction model is implemented or certified.
 - **Release status:** Not deployed. No private database is provisioned, no historical data has been imported into the new database, and prediction functionality does not exist yet.
-- **Next milestone:** Connect the provider adapters to the tested ingestion store through a bounded import orchestrator, then perform a verified account check and controlled historical import.
+- **Next milestone:** Complete the quota-safe source snapshot/account preflight and coverage manifest; then implement and test a bounded, resumable import orchestrator before any historical import.
 
 ## 2. What is established
 
@@ -28,6 +28,7 @@ The following decisions and project foundations have been established:
 - [x] Global football coverage objective, subject to real provider coverage and transparent data-quality restrictions.
 - [x] Cloud-backed architecture: heavy ingestion, research, and model computation run on the backend; Android is the user-facing client.
 - [x] Prediction intelligence will be built independently from scratch.
+- [x] Candidate hybrid statistical/ML architecture documented in `docs/ML_MODEL_ARCHITECTURE.md`; it is a specification, not an implemented or validated model.
 - [x] Selective reuse is allowed only for inspected, proven provider adapters, data utilities, CI patterns, and infrastructure patterns.
 - [x] Secrets, API keys, passwords, private user data, and production credentials must never be committed to this public repository.
 - [x] No unsupported league, market, model, or accuracy claims. Evidence and validation are required before publication.
@@ -87,6 +88,17 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [ ] Build provider ingestion orchestration that connects the 5Dollar adapter to the runtime store with bounded request budgets, date windows and resumable checkpoints.
 - [ ] Provision a new private PostgreSQL database after the connection target and credentials are configured.
 - [ ] Implement bounded incremental historical ingestion only after database and provider checks are complete.
+
+### Initial readiness audit — 2026-11-16
+- [x] Audited repository metadata, merged PRs, source approvals, provider adapters, migration/store implementation, CI workflow, tests and local-data protections.
+- [x] Verified PR #1 CI run #43858717326: backend tests/lint and Android debug build succeeded.
+- [x] Verified PR #2 CI run #43860443460: backend tests/lint and Android debug build succeeded.
+- [x] Confirmed current main HEAD at audit: `d27237d594c85479282db39bfb2c1c0af215b8f6` (subsequent audit documentation commits are recorded separately).
+- [x] Confirmed AI Midas collector is local-only, checksum-pinned and quarantines one inconsistent match; raw snapshot has not yet been captured in this repository.
+- [x] Confirmed 5Dollar safe verifier performs account/Brazil competition checks without downloading historical fixtures; new repository credential is not yet verified.
+- [x] Confirmed no private database is provisioned/connected and no historical records have been imported in this repository.
+- [x] Confirmed backend currently exposes liveness/root endpoints only; no model, feature pipeline, training, calibration or prediction endpoint exists.
+- [x] Recorded full audit in `docs/ledger/2026-11-16-initial-readiness-audit.md`.
 
 ### Not yet built
 - Android authentication, API integration, navigation, local persistence, and product screens.
@@ -192,6 +204,8 @@ No accuracy, profitability, or positive-ROI claim is permitted without independe
 | 2026-11-16 | PR #1 merged as `c219b4d`; CI run #43858717326 passed 44 backend tests, lint, Android debug build and artifact upload. |
 | 2026-11-16 | PR #2 merged as `f3bec93`; CI run #43860443460 passed 52 backend tests, lint, Android debug build and artifact upload. |
 | 2026-11-16 | Runtime ingestion store added in PR #2; caller controls transactions and no live provider downloads or production database connection are enabled. |
+| 2026-11-16 | Hybrid statistical/ML model architecture documented in `docs/ML_MODEL_ARCHITECTURE.md`; candidates remain unimplemented and unapproved pending data and chronological evaluation. |
+| 2026-11-16 | Initial readiness audit confirms PR #1/#2 CI success, but no new-repository private DB, AI Midas local snapshot, 5Dollar secret verification, historical import or prediction service exists yet; see `docs/ledger/2026-11-16-initial-readiness-audit.md`. |
 
 Add new decisions with dates. Do not silently overwrite material architectural decisions; record the reason for changes.
 
@@ -209,13 +223,14 @@ Add new decisions with dates. Do not silently overwrite material architectural d
 
 ## 12. Next execution queue
 
-1. Build the provider ingestion orchestrator around the merged adapter, rights registry and PostgreSQL store; enforce request budgets and resumable date windows.
-2. Add the existing 5Dollar Community credential to the new repository secrets and run the manual account/league check.
-3. Run the AI Midas snapshot command to capture the pinned Brazil Serie B file into `.local-data/`; verify the hash and quarantine the known inconsistent match.
-4. Provision a new private PostgreSQL database only after the connection target and credentials are configured; never reuse the legacy database.
-5. Apply the checksum-verified migrations with the explicit database name and remote opt-in safeguards.
-6. Implement bounded historical import for the seven already-qualified 5Dollar competitions, subject to current account recheck.
-7. Persist AI Midas data as non-commercial, non-PIT historical evidence; keep post-match stats out of pre-match feature sets.
+1. Capture the pinned AI Midas Brazil Serie B snapshot locally; verify SHA-256/Git blob hash, row counts and quarantine output. Keep the raw file outside Git and retain its non-PIT status.
+2. Add the 5Dollar Community credential to the new repository secret store and run the safe account/Brazil competition verifier. This is a small preflight, not a historical pull.
+3. Produce a source coverage manifest by competition, season/date range, fields, timestamp quality, rights and missingness. Reconcile source overlaps without guessing cross-provider identities.
+4. Design the historical collection budget and resumable import manifest; do not issue bulk calls until the request count and date windows are reviewed.
+5. Provision/verify a separate private PostgreSQL database only after the exact target and credentials are configured; never reuse the legacy database.
+6. Apply checksum-verified migrations to that exact new database with explicit remote opt-in.
+7. Implement the bounded ingestion orchestrator and test it against ephemeral PostgreSQL before real imports.
+8. After Stage 2 source qualification, define Stage 3 football-intelligence features and the offline chronological evaluation harness before implementing models.
 
 ## 13. Update protocol
 
