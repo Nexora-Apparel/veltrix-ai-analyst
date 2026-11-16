@@ -173,6 +173,7 @@ def test_malformed_provider_page_is_saved_and_quarantined(
 ) -> None:
     monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
     monkeypatch.setattr(historical_import, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    monkeypatch.setattr(historical_validation, "EXPECTED_DATABASE_NAME", "veltrix_test")
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
