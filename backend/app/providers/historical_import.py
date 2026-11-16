@@ -24,6 +24,7 @@ from app.providers.contracts import ProviderCompetition, ProviderFixture, Source
 from app.providers.five_dollar import (
     FiveDollarFootballProvider,
     ProviderError,
+    _normalize_fixture,
 )
 from app.providers.rights import SourceApproval
 
@@ -385,6 +386,107 @@ class FixturePagePersister:
         return True
 
 
+def _replay_captured_page(
+    connection: psycopg.Connection[Any],
+    *,
+    import_run_id: int,
+    window: DateWindow,
+    page_number: int,
+    persister: FixturePagePersister,
+) -> bool | None:
+    """Replay one reserved page from its immutable captured HTTP response.
+
+    Returns the captured pagination flag, or None when no response evidence
+    exists. Ambiguous or invalid evidence fails closed; this function never
+    performs provider HTTP or creates a request reservation.
+    """
+    start = int(window.start_at.timestamp())
+    end = int(window.end_at.timestamp())
+    params = {
+        "start_time": start,
+        "end_time": end,
+        "status": "all",
+        "page": page_number,
+        "per_page": 100,
+    }
+    endpoint = f"/leagues/{COMPETITION_ID}/fixtures"
+    request_key = (
+        f"{COMPETITION_ID}:{window.start_at.isoformat()}:{window.end_at.isoformat()}:page:{page_number}"
+    )
+    params_hash = hashlib.sha256(
+        json.dumps(params, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    row = connection.execute(
+        """
+        SELECT r.window_start, r.window_end, r.page_number, r.endpoint,
+               r.params_sha256, r.reserved_at,
+               e.http_status, e.provider_response_id,
+               p.http_status, p.raw_body, p.response_sha256, p.request_params,
+               p.endpoint, p.fetched_at
+        FROM veltrix_ai_analyst.import_request_reservations r
+        LEFT JOIN veltrix_ai_analyst.provider_request_events e
+          ON e.endpoint = r.endpoint
+         AND e.request_params = %s
+         AND e.started_at >= r.reserved_at
+         AND e.provider_response_id IS NOT NULL
+        LEFT JOIN veltrix_ai_analyst.provider_responses p
+          ON p.id = e.provider_response_id
+        WHERE r.import_run_id = %s AND r.request_key = %s
+        ORDER BY e.started_at
+        """,
+        (Jsonb(params), import_run_id, request_key),
+    ).fetchall()
+    if not row:
+        return None
+    if len(row) != 1:
+        raise HistoricalImportError("CAPTURED_RESPONSE_EVIDENCE_AMBIGUOUS")
+    evidence = row[0]
+    expected = (window.start_at, window.end_at, page_number, endpoint, params_hash)
+    if tuple(evidence[:5]) != expected:
+        raise HistoricalImportError("CAPTURED_RESPONSE_RESERVATION_SCOPE_MISMATCH")
+    if evidence[6] != 200 or evidence[8] != 200 or evidence[7] is None:
+        raise HistoricalImportError("CAPTURED_RESPONSE_NOT_SUCCESSFULLY_LINKED")
+    raw_body = bytes(evidence[9] or b"")
+    digest = hashlib.sha256(raw_body).hexdigest() if raw_body else None
+    stored_digest = str(evidence[10]).strip() if evidence[10] is not None else None
+    if not raw_body or digest != stored_digest or evidence[11] != params or evidence[12] != endpoint:
+        raise HistoricalImportError("CAPTURED_RESPONSE_INTEGRITY_OR_PARAMS_MISMATCH")
+    try:
+        payload = json.loads(raw_body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        raise HistoricalImportError("CAPTURED_RESPONSE_INVALID_JSON") from None
+    if not isinstance(payload, dict) or payload.get("success") != 1:
+        raise HistoricalImportError("CAPTURED_RESPONSE_UNSUCCESSFUL_ENVELOPE")
+    rows = payload.get("data")
+    pagination = payload.get("pagination") or {}
+    if not isinstance(rows, list) or not isinstance(pagination, dict):
+        raise HistoricalImportError("CAPTURED_RESPONSE_SCHEMA_INVALID")
+    fetched_at = evidence[13]
+    try:
+        fixtures = tuple(_normalize_fixture(item, fetched_at) for item in rows)
+    except (TypeError, ValueError, KeyError):
+        raise HistoricalImportError("CAPTURED_RESPONSE_FIXTURE_NORMALIZATION_FAILED") from None
+    persister.last_request = {
+        "request_key": request_key,
+        "window_start": window.start_at,
+        "window_end": window.end_at,
+        "page_number": page_number,
+        "endpoint": endpoint,
+        "request_params": params,
+    }
+    persister.last_response_id = int(evidence[7])
+    persister.last_response_sha256 = digest
+    persister.last_http_status = 200
+    persister({
+        "raw_body": raw_body,
+        "provider_response_id": int(evidence[7]),
+        "fixtures": fixtures,
+        "has_more": bool(pagination.get("has_more", False)),
+        "page_number": page_number,
+    })
+    return bool(pagination.get("has_more", False))
+
+
 def _ensure_run_checkpoints(
     store: PostgresIngestionStore,
     *,
@@ -630,16 +732,26 @@ async def run_brazil_serie_b_historical_import(
                         request_params,
                     )
 
-                await active_provider.fetch_fixtures(
-                    window.start_at,
-                    window.end_at,
-                    competition_ids=[COMPETITION_ID],
-                    request_reserver=reserve_page,
-                    require_request_reservation=True,
-                    response_observer=persister,
-                    raw_response_observer=persister.record_raw_response,
-                    start_page=start_page,
-                )
+                replay_has_more = None
+                if checkpoint["status"] == "RUNNING":
+                    replay_has_more = _replay_captured_page(
+                        store_connection,
+                        import_run_id=import_run_id,
+                        window=window,
+                        page_number=start_page,
+                        persister=persister,
+                    )
+                if replay_has_more is None or replay_has_more:
+                    await active_provider.fetch_fixtures(
+                        window.start_at,
+                        window.end_at,
+                        competition_ids=[COMPETITION_ID],
+                        request_reserver=reserve_page,
+                        require_request_reservation=True,
+                        response_observer=persister,
+                        raw_response_observer=persister.record_raw_response,
+                        start_page=(start_page + 1 if replay_has_more else start_page),
+                    )
                 refreshed = next(
                     item
                     for item in store.load_checkpoints(import_run_id=import_run_id)
