@@ -5,8 +5,8 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import psycopg
-import pytest
 from psycopg.types.json import Jsonb
+import pytest
 
 from app.db.migrations import apply_migrations
 from app.db.store import PostgresIngestionStore
@@ -117,13 +117,13 @@ def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
                             feature_value, prediction_cutoff_at
                         ) VALUES (%s, %s, %s, %s, %s)
                         """,
-                        (
-                            ineligible_observation_id,
-                            ineligible_sighting_id,
-                            "test.must_be_rejected",
-                            Jsonb({"value": 2}),
-                            cutoff_at,
-                        ),
+                    (
+                        ineligible_observation_id,
+                        ineligible_sighting_id,
+                        "test.must_be_rejected",
+                        Jsonb({"value": 2}),
+                        cutoff_at,
+                    ),
                     )
 
             stored = connection.execute(
