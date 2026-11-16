@@ -323,3 +323,29 @@ def test_finished_fixture_without_both_scores_is_downgraded_to_unknown() -> None
     assert results[0].status == "unknown"
     assert results[0].home_goals is None
     assert results[0].away_goals is None
+
+
+
+@pytest.mark.parametrize("status_code", [401, 403, 500])
+def test_auth_permission_and_server_failures_stop_without_retry(status_code: int) -> None:
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(status_code, json={"success": 0, "error": "stop"})
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    with pytest.raises(ProviderAPIError, match=f"HTTP {status_code}"):
+        asyncio.run(
+            provider.fetch_fixtures(
+                datetime(2026, 11, 16, tzinfo=UTC),
+                datetime(2026, 11, 16, 12, tzinfo=UTC),
+                competition_ids=["522514093"],
+            )
+        )
+
+    assert requests == 1
