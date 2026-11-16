@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16 (dedicated Neon database migrated; 40-request DB dry-run passed; live importer remains gated)  
+**Last updated:** 2026-11-16 (resumable importer merged; CI passed; live collection remains locked)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -12,7 +12,7 @@
 
 - **Stage:** Stage 2 — Data integrations and historical migration.
 - **Completed foundations:** Stage 1; PostgreSQL provenance schema and runtime ingestion store (PR #1 and #2); hybrid ML architecture specification; AI Midas pinned snapshot verification; 5Dollar Community account/Brazil competition preflight; bounded 5Dollar Brazil Serie B fixture endpoint probe; deterministic date-window planner; persistent request-budget enforcement; checkpoint recovery; controlled ephemeral-PostgreSQL dry-run.
-- **Not built:** independent Neon production database/connection, live historical import, football feature pipeline, model training/calibration, prediction API, Android product flows, production deployment.
+- **Not built:** secure GitHub Actions connection to dedicated Neon database, live historical import, football feature pipeline, model training/calibration, prediction API, Android product flows, production deployment.
 - **No prediction model has been trained or certified.**
 - **Project isolation:** no legacy VELTRIX FOOTBALL 2.0 prediction logic, weights, priors, calibration or decision rules are reused.
 
@@ -129,3 +129,12 @@
 - [ ] Python migration runner was not executed because Vercel CLI environment pull redacted the sensitive `DATABASE_URL`; migrations were applied directly through Neon SQL and checksums verified.
 - [ ] Live historical collection remains gated on a tested resumable importer/orchestrator and secure configuration of the dedicated DB connection for the GitHub Actions runner. Vercel integration-generated URL variables currently target `neondb`, not `veltrix_ai_analyst`.
 - [x] No historical 5Dollar API calls, odds calls, fixture imports, model training or prediction publication.
+
+
+### Historical importer — 2026-11-16
+- [x] PR #3 merged: resumable Brazil Serie B importer, response provenance, fixture persistence, 34 checkpoints, page resume, 40-request cap and 12-second request spacing.
+- [x] Manual-only workflow requires explicit collection confirmation and an optional paused run ID.
+- [x] CI #43941999882 passed 80 backend tests, Ruff, Android debug build and APK artifact upload. Tests use mocked HTTP; no 5Dollar calls were made.
+- [ ] Live import remains locked until `VELTRIX_AI_ANALYST_DATABASE_URL` is securely configured as a GitHub Actions environment secret.
+- [ ] Add raw-response capture and quarantine for non-success or malformed responses before live collection. Existing importer stops safely and does not retry a reserved request.
+- [x] No historical 5Dollar requests, odds calls, fixture imports, model training or prediction publication occurred.
