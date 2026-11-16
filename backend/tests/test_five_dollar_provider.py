@@ -6,6 +6,7 @@ import pytest
 
 from app.providers.five_dollar import (
     FiveDollarFootballProvider,
+    ProviderAPIError,
     ProviderConfigurationError,
     ProviderLeagueMovedError,
     ProviderRateLimitError,
@@ -249,3 +250,25 @@ def test_account_status_returns_plan_and_quota_metadata() -> None:
     assert status["limits"]["rate_limit"] == 300
     assert status["limits"]["burst_per_minute"] == 20
     assert status["usage"]["today"] == 17
+
+
+
+def test_malformed_score_is_rejected_instead_of_silently_truncated() -> None:
+    row = fixture_row(503, "2026-11-16T10:00:00+00:00")
+    row["goals"] = {"home": 1.5, "away": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=response_payload([row]))
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    with pytest.raises(ProviderAPIError):
+        asyncio.run(
+            provider.fetch_fixtures(
+                datetime(2026, 11, 16, tzinfo=UTC),
+                datetime(2026, 11, 16, 12, tzinfo=UTC),
+                competition_ids=["77"],
+            )
+        )
