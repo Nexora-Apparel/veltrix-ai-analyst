@@ -25,6 +25,7 @@ RequestReservationCallback = Callable[
     [str, datetime, datetime, int, str, Mapping[str, str | int]], bool
 ]
 ResponseObserver = Callable[[Mapping[str, Any]], None]
+RawResponseObserver = Callable[[Mapping[str, Any]], int | None]
 
 
 class ProviderError(RuntimeError):
@@ -413,6 +414,7 @@ class FiveDollarFootballProvider:
         request_reserver: RequestReservationCallback | None = None,
         require_request_reservation: bool = False,
         response_observer: ResponseObserver | None = None,
+        raw_response_observer: RawResponseObserver | None = None,
         start_page: int = 1,
     ) -> Sequence[ProviderFixture]:
         if start_page < 1:
@@ -510,6 +512,25 @@ class FiveDollarFootballProvider:
                                 f"5DollarFootballAPI network request failed ({type(exc).__name__})"
                             ) from None
 
+                        fetched_at = datetime.now(UTC)
+                        provider_response_id = None
+                        if raw_response_observer is not None:
+                            provider_response_id = raw_response_observer(
+                                {
+                                    "request_key": request_key,
+                                    "window_start": window_start,
+                                    "window_end": window_end,
+                                    "page_number": page,
+                                    "endpoint": f"/{path}",
+                                    "request_params": dict(params),
+                                    "request_started_at": request_started_at,
+                                    "fetched_at": fetched_at,
+                                    "http_status": response.status_code,
+                                    "raw_body": response.content,
+                                    "response_headers": dict(response.headers),
+                                }
+                            )
+
                         if response.status_code == 429:
                             raw_retry = response.headers.get("Retry-After")
                             try:
@@ -549,7 +570,6 @@ class FiveDollarFootballProvider:
                                 "5DollarFootballAPI response is missing its data list"
                             )
 
-                        fetched_at = datetime.now(UTC)
                         page_fixtures: list[ProviderFixture] = []
                         for row in rows:
                             if not isinstance(row, dict):
@@ -578,6 +598,7 @@ class FiveDollarFootballProvider:
                                     "http_status": response.status_code,
                                     "raw_body": response.content,
                                     "response_headers": dict(response.headers),
+                                    "provider_response_id": provider_response_id,
                                     "fixtures": tuple(page_fixtures),
                                     "has_more": has_more,
                                 }
