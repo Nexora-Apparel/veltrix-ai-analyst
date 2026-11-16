@@ -15,8 +15,8 @@ from app.db.request_budget import (
     ReservationConflict,
 )
 from app.db.store import PostgresIngestionStore
-from app.providers.collection_plan import build_date_windows
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
+from app.providers.collection_plan import build_date_windows
 
 
 @pytest.fixture
