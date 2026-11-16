@@ -158,3 +158,76 @@ def test_live_import_requires_both_explicit_execution_gates(
                 approval=IMPORT_APPROVAL,
             )
         )
+
+
+
+def test_malformed_provider_page_is_saved_and_quarantined(
+    database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
+    monkeypatch.setattr(historical_import, "EXPECTED_DATABASE_NAME", "veltrix_test")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=b'{"success":1,"data":',
+            headers={
+                "Content-Type": "application/json",
+                "X-Request-Id": "malformed-page-request",
+            },
+        )
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-only-key",
+        transport=httpx.MockTransport(handler),
+    )
+    with pytest.raises(HistoricalImportError, match="COLLECTION_PAUSED:ProviderAPIError"):
+        asyncio.run(
+            run_brazil_serie_b_historical_import(
+                database_url,
+                api_key="test-only-key",
+                execute=True,
+                approval=IMPORT_APPROVAL,
+                provider=provider,
+            )
+        )
+
+    with psycopg.connect(database_url) as connection:
+        run_id = connection.execute(
+            """
+            SELECT id FROM veltrix_ai_analyst.import_runs
+            WHERE rights_approval_id = %s
+            ORDER BY id DESC LIMIT 1
+            """,
+            (IMPORT_APPROVAL.approval_id,),
+        ).fetchone()[0]
+        run = connection.execute(
+            """
+            SELECT status, request_budget, requests_used, records_seen,
+                   records_quarantined
+            FROM veltrix_ai_analyst.import_runs WHERE id = %s
+            """,
+            (run_id,),
+        ).fetchone()
+        quarantine = connection.execute(
+            """
+            SELECT reason_code, http_status, provider_response_id, response_sha256
+            FROM veltrix_ai_analyst.ingestion_quarantine
+            WHERE import_run_id = %s
+            """,
+            (run_id,),
+        ).fetchone()
+        raw_body = connection.execute(
+            """
+            SELECT raw_body FROM veltrix_ai_analyst.provider_responses
+            WHERE request_id = 'malformed-page-request'
+            """
+        ).fetchone()[0]
+
+    assert run == ("PAUSED", 40, 1, 1, 1)
+    assert quarantine is not None
+    assert quarantine[0] == "PAGE_PROVIDERAPIERROR"
+    assert quarantine[1] == 200
+    assert quarantine[2] is not None
+    assert quarantine[3] is not None
+    assert bytes(raw_body) == b'{"success":1,"data":'
