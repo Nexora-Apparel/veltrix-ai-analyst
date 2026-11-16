@@ -1,0 +1,71 @@
+from datetime import UTC, datetime
+
+from app.providers.approvals import (
+    AIMIDAS_BRAZIL_SERIE_B_APPROVAL,
+    FIVEDOLLAR_COMMUNITY_APPROVAL,
+)
+from app.providers.rights import DataUsePurpose, evaluate_source_use
+
+
+def test_5dollar_approval_is_limited_to_seven_verified_competitions() -> None:
+    approval = FIVEDOLLAR_COMMUNITY_APPROVAL
+
+    assert len(approval.scope_values) == 7
+    assert "522514093" in approval.scope_values
+    assert "*" not in approval.scope_values
+    assert approval.commercial_use_allowed is False
+    assert approval.raw_redistribution_allowed is False
+
+    allowed = evaluate_source_use(
+        approval,
+        DataUsePurpose.HISTORICAL_IMPORT,
+        scope_value="522514093",
+        at_utc=datetime(2026, 11, 16, tzinfo=UTC),
+    )
+    denied = evaluate_source_use(
+        approval,
+        DataUsePurpose.HISTORICAL_IMPORT,
+        scope_value="unverified-league",
+        at_utc=datetime(2026, 11, 16, tzinfo=UTC),
+    )
+
+    assert allowed.allowed is True
+    assert denied.allowed is False
+
+
+def test_5dollar_public_display_requires_attribution() -> None:
+    decision = evaluate_source_use(
+        FIVEDOLLAR_COMMUNITY_APPROVAL,
+        DataUsePurpose.PUBLIC_DISPLAY,
+        scope_value="522514093",
+        at_utc=datetime(2026, 11, 16, tzinfo=UTC),
+        public_facing=True,
+    )
+
+    assert decision.allowed is True
+    assert decision.reason_code == "APPROVED_WITH_ATTRIBUTION"
+    assert decision.attribution_text == "Football data by 5DollarFootballAPI"
+
+
+def test_ai_midas_approval_is_file_specific_and_noncommercial() -> None:
+    approval = AIMIDAS_BRAZIL_SERIE_B_APPROVAL
+
+    assert approval.scope_values == frozenset({"advanced stats/Brazil Serie B 2026.csv"})
+    assert approval.commercial_use_allowed is False
+    assert approval.raw_redistribution_allowed is False
+
+    allowed = evaluate_source_use(
+        approval,
+        DataUsePurpose.INTERNAL_ANALYSIS,
+        scope_value="advanced stats/Brazil Serie B 2026.csv",
+        at_utc=datetime(2026, 11, 16, tzinfo=UTC),
+    )
+    raw_export = evaluate_source_use(
+        approval,
+        DataUsePurpose.RAW_REDISTRIBUTION,
+        scope_value="advanced stats/Brazil Serie B 2026.csv",
+        at_utc=datetime(2026, 11, 16, tzinfo=UTC),
+    )
+
+    assert allowed.allowed is True
+    assert raw_export.allowed is False
