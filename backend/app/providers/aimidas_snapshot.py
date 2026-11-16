@@ -193,6 +193,17 @@ def fetch_raw(spec: SnapshotSpec = BRAZIL_SERIE_B_2026) -> bytes:
     return raw
 
 
+def _validate_private_output_path(output_dir: Path) -> None:
+    repository_root = Path(__file__).resolve().parents[3]
+    target = output_dir.resolve()
+    try:
+        relative = target.relative_to(repository_root)
+    except ValueError:
+        return
+    if not relative.parts or relative.parts[0] != ".local-data":
+        raise SnapshotError("RAW_SNAPSHOT_MUST_BE_STORED_OUTSIDE_PUBLIC_REPOSITORY")
+
+
 def collect_snapshot(
     output_dir: Path,
     *,
@@ -200,6 +211,7 @@ def collect_snapshot(
     retrieved_at: datetime | None = None,
     spec: SnapshotSpec = BRAZIL_SERIE_B_2026,
 ) -> dict[str, object]:
+    _validate_private_output_path(output_dir)
     retrieved_at = retrieved_at or datetime.now(UTC)
     if retrieved_at.tzinfo is None or retrieved_at.utcoffset() is None:
         raise SnapshotError("RETRIEVAL_TIMESTAMP_MUST_BE_TIMEZONE_AWARE")
