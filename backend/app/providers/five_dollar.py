@@ -22,6 +22,7 @@ MAX_PAGES_PER_WINDOW = 100
 RequestReservationCallback = Callable[
     [str, datetime, datetime, int, str, Mapping[str, str | int]], bool
 ]
+ResponseObserver = Callable[[Mapping[str, Any]], None]
 
 
 class ProviderError(RuntimeError):
@@ -404,7 +405,11 @@ class FiveDollarFootballProvider:
         competition_ids: Sequence[str] | None = None,
         request_reserver: RequestReservationCallback | None = None,
         require_request_reservation: bool = False,
+        response_observer: ResponseObserver | None = None,
+        start_page: int = 1,
     ) -> Sequence[ProviderFixture]:
+        if start_page < 1:
+            raise ValueError("start_page must be at least 1")
         if require_request_reservation and request_reserver is None:
             raise ProviderConfigurationError(
                 "HISTORICAL_COLLECTION_REQUIRES_PERSISTENT_REQUEST_RESERVATION"
@@ -444,7 +449,7 @@ class FiveDollarFootballProvider:
             )
             for window_start, window_end in windows:
                 for competition_id in (competitions or [None]):
-                    page = 1
+                    page = start_page
                     while True:
                         params: dict[str, str | int] = {
                             "start_time": int(window_start.timestamp()),
@@ -459,11 +464,11 @@ class FiveDollarFootballProvider:
                             else "fixtures"
                         )
 
+                        request_key = (
+                            f"{competition_id or 'global'}:"
+                            f"{window_start.isoformat()}:{window_end.isoformat()}:page:{page}"
+                        )
                         if request_reserver is not None:
-                            request_key = (
-                                f"{competition_id or 'global'}:"
-                                f"{window_start.isoformat()}:{window_end.isoformat()}:page:{page}"
-                            )
                             reserved = request_reserver(
                                 request_key,
                                 window_start,
@@ -478,6 +483,7 @@ class FiveDollarFootballProvider:
                                     "refusing to repeat the HTTP request"
                                 )
 
+                        request_started_at = datetime.now(UTC)
                         try:
                             response = await client.get(
                                 path,
@@ -531,19 +537,41 @@ class FiveDollarFootballProvider:
                                 "5DollarFootballAPI response is missing its data list"
                             )
 
+                        fetched_at = datetime.now(UTC)
+                        page_fixtures: list[ProviderFixture] = []
                         for row in rows:
                             if not isinstance(row, dict):
                                 raise ProviderAPIError(
                                     "5DollarFootballAPI returned a malformed fixture row"
                                 )
-                            fixtures.append(_normalize_fixture(row, retrieved_at))
+                            page_fixtures.append(_normalize_fixture(row, fetched_at))
 
                         pagination = payload.get("pagination") or {}
                         if not isinstance(pagination, dict):
                             raise ProviderAPIError(
                                 "5DollarFootballAPI returned malformed pagination metadata"
                             )
-                        if not pagination.get("has_more", False):
+                        has_more = bool(pagination.get("has_more", False))
+                        if response_observer is not None:
+                            response_observer(
+                                {
+                                    "request_key": request_key,
+                                    "window_start": window_start,
+                                    "window_end": window_end,
+                                    "page_number": page,
+                                    "endpoint": f"/{path}",
+                                    "request_params": dict(params),
+                                    "request_started_at": request_started_at,
+                                    "fetched_at": fetched_at,
+                                    "http_status": response.status_code,
+                                    "raw_body": response.content,
+                                    "response_headers": dict(response.headers),
+                                    "fixtures": tuple(page_fixtures),
+                                    "has_more": has_more,
+                                }
+                            )
+                        fixtures.extend(page_fixtures)
+                        if not has_more:
                             break
                         page += 1
                         if page > self._max_pages_per_window:
