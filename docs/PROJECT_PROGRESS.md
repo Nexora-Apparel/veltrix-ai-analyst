@@ -253,3 +253,16 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [x] Read-only Neon query confirmed the canonical registered approval row matches the complete source approval definition used by the importer.
 - [x] No provider HTTP calls or database writes were made during this audit/correction.
 - **Live historical collection remains LOCKED** pending separate explicit user authorization.
+
+
+---
+
+## 17. Point-in-time feature eligibility policy — 2026-11-16
+
+- [x] Drafted `docs/FEATURE_ELIGIBILITY_AND_POINT_IN_TIME_POLICY.md` before any model or feature pipeline is built.
+- [x] Explicitly separates valid post-match target labels from pre-match feature eligibility.
+- [x] Marks 5Dollar post-match statistics and the four-day availability proxy as non-PIT-certified.
+- [x] Marks AI Midas historical CSV as descriptive-only until independent publication/availability evidence is established.
+- [x] Defines required event/publication/first-observed/available/retrieved timestamps, source rights linkage, feature registry, cutoff checks, chronological splits, leakage controls and training acceptance gate.
+- [ ] Documentation PR review/merge pending.
+- No provider requests, database writes, fixture imports, odds calls or model training were performed for this policy.
