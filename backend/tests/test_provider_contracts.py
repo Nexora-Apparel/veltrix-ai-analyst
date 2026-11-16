@@ -21,7 +21,7 @@ def valid_fixture() -> dict[str, object]:
         "season_id": "2026",
         "home_team_id": "team-home",
         "away_team_id": "team-away",
-        "kickoff_at": datetime(2026, 11, 17, 15, 0, tzinfo=timezone.utc),
+        "kickoff_at": datetime(2026, 11, 17, 15, 0, tzinfo=UTC),
         "status": "scheduled",
     }
 
