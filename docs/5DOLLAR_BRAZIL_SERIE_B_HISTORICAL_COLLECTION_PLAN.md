@@ -1,9 +1,9 @@
 # 5Dollar Brazil Serie B — bounded historical collection plan
 
 **Document ID:** VAA-INGEST-PLAN-001  
-**Version:** 1.2  
+**Version:** 1.3  
 **Date:** 2026-11-16  
-**Status:** LIVE COLLECTION BLOCKED — the persistent budget/checkpoint controls and ephemeral PostgreSQL dry-run are verified; the independent Neon database is not yet provisioned.
+**Status:** DATABASE GATE PASSED — dedicated Neon database, migration ledger, source approval and Neon-backed 40-request/checkpoint dry-run are verified. Live collection remains gated pending a production-safe importer/orchestrator and secure GitHub Actions database-secret configuration.
 
 ## 1. Objective and strict scope
 
@@ -110,15 +110,11 @@ Every rejected record must be retained in a quarantine record with a reason code
 
 The repository now contains migration `003_import_request_reservations.sql`, the atomic `PostgresRequestBudget` service, and deterministic checkpoint recovery reads. CI run [#43922283499](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43922283499) passed all 76 backend tests, Ruff lint, Android debug build and APK artifact upload. Its PostgreSQL-backed dry-run simulated the 34 windows with 40 reservations (34 first pages plus six second pages), recovered all 34 checkpoints, and rejected reservation 41 without making external provider calls. A separate integration test proved the actual provider HTTP boundary uses the persisted budget: first reservation sent one mocked HTTP request; replay of the same page was blocked before a second request. Additional tests cover duplicate-key concurrency, paused runs, provider stop conditions, and the database-level `request_budget <= 40` constraint.
 
-**Live execution remains blocked because the separate Neon resource does not exist yet.** The only Neon organization available to the connected account is `Vercel: Nexora Apparel`, which is managed by Vercel. Direct Neon project creation was rejected by the provider. The Neon Marketplace integration is installed on the Vercel team, but resource provisioning is exposed through Vercel Marketplace/CLI rather than the available Neon project-creation action. The existing `VELTRIXFOOTBALL` database/project is not to be reused.
+**Database prerequisites are now verified.** A dedicated Vercel/Neon resource `young-wind-27772160` contains database `veltrix_ai_analyst` (PostgreSQL 18.7); the legacy `neondb` and VELTRIX FOOTBALL database were not used. The exact database identity was queried before schema work. Migrations 001–003 were applied transactionally through the Neon SQL connection after computing SHA-256 from the repository migration files; the resulting `public.schema_migrations` ledger was read back and matched all three checksums. The repository's Python migration runner was not executed because Vercel's CLI deliberately substituted `[SENSITIVE]` for the sensitive `DATABASE_URL` during environment pull. No credential was exposed or substituted.
 
-Before live collection:
-1. Provision a separate Neon resource/project through the Vercel Marketplace integration for VELTRIX AI ANALYST; do not attach or reuse the legacy VELTRIXFOOTBALL database.
-2. Obtain its connection string securely and configure it as a secret; never commit it or paste it into source files.
-3. Apply the checksum-verified migrations with the explicit expected database name and remote opt-in; verify `current_database()` is exactly `veltrix_ai_analyst` and inspect the migration ledger.
-4. Register and verify the effective 5Dollar source approval for this exact competition, data types, use and terms evidence.
-5. Run the controlled DB dry-run against the new independent database, including checkpoint recovery, duplicate reservation behaviour, 40-request ceiling and stop conditions.
-6. Execute the historical pilot only after all preceding checks pass.
+The approved 5Dollar Community source record is registered in this database for the documented competition/data scope, non-commercial use and attribution terms. A Neon-backed database dry-run then created 34 contiguous seven-day checkpoints and simulated 40 reservations (34 first pages plus six additional pages). It verified the hard 40 ceiling, rejected reservation 41, recovered all 34 checkpoints in deterministic order, and confirmed the provider adapter's exact ISO-8601 idempotency-key format. An initial rehearsal exposed a millisecond-format mismatch in generated keys; that rehearsal was marked FAILED and superseded by the corrected run. Both rehearsals made zero 5Dollar HTTP requests and imported zero fixture rows. The corrected run is PAUSED with 40/40 simulated reservations.
+
+**Live collection is not started.** The database gate is passed, but the repository still needs a production-safe historical import orchestrator and a secure GitHub Actions `DATABASE_URL` secret configured for that runner. The Vercel integration-generated connection variables point to `neondb`, not the dedicated database, and the sensitive custom variable cannot be pulled by the CLI. Do not weaken secret visibility or put credentials in source code/artifacts to bypass this. Do not reuse the legacy `VELTRIXFOOTBALL` database.
 
 ## 9. Acceptance criteria
 
@@ -135,10 +131,13 @@ The pilot is accepted only if:
 
 ## 10. Current execution state
 
-- Plan written: yes; v1.1.
-- Provider requests made for this plan: zero (the only provider call was the earlier bounded two-day probe, not this collection).
-- Ephemeral PostgreSQL dry-run: passed; 34 checkpoints recovered, exactly 40 simulated reservations accepted, request 41 rejected.
+- Plan written: yes; v1.3.
+- Provider requests made for this historical plan: zero; the earlier two-day probe is separate.
+- Neon database: `veltrix_ai_analyst` on project `young-wind-27772160`, PostgreSQL 18.7; identity verified.
+- Migrations 001–003: applied; recorded SHA-256 checksums are `11516fc36e78cca9d0a47f677e2ab451fc1beb6b899d74f9f007b979c98ebf07`, `a5389d81f7816837c0dfedd35784f8834c4484c13a946ea166dd6d55615c4285`, and `fa841cf34fe836f3d7d7251edd36e4d5e619d185f6adf4585ac851ebcdc0560e`. Applied through Neon SQL transactions; the Python migration runner itself remains unexecuted because the Vercel CLI does not pull sensitive variables.
+- Source approval: registered for the 5Dollar Community scope in the database.
+- Neon-backed dry-run: corrected run ID 2; 34 contiguous checkpoints recovered, 40/40 simulated reservations recorded, request 41 rejected, duplicate key found as an existing reservation; zero provider HTTP calls and zero fixture rows.
+- An earlier rehearsal (run ID 1) was marked FAILED because its generated idempotency keys included milliseconds not emitted by the provider adapter; it made no provider calls. Corrected run ID 2 is PAUSED and retained as the valid rehearsal.
 - CI: run #43922283499 passed 76 backend tests, Ruff, Android debug build and APK upload.
-- Independent Neon database provisioned: no; Vercel-managed organization requires Marketplace resource provisioning.
-- Historical import: not started.
+- Historical import: not started. Live collection remains gated on the import orchestrator and secure GitHub Actions database secret.
 - Models/predictions changed: no.
