@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -17,7 +18,6 @@ import psycopg
 
 from app.db.request_budget import PostgresRequestBudget, RequestBudgetExceeded
 from app.db.store import PostgresIngestionStore
-from dataclasses import replace
 
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
 from app.providers.collection_plan import DateWindow, build_date_windows
