@@ -81,4 +81,4 @@
 - [x] Set a hard 40-fixture-request ceiling, seven-day non-overlapping windows, page size 100, no retries, and explicit stop/checkpoint rules.
 - [x] Documented source-rights, attribution, four-day result-availability proxy and non-PIT restrictions.
 - [ ] Plan is design-only: no collection requests, database provisioning, imports or model operations have been performed under it.
-- [ ] CI run #43917944552 backend tests and Ruff passed; Android debug build was still in progress at this update.
+- [x] CI run #43917944552 completed successfully: backend tests, Ruff lint, Android debug build and APK artifact upload all passed.
