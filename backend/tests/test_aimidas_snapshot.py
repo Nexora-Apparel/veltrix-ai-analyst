@@ -17,10 +17,10 @@ from app.providers.aimidas_snapshot import (
 
 def sample_csv() -> bytes:
     return (
-        "Team,Goals,Goals Conceded,Match,Date\n"
-        "Home FC,2,1,Home FC 2-1 Away FC,2026-01-10\n"
-        "Away FC,1,2,Home FC 2-1 Away FC,2026-01-10\n"
-    ).encode("utf-8")
+        b"Team,Goals,Goals Conceded,Match,Date\n"
+        b"Home FC,2,1,Home FC 2-1 Away FC,2026-01-10\n"
+        b"Away FC,1,2,Home FC 2-1 Away FC,2026-01-10\n"
+    )
 
 
 def sample_spec(raw: bytes):
@@ -55,10 +55,10 @@ def test_snapshot_audit_rejects_team_score_mismatch() -> None:
 
 def test_snapshot_audit_rejects_duplicate_team_rows() -> None:
     raw = (
-        "Team,Goals,Goals Conceded,Match,Date\n"
-        "Home FC,2,1,Home FC 2-1 Away FC,2026-01-10\n"
-        "Home FC,2,1,Home FC 2-1 Away FC,2026-01-10\n"
-    ).encode("utf-8")
+        b"Team,Goals,Goals Conceded,Match,Date\n"
+        b"Home FC,2,1,Home FC 2-1 Away FC,2026-01-10\n"
+        b"Home FC,2,1,Home FC 2-1 Away FC,2026-01-10\n"
+    )
     with pytest.raises(SnapshotError, match="MATCH_TEAM_ROW_CARDINALITY_INVALID"):
         audit_csv(raw, sample_spec(raw))
 
