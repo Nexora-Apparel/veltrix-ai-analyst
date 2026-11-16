@@ -264,5 +264,5 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [x] Marks 5Dollar post-match statistics and the four-day availability proxy as non-PIT-certified.
 - [x] Marks AI Midas historical CSV as descriptive-only until independent publication/availability evidence is established.
 - [x] Defines required event/publication/first-observed/available/retrieved timestamps, source rights linkage, feature registry, cutoff checks, chronological splits, leakage controls and training acceptance gate.
-- [ ] Documentation PR review/merge pending.
+- [x] PR [#9](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/9) merged to `main` at `9e72b4a4bf6b6e03a642237c9fe3716ee837d80c` (documentation-only; no CI workflow was triggered for this docs-only change).
 - No provider requests, database writes, fixture imports, odds calls or model training were performed for this policy.
