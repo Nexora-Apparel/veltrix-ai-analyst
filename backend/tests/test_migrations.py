@@ -203,3 +203,12 @@ def test_migration_runner_rejects_wrong_database_target() -> None:
             database_url,
             expected_database=f"{expected_database}_wrong",
         )
+
+
+
+def test_migration_runner_refuses_remote_database_without_opt_in() -> None:
+    with pytest.raises(MigrationError, match="REMOTE_DATABASE_MIGRATIONS_DISABLED"):
+        apply_migrations(
+            "postgresql://user:password@db.example.test:5432/veltrix_ai_analyst",
+            expected_database="veltrix_ai_analyst",
+        )
