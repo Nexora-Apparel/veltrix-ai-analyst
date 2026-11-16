@@ -195,6 +195,36 @@ class FiveDollarFootballProvider:
         self._max_pages_per_window = max_pages_per_window
         self._transport = transport
 
+    async def fetch_account_status(self) -> dict[str, Any]:
+        """Return the provider plan and quota fields without exposing the API key."""
+        if not self._api_key:
+            raise ProviderConfigurationError(
+                "FIVE_DOLLAR_FOOTBALL_API_KEY is not configured"
+            )
+        async with httpx.AsyncClient(
+            base_url=self._base_url,
+            timeout=self._timeout_seconds,
+            transport=self._transport,
+            follow_redirects=False,
+        ) as client:
+            response = await client.get(
+                "status",
+                headers={"Authorization": f"Bearer {self._api_key}", "Accept": "application/json"},
+            )
+        if response.status_code == 429:
+            retry_after = response.headers.get("Retry-After")
+            raise ProviderRateLimitError(float(retry_after) if retry_after else None)
+        if response.status_code >= 400:
+            raise ProviderAPIError(f"5DollarFootballAPI returned HTTP {response.status_code}")
+        try:
+            payload = response.json()
+        except ValueError:
+            raise ProviderAPIError("5DollarFootballAPI returned invalid JSON") from None
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(payload, dict) or payload.get("success") != 1 or not isinstance(data, dict):
+            raise ProviderAPIError("5DollarFootballAPI returned an invalid account status")
+        return data
+
     async def fetch_competitions(
         self,
         country_code: str | None = None,
