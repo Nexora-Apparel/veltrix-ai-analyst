@@ -762,12 +762,13 @@ class PostgresIngestionStore:
             purpose=DataUsePurpose.HISTORICAL_IMPORT,
             at_utc=started_at or datetime.now(UTC),
         )
+        status = "RUNNING" if started_at is not None else "PLANNED"
         row = self.connection.execute(
             """
             INSERT INTO veltrix_ai_analyst.import_runs (
                 provider, source_id, import_type, boundary_start, boundary_end,
                 status, importer_version, request_budget, rights_approval_id, started_at
-            ) VALUES (%s, %s, %s, %s, %s, 'PLANNED', %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -776,6 +777,7 @@ class PostgresIngestionStore:
                 import_type,
                 boundary_start,
                 boundary_end,
+                status,
                 importer_version,
                 request_budget,
                 approval.approval_id,
