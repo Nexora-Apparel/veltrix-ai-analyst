@@ -1,0 +1,47 @@
+name: AI Midas pinned snapshot capture
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/aimidas-snapshot-capture.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aimidas-pinned-snapshot-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    name: Verify and capture approved Brazil Serie B snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install collector dependencies
+        working-directory: backend
+        run: python -m pip install .
+
+      - name: Fetch pinned source and verify integrity
+        working-directory: backend
+        run: |
+          PYTHONPATH=. python ../scripts/collect_aimidas_brazil_serie_b_snapshot.py \
+            --output-dir /tmp/veltrix-aimidas-capture
+
+      - name: Publish verification manifest only
+        uses: actions/upload-artifact@v4
+        with:
+          name: aimidas-brazil-serie-b-2026-verification
+          path: /tmp/veltrix-aimidas-capture/manifest.json
+          if-no-files-found: error
+          retention-days: 7
