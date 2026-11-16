@@ -180,39 +180,39 @@ def test_controlled_collection_dry_run_resumes_34_checkpoints_and_stops_at_40(
     )
     assert len(windows) == 34
 
-    with psycopg.connect(database_url) as store_connection:
-        store = PostgresIngestionStore(store_connection)
-        for index, window in enumerate(windows):
+    for index, window in enumerate(windows):
+        with psycopg.connect(database_url, autocommit=True) as quota_connection:
+            first = PostgresRequestBudget(quota_connection).reserve(
+                import_run_id=run_id,
+                request_key=f"window-{index}-page-1",
+                window_start=window.start_at,
+                window_end=window.end_at,
+                page_number=1,
+                endpoint="/v1/leagues/522514093/fixtures",
+                request_params={"page": 1, "per_page": 100},
+            )
+            assert first.created
+
+        requests_for_window = 1
+        cursor = "page=1"
+        if index < 6:
             with psycopg.connect(database_url, autocommit=True) as quota_connection:
-                first = PostgresRequestBudget(quota_connection).reserve(
+                second = PostgresRequestBudget(quota_connection).reserve(
                     import_run_id=run_id,
-                    request_key=f"window-{index}-page-1",
+                    request_key=f"window-{index}-page-2",
                     window_start=window.start_at,
                     window_end=window.end_at,
-                    page_number=1,
+                    page_number=2,
                     endpoint="/v1/leagues/522514093/fixtures",
-                    request_params={"page": 1, "per_page": 100},
+                    request_params={"page": 2, "per_page": 100},
                 )
-                assert first.created
+                assert second.created
+            requests_for_window = 2
+            cursor = "page=2"
 
-            requests_for_window = 1
-            cursor = "page=1"
-            if index < 6:
-                with psycopg.connect(database_url, autocommit=True) as quota_connection:
-                    second = PostgresRequestBudget(quota_connection).reserve(
-                        import_run_id=run_id,
-                        request_key=f"window-{index}-page-2",
-                        window_start=window.start_at,
-                        window_end=window.end_at,
-                        page_number=2,
-                        endpoint="/v1/leagues/522514093/fixtures",
-                        request_params={"page": 2, "per_page": 100},
-                    )
-                    assert second.created
-                requests_for_window = 2
-                cursor = "page=2"
-
-            store.save_checkpoint(
+        # Commit each window checkpoint before the next budget reservation.
+        with psycopg.connect(database_url) as store_connection:
+            PostgresIngestionStore(store_connection).save_checkpoint(
                 import_run_id=run_id,
                 window_start=window.start_at,
                 window_end=window.end_at,
@@ -222,6 +222,7 @@ def test_controlled_collection_dry_run_resumes_34_checkpoints_and_stops_at_40(
                 cursor_value=cursor,
             )
 
+    with psycopg.connect(database_url) as store_connection:
         recovered = PostgresIngestionStore(store_connection).load_checkpoints(
             import_run_id=run_id
         )
