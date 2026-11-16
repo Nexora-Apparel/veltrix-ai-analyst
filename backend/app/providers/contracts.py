@@ -59,6 +59,8 @@ class ProviderFixture(StrictModel):
     away_team_name: str | None = Field(default=None, max_length=200)
     kickoff_at: datetime
     status: FixtureStatus = "unknown"
+    status_reason: str | None = Field(default=None, max_length=120)
+    status_code: str | None = Field(default=None, max_length=40)
     home_goals: int | None = Field(default=None, ge=0)
     away_goals: int | None = Field(default=None, ge=0)
     home_corners: int | None = Field(default=None, ge=0)
@@ -79,6 +81,17 @@ class ProviderFixture(StrictModel):
     def teams_must_be_distinct(self) -> ProviderFixture:
         if self.home_team_id == self.away_team_id:
             raise ValueError("home_team_id and away_team_id must be different")
+        return self
+
+    @model_validator(mode="after")
+    def settled_score_must_match_status(self) -> ProviderFixture:
+        has_score = self.home_goals is not None and self.away_goals is not None
+        if self.status == "finished" and not has_score:
+            raise ValueError("finished fixtures require both final scores")
+        if self.status != "finished" and (
+            self.home_goals is not None or self.away_goals is not None
+        ):
+            raise ValueError("unsettled fixtures cannot carry final scores")
         return self
 
 
