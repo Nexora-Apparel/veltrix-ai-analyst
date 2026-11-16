@@ -13,6 +13,7 @@ The initial PostgreSQL schema is a provenance-first ingestion store. It is delib
 | `provider_request_events` | Request status, rate-limit metadata and response link. | Append-only |
 | `provider_entitlement_observations` | Historical plan, competition access and quota observations. | Append-only |
 | `source_observations` | Immutable normalized payloads with provider IDs, timestamps, rights and PIT status. | Append-only |
+| `source_observation_sightings` | Every retrieval/response link for a deduplicated payload, preserving later availability evidence. | Append-only |
 | `provider_competitions` / `provider_teams` | Latest provider-local entity projections. | Upsertable |
 | `provider_fixtures` | Latest normalized provider-local fixture/result projection. | Upsertable |
 | `import_runs` / `import_checkpoints` | Bounded import execution, request budgets and resumable windows. | Controlled updates |
