@@ -326,6 +326,7 @@ CREATE TABLE veltrix_ai_analyst.import_checkpoints (
     status TEXT NOT NULL CHECK (status IN ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED')),
     records_seen INTEGER NOT NULL DEFAULT 0 CHECK (records_seen >= 0),
     records_inserted INTEGER NOT NULL DEFAULT 0 CHECK (records_inserted >= 0),
+    records_duplicate INTEGER NOT NULL DEFAULT 0 CHECK (records_duplicate >= 0),
     records_rejected INTEGER NOT NULL DEFAULT 0 CHECK (records_rejected >= 0),
     records_quarantined INTEGER NOT NULL DEFAULT 0 CHECK (records_quarantined >= 0),
     requests_used INTEGER NOT NULL DEFAULT 0 CHECK (requests_used >= 0),
@@ -336,7 +337,7 @@ CREATE TABLE veltrix_ai_analyst.import_checkpoints (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (import_run_id, window_start, window_end),
     CHECK (window_end > window_start),
-    CHECK (records_seen >= records_inserted + records_rejected + records_quarantined)
+    CHECK (records_seen >= records_inserted + records_duplicate + records_rejected + records_quarantined)
 );
 
 CREATE TABLE veltrix_ai_analyst.sync_watermarks (
