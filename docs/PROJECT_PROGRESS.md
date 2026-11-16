@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16 (PR #10 merged; CI and read-only Neon preflight passed; manual historical-import dispatch is the remaining blocker)  
+**Last updated:** 2026-11-16 (run 3 completed and automatic validator passed; historical dataset remains non-PIT)nd read-only Neon preflight passed; manual historical-import dispatch is the remaining blocker)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -379,3 +379,14 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - **READY TO RESUME:** workflow [Controlled Brazil Serie B Historical Import](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/historical-brazil-serie-b.yml), select **Run workflow**, set `confirm_collection=COLLECT_BRAZIL_SERIE_B`, and set `resume_run_id=3`. Do not leave the resume ID blank.
 - The workflow migration step is idempotent: it will verify migration 005's checksum and skip reapplying it, then resume run 3. The remaining 10 windows are within the existing 40-request budget; current usage is 24/40.
 - Automatic post-import validation remains mandatory. Import is not yet complete or validated; no odds collection or model training is authorized.
+
+### 5Dollar historical import — completed and automatically validated (2026-11-16)
+- [x] Recovery workflow run [#43964327879](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43964327879), job [#133639654596](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43964327879/job/133639654596), completed successfully on 2026-11-16; workflow_dispatch resumed existing import run ID 3 on commit e1b7a426158b0312f65a4f6369494a93f2c608ee.
+- [x] Migration verification succeeded; no unapplied migrations were reported.
+- [x] Import run 3 completed all 34/34 weekly checkpoints over [2026-03-21T00:00:00Z, 2026-11-09T00:00:00Z).
+- [x] Final validator returned `passed=true`, status `COMPLETED`, 374 fixture rows and 374 fixture sightings, 374 inserted, 0 duplicates, 0 quarantined, 0 unresolved quarantines.
+- [x] 34 provider requests used against the 40-request cap; all 34 request events have raw response evidence. No budget breach.
+- [x] The captured-response recovery path reconciled the previously interrupted page without repeating its reserved HTTP request.
+- [ ] **Data-use boundary remains:** provider publication/availability timestamps were not established. Imported observations are not eligible as pre-match training features, CLV evidence, or point-in-time backtests. Use for descriptive/result-history work only unless separate timestamp evidence establishes eligibility.
+- [ ] Next stage: build source-quality/coverage and fixture canonicalization audits, then a strictly point-in-time feature eligibility pipeline. Do not train or publish predictions from this dataset as-is.
+- [ ] AI Midas snapshot remains a separate descriptive candidate source with its own anomaly quarantine; do not merge it blindly with the 5Dollar import.
