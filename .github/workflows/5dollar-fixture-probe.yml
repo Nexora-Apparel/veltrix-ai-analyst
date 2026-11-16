@@ -1,0 +1,31 @@
+name: 5Dollar Brazil Serie B fixture endpoint probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-fixture-probe:
+    name: One-request fixture endpoint probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FIVE_DOLLAR_FOOTBALL_API_KEY: ${{ secrets.FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY || secrets.FIVEDOLLARFOOTBALL_API_KEY || secrets.FIVE_DOLLAR_FOOTBALL_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install HTTP client
+        run: python -m pip install "httpx>=0.27,<1"
+      - name: Run bounded fixture probe
+        run: python scripts/probe_5dollar_brazil_fixtures.py
+      - name: Upload probe manifest
+        if: always() && hashFiles('probe-artifact/manifest.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 5dollar-brazil-serie-b-fixture-probe
+          path: probe-artifact/manifest.json
+          retention-days: 7
