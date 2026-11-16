@@ -294,6 +294,33 @@ class FixturePagePersister:
                 updated_at is not None and updated_at > reserved_at
             ):
                 return False
+            if self.last_response_id is None:
+                prior_response = self.connection.execute(
+                    """
+                    SELECT e.http_status, e.provider_response_id, p.response_sha256
+                    FROM veltrix_ai_analyst.provider_request_events e
+                    LEFT JOIN veltrix_ai_analyst.provider_responses p
+                      ON p.id = e.provider_response_id
+                    WHERE e.endpoint = %s
+                      AND e.request_params = %s
+                      AND e.started_at >= %s
+                    ORDER BY e.started_at DESC
+                    LIMIT 1
+                    """,
+                    (
+                        endpoint,
+                        Jsonb(self.last_request["request_params"]),
+                        reserved_at,
+                    ),
+                ).fetchone()
+                if prior_response is not None:
+                    self.last_http_status = prior_response[0]
+                    self.last_response_id = prior_response[1]
+                    self.last_response_sha256 = (
+                        str(prior_response[2]).strip()
+                        if prior_response[2] is not None
+                        else None
+                    )
             existing_quarantine = self.connection.execute(
                 """
                 SELECT 1 FROM veltrix_ai_analyst.ingestion_quarantine
