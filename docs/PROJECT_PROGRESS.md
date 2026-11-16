@@ -11,10 +11,10 @@
 ## 1. Executive status
 
 - **Overall stage:** Stage 2 of 10 — Data integrations and historical data migration
-- **Current workstream:** Define provider-neutral ingestion contracts and provenance requirements before implementing individual provider adapters.
-- **Implementation status:** Stage 1 foundation is committed and verified. GitHub Actions runs #43853169748 and #43853312298 both completed successfully, including backend tests/lint and Android debug APK compilation.
-- **Release status:** Not deployed. No live provider integrations, database persistence, authentication, or prediction functionality exists yet.
-- **Next milestone:** Implement and test provider-neutral data contracts, then inspect and validate each approved provider's current API contract and data rights before integration.
+- **Current workstream:** Stage 2 provider adapters, historical source qualification, provenance and private snapshot capture.
+- **Implementation status:** Stage 1 is complete. A new 5DollarFootballAPI adapter, provider-neutral contracts, a pinned AI Midas Brazil Serie B snapshot collector, provider qualification documentation, and mocked tests have been committed. Latest CI verification is pending after the most recent lint fixes.
+- **Release status:** Not deployed. No production database, live provider import, authentication, or prediction functionality exists yet.
+- **Next milestone:** Obtain a clean CI pass, verify the new repository's 5Dollar Community credential, then build the rights-aware historical ingestion and persistence layer.
 
 ## 2. What is established
 
@@ -51,35 +51,40 @@ A stage is not complete merely because files exist. Its exit condition must be m
 
 ## 4. Current work — Stage 2
 
-### Completed within Stage 1
+### Stage 1 — COMPLETED
 - [x] Repository created and verified; public visibility confirmed.
 - [x] Product scope, native Android direction, ten-stage roadmap, and reuse boundary established.
 - [x] Public-repository secret-handling rules and security policy committed.
 - [x] Root README, architecture document, and canonical progress register committed.
-- [x] FastAPI application skeleton with liveness endpoint and health tests committed.
-- [x] Kotlin/Jetpack Compose Android application skeleton and initial screen committed.
-- [x] GitHub Actions workflow committed for backend tests/lint and Android debug build.
+- [x] FastAPI liveness endpoint and health tests committed.
+- [x] Kotlin/Jetpack Compose Android foundation and initial screen committed.
+- [x] GitHub Actions CI committed for backend tests/lint and Android debug APK.
+- [x] CI runs #43853169748 and #43853312298 passed backend tests/lint and Android debug compilation.
+- [x] Later Stage 2 CI run #43855693423 passed the 20-test backend suite and lint; Android build and artifact upload passed. Subsequent changes to lint rules and snapshot tests are being rechecked in the latest run.
 
-### In progress
-- [x] Backend CI tests and lint pass in GitHub Actions run #43853169748.
-- [ ] Complete Android debug build in GitHub Actions run #43853169748 and resolve any compilation failure.
-- [ ] Verify the repository tree and confirm the Android build is reproducible.
-- [ ] Add backend configuration conventions and API contract tests as needed.
-- [ ] Complete Stage 1 exit review after successful verification.
-
-### Current Stage 2 work
-- [ ] Define normalized provider contracts and source provenance models.
-- [ ] Add contract tests for timestamp correctness and fixture identity integrity.
-- [ ] Inspect existing approved provider integrations and their current API schemas.
-- [ ] Verify provider terms, quota limits, field provenance, and historical coverage.
-- [ ] Implement one provider adapter at a time with fixtures/mocks and repeatable tests.
-- [ ] Design canonical persistence and migration only after normalized contracts are stable.
+### Stage 2 — CURRENT WORK
+- [x] Provider-neutral provenance, competition and fixture contracts.
+- [x] 5DollarFootballAPI adapter for account status, competition discovery, fixtures/results, pagination, rate-limit handling and moved competition IDs.
+- [x] League-specific historical endpoint used for bounded competition backfills; global endpoint is split into maximum 24-hour windows.
+- [x] Mocked tests for 5Dollar auth headers, pagination, result fields, account status, rate limits, moved IDs and date-window behaviour.
+- [x] AI Midas pinned Brazil Serie B 2026 snapshot collector with Git blob/SHA-256, row, match, team, date-range and score-orientation validation.
+- [x] Raw AI Midas snapshots are restricted to private/local paths outside the public repository; the collector records a manifest and makes no database/model writes.
+- [x] Provider qualification register updated with prior account evidence, rights conditions, source limitations and reuse decisions.
+- [x] Manual 5Dollar account-access workflow and local AI Midas snapshot command committed.
+- [ ] Verify the latest backend lint and Android build after the most recent code changes.
+- [ ] Configure the existing 5Dollar Community credential as a repository secret and run the manual access check.
+- [ ] Capture the pinned AI Midas file locally and verify the actual source hash.
+- [ ] Design and implement rights-aware persistence, immutable source evidence, import manifests, checkpoints and quarantine.
+- [ ] Implement bounded incremental historical ingestion only after database and provider checks are complete.
 
 ### Not yet built
 - Android authentication, API integration, navigation, local persistence, and product screens.
 - FastAPI authentication, domain APIs, database integration, and migrations.
-- PostgreSQL schema and migrations.
-- Provider adapters and ingestion jobs.
+- PostgreSQL schema and migrations for this new repository.
+- Persistent source-response storage, source approvals, entitlement snapshots, import manifests, checkpoints and quarantine.
+- Live 5Dollar provider qualification from the new repository.
+- Historical AI Midas snapshot capture and private persistence.
+- Additional odds-provider integration and timestamp qualification.
 - Football intelligence and feature pipelines.
 - Statistical models, calibration, and consensus logic.
 - AI research orchestration.
@@ -133,9 +138,10 @@ Potentially reusable components are **candidates for inspection**, not approved 
 
 | Component/source | Intended treatment | Guardrail |
 |---|---|---|
-| 5DollarFootballAPI integration patterns | Inspect and adapt provider transport/parsing patterns if sound. | Verify current API contract, terms, quotas, provenance, and coverage. |
-| AI Midas | Potential historical-statistics and additional-odds source. | Its authorization as a source does not certify bookmaker-specific timestamped closing odds or CLV suitability. Verify each field and use case independently. |
-| Historical football data | Import/cache selected raw records where permitted. | Preserve provenance; validate IDs, timestamps, competition mapping, duplicates, and rights. |
+| 5DollarFootballAPI | New isolated adapter; prior account evidence and seven entitled competitions inspected. | Old account qualification: 2,496 finished fixtures, 26 pages, 28/40 requests, zero duplicates/rejections. Recheck new repo credentials before importing; do not repeat a full history pull unnecessarily. |
+| AI Midas | New pinned single-file snapshot collector for Brazil Serie B 2026. | Non-commercial only, attribution required, raw redistribution prohibited; 738 team rows / 369 matches / 20 teams; no publication timestamp and not point-in-time certifiable. |
+| Historical football data | Reuse only source-approved raw data and generic ingestion patterns. | Prior Neon database had zero match rows; a 70,444-row Football-Data/ClubElo CSV remains quarantined and must not be imported. |
+| Odds data | 5Dollar and AI Midas odds remain supplemental candidates only. | 5Dollar Community historical odds tick endpoint was HTTP 403 in prior qualification; AI Midas average odds have no verified quote timestamps. Neither is CLV-certified. |
 | Odds-provider patterns | Inspect and adapt provider adapters. | Do not assume odds are closing odds or point-in-time valid without evidence. |
 | Team/competition/fixture normalization | Reuse only after inspection and tests. | Keep canonical IDs and aliases auditable. |
 | Results tracking and reporting utilities | Reuse generic utilities if independent of legacy prediction logic. | Reconcile settlements and prevent duplicate results. |
@@ -168,27 +174,30 @@ No accuracy, profitability, or positive-ROI claim is permitted without independe
 | 2026-11-16 | Prediction intelligence will be rebuilt from scratch; only inspected non-prediction infrastructure/data utilities may be reused. |
 | 2026-11-16 | Initial FastAPI, Android Compose, CI, security, README, and architecture foundations committed to main. |
 | 2026-11-16 | Stage 1 passed backend tests/lint and Android debug compilation in CI runs #43853169748 and #43853312298; Stage 1 marked complete and Stage 2 started. |
+| 2026-11-16 | 5Dollar account evidence from the prior VELTRIX project is reused as a baseline; the new repository accepts the established secret names and does not repeat a full historical pull. |
+| 2026-11-16 | AI Midas Brazil Serie B 2026 is treated as a pinned non-commercial CSV source; raw data stays outside the public repository and remains non-PIT. |
 
 Add new decisions with dates. Do not silently overwrite material architectural decisions; record the reason for changes.
 
 ## 11. Blockers and risks
 
-- **Provider validation pending:** no individual data provider has yet been integrated or certified in this repository.
-- **Incomplete product implementation:** current backend and Android code are minimal foundations, not a working football analysis application.
-- **Provider coverage and terms:** must be verified before Stage 2 integrations are approved.
-- **Historical data quality:** imports may contain missing IDs, incomplete timestamps, or inconsistent competition naming.
+- **Manual credential step:** the new repository still needs the 5Dollar Community key added as a GitHub Actions secret named `FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY` (or `FIVEDOLLARFOOTBALL_API_KEY`). The value must not be sent in chat or committed. The manual workflow is ready.
+- **AI Midas availability:** the pinned CSV is publicly retrievable without an API key, but its actual snapshot has not yet been captured in this environment or persisted to a private database.
+- **Point-in-time limitation:** AI Midas Brazil Serie B team statistics have no verified publication timestamp and cannot be treated as pre-match features.
+- **Odds limitation:** neither the 5Dollar Community historical odds endpoint nor the AI Midas average-odds fields are currently certified for bookmaker-specific closing-price or CLV analysis.
+- **Database not provisioned:** no new database or persistence layer exists in this repository. Do not reuse the old Neon database; prior Phase 2 evidence reports zero historical match rows and a quota-exceeded connection during a separate AI Midas reconciliation.
+- **Incomplete product implementation:** current backend and Android code are foundations, not a working football analysis application.
 - **Global coverage:** quality will vary; restricted competitions must remain unpublished until evidence improves.
-- **Cost/quota control:** ingestion and research must use incremental sync, caching, deduplication, and explicit request budgets.
-
-No active external blocker has been verified at this point.
+- **Cost/quota control:** use the existing 5Dollar historical qualification as baseline, then incremental sync, caching, deduplication and explicit request budgets.
 
 ## 12. Next execution queue
 
-1. Define provider-neutral normalized fixture and provenance contracts.
-2. Add automated tests for required identifiers, timezone-aware timestamps, and invalid fixtures.
-3. Inspect and validate approved provider API contracts, terms, quotas, and coverage.
-4. Implement the first provider adapter without committing credentials.
-5. Design database persistence and incremental ingestion after the contracts are tested.
+1. Get a clean CI pass for the latest provider and AI Midas snapshot changes.
+2. Add the existing 5Dollar Community credential to the new repository secrets and run the manual account/league check.
+3. Run the AI Midas snapshot command locally to capture and verify the pinned Brazil Serie B file; keep it under `.local-data/`.
+4. Adapt the reviewed Phase 2 evidence-store design: source approvals, provider responses, entitlement observations, immutable source observations, import manifests, checkpoints and quarantine.
+5. Implement bounded historical import for the seven already-qualified 5Dollar competitions, subject to current account recheck.
+6. Add AI Midas data to private storage as non-commercial, non-PIT historical evidence; keep its post-match stats out of pre-match feature sets until availability is proven.
 
 ## 13. Update protocol
 
