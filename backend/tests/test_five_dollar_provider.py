@@ -86,7 +86,7 @@ def test_fetch_fixtures_normalizes_scores_stats_and_pagination() -> None:
 
     assert len(results) == 2
     assert len(requests) == 2
-    assert all(request.url.path == "/v1/fixtures" for request in requests)
+    assert all(request.url.path == "/v1/leagues/77/fixtures" for request in requests)
     assert requests[0].headers["authorization"] == "Bearer test-key"
     assert requests[0].url.params["league"] == "77"
     assert results[0].provenance.provider == "5DollarFootballAPI"
@@ -172,3 +172,47 @@ def test_retired_league_id_reports_canonical_replacement() -> None:
         )
 
     assert error.value.canonical_competition_id == "88"
+
+
+
+def test_fetch_competitions_normalizes_country_and_season_metadata() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "success": 1,
+                "data": [
+                    {
+                        "id": 9001,
+                        "name": "Brazil Serie B",
+                        "country": {"code": "BR", "name": "Brazil"},
+                        "is_popular": False,
+                        "has_standings": True,
+                        "last_fixture_utc": "2026-11-15T22:00:00+00:00",
+                        "seasons": [
+                            {"season": "2026", "current": True},
+                            {"season": "2025", "current": False},
+                        ],
+                    }
+                ],
+                "pagination": {"page": 1, "per_page": 100, "has_more": False},
+            },
+        )
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    competitions = asyncio.run(provider.fetch_competitions(country_code="BR"))
+
+    assert len(competitions) == 1
+    assert requests[0].url.path == "/v1/leagues"
+    assert requests[0].url.params["country"] == "BR"
+    assert requests[0].url.params["include"] == "seasons"
+    assert competitions[0].competition_id == "9001"
+    assert competitions[0].name == "Brazil Serie B"
+    assert competitions[0].country_code == "BR"
+    assert competitions[0].seasons == ("2026", "2025")
