@@ -141,3 +141,14 @@ The pilot is accepted only if:
 - CI: run #43922283499 passed 76 backend tests, Ruff, Android debug build and APK upload.
 - Historical import: not started. Live collection remains gated on the import orchestrator and secure GitHub Actions database secret.
 - Models/predictions changed: no.
+
+
+## 11. Neon database verification update — 2026-11-16
+
+The dedicated Neon resource `young-wind-27772160` now contains database `veltrix_ai_analyst` (PostgreSQL 18.7). Database identity was verified with `current_database()`; the integration's separate `neondb` was not used. Migrations 001–003 were applied in order through the authenticated Neon SQL connector and the SHA-256 values were recorded and read back in `public.schema_migrations`. Evidence is in `docs/ledger/2026-11-16-neon-migrations-and-dry-run.md`.
+
+The reviewed 5Dollar Community source approval is registered in the database. Corrected Neon-backed dry-run run ID 2 created 34 contiguous checkpoints, recorded 40 simulated reservations (34 first pages plus six second pages), recovered all 34 checkpoints, and rejected request 41. The provider-compatible ISO-8601 idempotency key was verified. Run 2 is PAUSED with `DRY_RUN_ONLY_NO_PROVIDER_HTTP`. An earlier rehearsal run ID 1 was marked FAILED after its idempotency keys included milliseconds not emitted by the adapter; it made no provider requests. Neither rehearsal imported fixture rows or contacted 5Dollar.
+
+The repository Python migration runner was not executed because Vercel CLI environment pull substituted `[SENSITIVE]` for the sensitive `DATABASE_URL`. Migrations were applied directly through Neon SQL and their checksums verified; do not claim the Python runner passed.
+
+**Live historical collection has not started.** Remaining requirements are a tested resumable import orchestrator and secure availability of the dedicated database connection to its GitHub Actions runner. The Vercel integration-generated connection variables currently target `neondb`, not `veltrix_ai_analyst`. Keep the 40-request cap; no odds, retries, or other competitions.
