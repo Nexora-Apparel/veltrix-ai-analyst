@@ -102,9 +102,8 @@ def test_reservation_is_idempotent_and_rejects_changed_payload(database_url: str
     assert first == repeated
 
     now = datetime.now(UTC)
-    with psycopg.connect(database_url, autocommit=True) as conn:
-        with pytest.raises(ReservationConflict):
-            PostgresRequestBudget(conn).reserve(
+    with psycopg.connect(database_url, autocommit=True) as conn, pytest.raises(ReservationConflict):
+        PostgresRequestBudget(conn).reserve(
                 import_run_id=run_id,
                 request_key="window-0-page-1",
                 window_start=datetime(2026, 3, 21, tzinfo=UTC),
@@ -129,9 +128,10 @@ def test_reservation_refuses_non_running_run(database_url: str) -> None:
             (run_id,),
         )
     now = datetime.now(UTC)
-    with psycopg.connect(database_url, autocommit=True) as conn:
-        with pytest.raises(RequestBudgetError, match="IMPORT_RUN_NOT_RUNNING"):
-            PostgresRequestBudget(conn).reserve(
+    with psycopg.connect(database_url, autocommit=True) as conn, pytest.raises(
+        RequestBudgetError, match="IMPORT_RUN_NOT_RUNNING"
+    ):
+        PostgresRequestBudget(conn).reserve(
                 import_run_id=run_id,
                 request_key=uuid4().hex,
                 window_start=now,
