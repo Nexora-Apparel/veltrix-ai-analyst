@@ -9,7 +9,10 @@ from app.db.migrations import MigrationError, apply_migrations
 def main() -> int:
     database_url = os.getenv("DATABASE_URL", "")
     try:
-        applied = apply_migrations(database_url)
+        applied = apply_migrations(
+            database_url,
+            expected_database=os.getenv("EXPECTED_DATABASE_NAME", ""),
+        )
     except MigrationError as exc:
         print(f"MIGRATION_FAILED:{exc}")
         return 1
