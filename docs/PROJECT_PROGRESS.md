@@ -71,6 +71,7 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [x] Mocked tests for 5Dollar authentication, pagination, results, account status, rate limits, moved IDs, window boundaries and unsettled-score handling.
 - [x] Fail-closed rights evaluator: exact source scope, permitted use, approval validity, non-commercial restrictions, attribution and raw-redistribution controls.
 - [x] AI Midas pinned Brazil Serie B 2026 snapshot collector with Git blob/SHA-256, row, match, team, date-range and score-orientation validation.
+- [x] Source score anomalies are quarantined at match level rather than silently accepted; direct inspection found one inconsistent match (two rows), leaving 368 other matches as candidates for further validation.
 - [x] Raw AI Midas snapshots are restricted to private/local paths outside the public repository; the collector records a rights/provenance manifest and makes no database/model writes.
 - [x] Provider qualification register updated with prior account evidence, rights conditions, source limitations and reuse decisions.
 - [x] Manual 5Dollar account-access workflow and local AI Midas snapshot command committed.
@@ -182,6 +183,7 @@ No accuracy, profitability, or positive-ROI claim is permitted without independe
 | 2026-11-16 | Stage 1 passed backend tests/lint and Android debug compilation in CI runs #43853169748 and #43853312298; Stage 1 marked complete and Stage 2 started. |
 | 2026-11-16 | 5Dollar account evidence from the prior VELTRIX project is reused as a baseline; the new repository accepts the established secret names and does not repeat a full historical pull. |
 | 2026-11-16 | AI Midas Brazil Serie B 2026 is treated as a pinned non-commercial CSV source; raw data stays outside the public repository and remains non-PIT. |
+| 2026-11-16 | A row-level score mismatch was detected in one AI Midas match; the snapshot collector quarantines the full match instead of trusting inconsistent goals. |
 | 2026-11-16 | PostgreSQL ingestion schema is isolated under `veltrix_ai_analyst`; migrations require an explicit expected database name and block legacy VELTRIX Football database names. |
 | 2026-11-16 | PR #1 opened for PostgreSQL 16 migration validation; no database provisioning or historical import is part of the PR. |
 
@@ -192,6 +194,7 @@ Add new decisions with dates. Do not silently overwrite material architectural d
 - **Manual credential step:** the new repository still needs the 5Dollar Community key added as a GitHub Actions secret named `FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY` (or `FIVEDOLLARFOOTBALL_API_KEY`). The value must not be sent in chat or committed. The manual workflow is ready.
 - **AI Midas availability:** the pinned CSV is publicly retrievable without an API key, but its actual snapshot has not yet been captured in this environment or persisted to a private database.
 - **Point-in-time limitation:** AI Midas Brazil Serie B team statistics have no verified publication timestamp and cannot be treated as pre-match features.
+- **Source anomaly:** one AI Midas Brazil Serie B match has inconsistent row-level scores; the collector quarantines that match.
 - **Odds limitation:** neither the 5Dollar Community historical odds endpoint nor the AI Midas average-odds fields are currently certified for bookmaker-specific closing-price or CLV analysis.
 - **Database not provisioned:** the new schema and migration runner are in PR #1, but no database has been provisioned or connected. Do not reuse the old Neon database; prior Phase 2 evidence reports zero historical match rows and a quota-exceeded connection during a separate AI Midas reconciliation.
 - **Incomplete product implementation:** current backend and Android code are foundations, not a working football analysis application.
