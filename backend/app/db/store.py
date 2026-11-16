@@ -450,13 +450,13 @@ class PostgresIngestionStore:
         if provider_response_id is not None:
             response = self.connection.execute(
                 """
-                SELECT provider, source_id
+                SELECT provider, source_id, rights_approval_id
                 FROM veltrix_ai_analyst.provider_responses
                 WHERE id = %s
                 """,
                 (provider_response_id,),
             ).fetchone()
-            if response is None or tuple(response) != (approval.provider, approval.source_id):
+            if response is None or tuple(response) != (approval.provider, approval.source_id, approval.approval_id):
                 raise IngestionStoreError("PROVIDER_RESPONSE_IDENTITY_MISMATCH")
 
         payload_json, payload_hash = self._canonical_json(payload)
@@ -922,7 +922,7 @@ class PostgresIngestionStore:
                 "SELECT provider, source_id FROM veltrix_ai_analyst.provider_responses WHERE id = %s",
                 (provider_response_id,),
             ).fetchone()
-            if response is None or tuple(response) != (approval.provider, approval.source_id):
+            if response is None or tuple(response) != (approval.provider, approval.source_id, approval.approval_id):
                 raise IngestionStoreError("PROVIDER_RESPONSE_IDENTITY_MISMATCH")
         params_json, _ = self._canonical_json(request_params)
         row = self.connection.execute(
@@ -984,7 +984,7 @@ class PostgresIngestionStore:
                 "SELECT provider, source_id FROM veltrix_ai_analyst.provider_responses WHERE id = %s",
                 (provider_response_id,),
             ).fetchone()
-            if response is None or tuple(response) != (approval.provider, approval.source_id):
+            if response is None or tuple(response) != (approval.provider, approval.source_id, approval.approval_id):
                 raise IngestionStoreError("PROVIDER_RESPONSE_IDENTITY_MISMATCH")
         evidence_payload = {
             "plan_code": plan_code,
