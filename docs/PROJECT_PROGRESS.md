@@ -61,7 +61,7 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [x] GitHub Actions CI committed for backend tests/lint and Android debug APK.
 - [x] CI runs #43853169748 and #43853312298 passed backend tests/lint and Android debug compilation.
 - [x] Stage 2 CI run #43856574834 passed 21 backend tests, Ruff lint, Android debug APK compilation and artifact upload.
-- [x] Backend tests passed 40/40 in CI run #43857128747; Ruff import normalization and database work are being rechecked in PR #1.
+- [x] Backend tests passed 40/40 in CI run #43857128747; its Ruff step found an import-formatting issue that has been corrected.
 - [ ] Pass PR #1 PostgreSQL migration integration tests, Ruff lint and Android build.
 
 ### Stage 2 — CURRENT WORK
@@ -87,7 +87,7 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - Android authentication, API integration, navigation, local persistence, and product screens.
 - FastAPI authentication and domain APIs.
 - A provisioned PostgreSQL instance and a production connection; the schema/migration foundation exists but is not deployed.
-- Persistent source-response storage, source approvals, entitlement snapshots, import manifests, checkpoints and quarantine.
+- Runtime database writers and an actual private PostgreSQL instance; the schema and migration runner are in PR #1.
 - Live 5Dollar provider qualification from the new repository.
 - Historical AI Midas snapshot capture and private persistence.
 - Additional odds-provider integration and timestamp qualification.
@@ -183,6 +183,7 @@ No accuracy, profitability, or positive-ROI claim is permitted without independe
 | 2026-11-16 | 5Dollar account evidence from the prior VELTRIX project is reused as a baseline; the new repository accepts the established secret names and does not repeat a full historical pull. |
 | 2026-11-16 | AI Midas Brazil Serie B 2026 is treated as a pinned non-commercial CSV source; raw data stays outside the public repository and remains non-PIT. |
 | 2026-11-16 | PostgreSQL ingestion schema is isolated under `veltrix_ai_analyst`; migrations require an explicit expected database name and block legacy VELTRIX Football database names. |
+| 2026-11-16 | PR #1 opened for PostgreSQL 16 migration validation; no database provisioning or historical import is part of the PR. |
 
 Add new decisions with dates. Do not silently overwrite material architectural decisions; record the reason for changes.
 
