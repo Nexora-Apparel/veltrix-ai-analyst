@@ -120,6 +120,10 @@ class FixturePagePersister:
         )
 
     def _persist_fixture(self, fixture: ProviderFixture, response_id: int) -> None:
+        if fixture.competition_id != COMPETITION_ID:
+            raise HistoricalImportError("FIXTURE_COMPETITION_SCOPE_MISMATCH")
+        if not self.window.start_at <= fixture.kickoff_at < self.window.end_at:
+            raise HistoricalImportError("FIXTURE_OUTSIDE_REQUEST_WINDOW")
         now = fixture.provenance.retrieved_at
         competition = ProviderCompetition(
             provenance=SourceProvenance(
