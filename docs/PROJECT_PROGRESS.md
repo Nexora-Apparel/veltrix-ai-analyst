@@ -11,10 +11,10 @@
 ## 1. Executive status
 
 - **Overall stage:** Stage 1 of 10 — Architecture and repository foundation
-- **Current workstream:** Establish the repository's documented technical foundation and implementation guardrails.
-- **Implementation status:** Planning and architecture decisions are recorded in the project context; the repository was verified empty before this initial documentation commit. No application code, backend services, model code, or Android app has been built yet.
-- **Release status:** Not deployed. No predictions are being generated or published by this repository.
-- **Next milestone:** Commit the initial repository foundation, then implement and test the minimal backend and Android project skeleton.
+- **Current workstream:** Initial backend and native Android foundations, repository security rules, architecture documentation, and CI setup.
+- **Implementation status:** Initial FastAPI liveness endpoint and test, Kotlin/Jetpack Compose Android placeholder app, Gradle configuration, CI workflow, security policy, and architecture documentation have been committed. CI/build execution has not yet been verified.
+- **Release status:** Not deployed. No database, provider integrations, authentication, or prediction functionality exists yet.
+- **Next milestone:** Verify CI and builds, fix any failures, then complete Stage 1 exit criteria.
 
 ## 2. What is established
 
@@ -52,23 +52,23 @@ A stage is not complete merely because files exist. Its exit condition must be m
 ## 4. Current work — Stage 1
 
 ### Completed within Stage 1
-- [x] Repository created and verified.
-- [x] Public visibility confirmed.
-- [x] Product scope and native Android direction established.
-- [x] Ten-stage roadmap defined.
-- [x] Reuse-versus-rebuild boundary established.
-- [x] Public-repository secret-handling rule established.
+- [x] Repository created and verified; public visibility confirmed.
+- [x] Product scope, native Android direction, ten-stage roadmap, and reuse boundary established.
+- [x] Public-repository secret-handling rules and security policy committed.
+- [x] Root README, architecture document, and canonical progress register committed.
+- [x] FastAPI application skeleton with liveness endpoint and health tests committed.
+- [x] Kotlin/Jetpack Compose Android application skeleton and initial screen committed.
+- [x] GitHub Actions workflow committed for backend tests/lint and Android debug build.
 
 ### In progress
-- [ ] Commit the initial project documentation and repository conventions.
-- [ ] Create the backend FastAPI skeleton and automated tests.
-- [ ] Create the native Android Kotlin/Compose skeleton and build workflow.
-- [ ] Add CI checks and validate clean builds.
-- [ ] Review the initial repository tree and close Stage 1 exit criteria.
+- [ ] Observe CI workflow results and resolve any backend or Android build failures.
+- [ ] Verify the repository tree and confirm the Android build is reproducible.
+- [ ] Add backend configuration conventions and API contract tests as needed.
+- [ ] Complete Stage 1 exit review after successful verification.
 
 ### Not yet built
-- Android application source/build configuration.
-- FastAPI application and API routes.
+- Android authentication, API integration, navigation, local persistence, and product screens.
+- FastAPI authentication, domain APIs, database integration, and migrations.
 - PostgreSQL schema and migrations.
 - Provider adapters and ingestion jobs.
 - Football intelligence and feature pipelines.
@@ -157,12 +157,14 @@ No accuracy, profitability, or positive-ROI claim is permitted without independe
 | 2026-11-16 | Repository is public by explicit project decision; credentials and private data remain excluded. |
 | 2026-11-16 | Product is a personal-use, cloud-backed native Android app. |
 | 2026-11-16 | Prediction intelligence will be rebuilt from scratch; only inspected non-prediction infrastructure/data utilities may be reused. |
+| 2026-11-16 | Initial FastAPI, Android Compose, CI, security, README, and architecture foundations committed to main. |
 
 Add new decisions with dates. Do not silently overwrite material architectural decisions; record the reason for changes.
 
 ## 11. Blockers and risks
 
-- **No implementation exists yet:** the repository was empty at initial inspection. Documentation is the first committed foundation, not a completed app.
+- **Build verification pending:** the GitHub Actions workflow has been committed, but successful CI results have not yet been observed.
+- **Incomplete product implementation:** current backend and Android code are minimal foundations, not a working football analysis application.
 - **Provider coverage and terms:** must be verified before Stage 2 integrations are approved.
 - **Historical data quality:** imports may contain missing IDs, incomplete timestamps, or inconsistent competition naming.
 - **Global coverage:** quality will vary; restricted competitions must remain unpublished until evidence improves.
@@ -172,12 +174,11 @@ No active external blocker has been verified at this point.
 
 ## 12. Next execution queue
 
-1. Commit this progress register and the root README.
-2. Establish the initial repository layout.
-3. Build a minimal FastAPI backend with health endpoint and tests.
-4. Build a minimal Kotlin/Compose Android project with a reproducible build.
-5. Add GitHub Actions checks for backend tests and Android build.
-6. Record successful CI evidence and close Stage 1 only when all exit criteria pass.
+1. Inspect the first GitHub Actions run and record its exact result.
+2. Fix any failing backend tests, lint checks, Android SDK setup, or Gradle compilation.
+3. Verify a successful clean Android debug build and backend test run.
+4. Add configuration and API-contract foundations only where required for Stage 1.
+5. Record CI run identifiers and close Stage 1 only when all exit criteria pass.
 
 ## 13. Update protocol
 
