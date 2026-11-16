@@ -6,7 +6,7 @@ ingestion or export path must evaluate a source approval before use.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 
 
@@ -132,7 +132,7 @@ def evaluate_source_use(
 ) -> RightsDecision:
     """Evaluate one requested use against one exact approved source scope."""
     _require_aware(at_utc, "RIGHTS_EVALUATION_TIME")
-    evaluated_at = at_utc.astimezone(timezone.utc)
+    evaluated_at = at_utc.astimezone(UTC)
 
     if approval.status is not ApprovalStatus.APPROVED:
         return RightsDecision(False, "SOURCE_RIGHTS_NOT_APPROVED", approval.approval_id)
