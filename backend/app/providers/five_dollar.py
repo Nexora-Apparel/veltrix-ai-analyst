@@ -231,7 +231,7 @@ class FiveDollarFootballProvider:
 
                         try:
                             response = await client.get(
-                                "/fixtures",
+                                "fixtures",
                                 params=params,
                                 headers={
                                     "Authorization": f"Bearer {self._api_key}",
