@@ -18,7 +18,6 @@ import psycopg
 
 from app.db.request_budget import PostgresRequestBudget, RequestBudgetExceeded
 from app.db.store import PostgresIngestionStore
-
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
 from app.providers.collection_plan import DateWindow, build_date_windows
 from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
