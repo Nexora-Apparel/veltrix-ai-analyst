@@ -38,3 +38,19 @@ python scripts/verify_5dollar_access.py
 The verifier prints the account plan, quota metadata and Brazil competition
 listing only. It does not print the credential or download historical fixtures.
 Automated adapter tests use mocked HTTP responses and do not call the provider.
+
+## AI Midas Brazil Serie B snapshot
+
+The approved source is a pinned, non-commercial GitHub CSV snapshot, not a verified live API.
+Capture it locally with:
+
+```bash
+python -m pip install -e backend
+python scripts/collect_aimidas_brazil_serie_b_snapshot.py
+```
+
+The raw file is written under `.local-data/`, which is ignored by Git. Do not
+upload the raw CSV to this public repository or publish it as a workflow artifact.
+The manifest records its source commit, hashes, row/match/team counts, attribution,
+non-commercial rights, and point-in-time restrictions. The collector does not
+write to a database or admit any fields to prediction features.
