@@ -95,8 +95,10 @@ BEGIN
     FROM veltrix_ai_analyst.source_approvals a
     WHERE a.approval_id = observation.rights_approval_id;
 
-    IF NOT FOUND
-       OR approval.status <> 'APPROVED'
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'PRE_MATCH_SOURCE_APPROVAL_NOT_FOUND';
+    END IF;
+    IF approval.status <> 'APPROVED'
        OR approval.valid_from > NEW.prediction_cutoff_at
        OR (approval.valid_until IS NOT NULL AND approval.valid_until <= NEW.prediction_cutoff_at)
        OR NOT (approval.permitted_uses @> '["FEATURE_ENGINEERING", "MODEL_TRAINING"]'::jsonb) THEN
