@@ -558,3 +558,49 @@ def test_historical_request_spacing_is_enforced_between_pages() -> None:
 
     assert len(request_times) == 2
     assert request_times[1] - request_times[0] >= 0.015
+
+
+
+def test_raw_response_observer_runs_before_rate_limit_stop() -> None:
+    raw_pages: list[dict[str, object]] = []
+    parsed_pages: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            429,
+            content=b'{"error":"rate_limited"}',
+            headers={"Retry-After": "17", "X-Request-Id": "rate-limit-request"},
+        )
+
+    def reserve(
+        request_key: str,
+        window_start: datetime,
+        window_end: datetime,
+        page_number: int,
+        endpoint: str,
+        request_params: dict[str, str | int],
+    ) -> bool:
+        return True
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        transport=httpx.MockTransport(handler),
+    )
+    with pytest.raises(ProviderRateLimitError):
+        asyncio.run(
+            provider.fetch_fixtures(
+                datetime(2026, 11, 16, tzinfo=UTC),
+                datetime(2026, 11, 17, tzinfo=UTC),
+                competition_ids=["522514093"],
+                request_reserver=reserve,
+                require_request_reservation=True,
+                raw_response_observer=lambda item: raw_pages.append(dict(item)) or 17,
+                response_observer=parsed_pages.append,
+            )
+        )
+
+    assert len(raw_pages) == 1
+    assert raw_pages[0]["http_status"] == 429
+    assert raw_pages[0]["raw_body"] == b'{"error":"rate_limited"}'
+    assert raw_pages[0]["response_headers"]["retry-after"] == "17"
+    assert parsed_pages == []

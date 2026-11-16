@@ -15,6 +15,7 @@ from typing import Any
 from uuid import uuid4
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 from app.db.request_budget import PostgresRequestBudget, RequestBudgetExceeded
 from app.db.store import PostgresIngestionStore
@@ -23,8 +24,7 @@ from app.providers.collection_plan import DateWindow, build_date_windows
 from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
 from app.providers.five_dollar import (
     FiveDollarFootballProvider,
-    ProviderAPIError,
-    ProviderRateLimitError,
+    ProviderError,
 )
 from app.providers.rights import SourceApproval
 
@@ -74,8 +74,14 @@ class FixturePagePersister:
         )
         self.records_seen = int(checkpoint["records_seen"]) if checkpoint else 0
         self.records_inserted = int(checkpoint["records_inserted"]) if checkpoint else 0
+        self.records_duplicate = int(checkpoint["records_duplicate"]) if checkpoint else 0
+        self.records_rejected = int(checkpoint["records_rejected"]) if checkpoint else 0
+        self.records_quarantined = int(checkpoint["records_quarantined"]) if checkpoint else 0
         self.requests_used = int(checkpoint["requests_used"]) if checkpoint else 0
-        self.response_hashes: list[str] = []
+        self.last_request: dict[str, Any] | None = None
+        self.last_response_id: int | None = None
+        self.last_response_sha256: str | None = None
+        self.last_http_status: int | None = None
 
     @staticmethod
     def _quota_int(headers: dict[str, Any], key: str) -> int | None:
@@ -185,51 +191,68 @@ class FixturePagePersister:
             approval=self.approval,
         )
 
-    def __call__(self, page: dict[str, Any]) -> None:
-        raw_body = bytes(page["raw_body"])
-        if not raw_body:
-            raise HistoricalImportError("EMPTY_PROVIDER_RESPONSE_BODY")
-        fetched_at = page["fetched_at"]
-        request_id = str(page["response_headers"].get("x-request-id") or uuid4().hex)
-        response_hash = hashlib.sha256(raw_body).hexdigest()
+    def record_raw_response(self, response: dict[str, Any]) -> int | None:
+        raw_body = bytes(response["raw_body"])
+        fetched_at = response["fetched_at"]
+        headers = dict(response["response_headers"])
+        request_id = str(headers.get("x-request-id") or uuid4().hex)
+        response_hash = hashlib.sha256(raw_body).hexdigest() if raw_body else None
+        retry_after = headers.get("retry-after")
+        try:
+            retry_after_seconds = float(retry_after) if retry_after is not None else None
+        except (TypeError, ValueError):
+            retry_after_seconds = None
+
         with self.connection.transaction():
-            response_id = self.store.record_provider_response(
-                self.approval,
-                scope_value=COMPETITION_ID,
-                data_type="fixtures_and_results",
-                endpoint=str(page["endpoint"]),
-                request_id=request_id,
-                request_params=dict(page["request_params"]),
-                http_status=int(page["http_status"]),
-                raw_body=raw_body,
-                response_headers=dict(page["response_headers"]),
-                fetched_at=fetched_at,
-                quota_limit=self._quota_int(dict(page["response_headers"]), "x-ratelimit-limit"),
-                quota_remaining=self._quota_int(
-                    dict(page["response_headers"]), "x-ratelimit-remaining"
-                ),
-            )
+            response_id = None
+            if raw_body:
+                response_id = self.store.record_provider_response(
+                    self.approval,
+                    scope_value=COMPETITION_ID,
+                    data_type="fixtures_and_results",
+                    endpoint=str(response["endpoint"]),
+                    request_id=request_id,
+                    request_params=dict(response["request_params"]),
+                    http_status=int(response["http_status"]),
+                    raw_body=raw_body,
+                    response_headers=headers,
+                    fetched_at=fetched_at,
+                    quota_limit=self._quota_int(headers, "x-ratelimit-limit"),
+                    quota_remaining=self._quota_int(headers, "x-ratelimit-remaining"),
+                )
             self.store.record_provider_request_event(
                 self.approval,
                 scope_value=COMPETITION_ID,
                 data_type="fixtures_and_results",
-                endpoint=str(page["endpoint"]),
-                request_params=dict(page["request_params"]),
-                started_at=page["request_started_at"],
+                endpoint=str(response["endpoint"]),
+                request_params=dict(response["request_params"]),
+                started_at=response["request_started_at"],
                 finished_at=fetched_at,
-                http_status=int(page["http_status"]),
-                quota_remaining=self._quota_int(
-                    dict(page["response_headers"]), "x-ratelimit-remaining"
-                ),
+                http_status=int(response["http_status"]),
+                retry_after_seconds=retry_after_seconds,
+                quota_remaining=self._quota_int(headers, "x-ratelimit-remaining"),
                 provider_response_id=response_id,
             )
+        self.last_response_id = response_id
+        self.last_response_sha256 = response_hash
+        self.last_http_status = int(response["http_status"])
+        return response_id
+
+    def __call__(self, page: dict[str, Any]) -> None:
+        raw_body = bytes(page["raw_body"])
+        if not raw_body:
+            raise HistoricalImportError("EMPTY_PROVIDER_RESPONSE_BODY")
+        response_id = page.get("provider_response_id")
+        if response_id is None:
+            raise HistoricalImportError("SUCCESS_PAGE_MISSING_RAW_RESPONSE_RECORD")
+        response_hash = hashlib.sha256(raw_body).hexdigest()
+        with self.connection.transaction():
             fixtures = tuple(page["fixtures"])
             for fixture in fixtures:
-                self._persist_fixture(fixture, response_id)
+                self._persist_fixture(fixture, int(response_id))
             self.records_seen += len(fixtures)
             self.records_inserted += len(fixtures)
             self.requests_used += 1
-            self.response_hashes.append(response_hash)
             has_more = bool(page["has_more"])
             self.store.save_checkpoint(
                 import_run_id=self.import_run_id,
@@ -242,6 +265,128 @@ class FixturePagePersister:
                 cursor_value=str(int(page["page_number"]) + 1) if has_more else None,
                 response_sha256=response_hash,
             )
+
+    def quarantine_current_page(self, error: Exception) -> bool:
+        if self.last_request is None:
+            return False
+        request_key = str(self.last_request["request_key"])
+        reason_code = f"PAGE_{type(error).__name__.upper()}"
+        with self.connection.transaction():
+            reservation = self.connection.execute(
+                """
+                SELECT r.window_start, r.window_end, r.page_number, r.endpoint,
+                       r.reserved_at, c.status, c.updated_at
+                FROM veltrix_ai_analyst.import_request_reservations r
+                LEFT JOIN veltrix_ai_analyst.import_checkpoints c
+                  ON c.import_run_id = r.import_run_id
+                 AND c.window_start = r.window_start
+                 AND c.window_end = r.window_end
+                WHERE r.import_run_id = %s AND r.request_key = %s
+                """,
+                (self.import_run_id, request_key),
+            ).fetchone()
+            if reservation is None:
+                return False
+            window_start, window_end, page_number, endpoint, reserved_at, status, updated_at = (
+                reservation
+            )
+            if status == "COMPLETED" or (
+                updated_at is not None and updated_at > reserved_at
+            ):
+                return False
+            if self.last_response_id is None:
+                prior_response = self.connection.execute(
+                    """
+                    SELECT e.http_status, e.provider_response_id, p.response_sha256
+                    FROM veltrix_ai_analyst.provider_request_events e
+                    LEFT JOIN veltrix_ai_analyst.provider_responses p
+                      ON p.id = e.provider_response_id
+                    WHERE e.endpoint = %s
+                      AND e.request_params = %s
+                      AND e.started_at >= %s
+                    ORDER BY e.started_at DESC
+                    LIMIT 1
+                    """,
+                    (
+                        endpoint,
+                        Jsonb(self.last_request["request_params"]),
+                        reserved_at,
+                    ),
+                ).fetchone()
+                if prior_response is not None:
+                    self.last_http_status = prior_response[0]
+                    self.last_response_id = prior_response[1]
+                    self.last_response_sha256 = (
+                        str(prior_response[2]).strip()
+                        if prior_response[2] is not None
+                        else None
+                    )
+            existing_quarantine = self.connection.execute(
+                """
+                SELECT 1 FROM veltrix_ai_analyst.ingestion_quarantine
+                WHERE import_run_id = %s AND request_key = %s
+                """,
+                (self.import_run_id, request_key),
+            ).fetchone()
+            if existing_quarantine is not None:
+                return False
+            details = {
+                "request_key": request_key,
+                "endpoint": endpoint,
+                "page_number": int(page_number),
+                "window_start": window_start.isoformat(),
+                "window_end": window_end.isoformat(),
+                "error_type": type(error).__name__,
+                "http_status": self.last_http_status,
+                "response_received": self.last_http_status is not None,
+                "response_sha256": self.last_response_sha256,
+            }
+            inserted = self.connection.execute(
+                """
+                INSERT INTO veltrix_ai_analyst.ingestion_quarantine (
+                    import_run_id, provider, source_id, entity_type,
+                    provider_entity_id, request_key, reason_code, http_status,
+                    provider_response_id, response_sha256, details
+                ) VALUES (
+                    %s, %s, %s, 'PROVIDER_PAGE', %s, %s, %s, %s, %s, %s, %s
+                )
+                ON CONFLICT (import_run_id, request_key) DO NOTHING
+                RETURNING id
+                """,
+                (
+                    self.import_run_id,
+                    PROVIDER_NAME,
+                    SOURCE_ID,
+                    request_key,
+                    request_key,
+                    reason_code,
+                    self.last_http_status,
+                    self.last_response_id,
+                    self.last_response_sha256,
+                    Jsonb(details),
+                ),
+            ).fetchone()
+            if inserted is None:
+                return False
+            self.records_seen += 1
+            self.records_quarantined += 1
+            self.requests_used += 1
+            self.store.save_checkpoint(
+                import_run_id=self.import_run_id,
+                window_start=window_start,
+                window_end=window_end,
+                status="FAILED",
+                records_seen=self.records_seen,
+                records_inserted=self.records_inserted,
+                records_duplicate=self.records_duplicate,
+                records_rejected=self.records_rejected,
+                records_quarantined=self.records_quarantined,
+                requests_used=self.requests_used,
+                cursor_value=str(page_number),
+                response_sha256=self.last_response_sha256,
+                last_error_code=reason_code,
+            )
+        return True
 
 
 def _ensure_run_checkpoints(
@@ -396,6 +541,19 @@ async def run_brazil_serie_b_historical_import(
                 raise HistoricalImportError("IMPORT_RUN_IDENTITY_OR_ENVELOPE_MISMATCH")
             if row[0] not in {"PAUSED", "RUNNING"}:
                 raise HistoricalImportError("IMPORT_RUN_NOT_RESUMABLE")
+            quarantined = connection.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM veltrix_ai_analyst.ingestion_quarantine
+                    WHERE import_run_id = %s
+                )
+                """,
+                (import_run_id,),
+            ).fetchone()[0]
+            if quarantined:
+                raise HistoricalImportError(
+                    "IMPORT_RUN_HAS_QUARANTINED_PAGE_REQUIRES_MANUAL_RECONCILIATION"
+                )
             connection.execute(
                 """
                 UPDATE veltrix_ai_analyst.import_runs
@@ -411,6 +569,7 @@ async def run_brazil_serie_b_historical_import(
         api_key=api_key,
         min_request_interval_seconds=12.0,
     )
+    current_persister: FixturePagePersister | None = None
     try:
         with (
             psycopg.connect(database_url, autocommit=True) as store_connection,
@@ -429,23 +588,60 @@ async def run_brazil_serie_b_historical_import(
                     approval=approval,
                     window=window,
                 )
-                store.save_checkpoint(
-                    import_run_id=import_run_id,
-                    window_start=window.start_at,
-                    window_end=window.end_at,
-                    status="RUNNING",
-                    records_seen=persister.records_seen,
-                    records_inserted=persister.records_inserted,
-                    requests_used=persister.requests_used,
-                    cursor_value=str(start_page),
-                )
+                current_persister = persister
+                if checkpoint["status"] == "PENDING":
+                    store.save_checkpoint(
+                        import_run_id=import_run_id,
+                        window_start=window.start_at,
+                        window_end=window.end_at,
+                        status="RUNNING",
+                        records_seen=persister.records_seen,
+                        records_inserted=persister.records_inserted,
+                        records_duplicate=persister.records_duplicate,
+                        records_rejected=persister.records_rejected,
+                        records_quarantined=persister.records_quarantined,
+                        requests_used=persister.requests_used,
+                        cursor_value=str(start_page),
+                        response_sha256=checkpoint["response_sha256"],
+                        last_error_code=checkpoint["last_error_code"],
+                    )
+                def reserve_page(
+                    request_key: str,
+                    window_start: datetime,
+                    window_end: datetime,
+                    page_number: int,
+                    endpoint: str,
+                    request_params: dict[str, str | int],
+                    tracked_persister: FixturePagePersister = persister,
+                ) -> bool:
+                    tracked_persister.last_request = {
+                        "request_key": request_key,
+                        "window_start": window_start,
+                        "window_end": window_end,
+                        "page_number": page_number,
+                        "endpoint": endpoint,
+                        "request_params": dict(request_params),
+                    }
+                    tracked_persister.last_response_id = None
+                    tracked_persister.last_response_sha256 = None
+                    tracked_persister.last_http_status = None
+                    return reserver(
+                        request_key,
+                        window_start,
+                        window_end,
+                        page_number,
+                        endpoint,
+                        request_params,
+                    )
+
                 await active_provider.fetch_fixtures(
                     window.start_at,
                     window.end_at,
                     competition_ids=[COMPETITION_ID],
-                    request_reserver=reserver,
+                    request_reserver=reserve_page,
                     require_request_reservation=True,
                     response_observer=persister,
+                    raw_response_observer=persister.record_raw_response,
                     start_page=start_page,
                 )
                 refreshed = next(
@@ -463,6 +659,21 @@ async def run_brazil_serie_b_historical_import(
                 reason_code=None,
             )
     except Exception as exc:
+        if current_persister is not None and current_persister.last_request is not None:
+            with psycopg.connect(database_url, autocommit=True) as quarantine_connection:
+                quarantine_persister = FixturePagePersister(
+                    quarantine_connection,
+                    import_run_id=import_run_id,
+                    approval=approval,
+                    window=current_persister.window,
+                )
+                quarantine_persister.last_request = current_persister.last_request
+                quarantine_persister.last_response_id = current_persister.last_response_id
+                quarantine_persister.last_response_sha256 = (
+                    current_persister.last_response_sha256
+                )
+                quarantine_persister.last_http_status = current_persister.last_http_status
+                quarantine_persister.quarantine_current_page(exc)
         with psycopg.connect(database_url) as connection:
             row = connection.execute(
                 "SELECT status FROM veltrix_ai_analyst.import_runs WHERE id = %s",
@@ -475,7 +686,7 @@ async def run_brazil_serie_b_historical_import(
                     status="PAUSED",
                     reason_code=f"SAFE_STOP:{type(exc).__name__}",
                 )
-        if isinstance(exc, (ProviderAPIError, ProviderRateLimitError, RequestBudgetExceeded)):
+        if isinstance(exc, (ProviderError, RequestBudgetExceeded)):
             raise HistoricalImportError(
                 f"COLLECTION_PAUSED:{type(exc).__name__}"
             ) from None
