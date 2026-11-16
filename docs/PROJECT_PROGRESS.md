@@ -237,3 +237,18 @@ The secret-backed GitHub Actions preflight has now completed successfully. This 
 - On any later authorized collection, enforce the existing Brazil Serie B-only scope, fixtures/results only, 40-request hard ceiling, durable pre-request reservations, no retries, 12-second minimum spacing, and quarantine/pause on failures. No odds calls or model training are authorized by this preflight.
 
 Detailed evidence: `docs/ledger/2026-11-16-read-only-preflight-passed.md`.
+
+
+---
+
+## 16. Import approval identity audit — 2026-11-16
+
+A pre-collection code audit found that `backend/app/providers/historical_import.py` derived a second approval ID (`approval-5dollar-ai-analyst-historical-2026-11-16`) even though the database preflight had verified the existing registered grant `approval-5dollar-community-fixtures-2026-11-12`. The scope and rights fields were copied from the same reviewed Community approval, but maintaining two IDs weakened the approval chain and made the code diverge from the preflight's canonical record.
+
+- [x] Identified the mismatch before any historical import request was made.
+- [x] Correction prepared on branch `fix/canonical-5dollar-approval-binding`: importer now uses the canonical `FIVEDOLLAR_COMMUNITY_APPROVAL` object directly; no derived approval ID.
+- [x] Added regression test asserting exact approval ID, provider, source, competition scope and fixtures/results data type.
+- [x] Updated collection plan to prohibit derived duplicate approval IDs.
+- [ ] CI, review and merge pending.
+- [x] No provider HTTP calls or database writes were made during this audit/correction.
+- **Live historical collection remains LOCKED** until this correction is merged and validated, and a separate explicit user authorization is received.
