@@ -307,6 +307,29 @@ def test_store_creates_bounded_import_checkpoints_and_quarantine(connection) -> 
     ).fetchone()
     assert checkpoint == (3, 1, 1, 1)
 
+    store.finish_import_run(
+        import_run_id=run_id,
+        status="COMPLETED",
+        finished_at=now + timedelta(seconds=2),
+        requests_used=1,
+        records_seen=3,
+        records_inserted=1,
+        records_duplicate=1,
+        records_rejected=0,
+        records_quarantined=1,
+        manifest_sha256="b" * 64,
+    )
+    final_run = connection.execute(
+        "SELECT status, requests_used, records_quarantined FROM veltrix_ai_analyst.import_runs WHERE id = %s",
+        (run_id,),
+    ).fetchone()
+    assert final_run == ("COMPLETED", 1, 1)
+    event_count = connection.execute(
+        "SELECT COUNT(*) FROM veltrix_ai_analyst.import_run_events WHERE import_run_id = %s",
+        (run_id,),
+    ).fetchone()
+    assert event_count == (1,)
+
     quarantine_id = store.quarantine_record(
         provider=approval.provider,
         source_id=approval.source_id,
