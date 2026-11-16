@@ -8,8 +8,8 @@ import httpx
 import psycopg
 import pytest
 
-from app.providers import historical_import
 from app.db.migrations import apply_migrations
+from app.providers import historical_import
 from app.providers.five_dollar import FiveDollarFootballProvider
 from app.providers.historical_import import (
     IMPORT_APPROVAL,
