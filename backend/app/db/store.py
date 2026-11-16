@@ -919,7 +919,7 @@ class PostgresIngestionStore:
         )
         if provider_response_id is not None:
             response = self.connection.execute(
-                "SELECT provider, source_id FROM veltrix_ai_analyst.provider_responses WHERE id = %s",
+                "SELECT provider, source_id, rights_approval_id FROM veltrix_ai_analyst.provider_responses WHERE id = %s",
                 (provider_response_id,),
             ).fetchone()
             if response is None or tuple(response) != (approval.provider, approval.source_id, approval.approval_id):
@@ -981,7 +981,7 @@ class PostgresIngestionStore:
             raise IngestionStoreError("INVALID_ENTITLEMENT_COMPETITION_ID")
         if provider_response_id is not None:
             response = self.connection.execute(
-                "SELECT provider, source_id FROM veltrix_ai_analyst.provider_responses WHERE id = %s",
+                "SELECT provider, source_id, rights_approval_id FROM veltrix_ai_analyst.provider_responses WHERE id = %s",
                 (provider_response_id,),
             ).fetchone()
             if response is None or tuple(response) != (approval.provider, approval.source_id, approval.approval_id):
