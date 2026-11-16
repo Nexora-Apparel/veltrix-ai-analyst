@@ -527,3 +527,34 @@ def test_response_observer_receives_raw_page_evidence_and_resume_page() -> None:
     assert page["response_headers"]["x-request-id"] == "request-page-2"
     assert len(page["fixtures"]) == 1
     assert page["has_more"] is False
+
+
+
+def test_historical_request_spacing_is_enforced_between_pages() -> None:
+    import time
+
+    request_times: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        request_times.append(time.monotonic())
+        page = int(request.url.params["page"])
+        return httpx.Response(
+            200,
+            json=response_payload([], has_more=page == 1),
+        )
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-key",
+        min_request_interval_seconds=0.02,
+        transport=httpx.MockTransport(handler),
+    )
+    asyncio.run(
+        provider.fetch_fixtures(
+            datetime(2026, 11, 16, tzinfo=UTC),
+            datetime(2026, 11, 17, tzinfo=UTC),
+            competition_ids=["522514093"],
+        )
+    )
+
+    assert len(request_times) == 2
+    assert request_times[1] - request_times[0] >= 0.015
