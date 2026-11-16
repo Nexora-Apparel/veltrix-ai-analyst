@@ -389,7 +389,7 @@ class PostgresIngestionStore:
         ).fetchone()
         expected_metadata = (
             endpoint,
-            dict(request_params),
+            json.loads(params_json),
             http_status,
             safe_headers,
             quota_limit,
