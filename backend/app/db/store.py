@@ -858,6 +858,39 @@ class PostgresIngestionStore:
             raise IngestionStoreError("IMPORT_RUN_CREATE_FAILED")
         return int(row[0])
 
+    def load_checkpoints(self, *, import_run_id: int) -> list[dict[str, Any]]:
+        """Return persisted window checkpoints in deterministic resume order."""
+        rows = self.connection.execute(
+            """
+            SELECT window_start, window_end, cursor_value, status,
+                   records_seen, records_inserted, records_duplicate,
+                   records_rejected, records_quarantined, requests_used,
+                   response_sha256, last_error_code, updated_at
+            FROM veltrix_ai_analyst.import_checkpoints
+            WHERE import_run_id = %s
+            ORDER BY window_start, window_end
+            """,
+            (import_run_id,),
+        ).fetchall()
+        return [
+            {
+                "window_start": row[0],
+                "window_end": row[1],
+                "cursor_value": row[2],
+                "status": row[3],
+                "records_seen": row[4],
+                "records_inserted": row[5],
+                "records_duplicate": row[6],
+                "records_rejected": row[7],
+                "records_quarantined": row[8],
+                "requests_used": row[9],
+                "response_sha256": str(row[10]).strip() if row[10] else None,
+                "last_error_code": row[11],
+                "updated_at": row[12],
+            }
+            for row in rows
+        ]
+
     def save_checkpoint(
         self,
         *,
