@@ -300,6 +300,7 @@ CREATE TABLE veltrix_ai_analyst.import_runs (
     requests_used INTEGER NOT NULL DEFAULT 0 CHECK (requests_used >= 0),
     records_seen INTEGER NOT NULL DEFAULT 0 CHECK (records_seen >= 0),
     records_inserted INTEGER NOT NULL DEFAULT 0 CHECK (records_inserted >= 0),
+    records_duplicate INTEGER NOT NULL DEFAULT 0 CHECK (records_duplicate >= 0),
     records_rejected INTEGER NOT NULL DEFAULT 0 CHECK (records_rejected >= 0),
     records_quarantined INTEGER NOT NULL DEFAULT 0 CHECK (records_quarantined >= 0),
     rights_approval_id TEXT NOT NULL
@@ -310,7 +311,7 @@ CREATE TABLE veltrix_ai_analyst.import_runs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CHECK (boundary_end > boundary_start),
     CHECK (requests_used <= request_budget),
-    CHECK (records_seen >= records_inserted + records_rejected + records_quarantined),
+    CHECK (records_seen >= records_inserted + records_duplicate + records_rejected + records_quarantined),
     CHECK (finished_at IS NULL OR started_at IS NULL OR finished_at >= started_at)
 );
 CREATE INDEX import_runs_provider_status_idx
