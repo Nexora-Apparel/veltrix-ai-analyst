@@ -6,8 +6,6 @@ import json
 from pathlib import Path
 
 from app.providers.aimidas_snapshot import collect_snapshot
-
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
