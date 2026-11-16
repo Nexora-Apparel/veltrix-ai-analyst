@@ -7,7 +7,7 @@ responses. API keys are read only at runtime from FIVE_DOLLAR_FOOTBALL_API_KEY.
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -18,6 +18,10 @@ from app.providers.contracts import ProviderCompetition, ProviderFixture, Source
 DEFAULT_BASE_URL = "https://api.5dollarfootballapi.com/v1"
 MAX_FIXTURE_WINDOW = timedelta(hours=24)
 MAX_PAGES_PER_WINDOW = 100
+
+RequestReservationCallback = Callable[
+    [str, datetime, datetime, int, str, Mapping[str, str | int]], bool
+]
 
 
 class ProviderError(RuntimeError):
@@ -398,7 +402,13 @@ class FiveDollarFootballProvider:
         start_at: datetime,
         end_at: datetime,
         competition_ids: Sequence[str] | None = None,
+        request_reserver: RequestReservationCallback | None = None,
+        require_request_reservation: bool = False,
     ) -> Sequence[ProviderFixture]:
+        if require_request_reservation and request_reserver is None:
+            raise ProviderConfigurationError(
+                "HISTORICAL_COLLECTION_REQUIRES_PERSISTENT_REQUEST_RESERVATION"
+            )
         if not self._api_key:
             raise ProviderConfigurationError(
                 "FIVE_DOLLAR_FOOTBALL_API_KEY is not configured"
@@ -448,6 +458,25 @@ class FiveDollarFootballProvider:
                             if competition_id is not None
                             else "fixtures"
                         )
+
+                        if request_reserver is not None:
+                            request_key = (
+                                f"{competition_id or 'global'}:"
+                                f"{window_start.isoformat()}:{window_end.isoformat()}:page:{page}"
+                            )
+                            reserved = request_reserver(
+                                request_key,
+                                window_start,
+                                window_end,
+                                page,
+                                f"/{path}",
+                                params,
+                            )
+                            if not reserved:
+                                raise ProviderAPIError(
+                                    "5DollarFootballAPI request reservation already exists; "
+                                    "refusing to repeat the HTTP request"
+                                )
 
                         try:
                             response = await client.get(
