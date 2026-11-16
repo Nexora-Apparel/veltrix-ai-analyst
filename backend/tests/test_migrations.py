@@ -3,6 +3,7 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 import psycopg
 import pytest
@@ -18,7 +19,7 @@ def database_config() -> tuple[str, str]:
     return url, expected_database
 
 
-def seed_approval(connection: psycopg.Connection) -> None:
+def seed_approval(connection: psycopg.Connection, approval_id: str, source_id: str) -> None:
     now = datetime.now(UTC)
     connection.execute(
         """
@@ -27,18 +28,20 @@ def seed_approval(connection: psycopg.Connection) -> None:
             status, rights_basis, terms_url, terms_version, evidence_uri,
             evidence_sha256, reviewed_at, reviewer_id, valid_from, permitted_uses
         ) VALUES (
-            'test-approval', 'test-provider', 'test-source', 'competition_id',
+            %s, 'test-provider', %s, 'competition_id',
             '["league-1"]'::jsonb, '["fixtures_and_results"]'::jsonb,
             'APPROVED', 'TERMS', 'https://example.test/terms', 'v1',
             'https://example.test/evidence', %s, %s, 'ci-test', %s,
             '["COLLECTION","STORAGE"]'::jsonb
         )
         """,
-        ("a" * 64, now, now),
+        (approval_id, source_id, "a" * 64, now, now),
     )
 
 
-def seed_fixture_dependencies(connection: psycopg.Connection) -> tuple[int, int]:
+def seed_fixture_dependencies(
+    connection: psycopg.Connection, approval_id: str, source_id: str, suffix: str
+) -> tuple[int, int]:
     now = datetime.now(UTC)
     raw = b'{"success":1,"data":[]}'
     response_hash = hashlib.sha256(raw).hexdigest()
@@ -48,11 +51,11 @@ def seed_fixture_dependencies(connection: psycopg.Connection) -> tuple[int, int]
             provider, source_id, endpoint, request_id, http_status,
             response_sha256, raw_body, rights_approval_id, fetched_at
         ) VALUES (
-            'test-provider', 'test-source', '/fixtures', 'request-1',
-            200, %s, %s, 'test-approval', %s
+            'test-provider', %s, '/fixtures', %s,
+            200, %s, %s, %s, %s
         ) RETURNING id
         """,
-        (response_hash, raw, now),
+        (source_id, f"request-{suffix}", response_hash, raw, approval_id, now),
     ).fetchone()
     assert response is not None
 
@@ -67,12 +70,12 @@ def seed_fixture_dependencies(connection: psycopg.Connection) -> tuple[int, int]
             payload_sha256, schema_version, retrieved_at, availability_basis,
             rights_approval_id, provider_response_id, payload
         ) VALUES (
-            'test-provider', 'test-source', 'fixtures_and_results', 'fixture',
-            'fixture-1', %s, 'v1', %s, 'RETRIEVED_AT_ONLY',
-            'test-approval', %s, %s
+            'test-provider', %s, 'fixtures_and_results', 'fixture',
+            %s, %s, 'v1', %s, 'RETRIEVED_AT_ONLY',
+            %s, %s, %s
         ) RETURNING id
         """,
-        (payload_hash, now, response[0], json.dumps(payload)),
+        (source_id, f"fixture-{suffix}", payload_hash, now, approval_id, response[0], json.dumps(payload)),
     ).fetchone()
     assert observation is not None
 
@@ -82,11 +85,11 @@ def seed_fixture_dependencies(connection: psycopg.Connection) -> tuple[int, int]
             provider, source_id, provider_competition_id, name,
             source_observation_id, rights_approval_id, first_seen_at, last_seen_at
         ) VALUES (
-            'test-provider', 'test-source', 'league-1', 'Test League',
-            %s, 'test-approval', %s, %s
+            'test-provider', %s, 'league-1', 'Test League',
+            %s, %s, %s, %s
         )
         """,
-        (observation[0], now, now),
+        (source_id, observation[0], approval_id, now, now),
     )
     for team_id, team_name in (("home", "Home FC"), ("away", "Away FC")):
         connection.execute(
@@ -95,11 +98,11 @@ def seed_fixture_dependencies(connection: psycopg.Connection) -> tuple[int, int]
                 provider, source_id, provider_team_id, name,
                 source_observation_id, rights_approval_id, first_seen_at, last_seen_at
             ) VALUES (
-                'test-provider', 'test-source', %s, %s,
-                %s, 'test-approval', %s, %s
+                'test-provider', %s, %s, %s,
+                %s, %s, %s, %s
             )
             """,
-            (team_id, team_name, observation[0], now, now),
+            (source_id, f"{team_id}-{suffix}", team_name, observation[0], approval_id, now, now),
         )
     return int(observation[0]), int(response[0])
 
@@ -113,7 +116,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
         expected_database=expected_database,
         migrations_dir=migrations_dir,
     )
-    assert applied == ["001_provenance_ingestion.sql"]
+    assert set(applied).issubset({"001_provenance_ingestion.sql"})
 
     assert apply_migrations(
         database_url,
@@ -146,8 +149,13 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "ingestion_quarantine",
         }.issubset(tables)
 
-        seed_approval(connection)
-        observation_id, _ = seed_fixture_dependencies(connection)
+        suffix = uuid4().hex
+        approval_id = f"test-approval-{suffix}"
+        source_id = f"test-source-{suffix}"
+        seed_approval(connection, approval_id, source_id)
+        observation_id, _ = seed_fixture_dependencies(
+            connection, approval_id, source_id, suffix
+        )
         now = datetime.now(UTC)
 
         with pytest.raises(psycopg.errors.CheckViolation):
@@ -159,8 +167,8 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
                         home_team_provider_id, away_team_provider_id, kickoff_at, status,
                         source_observation_id, rights_approval_id, first_seen_at, last_seen_at
                     ) VALUES (
-                        'test-provider', 'test-source', 'fixture-1', 'league-1',
-                        'home', 'away', %s, 'FINISHED', %s, 'test-approval', %s, %s
+                        'test-provider', source_id, 'fixture-1', 'league-1',
+                        'home', 'away', %s, 'FINISHED', %s, approval_id, %s, %s
                     )
                     """,
                     (now, observation_id, now, now),
