@@ -332,3 +332,14 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - Workflow input on the next manual dispatch: `confirm_collection=COLLECT_BRAZIL_SERIE_B`; `resume_run_id=3`.
 - The automatic post-import validator must complete successfully before this dataset can be accepted. No odds collection, model training, calibration or prediction publication is authorized by this partial import.
 - Import remains **INCOMPLETE / NOT VALIDATED**.
+
+
+### Recovery code audit — run 3 must not be resumed until captured-response replay is implemented (2026-11-16)
+- [x] Inspected `backend/app/providers/historical_import.py` and `backend/app/providers/five_dollar.py` after confirming the 24th request has a persisted HTTP 200 response but an incomplete checkpoint.
+- [x] Confirmed resume currently starts a non-completed checkpoint from `cursor_value` (page 1 for this window) and calls the provider adapter again.
+- [x] The persistent reservation callback correctly refuses to repeat the already-reserved request. However, the current resume path does not replay the already-captured raw response into `FixturePagePersister`; it raises the duplicate-reservation error instead.
+- [x] The exception path can then quarantine the page and mark the checkpoint FAILED. Therefore dispatching run 3 with `resume_run_id=3` before a recovery fix would turn a safely captured HTTP 200 page into a manual quarantine and would not complete the import.
+- [ ] Implement a deterministic captured-response replay path keyed by the exact run/window/page reservation and linked response record. Validate response status, request parameters, checksum, JSON envelope, competition/window scope and pagination before persisting fixtures/checkpoint.
+- [ ] Add regression tests proving a captured HTTP 200 page is replayed without provider HTTP, the reservation is not repeated, and malformed/missing/mismatched captured responses fail closed into quarantine.
+- [ ] Re-run CI, then resume only run ID 3. Do not create a new import run or repeat the reserved request.
+- **Current state:** 23/34 windows complete; 247 fixtures inserted; 24/40 requests used; one captured response awaits checkpoint reconciliation; 10 windows pending; import incomplete and not validated.
