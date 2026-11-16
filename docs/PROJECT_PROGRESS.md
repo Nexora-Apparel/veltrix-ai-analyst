@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16 (persistent request-budget enforcement, checkpoint recovery and 34-window PostgreSQL dry-run validated in CI)  
+**Last updated:** 2026-11-16 (provider HTTP boundary is reservation-gated; 76-test PostgreSQL/Android CI passed)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -99,7 +99,21 @@
 - [x] Added PostgreSQL integration coverage for concurrent distinct reservations, concurrent duplicate keys, idempotency conflicts, paused-run refusal, and a 41-request rejection.
 - [x] Added provider stop-condition tests for HTTP 401/403/500, 429 without retry, moved league IDs, and malformed score/schema data.
 - [x] Controlled dry-run in ephemeral PostgreSQL simulated the 34 planned windows: 34 first-page reservations plus six second-page reservations; all 34 checkpoints were recovered; request 41 was rejected. No provider HTTP requests were made.
-- [x] CI run [#43921580933](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43921580933) passed: 72 backend tests, Ruff lint, Android debug build and APK artifact upload.
+- [x] Added a run-bound callback from `PostgresRequestBudget` into `FiveDollarFootballProvider.fetch_fixtures`; historical collection can require a reservation before every page request, and duplicate reservations block the HTTP call.
+- [x] Added a PostgreSQL-backed provider boundary integration test: the first reservation permits one mocked HTTP request; replay of the same page is rejected before a second HTTP request.
+- [x] CI run [#43922283499](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43922283499) passed: 76 backend tests, Ruff lint, Android debug build and APK artifact upload.
 - [ ] Independent Neon production database is not provisioned. The only connected Neon organization is Vercel-managed; direct Neon project creation is restricted. The Neon Marketplace integration is installed, but resource provisioning requires the Vercel Marketplace/CLI flow. Do not reuse the legacy `VELTRIXFOOTBALL` project.
 - [ ] After the separate Neon resource exists: configure its connection string as a secret, apply checksum-verified migrations with explicit database-name/remote opt-in, verify `current_database() = 'veltrix_ai_analyst'`, then run the dry-run against that database.
 - [ ] Live historical collection remains blocked; no historical provider requests or DB writes have been made.
+
+
+
+### Provider HTTP reservation boundary — 2026-11-16
+- [x] `FiveDollarFootballProvider.fetch_fixtures` supports a run-bound request-reserver callback.
+- [x] Historical collection can set `require_request_reservation=True`; missing callback fails before network access.
+- [x] The callback runs before each page request. A duplicate reservation (`created=false`) blocks the HTTP request.
+- [x] `PostgresRequestBudget.callback_for_run` binds the persistent reservation service to one import run.
+- [x] PostgreSQL integration test verifies one durable reservation authorizes one mocked HTTP request and a replay is stopped before HTTP.
+- [x] Final CI run [#43922283499](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43922283499) passed: 76 backend tests, Ruff, Android debug build and APK artifact upload.
+- [ ] No production Neon resource exists yet. The Vercel-managed Neon organization rejects direct project creation; provisioning must be performed through the installed Vercel Marketplace Neon integration.
+- [ ] No real historical collection request has been made; keep collection blocked until the separate DB is provisioned, migrated, identity-verified and dry-run tested.
