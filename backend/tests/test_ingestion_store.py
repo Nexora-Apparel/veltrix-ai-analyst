@@ -278,6 +278,12 @@ def test_store_creates_bounded_import_checkpoints_and_quarantine(connection) -> 
         importer_version="stage2-store-v1",
         started_at=now,
     )
+    run_status = connection.execute(
+        "SELECT status FROM veltrix_ai_analyst.import_runs WHERE id = %s",
+        (run_id,),
+    ).fetchone()
+    assert run_status == ("RUNNING",)
+
     store.save_checkpoint(
         import_run_id=run_id,
         window_start=now - timedelta(days=1),
