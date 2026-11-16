@@ -23,10 +23,13 @@ The initial PostgreSQL schema is a provenance-first ingestion store. It is delib
 
 ## Identity rules
 
-- Provider fixture, team and competition IDs remain provider-local.
-- No cross-provider fixture merge is performed by this schema.
-- A canonical football identity layer will be added only after Stage 3 entity-resolution rules and evidence are validated.
-- A source row with an ambiguous team, fixture or competition mapping must be quarantined rather than guessed.
+- Provider fixture, team and competition IDs remain provider-local and are never overwritten by canonical IDs.
+- No cross-provider fixture merge is performed during ingestion.
+- Canonical records are a separate, evidence-backed layer. The planned entities are `canonical_teams`, `canonical_competitions`, and `canonical_fixtures`; the planned links are `provider_team_identity_links`, `provider_competition_identity_links`, and `canonical_fixture_sources`.
+- Each provider identity link must retain provider, source, provider-local ID, mapping status, method, evidence URI/hash, reviewer and verification timestamp. A name-only/fuzzy match is a candidate, never a verified link.
+- A canonical fixture may be marked verified only after competition, home-team, away-team and source-fixture mappings are verified and kickoff/result conflicts are resolved.
+- Each canonical fixture source link retains the provider fixture row ID, exact provider fixture ID, source observation ID, source response/sighting, source approval and mapping evidence. A provider source row may map to at most one canonical fixture; multiple provider rows may map to one canonical fixture only after explicit review.
+- Ambiguous team, fixture or competition mappings must remain unresolved or quarantined rather than guessed. No canonical mapping is auto-created by ingestion.
 
 ## Timestamp and point-in-time rules
 
@@ -73,4 +76,26 @@ This prevents partial/live scores from being mistaken for settled results.
 
 ## Current boundary
 
-The schema and initial runtime writer are implemented and tested against ephemeral PostgreSQL in CI. No private database has been provisioned, no production connection has been made, no live provider history has been imported, and no prediction code is stored in these tables.
+The dedicated Neon database `veltrix_ai_analyst` is provisioned and contains the completed, provenance-linked 5Dollar Brazil Serie B import. Migrations 001–005 are applied and checksum-verified. Migration 006 adds the database-enforced pre-match feature PIT gate but remains under CI/review and has not been applied to Neon. No canonical identity crosswalks, production feature pipeline, trained model, prediction service or prediction publication is active.
+
+
+## Pre-match feature admission gate
+
+Migration `006_pre_match_feature_pit_gate.sql` introduces the append-only `pre_match_feature_observations` table. Its database trigger is the final admission boundary; application checks alone are not trusted.
+
+An input is accepted only when its exact `source_observation_sightings` row:
+- is `point_in_time_certifiable = true` with `availability_basis = 'SOURCE_PUBLISHED_AT'`;
+- has both `source_published_at` and `available_at`, and its availability is not earlier than publication;
+- links to a captured successful provider response for the same provider/source;
+- has a payload hash matching the immutable source observation;
+- was published and available no later than `prediction_cutoff_at`;
+- is covered by an approved source grant that permits both `FEATURE_ENGINEERING` and `MODEL_TRAINING`, and was not revoked at the cutoff.
+
+Kickoff/event time, provider update time, retrieval time and post-event availability proxies cannot satisfy this gate. Every feature row references the exact observation and exact retrieval sighting used. The table is append-only. Migration 006 is being reviewed and tested; it has not yet been applied to the dedicated Neon database.
+
+## Historical Brazil Serie B audit (2026-11-16)
+
+Run 3 imported 374 Brazil Serie B fixtures across 34 completed windows. The integrity audit found 370 finished scored matches and four unresolved UNKNOWN fixtures. It found 21 provider team IDs, including an unresolved `America MG` / `América Mineiro` near-time collision. Exact provider fixture IDs and exact team/kickoff keys have no duplicates, but full season completeness is not independently proven.
+
+All 374 source observations lack publication and availability timestamps; all 1,031 sightings are retrieval-only and non-certifiable. Therefore **none of these imported records can currently enter pre-match feature inputs**. See `docs/ledger/2026-11-16-fixture-coverage-integrity-pit-audit.md` for the full audit.
+
