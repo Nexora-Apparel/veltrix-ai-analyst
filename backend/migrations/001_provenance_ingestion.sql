@@ -92,7 +92,7 @@ LEFT JOIN LATERAL (
     SELECT event.status, event.effective_at
     FROM veltrix_ai_analyst.source_approval_status_events AS event
     WHERE event.approval_id = approval.approval_id
-      AND event.effective_at <= CURRENT_TIMESTAMP
+      AND event.effective_at <= statement_timestamp()
     ORDER BY event.effective_at DESC, event.id DESC
     LIMIT 1
 ) AS latest_event ON TRUE;
