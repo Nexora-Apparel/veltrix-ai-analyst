@@ -82,3 +82,10 @@
 - [x] Documented source-rights, attribution, four-day result-availability proxy and non-PIT restrictions.
 - [ ] Plan is design-only: no collection requests, database provisioning, imports or model operations have been performed under it.
 - [x] CI run #43917944552 completed successfully: backend tests, Ruff lint, Android debug build and APK artifact upload all passed.
+
+
+### Deterministic collection-window planner — 2026-11-16
+- [x] Added `backend/app/providers/collection_plan.py` with timezone-aware UTC normalization and contiguous, non-overlapping half-open date windows.
+- [x] Added `backend/tests/test_collection_plan.py` for the 34-window Brazil Serie B candidate interval, UTC offset normalization, clipped final window, and invalid-input rejection.
+- [ ] CI run #43918522018 is running; the earlier intermediate run for the first planner commit was cancelled by the immediately following test-file commit. The current run is the validation target.
+- [ ] This planner is a pure offline utility. It does not call the provider, persist data, reserve API quota, or authorize collection.
