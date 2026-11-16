@@ -13,9 +13,9 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Callable
 from urllib.parse import quote
 from urllib.request import Request, urlopen
-from typing import Callable
 
 
 @dataclass(frozen=True)
@@ -145,14 +145,17 @@ def audit_csv(raw: bytes, spec: SnapshotSpec = BRAZIL_SERIE_B_2026) -> dict[str,
         raise SnapshotError("SOURCE_ROW_COUNT_MISMATCH")
     if len(grouped) != spec.expected_matches:
         raise SnapshotError("SOURCE_MATCH_COUNT_MISMATCH")
-    if len(teams) != spec.expected_teams:
-        raise SnapshotError("SOURCE_TEAM_COUNT_MISMATCH")
-
     for key, rows in grouped.items():
         if len(rows) != 2 or len({row[0] for row in rows}) != 2:
             raise SnapshotError(f"MATCH_TEAM_ROW_CARDINALITY_INVALID:{key[0]}")
-        if {row[0] for row in rows} != {rows[0][3], MATCH_PATTERN.fullmatch(key[1]).group("away").strip()}:
+        if {row[0] for row in rows} != {
+            rows[0][3],
+            MATCH_PATTERN.fullmatch(key[1]).group("away").strip(),
+        }:
             raise SnapshotError(f"MATCH_TEAM_IDENTITY_MISMATCH:{key[0]}")
+
+    if len(teams) != spec.expected_teams:
+        raise SnapshotError("SOURCE_TEAM_COUNT_MISMATCH")
 
     date_min = min(dates).isoformat()
     date_max = max(dates).isoformat()
