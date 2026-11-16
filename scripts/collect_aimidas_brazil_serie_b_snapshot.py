@@ -1,0 +1,40 @@
+"""Capture the approved pinned AI Midas Brazil Serie B snapshot locally."""
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+from app.providers.aimidas_snapshot import collect_snapshot
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--output-dir",
+        default=".local-data/aimidas/brazil-serie-b-2026",
+        help="Local private data directory; do not commit its contents.",
+    )
+    args = parser.parse_args()
+    manifest = collect_snapshot(Path(args.output_dir))
+    print(
+        json.dumps(
+            {
+                "status": "SNAPSHOT_VERIFIED",
+                "source_path": manifest["source_path"],
+                "row_count": manifest["row_count"],
+                "match_count": manifest["match_count"],
+                "team_count": manifest["team_count"],
+                "sha256": manifest["raw_file_sha256"],
+                "point_in_time_certifiable": False,
+                "model_admitted": False,
+                "database_written": False,
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
