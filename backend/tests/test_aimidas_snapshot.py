@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from app.providers import aimidas_snapshot
 from app.providers.aimidas_snapshot import (
     BRAZIL_SERIE_B_2026,
     SnapshotError,
@@ -87,5 +88,20 @@ def test_collector_rejects_naive_retrieval_timestamp(tmp_path: Path) -> None:
             tmp_path,
             fetcher=lambda spec: sample_csv(),
             retrieved_at=datetime(2026, 11, 16, 12, 0),
+            spec=sample_spec(sample_csv()),
+        )
+
+
+
+def test_collector_refuses_raw_data_inside_public_repository(tmp_path: Path) -> None:
+    repository_root = Path(aimidas_snapshot.__file__).resolve().parents[3]
+    public_path = repository_root / "data" / "aimidas"
+    with pytest.raises(
+        SnapshotError,
+        match="RAW_SNAPSHOT_MUST_BE_STORED_OUTSIDE_PUBLIC_REPOSITORY",
+    ):
+        collect_snapshot(
+            public_path,
+            fetcher=lambda spec: sample_csv(),
             spec=sample_spec(sample_csv()),
         )
