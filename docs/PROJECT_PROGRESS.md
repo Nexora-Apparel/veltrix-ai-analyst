@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16 (snapshot capture blocker and coverage-manifest specification)  
+**Last updated:** 2026-11-16 (AI Midas capture and 5Dollar Community preflight verified)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -80,8 +80,8 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [x] Migration runner requires an explicit expected database name, blocks legacy VELTRIX Football database names and requires opt-in for remote migrations.
 - [x] CI validates the schema against ephemeral PostgreSQL 16, including append-only history, score constraints and effective rights revocation.
 - [x] PR #1 CI run #43858717326 passed 44 backend tests, Ruff lint, Android debug compilation and APK artifact upload.
-- [ ] Configure the existing 5Dollar Community credential as a repository secret and run the manual access check. No secret value was accessed or tested in this session.
-- [ ] Capture the pinned AI Midas file into private/local storage and verify the actual source hash. The current connector cannot transfer the pinned binary into the trusted local runtime; see `docs/ledger/2026-11-16-snapshot-capture-and-coverage-manifest.md`.
+- [x] Configured and used the existing 5Dollar Community credential through the repository Actions secret; manual account/Brazil competition preflight passed in run #43884649616.
+- [x] Captured and verified the pinned AI Midas file in GitHub Actions run #43882958891; raw CSV stayed in runner temporary storage; only the 7-day manifest artifact was retained.
 - [x] Implement runtime PostgreSQL writers for approvals, provider responses, observations/sightings, provider entities, entitlements, request events, import runs/checkpoints/finalization, watermarks and quarantine (PR #2).
 - [x] Enforce effective approval status at event time, exact source scope, response-header sanitization, rejection of credential-like request parameters and source-publication timestamp integrity.
 - [x] PR #2 merged as `f3bec93`; CI run #43860443460 passed 52 backend tests, Ruff lint, Android debug build and APK artifact upload.
@@ -95,7 +95,7 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [x] Verified PR #2 CI run #43860443460: backend tests/lint and Android debug build succeeded.
 - [x] Confirmed current main HEAD at audit: `d27237d594c85479282db39bfb2c1c0af215b8f6` (subsequent audit documentation commits are recorded separately).
 - [x] Confirmed AI Midas collector is local-only, checksum-pinned and quarantines one inconsistent match; re-fetched the exact pinned source file and verified its Git blob SHA matches the expected pin. Local raw-byte capture and SHA-256 collector execution remain pending.
-- [x] Confirmed 5Dollar safe verifier performs account/Brazil competition checks without downloading historical fixtures; new repository credential is not yet verified.
+- [x] Confirmed 5Dollar safe verifier performs account/Brazil competition checks without downloading historical fixtures; new repository credential and Community plan were verified in run #43884649616.
 - [x] Confirmed no private database is provisioned/connected and no historical records have been imported in this repository.
 - [x] Confirmed backend currently exposes liveness/root endpoints only; no model, feature pipeline, training, calibration or prediction endpoint exists.
 - [x] Recorded full audit in `docs/ledger/2026-11-16-initial-readiness-audit.md`.
@@ -212,7 +212,7 @@ Add new decisions with dates. Do not silently overwrite material architectural d
 
 ## 11. Blockers and risks
 
-- **Manual credential step:** the new repository still needs the 5Dollar Community key added as a GitHub Actions secret named `FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY` (or `FIVEDOLLARFOOTBALL_API_KEY`). The value must not be sent in chat or committed. The manual workflow is ready.
+- **Fixture endpoint qualification:** account and Brazil Serie B competition-list access are verified, but a bounded fixture/results endpoint probe is still required before any historical import.
 - **AI Midas snapshot storage:** the pinned CSV has been inspected through GitHub and its quality anomaly identified, but the raw snapshot has not yet been captured into private/local storage or persisted to a database.
 - **Point-in-time limitation:** AI Midas Brazil Serie B team statistics have no verified publication timestamp and cannot be treated as pre-match features.
 - **Source anomaly:** one AI Midas Brazil Serie B match has inconsistent row-level scores; the collector quarantines that match.
@@ -225,9 +225,9 @@ Add new decisions with dates. Do not silently overwrite material architectural d
 ## 12. Next execution queue
 
 1. Run the pinned AI Midas Brazil Serie B collector locally; source Git blob SHA has now been reverified as an exact match. Verify raw SHA-256, row counts and quarantine output. Keep the raw file outside Git and retain its non-PIT status.
-2. Add the 5Dollar Community credential to the new repository secret store and run the safe account/Brazil competition verifier. This is a small preflight, not a historical pull.
+2. Run a strictly bounded Brazil Serie B fixture/results endpoint probe; no season backfill.
 3. Produce a source coverage manifest by competition, season/date range, fields, timestamp quality, rights and missingness. Reconcile source overlaps without guessing cross-provider identities.
-4. Design the historical collection budget and resumable import manifest; do not issue bulk calls until the request count and date windows are reviewed.
+4. Design the historical collection budget and resumable import manifest; do not issue bulk calls until endpoint pagination and request costs are measured.
 5. Provision/verify a separate private PostgreSQL database only after the exact target and credentials are configured; never reuse the legacy database.
 6. Apply checksum-verified migrations to that exact new database with explicit remote opt-in.
 7. Implement the bounded ingestion orchestrator and test it against ephemeral PostgreSQL before real imports.
@@ -259,6 +259,16 @@ This file is the canonical project progress record. Keep it current as the proje
 - [x] Quality gate quarantined the 2026-11-07 Náutico 0-3 CRB match (2 inconsistent team rows); 368 matches remain descriptive-data candidates.
 - [x] Raw CSV remained in runner temporary storage and was not committed or uploaded. Only the manifest artifact was retained for 7 days.
 - [x] Added `.github/workflows/aimidas-snapshot-capture.yml` and ledger `docs/ledger/2026-11-16-aimidas-capture-executed.md`.
-- [ ] AI Midas data remains non-PIT, not eligible as pre-match features, and not admitted to models. No DB write or prediction change occurred.
+- [x] AI Midas data remains non-PIT, not eligible as pre-match features, and not admitted to models. No DB write or prediction change occurred.
 - [ ] Next: 5Dollar secret setup and safe account/Brazil competition preflight; then evidence-based coverage manifest completion.
 - This update supersedes the earlier capture-blocked status in the previous ledger entry.
+
+
+### 5Dollar Community preflight — 2026-11-16
+- [x] Manually dispatched workflow [#43884649616](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43884649616); job and verifier step completed successfully.
+- [x] Confirmed the Community plan, 300 requests/hour, 20/minute burst, and two visible Brazil competitions.
+- [x] Confirmed Brazil Serie B is visible as provider competition ID `522514093`.
+- [x] Verified the configured Actions secret was injected as a masked environment variable; no credential value was exposed.
+- [x] Recorded evidence in `docs/ledger/2026-11-16-5dollar-community-preflight.md` and updated `docs/DATA_COVERAGE_MANIFEST.md`.
+- [ ] Fixture/results endpoint access, date/season coverage, field completeness and timestamps remain unverified. Next step is a bounded fixture/results probe, not bulk history ingestion.
+- No historical fixtures, odds, database writes, or model operations were performed.
