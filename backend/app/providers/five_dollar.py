@@ -13,7 +13,7 @@ from typing import Any
 
 import httpx
 
-from app.providers.contracts import ProviderFixture, SourceProvenance
+from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
 
 
 DEFAULT_BASE_URL = "https://api.5dollarfootballapi.com/v1"
@@ -194,6 +194,142 @@ class FiveDollarFootballProvider:
         self._timeout_seconds = timeout_seconds
         self._max_pages_per_window = max_pages_per_window
         self._transport = transport
+
+    async def fetch_competitions(
+        self,
+        country_code: str | None = None,
+        active_since: datetime | None = None,
+    ) -> Sequence[ProviderCompetition]:
+        if not self._api_key:
+            raise ProviderConfigurationError(
+                "FIVE_DOLLAR_FOOTBALL_API_KEY is not configured"
+            )
+
+        retrieved_at = datetime.now(UTC)
+        params: dict[str, str | int] = {"include": "seasons", "per_page": 100}
+        if country_code:
+            params["country"] = country_code
+        if active_since is not None:
+            params["active_since"] = int(_utc(active_since, "active_since").timestamp())
+
+        competitions: list[ProviderCompetition] = []
+        async with httpx.AsyncClient(
+            base_url=self._base_url,
+            timeout=self._timeout_seconds,
+            transport=self._transport,
+            follow_redirects=False,
+        ) as client:
+            page = 1
+            while True:
+                params["page"] = page
+                try:
+                    response = await client.get(
+                        "leagues",
+                        params=params,
+                        headers={
+                            "Authorization": f"Bearer {self._api_key}",
+                            "Accept": "application/json",
+                        },
+                    )
+                except httpx.HTTPError as exc:
+                    raise ProviderAPIError(
+                        f"5DollarFootballAPI network request failed ({type(exc).__name__})"
+                    ) from None
+
+                if response.status_code == 429:
+                    raw_retry = response.headers.get("Retry-After")
+                    try:
+                        retry_after = float(raw_retry) if raw_retry is not None else None
+                    except ValueError:
+                        retry_after = None
+                    raise ProviderRateLimitError(retry_after)
+
+                if response.status_code >= 400:
+                    raise ProviderAPIError(
+                        f"5DollarFootballAPI returned HTTP {response.status_code}"
+                    )
+                try:
+                    payload = response.json()
+                except ValueError:
+                    raise ProviderAPIError(
+                        "5DollarFootballAPI returned invalid JSON"
+                    ) from None
+
+                if not isinstance(payload, dict) or payload.get("success") != 1:
+                    raise ProviderAPIError(
+                        "5DollarFootballAPI returned an unsuccessful response"
+                    )
+                rows = payload.get("data")
+                if not isinstance(rows, list):
+                    raise ProviderAPIError(
+                        "5DollarFootballAPI leagues response is missing its data list"
+                    )
+
+                for row in rows:
+                    if not isinstance(row, dict) or row.get("id") is None or not row.get("name"):
+                        raise ProviderAPIError(
+                            "5DollarFootballAPI returned a malformed competition row"
+                        )
+                    country = row.get("country")
+                    country = country if isinstance(country, dict) else {}
+                    seasons = row.get("seasons")
+                    season_names = tuple(
+                        str(season.get("season"))
+                        for season in seasons
+                        if isinstance(season, dict) and season.get("season") is not None
+                    ) if isinstance(seasons, list) else ()
+                    last_fixture_at = row.get("last_fixture_utc")
+                    if last_fixture_at is not None:
+                        try:
+                            last_fixture_at = datetime.fromisoformat(
+                                str(last_fixture_at).replace("Z", "+00:00")
+                            )
+                        except ValueError:
+                            raise ProviderAPIError(
+                                "5DollarFootballAPI returned invalid last_fixture_utc"
+                            ) from None
+                    competitions.append(
+                        ProviderCompetition(
+                            provenance=SourceProvenance(
+                                provider=self.provider_name,
+                                provider_record_id=str(row["id"]),
+                                retrieved_at=retrieved_at,
+                            ),
+                            competition_id=str(row["id"]),
+                            name=str(row["name"]),
+                            country_code=(
+                                str(country["code"]) if country.get("code") is not None else None
+                            ),
+                            country_name=(
+                                str(country["name"]) if country.get("name") is not None else None
+                            ),
+                            is_popular=(
+                                bool(row["is_popular"]) if row.get("is_popular") is not None else None
+                            ),
+                            has_standings=(
+                                bool(row["has_standings"])
+                                if row.get("has_standings") is not None
+                                else None
+                            ),
+                            last_fixture_at=last_fixture_at,
+                            seasons=season_names,
+                        )
+                    )
+
+                pagination = payload.get("pagination") or {}
+                if not isinstance(pagination, dict):
+                    raise ProviderAPIError(
+                        "5DollarFootballAPI returned malformed pagination metadata"
+                    )
+                if not pagination.get("has_more", False):
+                    break
+                page += 1
+                if page > self._max_pages_per_window:
+                    raise ProviderAPIError(
+                        "5DollarFootballAPI competition pagination exceeded the configured safety limit"
+                    )
+
+        return competitions
 
     async def fetch_fixtures(
         self,
