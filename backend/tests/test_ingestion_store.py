@@ -575,3 +575,29 @@ def test_store_advances_sync_watermark_with_optimistic_versioning(connection) ->
             updated_at=now + timedelta(seconds=2),
             expected_version=0,
         )
+
+
+def test_store_approval_comparison_ignores_json_array_order(connection) -> None:
+    approval = new_approval()
+    store = PostgresIngestionStore(connection)
+    store.sync_source_approval(approval)
+
+    # JSONB arrays preserve element order. Approval semantics do not: scope,
+    # data-type and permitted-use collections are sets in SourceApproval.
+    connection.execute(
+        """
+        UPDATE veltrix_ai_analyst.source_approvals
+        SET scope_values = %s,
+            data_types = %s,
+            permitted_uses = %s
+        WHERE approval_id = %s
+        """,
+        (
+            Jsonb(list(reversed(sorted(approval.scope_values)))),
+            Jsonb(list(reversed(sorted(approval.data_types)))),
+            Jsonb(list(reversed(sorted(use.value for use in approval.permitted_uses)))),
+            approval.approval_id,
+        ),
+    )
+
+    assert store.sync_source_approval(approval) == approval.approval_id
