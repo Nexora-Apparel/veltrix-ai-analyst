@@ -436,6 +436,8 @@ class PostgresIngestionStore:
             self._require_aware(value, name)
         if not entity_type.strip() or not provider_entity_id.strip() or not schema_version.strip():
             raise IngestionStoreError("SOURCE_OBSERVATION_IDENTITY_REQUIRED")
+        if source_published_at is not None and source_published_at > retrieved_at:
+            raise IngestionStoreError("SOURCE_PUBLICATION_AFTER_RETRIEVAL")
         if point_in_time_certifiable and (
             source_published_at is None or availability_basis != "SOURCE_PUBLISHED_AT"
         ):
