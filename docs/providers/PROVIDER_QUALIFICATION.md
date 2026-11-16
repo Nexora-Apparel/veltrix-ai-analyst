@@ -11,9 +11,14 @@ This is the source-of-truth register for data providers in VELTRIX AI ANALYST. A
 - The old `app/provider_adapters.py` is coupled to legacy prediction code and legacy fixture-identity helpers. It was not copied into this project.
 - This repository contains a new isolated adapter at `backend/app/providers/five_dollar.py`, built against the new provider contracts. It contains no prediction code and does not persist data.
 
-**User/account direction already established**
-- Community Access was selected/accepted in the prior VELTRIX project with the Brazil country pack.
-- This does not prove the account currently has the Community plan or that Brazil's required leagues are enabled. Verify using the account status endpoint and league listing before importing anything.
+**Existing account evidence from the prior VELTRIX project**
+- The same Community account was read-only verified on 2026-11-12: plan Community, 300 requests/hour, 20 requests/minute burst.
+- The account exposed seven entitled competitions: Brazil Serie A `3118717965`, Brazil Serie B `522514093`, England Premier League `4160026622`, France Ligue 1 `3614399544`, Germany Bundesliga I `686337048`, Italy Serie A `3405541143`, and Spain La Liga `4212821298`.
+- Brazil was the only country outside the top-five European leagues, inferred as the selected country pack from the returned catalogue.
+- A read-only 365-day qualification on 2026-11-12 (old repository Actions run #43299701499) returned 2,496 finished fixtures with valid scores across all seven competitions, complete pagination (26 pages), 28 requests within a 40-request cap, zero duplicates, zero rejected/quarantined records, and no provider failure. It performed no database writes.
+- This is useful prior evidence, not a substitute for rechecking the account when the new project secret is connected. Do not repeat the full historical pull merely to reconfirm access.
+- Existing secret names in the prior repository are `FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY` and `FIVEDOLLARFOOTBALL_API_KEY`. The new adapter accepts these names and `FIVE_DOLLAR_FOOTBALL_API_KEY`; transfer the credential only through repository secrets or a local environment, never through source code.
+- Recheck the current `/status` response and Brazil league list before the first import, then make only bounded incremental calls.
 
 **Current public plan details checked 2026-11-16**
 - Community Access: 300 requests/hour, with an additional 20 requests/minute burst ceiling.
@@ -36,6 +41,11 @@ This is the source-of-truth register for data providers in VELTRIX AI ANALYST. A
 - HTTP 429 includes `Retry-After`; the adapter surfaces this to the scheduler and does not blindly retry in a tight loop.
 - Retired league IDs may return HTTP 301 with `error.canonical_id`; the adapter raises a typed exception so the canonical mapping can be updated deliberately.
 
+**Existing data-quality limitations**
+- The old Phase 2 review found the 5Dollar historical odds-tick endpoint returned HTTP 403 on Community. Sampled timestamp coverage was 7/77 (9.09%), far below the later 98% odds timestamp requirement. Do not use Community odds as a verified historical tick archive or CLV source.
+- The previous VELTRIX database held the schema and one acceptance audit but zero imported match rows; there is no populated old Neon history table to migrate.
+- A separate 70,444-row Football-Data/ClubElo CSV artifact was quarantined because the underlying dataset rights did not permit assuming reuse. Do not import it.
+ 
 **Implementation status**
 - [x] Provider-neutral normalized fixture and provenance contract.
 - [x] Competition metadata contract.
@@ -57,19 +67,32 @@ The presence of opening/closing prices in an API response does not automatically
 
 ## 2. AI Midas
 
-**Role authorized by the user:** Historical football statistics and additional odds data, including Brazil Série B where available.
+**Role authorized by the user:** Historical football statistics and additional odds data, including Brazil Série B where available. Authorization was recorded on 2026-11-15 and is **non-commercial only**.
+
+**Verified source snapshot found in the prior VELTRIX repository**
+- Source repository: `aimidas1/aimidas1`.
+- Pinned source commit: `29baca362a34ce5dcd3924b07ec9c7d5139d83fc`.
+- Approved source record: `approval-aimidas-football-data-noncommercial-2026-11-15`.
+- Brazil Série B file: `advanced stats/Brazil Serie B 2026.csv`.
+- File SHA-256: `55b0c00629abd2d4ff3c31659ada950b67ffc2752609284b32c15c99f71152ab`.
+- File size: 192,284 bytes; 738 team-match rows; 369 distinct matches; 20 teams; dates 2026-03-21 through 2026-11-08.
+- The prior collector pinned exact Git blob SHA-1 `b6bdb94c053d2149e6232fb100e1f158e46e4533` and verified the single file without downloading the other archives.
+- Prior source approval permits non-commercial collection, internal storage, historical import, analysis, feature research, training and validation within the approved scope. Attribution must be retained. Raw-source redistribution is not allowed.
+- The source is a GitHub CSV snapshot, not a confirmed live AI Midas API. Do not invent an API base URL or authentication scheme.
 
 **Qualification status**
-- [x] User authorization recorded in project context on 2026-11-15.
-- [ ] No AI Midas adapter or confirmed implementation was found in the inspected legacy repository.
-- [ ] Official API documentation, base URL, authentication method and response schema must be identified before coding the adapter.
-- [ ] Confirm which historical statistics and competitions are actually available.
-- [ ] Confirm bookmaker identity, market/line fields and timestamp semantics for odds.
-- [ ] Confirm provider terms, storage rights, quota and historical retention.
-- [ ] Verify Brazil Série B coverage from an actual account response where available.
+- [x] User authorization recorded 2026-11-15; non-commercial-only scope.
+- [x] Pinned Brazil Série B 2026 CSV and checksum evidence identified.
+- [x] Prior code confirms read-only single-file snapshot capture and identity-reconciliation workflow.
+- [ ] Reimplement a minimal snapshot collector in this repository; store raw files outside Git in a private/local data directory or private storage.
+- [ ] Verify the exact source file bytes/hash again before ingesting.
+- [ ] Review schema and fields before mapping; do not assume every column is a pre-match feature.
+- [ ] Confirm whether other pinned AI Midas CSVs are in scope before collecting them.
+- [ ] Identify the separate additional-odds source/schema, if any, and validate bookmaker/market/line/timestamp semantics.
+- [ ] Keep attribution and non-commercial use restrictions attached to every imported record.
 
-**Explicit limitation**
-Authorization to use AI Midas as a source does not certify timestamped bookmaker-specific closing odds or CLV suitability. Treat odds as supplemental, provenance-labelled observations until their timestamps and semantics are independently verified.
+**Point-in-time and odds limitation**
+The pinned Brazil Série B CSV has no verified source-publication timestamp or timezone-aware availability timestamp. The prior project explicitly marked it `point_in_time_certifiable=false`. It can support historical descriptive analysis, match identity checks and carefully scoped research; its post-match team statistics must not be used as pre-match features unless a valid availability timeline is independently established. Its odds fields, if any, are not certified bookmaker-specific closing prices and cannot support CLV claims without timestamp/market verification.
 
 Do not guess that AI Midas is another similarly named odds provider. Do not substitute a different service's API documentation or credentials.
 
