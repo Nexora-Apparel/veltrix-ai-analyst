@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -10,7 +10,7 @@ def valid_provenance() -> dict[str, object]:
     return {
         "provider": "sample-provider",
         "provider_record_id": "fixture-123",
-        "retrieved_at": datetime(2026, 11, 16, 12, 0, tzinfo=timezone.utc),
+        "retrieved_at": datetime(2026, 11, 16, 12, 0, tzinfo=UTC),
     }
 
 
