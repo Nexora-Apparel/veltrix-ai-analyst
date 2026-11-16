@@ -82,6 +82,17 @@ class ProviderFixture(StrictModel):
         return self
 
 
+class ProviderAccountStatus(StrictModel):
+    """Non-secret account plan and quota metadata returned by a provider."""
+
+    provider: str
+    plan: str
+    request_limit: int = Field(ge=1)
+    rate_window_seconds: int = Field(ge=1)
+    burst_per_minute: int | None = Field(default=None, ge=1)
+    requests_today: int = Field(default=0, ge=0)
+
+
 class ProviderCompetition(StrictModel):
     """Normalized competition metadata with provider-local identity."""
 
@@ -109,6 +120,10 @@ class FootballDataProvider(Protocol):
     """Minimal async contract implemented by each football data provider."""
 
     provider_name: str
+
+    async def fetch_account_status(self) -> ProviderAccountStatus:
+        """Return plan and quota metadata without exposing credentials."""
+        ...
 
     async def fetch_competitions(
         self,
