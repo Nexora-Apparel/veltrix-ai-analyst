@@ -16,17 +16,25 @@ DEFAULT_MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations"
 
 def apply_migrations(
     database_url: str,
+    *,
+    expected_database: str,
     migrations_dir: Path = DEFAULT_MIGRATIONS_DIR,
 ) -> list[str]:
-    """Apply ordered SQL migrations exactly once and reject checksum drift."""
+    """Apply ordered SQL migrations exactly once and reject target/checksum drift."""
     if not database_url.strip():
         raise MigrationError("DATABASE_URL_REQUIRED")
+    if not expected_database.strip():
+        raise MigrationError("EXPECTED_DATABASE_NAME_REQUIRED")
     migration_files = sorted(migrations_dir.glob("*.sql"))
     if not migration_files:
         raise MigrationError("NO_SQL_MIGRATIONS_FOUND")
 
     applied: list[str] = []
     with psycopg.connect(database_url) as connection:
+        if connection.info.dbname != expected_database:
+            raise MigrationError("DATABASE_TARGET_NAME_MISMATCH")
+        if connection.info.dbname in {"veltrix-football", "veltrix_football"}:
+            raise MigrationError("LEGACY_DATABASE_WRITES_DISABLED")
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS public.schema_migrations (
