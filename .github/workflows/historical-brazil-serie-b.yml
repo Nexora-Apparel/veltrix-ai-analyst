@@ -54,8 +54,8 @@ jobs:
           else
             IMPORT_OUTPUT="$(python scripts/collect_brazil_serie_b_history.py --execute)"
           fi
-          printf '%s\\n' "$IMPORT_OUTPUT"
-          RUN_ID="$(printf '%s\\n' "$IMPORT_OUTPUT" | sed -n 's/^HISTORICAL_IMPORT_FINISHED:run_id=//p' | tail -n 1)"
+          printf '%s\n' "$IMPORT_OUTPUT"
+          RUN_ID="$(printf '%s\n' "$IMPORT_OUTPUT" | sed -n 's/^HISTORICAL_IMPORT_FINISHED:run_id=//p' | tail -n 1)"
           if [[ ! "$RUN_ID" =~ ^[0-9]+$ ]]; then
             echo "Importer did not return a valid completed run ID" >&2
             exit 1
