@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta, timezone
+from itertools import pairwise
 
 import pytest
 
@@ -16,7 +17,7 @@ def test_brazil_serie_b_candidate_range_builds_34_contiguous_windows() -> None:
     assert windows[-1].end_at == end
     assert all(window.end_at > window.start_at for window in windows)
     assert all(window.end_at - window.start_at <= timedelta(days=7) for window in windows)
-    assert all(left.end_at == right.start_at for left, right in zip(windows, windows[1:]))
+    assert all(left.end_at == right.start_at for left, right in pairwise(windows))
 
 
 def test_windows_normalize_offsets_to_utc_and_clip_final_window() -> None:
