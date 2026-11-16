@@ -185,3 +185,23 @@ Migration `004_ingestion_quarantine.sql` was applied to the dedicated Neon datab
 Raw HTTP response evidence is now persisted before status, JSON and schema validation. Normalized observations and checkpoints are committed separately. Failed pages are quarantined with response ID/checksum/status when available; the request reservation is never refunded. Runs with unresolved quarantined pages cannot be resumed automatically and require manual reconciliation.
 
 Live collection remains locked pending secure configuration of GitHub Actions secret `VELTRIX_AI_ANALYST_DATABASE_URL`. No 5Dollar historical requests or fixture rows have been created.
+
+
+## 14. Importer and quarantine implementation update — 2026-11-16
+
+PR #3 (resumable importer) and PR #4 (failed-page evidence/quarantine) are merged. The current implementation is in `backend/app/providers/historical_import.py`, invoked by `scripts/collect_brazil_serie_b_history.py` and the manual workflow `.github/workflows/historical-brazil-serie-b.yml`.
+
+PR #4 captures raw HTTP response bytes and request events before response validation. Failed or malformed pages are recorded in `veltrix_ai_analyst.ingestion_quarantine` with request key and available response ID, checksum and HTTP status. Request reservations are not refunded. A run containing unresolved quarantined pages is rejected by the resume path and requires manual reconciliation.
+
+Migration 004 is applied to the dedicated Neon database; SHA-256:
+`567fc4c0f85e0b228591bda0888b76a82b92cb799b129197d8e4aae3404997cf`.
+
+CI run [#43944083287](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43944083287) passed 82 backend tests, Ruff, Android debug build and APK artifact upload. These tests use mocked HTTP and do not represent live 5Dollar collection.
+
+### Final infrastructure gate
+
+The importer is implemented, but live collection is still locked until GitHub Actions environment `veltrix-historical-import` has the secret `VELTRIX_AI_ANALYST_DATABASE_URL` configured with the dedicated Neon database URI for `veltrix_ai_analyst`. The Vercel integration-generated `neondb` connection must not be used.
+
+See `docs/GITHUB_ACTIONS_DATABASE_SECRET_SETUP.md` for secure configuration instructions. After setup, run a separate preflight that checks exact database identity, migrations 001–004, source approval and quarantine state while making zero provider requests and zero fixture writes. Do not use the collection workflow as a connection test.
+
+**Current live-collection state: LOCKED.** Historical provider requests under this plan: 0. Imported fixture rows: 0. Odds requests: 0. Model training and prediction publication: not started. The 40-request ceiling, no-retry rule and 12-second spacing remain unchanged.
