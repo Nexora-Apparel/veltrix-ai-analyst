@@ -1144,7 +1144,8 @@ class PostgresIngestionStore:
         updated = self.connection.execute(
             """
             UPDATE veltrix_ai_analyst.import_runs
-            SET status = %s, finished_at = %s, requests_used = %s,
+            SET status = %s, finished_at = %s,
+                requests_used = GREATEST(requests_used, %s),
                 records_seen = %s, records_inserted = %s, records_duplicate = %s,
                 records_rejected = %s, records_quarantined = %s,
                 manifest_sha256 = %s, reason_code = %s
