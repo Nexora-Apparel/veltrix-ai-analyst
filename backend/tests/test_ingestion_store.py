@@ -343,6 +343,16 @@ def test_store_creates_bounded_import_checkpoints_and_quarantine(connection) -> 
     ).fetchone()
     assert checkpoint == (3, 1, 1, 1)
 
+    # A fresh store instance can recover the durable checkpoint after interruption.
+    resumed = PostgresIngestionStore(connection).load_checkpoints(import_run_id=run_id)
+    assert len(resumed) == 1
+    assert resumed[0]["status"] == "COMPLETED"
+    assert resumed[0]["records_seen"] == 3
+    assert resumed[0]["records_inserted"] == 1
+    assert resumed[0]["records_duplicate"] == 1
+    assert resumed[0]["records_quarantined"] == 1
+    assert resumed[0]["response_sha256"] == "a" * 64
+
     store.finish_import_run(
         import_run_id=run_id,
         status="COMPLETED",
