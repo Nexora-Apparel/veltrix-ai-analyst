@@ -16,6 +16,7 @@ on:
       - "scripts/collect_brazil_serie_b_history.py"
       - "scripts/validate_brazil_serie_b_import.py"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/apply-database-migrations.yml"
   pull_request:
     branches: [main]
     paths:
@@ -23,6 +24,7 @@ on:
       - "android/**"
       - "scripts/collect_brazil_serie_b_history.py"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/apply-database-migrations.yml"
 
 permissions:
   contents: read
