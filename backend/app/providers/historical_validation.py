@@ -140,15 +140,24 @@ def validate_brazil_serie_b_import(
         canonical = json.dumps(params, sort_keys=True, separators=(",", ":")).encode()
         if hashlib.sha256(canonical).hexdigest() != str(params_hash).strip():
             failures.append("RESERVATION_PARAMS_HASH_MISMATCH")
+        next_reserved_at = connection.execute(
+            """
+            SELECT MIN(reserved_at)
+            FROM veltrix_ai_analyst.import_request_reservations
+            WHERE request_key = %s AND reserved_at > %s
+            """,
+            (request_key, reserved_at),
+        ).fetchone()[0]
         event = connection.execute(
             """
             SELECT http_status, provider_response_id
             FROM veltrix_ai_analyst.provider_request_events
             WHERE endpoint = %s AND request_params = %s
               AND started_at >= %s
+              AND (%s IS NULL OR started_at < %s)
             ORDER BY started_at DESC LIMIT 1
             """,
-            (endpoint, Jsonb(params), reserved_at),
+            (endpoint, Jsonb(params), reserved_at, next_reserved_at, next_reserved_at),
         ).fetchone()
         if event is None:
             failures.append("REQUEST_EVENT_MISSING")
@@ -230,8 +239,12 @@ def validate_brazil_serie_b_import(
             """,
             (response_ids,),
         ).fetchone()[0]
+    if records_inserted <= 0:
+        failures.append("NO_FIXTURE_DATA_IMPORTED")
     if int(fixture_sightings) != int(records_inserted):
         failures.append("FIXTURE_SIGHTING_COUNT_MISMATCH")
+    if int(fixture_rows) != int(records_inserted):
+        failures.append("PROVIDER_FIXTURE_ROW_COUNT_MISMATCH")
     if int(non_pit_observations) != 0:
         failures.append("UNVERIFIED_POINT_IN_TIME_FEATURES_PRESENT")
 
