@@ -3,7 +3,7 @@
 **Document ID:** VAA-INGEST-PLAN-001  
 **Version:** 1.3  
 **Date:** 2026-11-16  
-**Status:** DATABASE GATE PASSED — dedicated Neon database, migration ledger, source approval and Neon-backed 40-request/checkpoint dry-run are verified. Live collection remains gated pending a production-safe importer/orchestrator and secure GitHub Actions database-secret configuration.
+**Status:** IMPORTER MERGED — dedicated Neon database and migrations are verified; the resumable, rights-aware importer and manual GitHub Actions workflow are merged. Live collection remains locked pending secure GitHub database-secret configuration and final preflight.
 
 ## 1. Objective and strict scope
 
@@ -36,7 +36,7 @@ The candidate interval aligns with the observed AI Midas Brazil Serie B snapshot
 - Up to 6 additional page requests are reserved for windows reporting `has_more=true`.
 - Each request uses one competition, one date window, one page, and `per_page=100`.
 - No automatic retries. A transient failure is recorded and the run stops for review.
-- Throttle to no more than 5 requests/minute, comfortably below the Community burst limit.
+- The live importer enforces a 12-second minimum interval between request starts (maximum 5 requests/minute), comfortably below the Community burst limit.
 - PostgreSQL enforces `request_budget <= 40` with a schema constraint. Each request must first acquire a durable reservation in `import_request_reservations`; a row lock on the import run serializes workers and atomically increments `requests_used` before the HTTP call. Request 41 is rejected by the database-backed budget service.
 - Each reservation has a unique `(import_run_id, request_key)` and a canonical request-parameter hash. A repeated identical key returns `created=false`; the caller must not issue HTTP for that reservation again. Reusing a key with different request data is a hard conflict.
 - `FiveDollarFootballProvider.fetch_fixtures` now accepts a request-reserver callback and a `require_request_reservation` mode. The historical path must set the requirement to true. The callback runs immediately before every page request; a missing callback or an existing reservation blocks the HTTP call.
@@ -73,7 +73,7 @@ Every run must have:
 - current window start/end and next page;
 - last successful request ID, retrieval timestamp, HTTP status and response checksum;
 - row count, pagination metadata, duplicate count, invalid count and quarantine count;
-- terminal state: COMPLETED, INCOMPLETE_BUDGET, STOPPED_PROVIDER_ERROR, STOPPED_SCHEMA_DRIFT, or STOPPED_RIGHTS.
+- terminal state: COMPLETED or PAUSED; a sanitized reason code records quota, provider, schema, rights or reconciliation stops.
 
 A page checkpoint is durable and can be recovered in deterministic window order after process interruption. Persist response evidence and normalized records before marking a window complete. Replaying a page must be idempotent by provider + provider record ID + observation identity; do not create duplicate fixture identities or overwrite immutable source sightings. A reservation already created before a crash is never refunded; if its response/checkpoint is missing, stop for reconciliation rather than silently issuing a duplicate request.
 
@@ -139,7 +139,7 @@ The pilot is accepted only if:
 - Neon-backed dry-run: corrected run ID 2; 34 contiguous checkpoints recovered, 40/40 simulated reservations recorded, request 41 rejected, duplicate key found as an existing reservation; zero provider HTTP calls and zero fixture rows.
 - An earlier rehearsal (run ID 1) was marked FAILED because its generated idempotency keys included milliseconds not emitted by the provider adapter; it made no provider calls. Corrected run ID 2 is PAUSED and retained as the valid rehearsal.
 - CI: run #43922283499 passed 76 backend tests, Ruff, Android debug build and APK upload.
-- Historical import: not started. Live collection remains gated on the import orchestrator and secure GitHub Actions database secret.
+- Historical import: not started. The resumable importer is merged in PR #3; live execution remains gated on secure GitHub Actions database-secret configuration and final preflight.
 - Models/predictions changed: no.
 
 
@@ -152,3 +152,25 @@ The reviewed 5Dollar Community source approval is registered in the database. Co
 The repository Python migration runner was not executed because Vercel CLI environment pull substituted `[SENSITIVE]` for the sensitive `DATABASE_URL`. Migrations were applied directly through Neon SQL and their checksums verified; do not claim the Python runner passed.
 
 **Live historical collection has not started.** Remaining requirements are a tested resumable import orchestrator and secure availability of the dedicated database connection to its GitHub Actions runner. The Vercel integration-generated connection variables currently target `neondb`, not `veltrix_ai_analyst`. Keep the 40-request cap; no odds, retries, or other competitions.
+
+
+## 12. Resumable importer implementation — 2026-11-16
+
+PR [#3](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/3) was merged to `main` at `889cb26e9f97ad18efdf38fb478b7b2877344f63`. CI run [#43941999882](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43941999882) passed 80 backend tests, Ruff lint, Android debug APK build and artifact upload.
+
+The merged implementation adds:
+- page-level provider response evidence for successful, schema-valid pages, including raw response bytes, safe response headers, request parameters, request IDs and pagination metadata;
+- a fixed-scope Brazil Serie B importer for the exact candidate interval, with 34 deterministic seven-day checkpoints;
+- atomic request reservation before every provider HTTP call, a hard 40-request ceiling, and 12-second minimum request spacing;
+- per-page transaction persisting raw response, request event, competition/team/fixture observations, provider projections and checkpoint together;
+- resume from the next page when the preceding page response and checkpoint committed;
+- a CLI requiring both `--execute` and `VELTRIX_ENABLE_HISTORICAL_COLLECTION=true`, plus exact database identity;
+- a manual-only GitHub Actions workflow requiring explicit `COLLECT_BRAZIL_SERIE_B` input and a dedicated GitHub environment.
+
+The PostgreSQL end-to-end test uses `httpx.MockTransport`; all 34 pages are simulated. It verifies 34 persisted response records, 34 fixture rows, 34 completed checkpoints, and 34/40 reserved requests. CI made no real provider requests.
+
+**Failure boundary:** non-success HTTP responses, invalid JSON and malformed page schemas stop before normalized page persistence. Their durable reservation is not refunded, and the run pauses rather than retrying. A reservation without a committed response/checkpoint requires manual reconciliation. Before live execution, add raw-error-response capture and quarantine so malformed/error response evidence is retained as well as successful pages.
+
+**Live execution remains locked.** Configure `VELTRIX_AI_ANALYST_DATABASE_URL` as a GitHub Actions environment secret containing the dedicated `veltrix_ai_analyst` database URI, not the integration-generated `neondb` URI. The existing Community API key secret is consumed at runtime and is not embedded in source. Complete final preflight; do not start historical collection until the raw-error evidence/quarantine gate is addressed.
+
+The importer uses immutable approval ID `approval-5dollar-ai-analyst-historical-2026-11-16`, derived from the reviewed Community approval with the same scope and evidence. It is synchronized by the importer before a new run is created; the earlier approval row remains unchanged.
