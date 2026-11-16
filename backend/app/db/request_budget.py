@@ -54,6 +54,30 @@ class PostgresRequestBudget:
             raise RequestBudgetError("REQUEST_PARAMS_MUST_BE_FINITE_JSON") from None
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
+    def callback_for_run(self, import_run_id: int):
+        """Build the provider adapter callback bound to this import run."""
+
+        def reserve_request(
+            request_key: str,
+            window_start: datetime,
+            window_end: datetime,
+            page_number: int,
+            endpoint: str,
+            request_params: Any,
+        ) -> bool:
+            reservation = self.reserve(
+                import_run_id=import_run_id,
+                request_key=request_key,
+                window_start=window_start,
+                window_end=window_end,
+                page_number=page_number,
+                endpoint=endpoint,
+                request_params=dict(request_params),
+            )
+            return reservation.created
+
+        return reserve_request
+
     def reserve(
         self,
         *,
