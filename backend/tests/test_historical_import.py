@@ -239,6 +239,11 @@ def test_malformed_provider_page_is_saved_and_quarantined(
     assert quarantine[2] is not None
     assert quarantine[3] is not None
     assert bytes(raw_body) == b'{"success":1,"data":'
-    with psycopg.connect(database_url) as connection:
-        with pytest.raises(historical_validation.HistoricalValidationError, match="IMPORT_RUN_NOT_COMPLETED"):
-            historical_validation.validate_brazil_serie_b_import(connection, run_id)
+    with (
+        psycopg.connect(database_url) as connection,
+        pytest.raises(
+            historical_validation.HistoricalValidationError,
+            match="IMPORT_RUN_NOT_COMPLETED",
+        ),
+    ):
+        historical_validation.validate_brazil_serie_b_import(connection, run_id)
