@@ -10,6 +10,8 @@ A personal-use, cloud-backed football analysis and prediction platform with a na
 
 - [Project Progress Register](docs/PROJECT_PROGRESS.md) — canonical stage status, completed work, current work, blockers and next tasks.
 - [System Architecture](docs/ARCHITECTURE.md) — application and service boundaries.
+- [ML Model Architecture](docs/ML_MODEL_ARCHITECTURE.md) — candidate statistical/ML portfolio, ensemble, calibration, evaluation and model-admission specification.
+- [Project Ledger Entries](docs/ledger/) — dated, append-only records of material decisions and implementation progress.
 - [Stage 2 Data Model](docs/DATA_MODEL.md) — provenance-first PostgreSQL schema and ingestion invariants.
 - [Provider Qualification](docs/providers/PROVIDER_QUALIFICATION.md) — approved sources, entitlements, limitations and data-rights decisions.
 - [5DollarFootballAPI Terms Review](docs/providers/5DOLLAR_TERMS_REVIEW.md) — Community attribution, scope and retention restrictions.
