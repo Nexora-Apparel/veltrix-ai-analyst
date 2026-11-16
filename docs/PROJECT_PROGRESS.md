@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16 (historical import attempt safely stopped at approval evidence comparison; PR #10 opened to fix JSONB array ordering)  
+**Last updated:** 2026-11-16 (PR #10 merged; CI and read-only Neon preflight passed; manual historical-import dispatch is the remaining blocker)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -12,7 +12,8 @@
 
 - **Stage:** Stage 2 — Data integrations and historical migration.
 - **Completed foundations:** Stage 1; PostgreSQL provenance schema and runtime ingestion store (PR #1 and #2); hybrid ML architecture specification; AI Midas pinned snapshot verification; 5Dollar Community account/Brazil competition preflight; bounded 5Dollar Brazil Serie B fixture endpoint probe; deterministic date-window planner; persistent request-budget enforcement; checkpoint recovery; controlled ephemeral-PostgreSQL dry-run.
-- **Not built:** secure GitHub Actions connection to dedicated Neon database, live historical import, football feature pipeline, model training/calibration, prediction API, Android product flows, production deployment.
+- **Infrastructure verified:** dedicated Neon database, GitHub Actions environment secret, source approval, four migrations, request reservations, checkpoints and bounded importer are configured. No live historical import has yet completed.
+- **Not built:** football feature pipeline, model training/calibration, prediction API, Android product flows, production deployment.
 - **No prediction model has been trained or certified.**
 - **Project isolation:** no legacy VELTRIX FOOTBALL 2.0 prediction logic, weights, priors, calibration or decision rules are reused.
 
@@ -23,7 +24,7 @@
 - Read-only Neon verification confirmed the registered approval's provider, source, scope, seven competition IDs, data types, approved status, terms evidence hash, permitted uses, non-commercial restriction and attribution/raw-redistribution flags match the code grant.
 - Failure occurred while creating the import run, before the fixture request loop. Read-only counters after failure: 0 fixture request events, 0 fixture response records, 0 imported provider fixtures. The two existing import runs, 80 request reservations and 68 checkpoints are the prior DB-only dry-run/rehearsal records; they are not provider HTTP calls.
 - PR [#10](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/10) canonicalizes the three stored JSONB arrays before comparing them and adds a PostgreSQL regression test that reverses all three arrays. It does not modify or broaden the rights grant.
-- **Collection remains paused.** Do not rerun until PR #10 CI passes, the fix is merged, and a read-only approval consistency preflight succeeds.
+- At the time of this incident record, collection was paused pending CI, merge and read-only preflight. Those gates have since passed on 2026-11-16; see the latest verification section below. The import still requires a manual `workflow_dispatch` launch.
 
 ## Stage 2 — Verified evidence
 
@@ -275,3 +276,29 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [x] Defines required event/publication/first-observed/available/retrieved timestamps, source rights linkage, feature registry, cutoff checks, chronological splits, leakage controls and training acceptance gate.
 - [x] PR [#9](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/9) merged to `main` at `9e72b4a4bf6b6e03a642237c9fe3716ee837d80c` (documentation-only; no CI workflow was triggered for this docs-only change).
 - No provider requests, database writes, fixture imports, odds calls or model training were performed for this policy.
+
+
+## Latest verification — 2026-11-16 — PR #10 merged; import ready for dispatch
+
+### CI and merge
+- CI run [#43956828039](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43956828039), head `266182017ffced5b4bec657a26d33f554ad2ad84`, completed successfully.
+- Android debug build and APK artifact upload passed.
+- Backend test suite passed; Ruff lint passed.
+- PR [#10](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/10) merged by squash at 2026-11-16T21:09:10Z. Merge commit: `6e37dbf7bae782e7b75a1594b69cfa8aab80a422`.
+
+### Read-only Neon preflight
+- Dedicated database `veltrix_ai_analyst`, PostgreSQL 18.7, confirmed.
+- Migrations 001–004 are present in `public.schema_migrations` with checksums matching the repository migration manifests:
+  - 001 `11516fc36e78cca9d0a47f677e2ab451fc1beb6b899d74f9f007b979c98ebf07`
+  - 002 `a5389d81f7816837c0dfedd35784f8834c4484c13a946ea166dd6d55615c4285`
+  - 003 `fa841cf34fe836f3d7d7251edd36e4d5e619d185f6adf4585ac851ebcdc0560e`
+  - 004 `567fc4c0f85e0b228591bda0888b76a82b92cb799b129197d8e4aae3404997cf`
+- Approval `approval-5dollar-community-fixtures-2026-11-12` remains APPROVED for 5DollarFootballAPI. Competition `522514093` is included. Data types remain fixtures/results and competition/team catalogues. Permitted uses include historical import and internal analysis/model work; commercial use is false, attribution is required, and raw redistribution is prohibited.
+- Read-only counters at preflight: provider request events 0; provider responses 0; provider fixtures 0; quarantine records 0; active import runs 0; existing reservations 80; checkpoints 68. The 80 reservations and 68 checkpoints belong to prior DB-only dry-run/rehearsal records and are not provider requests.
+
+### Historical import dispatch gate
+- The original user-authorized collection scope remains Brazil Serie B competition `522514093`, interval `[2026-03-21T00:00:00Z, 2026-11-09T00:00:00Z)`, 34 contiguous weekly windows, fixtures/results only, maximum 40 provider fixture requests, no retries, maximum 5 requests/minute, at least 12 seconds between requests.
+- Workflow: [Controlled Brazil Serie B Historical Import](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/historical-brazil-serie-b.yml).
+- Workflow requires a manual `workflow_dispatch` input `confirm_collection=COLLECT_BRAZIL_SERIE_B`; optional `resume_run_id` should remain blank because no live import run has been created.
+- The connected GitHub toolset exposes workflow reads and reruns but no workflow-dispatch action. Therefore the manual dispatch must be submitted through the workflow page; no provider HTTP request has been initiated in this session.
+- After dispatch, verify actual request reservations and workflow logs; then run `scripts/validate_brazil_serie_b_import.py` for the resulting run. Any validation failure blocks model training. No odds collection or model training is authorized by this import step.
