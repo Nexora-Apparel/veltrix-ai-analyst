@@ -581,23 +581,46 @@ def test_store_advances_sync_watermark_with_optimistic_versioning(connection) ->
 def test_store_approval_comparison_ignores_json_array_order(connection) -> None:
     approval = new_approval()
     store = PostgresIngestionStore(connection)
-    store.sync_source_approval(approval)
 
-    # JSONB arrays preserve element order. Approval semantics do not: scope,
-    # data-type and permitted-use collections are sets in SourceApproval.
+    # Insert the immutable grant with semantically identical but differently
+    # ordered JSONB arrays. Approval rows are append-only, so seed the test
+    # state at insertion rather than attempting an UPDATE.
     connection.execute(
         """
-        UPDATE veltrix_ai_analyst.source_approvals
-        SET scope_values = %s,
-            data_types = %s,
-            permitted_uses = %s
-        WHERE approval_id = %s
+        INSERT INTO veltrix_ai_analyst.source_approvals (
+            approval_id, provider, source_id, scope_type, scope_values, data_types,
+            status, rights_basis, terms_url, terms_version, evidence_uri,
+            evidence_sha256, reviewed_at, reviewer_id, valid_from, valid_until,
+            permitted_uses, commercial_use_allowed, attribution_required,
+            attribution_text, attribution_url, raw_redistribution_allowed
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+        )
         """,
         (
+            approval.approval_id,
+            approval.provider,
+            approval.source_id,
+            approval.scope_type,
             Jsonb(list(reversed(sorted(approval.scope_values)))),
             Jsonb(list(reversed(sorted(approval.data_types)))),
+            approval.status.value,
+            approval.rights_basis,
+            approval.terms_url,
+            approval.terms_version,
+            approval.evidence_uri,
+            approval.evidence_sha256,
+            approval.reviewed_at_utc,
+            approval.reviewer_id,
+            approval.valid_from_utc,
+            approval.valid_until_utc,
             Jsonb(list(reversed(sorted(use.value for use in approval.permitted_uses)))),
-            approval.approval_id,
+            approval.commercial_use_allowed,
+            approval.attribution_required,
+            approval.attribution_text,
+            approval.attribution_url,
+            approval.raw_redistribution_allowed,
         ),
     )
 
