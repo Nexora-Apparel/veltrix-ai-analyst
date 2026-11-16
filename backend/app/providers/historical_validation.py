@@ -154,7 +154,7 @@ def validate_brazil_serie_b_import(
             FROM veltrix_ai_analyst.provider_request_events
             WHERE endpoint = %s AND request_params = %s
               AND started_at >= %s
-              AND (%s IS NULL OR started_at < %s)
+              AND (%s::timestamptz IS NULL OR started_at < %s::timestamptz)
             ORDER BY started_at DESC LIMIT 1
             """,
             (endpoint, Jsonb(params), reserved_at, next_reserved_at, next_reserved_at),
