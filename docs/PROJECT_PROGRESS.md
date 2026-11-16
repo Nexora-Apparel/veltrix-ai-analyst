@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-16 (5Dollar Brazil Serie B fixture endpoint probe executed successfully)  
+**Last updated:** 2026-11-16 (persistent request-budget enforcement, checkpoint recovery and 34-window PostgreSQL dry-run validated in CI)  
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -11,8 +11,8 @@
 ## Current verified position
 
 - **Stage:** Stage 2 — Data integrations and historical migration.
-- **Completed foundations:** Stage 1; PostgreSQL provenance schema and runtime ingestion store (PR #1 and #2); hybrid ML architecture specification; AI Midas pinned snapshot verification; 5Dollar Community account/Brazil competition preflight; bounded 5Dollar Brazil Serie B fixture endpoint probe.
-- **Not built:** private database connection, historical import, football feature pipeline, model training/calibration, prediction API, Android product flows, production deployment.
+- **Completed foundations:** Stage 1; PostgreSQL provenance schema and runtime ingestion store (PR #1 and #2); hybrid ML architecture specification; AI Midas pinned snapshot verification; 5Dollar Community account/Brazil competition preflight; bounded 5Dollar Brazil Serie B fixture endpoint probe; deterministic date-window planner; persistent request-budget enforcement; checkpoint recovery; controlled ephemeral-PostgreSQL dry-run.
+- **Not built:** independent Neon production database/connection, live historical import, football feature pipeline, model training/calibration, prediction API, Android product flows, production deployment.
 - **No prediction model has been trained or certified.**
 - **Project isolation:** no legacy VELTRIX FOOTBALL 2.0 prediction logic, weights, priors, calibration or decision rules are reused.
 
@@ -89,3 +89,17 @@
 - [x] Added `backend/tests/test_collection_plan.py` for the 34-window Brazil Serie B candidate interval, UTC offset normalization, clipped final window, and invalid-input rejection.
 - [ ] CI run #43918522018 is running; the earlier intermediate run for the first planner commit was cancelled by the immediately following test-file commit. The current run is the validation target.
 - [ ] This planner is a pure offline utility. It does not call the provider, persist data, reserve API quota, or authorize collection.
+
+
+
+### Persistent request budget, checkpoint recovery and controlled dry-run — 2026-11-16
+- [x] Added migration `003_import_request_reservations.sql` with a durable reservation ledger and a PostgreSQL-level `request_budget <= 40` constraint.
+- [x] Added `PostgresRequestBudget`: serializes reservations by locking the import-run row, commits each reservation before network use, rejects request 41, and prevents duplicate idempotency keys from authorizing a second HTTP request. A repeated reservation returns `created=false`; changed request data under the same key raises a conflict.
+- [x] Added deterministic `load_checkpoints` recovery to `PostgresIngestionStore`; checkpoint tests verify a fresh store can recover completed window state after interruption.
+- [x] Added PostgreSQL integration coverage for concurrent distinct reservations, concurrent duplicate keys, idempotency conflicts, paused-run refusal, and a 41-request rejection.
+- [x] Added provider stop-condition tests for HTTP 401/403/500, 429 without retry, moved league IDs, and malformed score/schema data.
+- [x] Controlled dry-run in ephemeral PostgreSQL simulated the 34 planned windows: 34 first-page reservations plus six second-page reservations; all 34 checkpoints were recovered; request 41 was rejected. No provider HTTP requests were made.
+- [x] CI run [#43921580933](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43921580933) passed: 72 backend tests, Ruff lint, Android debug build and APK artifact upload.
+- [ ] Independent Neon production database is not provisioned. The only connected Neon organization is Vercel-managed; direct Neon project creation is restricted. The Neon Marketplace integration is installed, but resource provisioning requires the Vercel Marketplace/CLI flow. Do not reuse the legacy `VELTRIXFOOTBALL` project.
+- [ ] After the separate Neon resource exists: configure its connection string as a secret, apply checksum-verified migrations with explicit database-name/remote opt-in, verify `current_database() = 'veltrix_ai_analyst'`, then run the dry-run against that database.
+- [ ] Live historical collection remains blocked; no historical provider requests or DB writes have been made.
