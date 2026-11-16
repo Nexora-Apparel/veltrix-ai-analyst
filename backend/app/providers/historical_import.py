@@ -24,9 +24,7 @@ from app.providers.collection_plan import DateWindow, build_date_windows
 from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
 from app.providers.five_dollar import (
     FiveDollarFootballProvider,
-    ProviderAPIError,
     ProviderError,
-    ProviderRateLimitError,
 )
 from app.providers.rights import SourceApproval
 
@@ -325,7 +323,7 @@ class FixturePagePersister:
                 ) VALUES (
                     %s, %s, %s, 'PROVIDER_PAGE', %s, %s, %s, %s, %s, %s, %s
                 )
-                ON CONFLICT (import_run_id, request_key, reason_code) DO NOTHING
+                ON CONFLICT (import_run_id, request_key) DO NOTHING
                 RETURNING id
                 """,
                 (
@@ -516,6 +514,19 @@ async def run_brazil_serie_b_historical_import(
                 raise HistoricalImportError("IMPORT_RUN_IDENTITY_OR_ENVELOPE_MISMATCH")
             if row[0] not in {"PAUSED", "RUNNING"}:
                 raise HistoricalImportError("IMPORT_RUN_NOT_RESUMABLE")
+            quarantined = connection.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM veltrix_ai_analyst.ingestion_quarantine
+                    WHERE import_run_id = %s
+                )
+                """,
+                (import_run_id,),
+            ).fetchone()[0]
+            if quarantined:
+                raise HistoricalImportError(
+                    "IMPORT_RUN_HAS_QUARANTINED_PAGE_REQUIRES_MANUAL_RECONCILIATION"
+                )
             connection.execute(
                 """
                 UPDATE veltrix_ai_analyst.import_runs
@@ -551,16 +562,22 @@ async def run_brazil_serie_b_historical_import(
                     window=window,
                 )
                 current_persister = persister
-                store.save_checkpoint(
-                    import_run_id=import_run_id,
-                    window_start=window.start_at,
-                    window_end=window.end_at,
-                    status="RUNNING",
-                    records_seen=persister.records_seen,
-                    records_inserted=persister.records_inserted,
-                    requests_used=persister.requests_used,
-                    cursor_value=str(start_page),
-                )
+                if checkpoint["status"] == "PENDING":
+                    store.save_checkpoint(
+                        import_run_id=import_run_id,
+                        window_start=window.start_at,
+                        window_end=window.end_at,
+                        status="RUNNING",
+                        records_seen=persister.records_seen,
+                        records_inserted=persister.records_inserted,
+                        records_duplicate=persister.records_duplicate,
+                        records_rejected=persister.records_rejected,
+                        records_quarantined=persister.records_quarantined,
+                        requests_used=persister.requests_used,
+                        cursor_value=str(start_page),
+                        response_sha256=checkpoint["response_sha256"],
+                        last_error_code=checkpoint["last_error_code"],
+                    )
                 def reserve_page(
                     request_key: str,
                     window_start: datetime,
@@ -628,7 +645,7 @@ async def run_brazil_serie_b_historical_import(
                     status="PAUSED",
                     reason_code=f"SAFE_STOP:{type(exc).__name__}",
                 )
-        if isinstance(exc, (ProviderAPIError, ProviderRateLimitError, RequestBudgetExceeded)):
+        if isinstance(exc, (ProviderError, RequestBudgetExceeded)):
             raise HistoricalImportError(
                 f"COLLECTION_PAUSED:{type(exc).__name__}"
             ) from None
