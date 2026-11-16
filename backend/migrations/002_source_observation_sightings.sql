@@ -1,4 +1,8 @@
 -- Preserve every observation/retrieval link when an identical payload is deduplicated.
+ALTER TABLE veltrix_ai_analyst.source_observations
+    ADD CONSTRAINT source_observations_publication_before_retrieval
+    CHECK (source_published_at IS NULL OR source_published_at <= retrieved_at);
+
 CREATE TABLE veltrix_ai_analyst.source_observation_sightings (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     source_observation_id BIGINT NOT NULL
@@ -21,6 +25,7 @@ CREATE TABLE veltrix_ai_analyst.source_observation_sightings (
     point_in_time_certifiable BOOLEAN NOT NULL DEFAULT FALSE,
     payload_sha256 CHAR(64) NOT NULL CHECK (payload_sha256 ~ '^[0-9a-f]{64}$'),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (source_published_at IS NULL OR source_published_at <= retrieved_at),
     CHECK (
         NOT point_in_time_certifiable
         OR (
