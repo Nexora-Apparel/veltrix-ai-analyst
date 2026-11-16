@@ -116,6 +116,15 @@ def test_store_records_provider_response_and_normalized_observation(connection) 
         provider_response_id=response_id,
     )
     assert observation_id == repeated_observation_id
+    sightings = connection.execute(
+        """
+        SELECT COUNT(*)
+        FROM veltrix_ai_analyst.source_observation_sightings
+        WHERE source_observation_id = %s
+        """,
+        (observation_id,),
+    ).fetchone()
+    assert sightings == (2,)
 
     with pytest.raises(IngestionStoreError, match="PIT_CERTIFICATION_REQUIRES_VERIFIED_PUBLICATION_TIME"):
         store.record_source_observation(
