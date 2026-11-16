@@ -155,6 +155,13 @@ def _normalize_fixture(item: dict[str, Any], retrieved_at: datetime) -> Provider
     home_cards = cards.get("home") if isinstance(cards.get("home"), dict) else {}
     away_cards = cards.get("away") if isinstance(cards.get("away"), dict) else {}
 
+    home_goals = _optional_int(goals.get("home"))
+    away_goals = _optional_int(goals.get("away"))
+    if status == "finished" and (home_goals is None or away_goals is None):
+        status = "unknown"
+    if status != "finished":
+        home_goals = away_goals = None
+
     return ProviderFixture(
         provenance=SourceProvenance(
             provider="5DollarFootballAPI",
@@ -170,8 +177,10 @@ def _normalize_fixture(item: dict[str, Any], retrieved_at: datetime) -> Provider
         away_team_name=str(away.get("name") or "") or None,
         kickoff_at=_kickoff(item),
         status=status,
-        home_goals=_optional_int(goals.get("home")),
-        away_goals=_optional_int(goals.get("away")),
+        status_reason=str(item.get("status_reason") or "") or None,
+        status_code=str(item.get("status_code") or "") or None,
+        home_goals=home_goals,
+        away_goals=away_goals,
         home_corners=_optional_int(corners.get("home")),
         away_corners=_optional_int(corners.get("away")),
         home_yellow_cards=_optional_int(home_cards.get("yellow")),
