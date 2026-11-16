@@ -94,7 +94,7 @@ A stage is not complete merely because files exist. Its exit condition must be m
 - [x] Verified PR #1 CI run #43858717326: backend tests/lint and Android debug build succeeded.
 - [x] Verified PR #2 CI run #43860443460: backend tests/lint and Android debug build succeeded.
 - [x] Confirmed current main HEAD at audit: `d27237d594c85479282db39bfb2c1c0af215b8f6` (subsequent audit documentation commits are recorded separately).
-- [x] Confirmed AI Midas collector is local-only, checksum-pinned and quarantines one inconsistent match; raw snapshot has not yet been captured in this repository.
+- [x] Confirmed AI Midas collector is local-only, checksum-pinned and quarantines one inconsistent match; re-fetched the exact pinned source file and verified its Git blob SHA matches the expected pin. Local raw-byte capture and SHA-256 collector execution remain pending.
 - [x] Confirmed 5Dollar safe verifier performs account/Brazil competition checks without downloading historical fixtures; new repository credential is not yet verified.
 - [x] Confirmed no private database is provisioned/connected and no historical records have been imported in this repository.
 - [x] Confirmed backend currently exposes liveness/root endpoints only; no model, feature pipeline, training, calibration or prediction endpoint exists.
@@ -206,6 +206,7 @@ No accuracy, profitability, or positive-ROI claim is permitted without independe
 | 2026-11-16 | Runtime ingestion store added in PR #2; caller controls transactions and no live provider downloads or production database connection are enabled. |
 | 2026-11-16 | Hybrid statistical/ML model architecture documented in `docs/ML_MODEL_ARCHITECTURE.md`; candidates remain unimplemented and unapproved pending data and chronological evaluation. |
 | 2026-11-16 | Initial readiness audit confirms PR #1/#2 CI success, but no new-repository private DB, AI Midas local snapshot, 5Dollar secret verification, historical import or prediction service exists yet; see `docs/ledger/2026-11-16-initial-readiness-audit.md`. |
+| 2026-11-16 | Re-fetched the pinned AI Midas Brazil Serie B CSV from its exact source commit; GitHub blob SHA matched the collector's expected pin. Local raw-byte capture and SHA-256 validation remain pending; see `docs/ledger/2026-11-16-aimidas-pin-reverification.md`. |
 
 Add new decisions with dates. Do not silently overwrite material architectural decisions; record the reason for changes.
 
@@ -223,7 +224,7 @@ Add new decisions with dates. Do not silently overwrite material architectural d
 
 ## 12. Next execution queue
 
-1. Capture the pinned AI Midas Brazil Serie B snapshot locally; verify SHA-256/Git blob hash, row counts and quarantine output. Keep the raw file outside Git and retain its non-PIT status.
+1. Run the pinned AI Midas Brazil Serie B collector locally; source Git blob SHA has now been reverified as an exact match. Verify raw SHA-256, row counts and quarantine output. Keep the raw file outside Git and retain its non-PIT status.
 2. Add the 5Dollar Community credential to the new repository secret store and run the safe account/Brazil competition verifier. This is a small preflight, not a historical pull.
 3. Produce a source coverage manifest by competition, season/date range, fields, timestamp quality, rights and missingness. Reconcile source overlaps without guessing cross-provider identities.
 4. Design the historical collection budget and resumable import manifest; do not issue bulk calls until the request count and date windows are reviewed.
