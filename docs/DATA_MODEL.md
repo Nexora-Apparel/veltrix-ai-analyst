@@ -66,6 +66,10 @@ This prevents partial/live scores from being mistaken for settled results.
 - Duplicate source payloads are deduplicated by provider/source/entity identity and payload hash.
 - Unaccounted records prevent an import run from being marked complete.
 
+## Runtime writer
+
+`PostgresIngestionStore` is the application write boundary for the schema. It synchronizes immutable approval records, checks effective approval status at the record time, stores raw provider responses with sanitized headers, records immutable source observations, upserts provider-local competition/team/fixture projections, creates bounded import runs/checkpoints, and writes quarantine records. It rejects credential-like request parameters, mismatched provider/source identities, unapproved scopes and invalid point-in-time claims.
+
 ## Current boundary
 
-This migration defines the storage foundation only. No database has been provisioned, no production connection has been made, no provider history has been imported, and no prediction code is stored in these tables.
+The schema and initial runtime writer are implemented and tested against ephemeral PostgreSQL in CI. No private database has been provisioned, no production connection has been made, no live provider history has been imported, and no prediction code is stored in these tables.
