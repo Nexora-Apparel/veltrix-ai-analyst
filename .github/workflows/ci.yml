@@ -36,7 +36,7 @@ jobs:
       - name: Run tests
         run: pytest
       - name: Run lint
-        run: ruff check app tests
+        run: ruff check app tests ../scripts/verify_5dollar_access.py
 
   android:
     name: Android debug build
@@ -62,3 +62,9 @@ jobs:
       - name: Assemble debug APK
         working-directory: android
         run: gradle :app:assembleDebug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-ai-analyst-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
