@@ -16,8 +16,8 @@ from app.db.store import (
     WatermarkConflict,
 )
 from app.providers.approvals import FIVEDOLLAR_ACCOUNT_APPROVAL, FIVEDOLLAR_COMMUNITY_APPROVAL
-from app.providers.rights import SourceApproval
 from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
+from app.providers.rights import SourceApproval
 
 
 @pytest.fixture
