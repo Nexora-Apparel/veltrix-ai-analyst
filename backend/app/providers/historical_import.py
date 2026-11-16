@@ -9,7 +9,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -36,10 +35,7 @@ BOUNDARY_START = datetime(2026, 3, 21, tzinfo=UTC)
 BOUNDARY_END = datetime(2026, 11, 9, tzinfo=UTC)
 REQUEST_BUDGET = 40
 IMPORTER_VERSION = "brazil-serie-b-resumable-v1"
-IMPORT_APPROVAL = replace(
-    FIVEDOLLAR_COMMUNITY_APPROVAL,
-    approval_id="approval-5dollar-ai-analyst-historical-2026-11-16",
-)
+IMPORT_APPROVAL = FIVEDOLLAR_COMMUNITY_APPROVAL
 SCHEMA_VERSION = "5dollar-fixture-v1"
 
 
