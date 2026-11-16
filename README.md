@@ -4,15 +4,15 @@ A personal-use, cloud-backed football analysis and prediction platform with a na
 
 ## Project status
 
-The project is in **Stage 1 of 10: Architecture and repository foundation**. The implementation is being built from a clean foundation. No prediction model or production service is claimed to exist yet.
+**Stage 1 of 10 is complete. Stage 2 — data integrations, source qualification and historical-data foundation — is in progress.** The backend and Android foundations exist, but no production database, live provider import, prediction model, or prediction service is claimed to be operational.
 
-## Progress tracking
+## Project records
 
-The canonical roadmap, current work, completed work, pending tasks, architecture decisions, reuse policy, blockers, and validation gates are maintained in:
-
-- [Project Progress Register](docs/PROJECT_PROGRESS.md)
-
-Update that register whenever implementation status changes.
+- [Project Progress Register](docs/PROJECT_PROGRESS.md) — canonical stage status, completed work, current work, blockers and next tasks.
+- [System Architecture](docs/ARCHITECTURE.md) — application and service boundaries.
+- [Stage 2 Data Model](docs/DATA_MODEL.md) — provenance-first PostgreSQL schema and ingestion invariants.
+- [Provider Qualification](docs/providers/PROVIDER_QUALIFICATION.md) — approved sources, entitlements, limitations and data-rights decisions.
+- [5DollarFootballAPI Terms Review](docs/providers/5DOLLAR_TERMS_REVIEW.md) — Community attribution, scope and retention restrictions.
 
 ## Core principles
 
@@ -22,8 +22,8 @@ Update that register whenever implementation status changes.
 - Selective reuse of reviewed data-provider and infrastructure utilities only.
 - Provenance, point-in-time correctness, chronological validation, and market-specific publication gates.
 - Cost-conscious infrastructure and incremental data ingestion.
-- Public source repository; never commit secrets, API keys, passwords, private records, or production credentials.
+- Public source repository; never commit secrets, API keys, passwords, raw restricted data, private records, or production credentials.
 
 ## Development status
 
-See [docs/PROJECT_PROGRESS.md](docs/PROJECT_PROGRESS.md) before starting work. It is the source of truth for the current stage and next implementation queue.
+The current implementation boundary and next execution queue are recorded in [docs/PROJECT_PROGRESS.md](docs/PROJECT_PROGRESS.md). Review it before beginning new work.

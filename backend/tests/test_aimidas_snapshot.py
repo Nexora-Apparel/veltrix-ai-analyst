@@ -47,10 +47,14 @@ def test_snapshot_audit_verifies_match_pair_and_score_orientation() -> None:
     assert audit["point_in_time_certifiable"] is False
 
 
-def test_snapshot_audit_rejects_team_score_mismatch() -> None:
+def test_snapshot_audit_quarantines_team_score_mismatch() -> None:
     raw = sample_csv().replace(b"Home FC,2,1", b"Home FC,1,1")
-    with pytest.raises(SnapshotError, match="TEAM_SCORE_ORIENTATION_MISMATCH"):
-        audit_csv(raw, sample_spec(raw))
+    audit = audit_csv(raw, sample_spec(raw))
+
+    assert audit["score_mismatch_row_count"] == 1
+    assert audit["quarantined_match_count"] == 1
+    assert audit["eligible_match_count"] == 0
+    assert audit["score_anomalies"][0]["reason_code"] == "TEAM_SCORE_MISMATCH"
 
 
 def test_snapshot_audit_rejects_duplicate_team_rows() -> None:
@@ -105,3 +109,19 @@ def test_collector_refuses_raw_data_inside_public_repository(tmp_path: Path) -> 
             fetcher=lambda spec: sample_csv(),
             spec=sample_spec(sample_csv()),
         )
+
+
+
+def test_collector_manifest_records_score_quarantine(tmp_path: Path) -> None:
+    raw = sample_csv().replace(b"Home FC,2,1", b"Home FC,1,1")
+    manifest = collect_snapshot(
+        tmp_path,
+        fetcher=lambda spec: raw,
+        retrieved_at=datetime(2026, 11, 16, 12, 0, tzinfo=UTC),
+        spec=sample_spec(raw),
+    )
+
+    assert manifest["score_mismatch_row_count"] == 1
+    assert manifest["quarantined_match_count"] == 1
+    assert manifest["eligible_match_count"] == 0
+    assert manifest["score_anomalies"][0]["reason_code"] == "TEAM_SCORE_MISMATCH"

@@ -1,5 +1,9 @@
 name: CI
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
@@ -8,6 +12,7 @@ on:
       - "android/**"
       - "scripts/verify_5dollar_access.py"
       - "scripts/collect_aimidas_brazil_serie_b_snapshot.py"
+      - "scripts/apply_migrations.py"
       - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
@@ -23,6 +28,23 @@ jobs:
   backend:
     name: Backend tests and lint
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/veltrix_test
+      EXPECTED_DATABASE_NAME: veltrix_test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: veltrix_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d veltrix_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: backend
@@ -38,7 +60,7 @@ jobs:
       - name: Run tests
         run: pytest
       - name: Run lint
-        run: ruff check app tests ../scripts/verify_5dollar_access.py ../scripts/collect_aimidas_brazil_serie_b_snapshot.py
+        run: ruff check app tests ../scripts/verify_5dollar_access.py ../scripts/collect_aimidas_brazil_serie_b_snapshot.py ../scripts/apply_migrations.py
 
   android:
     name: Android debug build

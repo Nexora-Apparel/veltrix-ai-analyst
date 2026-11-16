@@ -6,6 +6,7 @@ permission requires a new review and a corresponding evidence update.
 from datetime import UTC, datetime
 
 from app.providers.rights import ApprovalStatus, DataUsePurpose, SourceApproval
+
 FIVEDOLLAR_COMMUNITY_APPROVAL = SourceApproval(
     approval_id="approval-5dollar-community-fixtures-2026-11-12",
     provider="5DollarFootballAPI",

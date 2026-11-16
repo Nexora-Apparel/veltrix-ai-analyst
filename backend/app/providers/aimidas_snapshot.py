@@ -98,6 +98,7 @@ def audit_csv(raw: bytes, spec: SnapshotSpec = BRAZIL_SERIE_B_2026) -> dict[str,
     grouped: dict[tuple[str, str], list[tuple[str, int, int, str, int, int]]] = {}
     teams: set[str] = set()
     dates: list[date] = []
+    score_anomalies: list[dict[str, object]] = []
     row_count = 0
 
     for line_number, row in enumerate(reader, start=2):
@@ -132,7 +133,19 @@ def audit_csv(raw: bytes, spec: SnapshotSpec = BRAZIL_SERIE_B_2026) -> dict[str,
         else:
             raise SnapshotError(f"TEAM_NOT_IN_MATCH_LABEL:line={line_number}")
         if (goals, conceded) != expected:
-            raise SnapshotError(f"TEAM_SCORE_ORIENTATION_MISMATCH:line={line_number}")
+            score_anomalies.append(
+                {
+                    "line_number": line_number,
+                    "team": team,
+                    "match": match_label,
+                    "date": match_date.isoformat(),
+                    "observed_goals": goals,
+                    "observed_goals_conceded": conceded,
+                    "expected_goals": expected[0],
+                    "expected_goals_conceded": expected[1],
+                    "reason_code": "TEAM_SCORE_MISMATCH",
+                }
+            )
 
         key = (match_date.isoformat(), match_label)
         grouped.setdefault(key, []).append(
@@ -162,6 +175,9 @@ def audit_csv(raw: bytes, spec: SnapshotSpec = BRAZIL_SERIE_B_2026) -> dict[str,
     if date_min != spec.date_min or date_max != spec.date_max:
         raise SnapshotError("SOURCE_DATE_RANGE_MISMATCH")
 
+    quarantined_matches = {
+        (str(anomaly["date"]), str(anomaly["match"])) for anomaly in score_anomalies
+    }
     return {
         "row_count": row_count,
         "match_count": len(grouped),
@@ -170,6 +186,10 @@ def audit_csv(raw: bytes, spec: SnapshotSpec = BRAZIL_SERIE_B_2026) -> dict[str,
         "date_max": date_max,
         "sha256": spec.expected_sha256,
         "git_blob_sha1": spec.expected_git_blob_sha1,
+        "score_mismatch_row_count": len(score_anomalies),
+        "quarantined_match_count": len(quarantined_matches),
+        "eligible_match_count": len(grouped) - len(quarantined_matches),
+        "score_anomalies": score_anomalies,
         "point_in_time_certifiable": False,
     }
 
@@ -239,6 +259,10 @@ def collect_snapshot(
         "row_count": audit["row_count"],
         "match_count": audit["match_count"],
         "team_count": audit["team_count"],
+        "score_mismatch_row_count": audit["score_mismatch_row_count"],
+        "quarantined_match_count": audit["quarantined_match_count"],
+        "eligible_match_count": audit["eligible_match_count"],
+        "score_anomalies": audit["score_anomalies"],
         "date_min": audit["date_min"],
         "date_max": audit["date_max"],
         "source_publication_timestamp_available": False,

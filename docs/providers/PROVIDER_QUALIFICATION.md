@@ -79,6 +79,7 @@ The presence of opening/closing prices in an API response does not automatically
 - The file contains post-match team metrics including xG/xGA, open-play and set-piece xG, npxG, goals, possession, field tilt, xT, passes into the box, shots, PPDA, high recoveries, crosses, corners, fouls, pressure and game-control measures. It contains no odds fields.
 - Other CSVs in the same pinned source repository include average 1X2 odds columns, but no verified bookmaker-specific quote timestamps. They are not certified closing prices or a CLV archive.
 - The prior collector pinned exact Git blob SHA-1 `b6bdb94c053d2149e6232fb100e1f158e46e4533` and verified the single file without downloading the other archives.
+- Independent inspection on 2026-11-16 found two team rows for one match (`Náutico 0-3 CRB`, 2026-11-07) whose row-level goals disagree with the match label (CRB row says 2-0; Náutico row says 0-2). The collector records both anomalies and quarantines the entire match; the other 368 matches remain candidates for further validation, not automatically model-approved.
 - Prior source approval permits non-commercial collection, internal storage, historical import, analysis, feature research, training and validation within the approved scope. Attribution must be retained. Raw-source redistribution is not allowed.
 - The source is a GitHub CSV snapshot, not a confirmed live AI Midas API. Do not invent an API base URL or authentication scheme.
 
@@ -87,6 +88,7 @@ The presence of opening/closing prices in an API response does not automatically
 - [x] Pinned Brazil Série B 2026 CSV and checksum evidence identified.
 - [x] Prior code confirms read-only single-file snapshot capture and identity-reconciliation workflow.
 - [x] Reimplement a minimal single-file snapshot collector in this repository; it stores raw files only outside Git in a private/local data directory.
+- [x] Add row-level score reconciliation and match-level quarantine so inconsistent source results cannot be silently imported.
 - [ ] Verify the exact source file bytes/hash again before ingesting.
 - [ ] Review schema and fields before mapping; do not assume every column is a pre-match feature.
 - [ ] Confirm whether other pinned AI Midas CSVs are in scope before collecting them.

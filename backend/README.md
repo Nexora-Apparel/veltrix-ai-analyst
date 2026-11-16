@@ -54,3 +54,26 @@ upload the raw CSV to this public repository or publish it as a workflow artifac
 The manifest records its source commit, hashes, row/match/team counts, attribution,
 non-commercial rights, and point-in-time restrictions. The collector does not
 write to a database or admit any fields to prediction features.
+
+## PostgreSQL schema foundation
+
+The first migration creates the `veltrix_ai_analyst` schema for source approvals,
+provider responses, entitlement observations, immutable source observations,
+provider-local competitions/teams/fixtures, import checkpoints, watermarks and
+quarantine records.
+
+Apply migrations only to the explicitly named new database:
+
+```bash
+python -m pip install -e backend
+export DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/veltrix_ai_analyst"
+export EXPECTED_DATABASE_NAME="veltrix_ai_analyst"
+# Remote database targets require this explicit opt-in after verifying the new DB.
+export ALLOW_REMOTE_MIGRATIONS="true"
+python scripts/apply_migrations.py
+```
+
+The runner verifies each SQL file's SHA-256, refuses database-name mismatches, blocks legacy database names, and refuses remote hosts unless `ALLOW_REMOTE_MIGRATIONS=true` is explicitly set.
+It explicitly blocks the legacy `veltrix-football` database names. CI validates
+the migration against an ephemeral PostgreSQL 16 service. No production database
+has been provisioned or connected by this commit.
