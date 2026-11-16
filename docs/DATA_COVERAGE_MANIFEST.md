@@ -122,3 +122,13 @@ A VERIFIED coverage record may still be RESTRICTED for pre-match modelling, odds
 1. Design a strictly bounded 5Dollar Brazil Serie B fixture/result endpoint probe to establish actual endpoint access and response schema; do not start a season backfill.
 2. Populate measured competition/field/date records from bounded evidence; do not infer missing values.
 3. Define the historical request budget and resumable import plan from measured pagination and quota evidence.
+
+
+## 11. Bounded 5Dollar fixture probe — prepared, not executed
+
+- Implementation: `scripts/probe_5dollar_brazil_fixtures.py`; workflow: `.github/workflows/5dollar-fixture-probe.yml`.
+- Scope: Brazil Serie B provider ID `522514093`; `GET /v1/leagues/522514093/fixtures`; 2026-11-07T00:00:00Z inclusive to 2026-11-09T00:00:00Z exclusive; page 1 only; page size 100.
+- Hard ceiling: one HTTP request, zero retries, zero pagination follow-ups. No odds calls and no database writes.
+- Output: sanitized manifest with HTTP status, response SHA-256/bytes, schema keys, first-page pagination and first-fixture timestamp candidates. Raw response and API key are not printed or uploaded.
+- Status: PREPARED; not executed. Fixture/result endpoint access, returned fields, timestamp semantics and date coverage remain NOT_CHECKED.
+- Manual workflow dispatch is required; see `docs/ledger/2026-11-16-5dollar-fixture-probe-prepared.md`. The existing Community secret is already configured.
