@@ -29,7 +29,11 @@ def database_url() -> str:
 
 
 def make_run(database_url: str, budget: int) -> int:
-    approval = replace(\n        FIVEDOLLAR_COMMUNITY_APPROVAL,\n        approval_id=f\"test-budget-approval-{uuid4().hex}\",\n        source_id=f\"test-budget-source-{uuid4().hex}\",\n    )
+    approval = replace(
+        FIVEDOLLAR_COMMUNITY_APPROVAL,
+        approval_id=f"test-budget-approval-{uuid4().hex}",
+        source_id=f"test-budget-source-{uuid4().hex}",
+    )
     with psycopg.connect(database_url) as conn:
         run_id = PostgresIngestionStore(conn).create_import_run(
             approval,
