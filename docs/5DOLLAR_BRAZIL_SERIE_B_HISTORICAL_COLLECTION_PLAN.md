@@ -1,9 +1,9 @@
 # 5Dollar Brazil Serie B — bounded historical collection plan
 
 **Document ID:** VAA-INGEST-PLAN-001  
-**Version:** 1.3  
+**Version:** 1.4  
 **Date:** 2026-11-16  
-**Status:** IMPORTER AND QUALITY GATE MERGED — dedicated Neon database, four migrations, resumable importer, failed-page quarantine and post-import validator are merged. Live collection remains locked pending secure GitHub database-secret configuration.
+**Status:** IMPORTER AND QUALITY GATE MERGED — dedicated Neon database and secret-backed read-only preflight passed; canonical source approval binding fixed and CI passed. Live collection remains locked pending the operator's explicit manual workflow confirmation.
 
 ## 1. Objective and strict scope
 
@@ -223,3 +223,16 @@ The read-only validator checks:
 The manual historical import workflow now runs this validator automatically after the importer returns a completed run ID. Paused/failed runs do not reach validation. The operator runbook is `docs/HISTORICAL_IMPORT_OPERATOR_RUNBOOK.md`.
 
 Live collection remains disabled until the dedicated database URI is securely configured as GitHub Actions environment secret `VELTRIX_AI_ANALYST_DATABASE_URL`. No historical provider calls or fixture imports have been made.
+
+
+## 15. Authoritative execution gate — 2026-11-16
+
+- Secret-backed read-only preflight [#43949967262](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43949967262) passed against the exact dedicated database `veltrix_ai_analyst` (PostgreSQL 18.7).
+- Migrations 001–004 and checksums passed; registered source approval and competition scope passed; unresolved quarantines = 0; active import runs = 0.
+- Preflight made zero provider HTTP requests, zero DB writes and zero fixture writes.
+- Importer approval identity was corrected in PR [#8](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/8), merged at `71eedf3abeedcd0312d7f7038b5e9541b7af5484`. It now uses the canonical registered approval ID `approval-5dollar-community-fixtures-2026-11-12`; no derived duplicate approval ID is created.
+- CI [#43952346445](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43952346445) passed backend tests, Ruff, Android debug build and APK artifact upload.
+- A read-only Neon comparison confirmed the full canonical approval row matches the code-defined source grant.
+- Historical collection requests: 0; fixture rows imported: 0; odds requests: 0.
+- **Live collection remains LOCKED** until the operator manually dispatches `.github/workflows/historical-brazil-serie-b.yml` on `main` and sets the required confirmation input to `COLLECT_BRAZIL_SERIE_B`. Leave `resume_run_id` blank for a fresh run. This is the final explicit collection authorization; the preflight and PR merge do not start collection.
+- Once started, the importer remains restricted to the single Brazil Serie B competition ID `522514093`, fixtures/results only, 34 seven-day windows, hard 40-request ceiling, durable reservation before every request, no automatic retries and 12-second minimum spacing. The post-import validator must pass before any historical dataset is accepted for downstream feature work.
