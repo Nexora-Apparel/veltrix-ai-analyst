@@ -994,6 +994,7 @@ class PostgresIngestionStore:
             "rate_limit_hour": rate_limit_hour,
             "rate_limit_minute": rate_limit_minute,
             "quota_remaining": quota_remaining,
+            "provider_response_id": provider_response_id,
         }
         _, evidence_hash = self._canonical_json(evidence_payload)
         row = self.connection.execute(
