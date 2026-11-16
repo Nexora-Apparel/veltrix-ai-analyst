@@ -158,8 +158,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
         )
         now = datetime.now(UTC)
 
-        with pytest.raises(psycopg.errors.CheckViolation):
-            with connection.transaction():
+        with pytest.raises(psycopg.errors.CheckViolation), connection.transaction():
                 connection.execute(
                     """
                     INSERT INTO veltrix_ai_analyst.provider_fixtures (
@@ -184,8 +183,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
                     ),
                 )
 
-        with pytest.raises(psycopg.errors.RaiseException):
-            with connection.transaction():
+        with pytest.raises(psycopg.errors.RaiseException), connection.transaction():
                 connection.execute(
                     """
                     UPDATE veltrix_ai_analyst.source_observations
