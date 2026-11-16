@@ -9,7 +9,7 @@ import pytest
 
 from app.db.migrations import apply_migrations
 from app.db.store import EvidenceConflict, IngestionStoreError, PostgresIngestionStore, RightsDenied
-from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
+from app.providers.approvals import FIVEDOLLAR_ACCOUNT_APPROVAL, FIVEDOLLAR_COMMUNITY_APPROVAL
 from app.providers.rights import SourceApproval
 from app.providers.contracts import ProviderCompetition, ProviderFixture, SourceProvenance
 
@@ -370,3 +370,89 @@ def test_store_refuses_changed_approval_under_same_id(connection) -> None:
 
     with pytest.raises(EvidenceConflict, match="SOURCE_APPROVAL_ID_ALREADY_EXISTS_WITH_DIFFERENT_EVIDENCE"):
         store.sync_source_approval(changed)
+
+
+def test_store_persists_account_entitlements_and_rate_limit_events(connection) -> None:
+    account_approval = replace(
+        FIVEDOLLAR_ACCOUNT_APPROVAL,
+        approval_id=f"test-account-approval-{uuid4().hex}",
+        source_id=f"test-account-source-{uuid4().hex}",
+    )
+    competition_approval = replace(
+        FIVEDOLLAR_COMMUNITY_APPROVAL,
+        approval_id=f"test-rate-approval-{uuid4().hex}",
+        source_id=account_approval.source_id,
+    )
+    store = PostgresIngestionStore(connection)
+    now = datetime.now(UTC)
+    account_response_id = store.record_provider_response(
+        account_approval,
+        scope_value="account_status",
+        data_type="account_entitlements",
+        endpoint="/status",
+        request_id=f"status-{uuid4().hex}",
+        request_params={},
+        http_status=200,
+        raw_body=b'{"plan":"Community","status":"active"}',
+        response_headers={"Content-Type": "application/json"},
+        fetched_at=now,
+        quota_limit=300,
+        quota_remaining=299,
+    )
+    entitlement_id = store.record_entitlement_observation(
+        account_approval,
+        plan_code="Community",
+        entitlement_status="active",
+        competition_ids=[
+            "3118717965",
+            "522514093",
+            "4160026622",
+            "3614399544",
+            "686337048",
+            "3405541143",
+            "4212821298",
+        ],
+        checked_at=now,
+        provider_response_id=account_response_id,
+        rate_limit_hour=300,
+        rate_limit_minute=20,
+        quota_remaining=299,
+    )
+    assert entitlement_id > 0
+
+    request_event_id = store.record_provider_request_event(
+        competition_approval,
+        scope_value="522514093",
+        data_type="fixtures_and_results",
+        endpoint="/leagues/522514093/fixtures",
+        request_params={"per_page": 100},
+        started_at=now,
+        finished_at=now + timedelta(seconds=1),
+        http_status=429,
+        retry_after_seconds=60,
+        quota_remaining=0,
+    )
+    assert request_event_id > 0
+
+    entitlement = connection.execute(
+        """
+        SELECT plan_code, entitlement_status, rate_limit_hour, rate_limit_minute,
+               quota_remaining, competition_ids
+        FROM veltrix_ai_analyst.provider_entitlement_observations
+        WHERE id = %s
+        """,
+        (entitlement_id,),
+    ).fetchone()
+    assert entitlement is not None
+    assert entitlement[0:5] == ("Community", "active", 300, 20, 299)
+    assert len(entitlement[5]) == 7
+
+    request_event = connection.execute(
+        """
+        SELECT http_status, retry_after_seconds, quota_remaining
+        FROM veltrix_ai_analyst.provider_request_events
+        WHERE id = %s
+        """,
+        (request_event_id,),
+    ).fetchone()
+    assert request_event == (429, 60.0, 0)
