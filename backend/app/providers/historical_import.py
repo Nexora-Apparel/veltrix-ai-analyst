@@ -407,7 +407,10 @@ async def run_brazil_serie_b_historical_import(
             )
         _ensure_run_checkpoints(store, import_run_id=import_run_id, windows=windows)
 
-    active_provider = provider or FiveDollarFootballProvider(api_key=api_key)
+    active_provider = provider or FiveDollarFootballProvider(
+        api_key=api_key,
+        min_request_interval_seconds=12.0,
+    )
     try:
         with (
             psycopg.connect(database_url, autocommit=True) as store_connection,
