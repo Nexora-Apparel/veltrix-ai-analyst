@@ -167,11 +167,21 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
                         home_team_provider_id, away_team_provider_id, kickoff_at, status,
                         source_observation_id, rights_approval_id, first_seen_at, last_seen_at
                     ) VALUES (
-                        'test-provider', source_id, 'fixture-1', 'league-1',
-                        'home', 'away', %s, 'FINISHED', %s, approval_id, %s, %s
+                        'test-provider', %s, %s, 'league-1',
+                        %s, %s, %s, 'FINISHED', %s, %s, %s, %s
                     )
                     """,
-                    (now, observation_id, now, now),
+                    (
+                        source_id,
+                        f"fixture-{suffix}",
+                        f"home-{suffix}",
+                        f"away-{suffix}",
+                        now,
+                        observation_id,
+                        approval_id,
+                        now,
+                        now,
+                    ),
                 )
 
         with pytest.raises(psycopg.errors.RaiseException):
