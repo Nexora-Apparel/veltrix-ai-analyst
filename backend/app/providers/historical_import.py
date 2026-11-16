@@ -29,6 +29,7 @@ from app.providers.five_dollar import (
 )
 from app.providers.rights import SourceApproval
 
+EXPECTED_DATABASE_NAME = "veltrix_ai_analyst"
 COMPETITION_ID = "522514093"
 SOURCE_ID = "5dollarfootballapi"
 PROVIDER_NAME = "5DollarFootballAPI"
@@ -355,7 +356,7 @@ async def run_brazil_serie_b_historical_import(
     windows = build_date_windows(BOUNDARY_START, BOUNDARY_END, window_days=7)
     with psycopg.connect(database_url) as connection:
         database_name = connection.execute("SELECT current_database()").fetchone()[0]
-        if database_name != "veltrix_ai_analyst":
+        if database_name != EXPECTED_DATABASE_NAME:
             raise HistoricalImportError("EXPECTED_DATABASE_IDENTITY_MISMATCH")
         store = PostgresIngestionStore(connection)
         if import_run_id is None:
