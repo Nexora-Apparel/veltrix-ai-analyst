@@ -205,3 +205,14 @@ Every subsequent implementation, migration, CI result, provider call, import cou
 - [x] CI #43946317661 passed 82 backend tests, Ruff, Android debug build and APK artifact upload.
 - [ ] Live historical collection remains locked until GitHub Actions environment secret `VELTRIX_AI_ANALYST_DATABASE_URL` is configured with the dedicated `veltrix_ai_analyst` URI.
 - [x] No historical 5Dollar API calls, odds calls, fixture imports, model training or prediction publication occurred.
+
+
+### Read-only collection preflight — correction and secret setup confirmation (2026-11-16)
+- [x] User confirmed the GitHub environment secret `VELTRIX_AI_ANALYST_DATABASE_URL` was saved in `veltrix-historical-import`. Its value remains private and is not yet validated by GitHub Actions.
+- [x] Read-only Neon inspection identified the actual registered approval: `approval-5dollar-community-fixtures-2026-11-12`. The earlier PR implementation referenced a nonexistent approval ID.
+- [x] Verified that approval belongs to `5DollarFootballAPI` / `5dollarfootballapi`, includes competition `522514093`, and permits fixtures/results plus competition/team catalogue data; it is non-commercial, requires attribution and disallows raw redistribution.
+- [x] Corrected preflight approval binding and added a regression test.
+- [x] Reconfirmed database identity `veltrix_ai_analyst`, PostgreSQL 18.7, migration checksums 001–004, zero unresolved 5Dollar quarantine rows and zero PLANNED/RUNNING 5Dollar import runs.
+- [ ] PR #7 must pass CI before merge. After merge, run the read-only preflight to verify the saved secret and runner connectivity.
+- [x] No provider requests, reservation writes, fixture writes, odds calls or model operations were performed during this correction.
+- [x] Historical collection remains **LOCKED**.
