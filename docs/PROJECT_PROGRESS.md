@@ -138,3 +138,11 @@
 - [ ] Live import remains locked until `VELTRIX_AI_ANALYST_DATABASE_URL` is securely configured as a GitHub Actions environment secret.
 - [ ] Add raw-response capture and quarantine for non-success or malformed responses before live collection. Existing importer stops safely and does not retry a reserved request.
 - [x] No historical 5Dollar requests, odds calls, fixture imports, model training or prediction publication occurred.
+
+
+### Failed-page capture and quarantine — 2026-11-16
+- [x] PR #4 merged at `cabdf8c2cfd831ad67cf9979ddb783b77906b5a4`: raw HTTP responses captured before validation; request events persisted; failed pages quarantined with linked response ID/checksum/status; automatic replay blocked for unresolved quarantines.
+- [x] CI #43944083287 passed 82 backend tests, Ruff, Android debug build and APK artifact upload. Malformed JSON test verifies raw body retention and quarantine.
+- [x] Migration 004 applied to Neon database `veltrix_ai_analyst`; SHA-256 `567fc4c0f85e0b228591bda0888b76a82b92cb799b129197d8e4aae3404997cf`; five columns and unique request-key constraint verified.
+- [ ] Live collection remains locked until `VELTRIX_AI_ANALYST_DATABASE_URL` is securely configured as a GitHub Actions secret.
+- [x] No 5Dollar historical requests, odds calls, fixture imports, model training or prediction publication occurred.
