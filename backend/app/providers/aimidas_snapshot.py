@@ -10,10 +10,10 @@ import hashlib
 import io
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
-from collections.abc import Callable
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
