@@ -76,7 +76,12 @@ def test_store_records_provider_response_and_normalized_observation(connection) 
         request_params={"start_time": "2026-11-01T00:00:00Z", "per_page": 100},
         http_status=200,
         raw_body=raw_body,
-        response_headers={"Content-Type": "application/json"},
+        response_headers={
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": "299",
+            "Authorization": "Bearer must-not-persist",
+            "Set-Cookie": "session=private",
+        },
         fetched_at=now,
         quota_limit=300,
         quota_remaining=299,
