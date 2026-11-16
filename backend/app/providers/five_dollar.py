@@ -65,6 +65,15 @@ def _utc(value: datetime, field_name: str) -> datetime:
     return value.astimezone(UTC)
 
 
+def _time_windows(start: datetime, end: datetime) -> list[datetime]:
+    cursor = start
+    windows: list[datetime] = []
+    while cursor < end:
+        windows.append(cursor)
+        cursor += MAX_FIXTURE_WINDOW
+    return windows
+
+
 def _optional_int(value: Any) -> int | None:
     if value is None or isinstance(value, bool):
         return None
@@ -203,7 +212,6 @@ class FiveDollarFootballProvider:
             raise ValueError("end_at must be later than start_at")
 
         competitions = list(dict.fromkeys(str(value) for value in (competition_ids or [])))
-        filters: list[str | None] = competitions or [None]
         retrieved_at = datetime.now(UTC)
         fixtures: list[ProviderFixture] = []
 
@@ -213,25 +221,37 @@ class FiveDollarFootballProvider:
             transport=self._transport,
             follow_redirects=False,
         ) as client:
-            cursor = start
-            while cursor < end:
-                window_end = min(cursor + MAX_FIXTURE_WINDOW, end)
-                for competition_id in filters:
+            # The global fixture endpoint is limited to 24-hour windows.
+            # League fixture history accepts an unrestricted start/end window,
+            # so use it for targeted historical imports to conserve quota.
+            windows = (
+                [(start, end)]
+                if competitions
+                else [
+                    (cursor, min(cursor + MAX_FIXTURE_WINDOW, end))
+                    for cursor in _time_windows(start, end)
+                ]
+            )
+            for window_start, window_end in windows:
+                for competition_id in (competitions or [None]):
                     page = 1
                     while True:
                         params: dict[str, str | int] = {
-                            "start_time": int(cursor.timestamp()),
+                            "start_time": int(window_start.timestamp()),
                             "end_time": int(window_end.timestamp()),
                             "status": "all",
                             "page": page,
                             "per_page": 100,
                         }
-                        if competition_id is not None:
-                            params["league"] = competition_id
+                        path = (
+                            f"leagues/{competition_id}/fixtures"
+                            if competition_id is not None
+                            else "fixtures"
+                        )
 
                         try:
                             response = await client.get(
-                                "fixtures",
+                                path,
                                 params=params,
                                 headers={
                                     "Authorization": f"Bearer {self._api_key}",
@@ -301,6 +321,4 @@ class FiveDollarFootballProvider:
                             raise ProviderAPIError(
                                 "5DollarFootballAPI pagination exceeded the configured safety limit"
                             )
-                cursor = window_end
-
         return fixtures
