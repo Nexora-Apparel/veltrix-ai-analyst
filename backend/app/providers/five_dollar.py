@@ -196,7 +196,13 @@ class FiveDollarFootballProvider:
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         configured_key = (
-            api_key if api_key is not None else os.getenv("FIVE_DOLLAR_FOOTBALL_API_KEY", "")
+            api_key
+            if api_key is not None
+            else (
+                os.getenv("FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY")
+                or os.getenv("FIVEDOLLARFOOTBALL_API_KEY")
+                or os.getenv("FIVE_DOLLAR_FOOTBALL_API_KEY", "")
+            )
         )
         self._api_key = configured_key.strip()
         self._base_url = base_url.rstrip("/")
