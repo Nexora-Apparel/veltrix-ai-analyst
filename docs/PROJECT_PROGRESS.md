@@ -252,3 +252,13 @@ For every meaningful implementation session:
 7. Never mark a task complete based only on an intention or an unverified claim.
 
 This file is the canonical project progress record. Keep it current as the project evolves.
+
+### Superseding execution update — 2026-11-16
+- [x] AI Midas Brazil Série B 2026 snapshot collector executed in GitHub Actions run [#43882958891](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43882958891); conclusion: success.
+- [x] Retrieved and inspected the verification manifest artifact. Raw bytes 192,284; SHA-256 `55b0c00629abd2d4ff3c31659ada950b67ffc2752609284b32c15c99f71152ab`; Git blob SHA-1 `b6bdb94c053d2149e6232fb100e1f158e46e4533`; 738 rows; 369 matches; 20 teams; date range 2026-03-21 to 2026-11-08.
+- [x] Quality gate quarantined the 2026-11-07 Náutico 0-3 CRB match (2 inconsistent team rows); 368 matches remain descriptive-data candidates.
+- [x] Raw CSV remained in runner temporary storage and was not committed or uploaded. Only the manifest artifact was retained for 7 days.
+- [x] Added `.github/workflows/aimidas-snapshot-capture.yml` and ledger `docs/ledger/2026-11-16-aimidas-capture-executed.md`.
+- [ ] AI Midas data remains non-PIT, not eligible as pre-match features, and not admitted to models. No DB write or prediction change occurred.
+- [ ] Next: 5Dollar secret setup and safe account/Brazil competition preflight; then evidence-based coverage manifest completion.
+- This update supersedes the earlier capture-blocked status in the previous ledger entry.
