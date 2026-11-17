@@ -32,10 +32,12 @@ def main() -> int:
     if expected_database != "veltrix_ai_analyst":
         raise SystemExit("EXPECTED_DATABASE_NAME_MISMATCH")
 
-    with psycopg.connect(database_url, autocommit=True) as connection:
+    with psycopg.connect(database_url) as connection:
         if connection.info.dbname != expected_database:
             raise SystemExit("DATABASE_TARGET_MISMATCH")
-        rows = connection.execute(QUERY, (PROVIDER, SOURCE_ID, COMPETITION_ID)).fetchall()
+        with connection.transaction():
+            connection.execute("SET TRANSACTION READ ONLY")
+            rows = connection.execute(QUERY, (PROVIDER, SOURCE_ID, COMPETITION_ID)).fetchall()
 
     finished = []
     unknown = []
