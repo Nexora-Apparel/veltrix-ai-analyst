@@ -155,8 +155,9 @@ def _load_candidates(
                source.rights_approval_id, observation.payload_sha256,
                observation.provider AS observation_provider,
                observation.source_id AS observation_source_id,
-               observation.data_type, observation.data_type, observation.entity_type, observation.provider_entity_id,
+               observation.data_type, observation.entity_type, observation.provider_entity_id,
                observation.rights_approval_id AS observation_rights_approval_id,
+               observation.point_in_time_certifiable,
                provenance.source_sighting_id, provenance.provider_response_id
         FROM veltrix_ai_analyst.provider_competitions source
         LEFT JOIN veltrix_ai_analyst.source_observations observation
@@ -417,7 +418,9 @@ def build_brazil_serie_b_materialization_plan(
     valid_fixture_count = 0
     finished_count = 0
     unknown_count = 0
-    non_pit_count = 0
+    non_pit_count = sum(
+        not row["point_in_time_certifiable"] for row in [*teams, *competitions, *fixtures]
+    )
     for fixture in fixtures:
         if (
             fixture["rights_approval_id"] == scope.rights_approval_id
@@ -437,8 +440,6 @@ def build_brazil_serie_b_materialization_plan(
             finished_count += 1
         elif fixture["status"] == "UNKNOWN":
             unknown_count += 1
-        if fixture["source_observation_id"] is not None and not fixture["point_in_time_certifiable"]:
-            non_pit_count += 1
     if valid_fixture_count != len(fixtures):
         blockers.append("FIXTURE_SOURCE_PROVENANCE_INCOMPLETE")
     if not fixtures:
@@ -507,8 +508,9 @@ def materialize_brazil_serie_b_canonical_entities(
             connection,
             """
             SELECT link.canonical_competition_id, canonical.display_name,
-                   link.source_observation_id, link.source_sighting_id,
-                   link.provider_response_id, link.rights_approval_id, link.payload_sha256
+                   canonical.identity_basis, link.source_observation_id, link.source_sighting_id,
+                   link.provider_response_id, link.rights_approval_id, link.payload_sha256,
+                   link.mapping_method, link.mapping_status
             FROM veltrix_ai_analyst.provider_competition_identity_links link
             JOIN veltrix_ai_analyst.canonical_competitions canonical
               ON canonical.id = link.canonical_competition_id
@@ -519,14 +521,17 @@ def materialize_brazil_serie_b_canonical_entities(
         )
         if existing_competition:
             expected = (
-                competition["name"], competition["source_observation_id"],
+                competition["name"], "SOURCE_LOCAL_ONLY", competition["source_observation_id"],
                 competition["source_sighting_id"], competition["provider_response_id"],
                 scope.rights_approval_id, competition["payload_sha256"],
+                "EXACT_PROVIDER_ID", "REVIEW_REQUIRED",
             )
             actual = (
-                existing_competition["display_name"], existing_competition["source_observation_id"],
-                existing_competition["source_sighting_id"], existing_competition["provider_response_id"],
-                existing_competition["rights_approval_id"], existing_competition["payload_sha256"].strip(),
+                existing_competition["display_name"], existing_competition["identity_basis"],
+                existing_competition["source_observation_id"], existing_competition["source_sighting_id"],
+                existing_competition["provider_response_id"], existing_competition["rights_approval_id"],
+                existing_competition["payload_sha256"].strip(), existing_competition["mapping_method"],
+                existing_competition["mapping_status"],
             )
             if actual != expected:
                 raise CanonicalMaterializationError("EXISTING_COMPETITION_MAPPING_DRIFT")
@@ -565,9 +570,10 @@ def materialize_brazil_serie_b_canonical_entities(
             existing = _one(
                 connection,
                 """
-                SELECT link.canonical_team_id, canonical.display_name,
+                SELECT link.canonical_team_id, canonical.display_name, canonical.identity_basis,
                        link.source_observation_id, link.source_sighting_id,
-                       link.provider_response_id, link.rights_approval_id, link.payload_sha256
+                       link.provider_response_id, link.rights_approval_id, link.payload_sha256,
+                       link.mapping_method, link.mapping_status
                 FROM veltrix_ai_analyst.provider_team_identity_links link
                 JOIN veltrix_ai_analyst.canonical_teams canonical
                   ON canonical.id = link.canonical_team_id
@@ -578,14 +584,15 @@ def materialize_brazil_serie_b_canonical_entities(
             )
             if existing:
                 expected = (
-                    team["name"], team["source_observation_id"], team["source_sighting_id"],
-                    team["provider_response_id"], scope.rights_approval_id,
-                    team["payload_sha256"],
+                    team["name"], "SOURCE_LOCAL_ONLY", team["source_observation_id"],
+                    team["source_sighting_id"], team["provider_response_id"], scope.rights_approval_id,
+                    team["payload_sha256"], "EXACT_PROVIDER_ID", "REVIEW_REQUIRED",
                 )
                 actual = (
-                    existing["display_name"], existing["source_observation_id"],
+                    existing["display_name"], existing["identity_basis"], existing["source_observation_id"],
                     existing["source_sighting_id"], existing["provider_response_id"],
                     existing["rights_approval_id"], existing["payload_sha256"].strip(),
+                    existing["mapping_method"], existing["mapping_status"],
                 )
                 if actual != expected:
                     raise CanonicalMaterializationError(
@@ -631,7 +638,7 @@ def materialize_brazil_serie_b_canonical_entities(
                        canonical.home_goals, canonical.away_goals,
                        canonical.canonical_competition_id, canonical.home_canonical_team_id,
                        canonical.away_canonical_team_id, canonical.identity_status,
-                       source.provider, source.source_id, source.provider_fixture_id,
+                       canonical.completeness_status, source.provider, source.source_id, source.provider_fixture_id,
                        source.source_observation_id, source.source_sighting_id,
                        source.provider_response_id, source.rights_approval_id,
                        source.payload_sha256, source.mapping_method, source.mapping_status
@@ -652,7 +659,7 @@ def materialize_brazil_serie_b_canonical_entities(
                 expected = (
                     fixture["kickoff_at"], fixture["status"], fixture["home_goals"],
                     fixture["away_goals"], canonical_competition_id, expected_home,
-                    expected_away, expected_identity, scope.provider, scope.source_id,
+                    expected_away, expected_identity, "SOURCE_ROW_ONLY", scope.provider, scope.source_id,
                     fixture["provider_fixture_id"], fixture["source_observation_id"],
                     fixture["source_sighting_id"], fixture["provider_response_id"],
                     scope.rights_approval_id, fixture["payload_sha256"],
@@ -662,7 +669,7 @@ def materialize_brazil_serie_b_canonical_entities(
                     existing["kickoff_at"], existing["status"], existing["home_goals"],
                     existing["away_goals"], existing["canonical_competition_id"],
                     existing["home_canonical_team_id"], existing["away_canonical_team_id"],
-                    existing["identity_status"], existing["provider"], existing["source_id"],
+                    existing["identity_status"], existing["completeness_status"], existing["provider"], existing["source_id"],
                     existing["provider_fixture_id"], existing["source_observation_id"],
                     existing["source_sighting_id"], existing["provider_response_id"],
                     existing["rights_approval_id"], existing["payload_sha256"].strip(),
