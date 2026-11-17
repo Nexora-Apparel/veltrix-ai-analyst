@@ -8,6 +8,8 @@ CREATE TABLE veltrix_ai_analyst.canonical_identity_review_cases (
     case_type TEXT NOT NULL CHECK (
         case_type IN (
             'TEAM_ALIAS_CANDIDATE',
+            'TEAM_REAL_WORLD_IDENTITY_CANDIDATE',
+            'COMPETITION_REAL_WORLD_IDENTITY_CANDIDATE',
             'FIXTURE_DUPLICATE_CANDIDATE',
             'SEASON_COVERAGE_RECONCILIATION',
             'PIT_TIMESTAMP_GAP'
@@ -17,6 +19,8 @@ CREATE TABLE veltrix_ai_analyst.canonical_identity_review_cases (
         REFERENCES veltrix_ai_analyst.provider_team_identity_links(id) ON DELETE RESTRICT,
     related_team_identity_link_id BIGINT
         REFERENCES veltrix_ai_analyst.provider_team_identity_links(id) ON DELETE RESTRICT,
+    competition_identity_link_id BIGINT
+        REFERENCES veltrix_ai_analyst.provider_competition_identity_links(id) ON DELETE RESTRICT,
     primary_fixture_source_link_id BIGINT
         REFERENCES veltrix_ai_analyst.canonical_fixture_sources(id) ON DELETE RESTRICT,
     related_fixture_source_link_id BIGINT
@@ -35,6 +39,21 @@ CREATE TABLE veltrix_ai_analyst.canonical_identity_review_cases (
             AND primary_team_identity_link_id IS NOT NULL
             AND related_team_identity_link_id IS NOT NULL
             AND primary_team_identity_link_id <> related_team_identity_link_id
+            AND competition_identity_link_id IS NULL
+            AND primary_fixture_source_link_id IS NULL
+            AND related_fixture_source_link_id IS NULL)
+        OR
+        (case_type = 'TEAM_REAL_WORLD_IDENTITY_CANDIDATE'
+            AND primary_team_identity_link_id IS NOT NULL
+            AND related_team_identity_link_id IS NULL
+            AND competition_identity_link_id IS NULL
+            AND primary_fixture_source_link_id IS NULL
+            AND related_fixture_source_link_id IS NULL)
+        OR
+        (case_type = 'COMPETITION_REAL_WORLD_IDENTITY_CANDIDATE'
+            AND primary_team_identity_link_id IS NULL
+            AND related_team_identity_link_id IS NULL
+            AND competition_identity_link_id IS NOT NULL
             AND primary_fixture_source_link_id IS NULL
             AND related_fixture_source_link_id IS NULL)
         OR
@@ -43,11 +62,13 @@ CREATE TABLE veltrix_ai_analyst.canonical_identity_review_cases (
             AND related_fixture_source_link_id IS NOT NULL
             AND primary_fixture_source_link_id <> related_fixture_source_link_id
             AND primary_team_identity_link_id IS NULL
-            AND related_team_identity_link_id IS NULL)
+            AND related_team_identity_link_id IS NULL
+            AND competition_identity_link_id IS NULL)
         OR
         (case_type IN ('SEASON_COVERAGE_RECONCILIATION', 'PIT_TIMESTAMP_GAP')
             AND primary_team_identity_link_id IS NULL
             AND related_team_identity_link_id IS NULL
+            AND competition_identity_link_id IS NULL
             AND primary_fixture_source_link_id IS NULL
             AND related_fixture_source_link_id IS NULL)
     )
@@ -175,6 +196,113 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) review ON TRUE;
 
+CREATE VIEW veltrix_ai_analyst.canonical_competition_identity_provenance_audit AS
+SELECT
+    link.id AS identity_link_id,
+    link.provider,
+    link.source_id,
+    link.provider_competition_id,
+    competition.name AS provider_competition_name,
+    link.canonical_competition_id,
+    canonical.display_name AS source_local_display_name,
+    link.source_observation_id,
+    link.source_sighting_id,
+    link.provider_response_id,
+    link.payload_sha256,
+    CASE
+        WHEN observation.id IS NOT NULL
+         AND observation.provider = link.provider
+         AND observation.source_id = link.source_id
+         AND observation.data_type = 'competition_catalogue'
+         AND observation.entity_type = 'competition'
+         AND observation.provider_entity_id = link.provider_competition_id
+         AND observation.payload_sha256 = link.payload_sha256
+         AND observation.rights_approval_id = link.rights_approval_id
+         AND sighting.id IS NOT NULL
+         AND sighting.provider_response_id = link.provider_response_id
+         AND sighting.payload_sha256 = link.payload_sha256
+         AND response.provider = link.provider
+         AND response.source_id = link.source_id
+         AND response.rights_approval_id = link.rights_approval_id
+         AND response.http_status BETWEEN 200 AND 299
+        THEN 'PROVENANCE_VERIFIED'
+        ELSE 'PROVENANCE_INVALID'
+    END AS source_identity_provenance_status,
+    COALESCE(review.decision, 'REAL_WORLD_IDENTITY_REVIEW_REQUIRED') AS real_world_identity_status
+FROM veltrix_ai_analyst.provider_competition_identity_links link
+JOIN veltrix_ai_analyst.provider_competitions competition
+  ON competition.provider = link.provider
+ AND competition.source_id = link.source_id
+ AND competition.provider_competition_id = link.provider_competition_id
+JOIN veltrix_ai_analyst.canonical_competitions canonical
+  ON canonical.id = link.canonical_competition_id
+LEFT JOIN veltrix_ai_analyst.source_observations observation
+  ON observation.id = link.source_observation_id
+LEFT JOIN veltrix_ai_analyst.source_observation_sightings sighting
+  ON sighting.id = link.source_sighting_id
+LEFT JOIN veltrix_ai_analyst.provider_responses response
+  ON response.id = link.provider_response_id
+LEFT JOIN LATERAL (
+    SELECT event.decision
+    FROM veltrix_ai_analyst.canonical_identity_review_events event
+    WHERE event.competition_identity_link_id = link.id
+    ORDER BY event.reviewed_at DESC, event.id DESC
+    LIMIT 1
+) review ON TRUE;
+
+CREATE VIEW veltrix_ai_analyst.canonical_fixture_source_provenance_audit AS
+SELECT
+    link.id AS fixture_source_link_id,
+    link.provider_fixture_id,
+    link.canonical_fixture_id,
+    fixture.kickoff_at AS provider_kickoff_at,
+    canonical.kickoff_at AS canonical_kickoff_at,
+    fixture.status AS provider_status,
+    fixture.home_goals,
+    fixture.away_goals,
+    CASE
+        WHEN observation.id IS NOT NULL
+         AND observation.provider = link.provider
+         AND observation.source_id = link.source_id
+         AND observation.data_type = 'fixtures_and_results'
+         AND observation.entity_type = 'fixture'
+         AND observation.provider_entity_id = link.provider_fixture_id
+         AND observation.payload_sha256 = link.payload_sha256
+         AND observation.rights_approval_id = link.rights_approval_id
+         AND sighting.id IS NOT NULL
+         AND sighting.provider_response_id = link.provider_response_id
+         AND sighting.payload_sha256 = link.payload_sha256
+         AND response.provider = link.provider
+         AND response.source_id = link.source_id
+         AND response.rights_approval_id = link.rights_approval_id
+         AND response.http_status BETWEEN 200 AND 299
+         AND fixture.kickoff_at = canonical.kickoff_at
+         AND fixture.status = canonical.status
+         AND fixture.home_goals IS NOT DISTINCT FROM canonical.home_goals
+         AND fixture.away_goals IS NOT DISTINCT FROM canonical.away_goals
+        THEN 'PROVENANCE_VERIFIED'
+        ELSE 'PROVENANCE_INVALID'
+    END AS source_fixture_provenance_status,
+    COALESCE(review.decision, 'SOURCE_FIXTURE_REVIEW_REQUIRED') AS effective_review_status
+FROM veltrix_ai_analyst.canonical_fixture_sources link
+JOIN veltrix_ai_analyst.provider_fixtures fixture
+  ON fixture.id = link.provider_fixture_row_id
+JOIN veltrix_ai_analyst.canonical_fixtures canonical
+  ON canonical.id = link.canonical_fixture_id
+LEFT JOIN veltrix_ai_analyst.source_observations observation
+  ON observation.id = link.source_observation_id
+LEFT JOIN veltrix_ai_analyst.source_observation_sightings sighting
+  ON sighting.id = link.source_sighting_id
+LEFT JOIN veltrix_ai_analyst.provider_responses response
+  ON response.id = link.provider_response_id
+LEFT JOIN LATERAL (
+    SELECT event.decision
+    FROM veltrix_ai_analyst.canonical_identity_review_events event
+    WHERE event.fixture_source_link_id = link.id
+    ORDER BY event.reviewed_at DESC, event.id DESC
+    LIMIT 1
+) review ON TRUE;
+
 CREATE VIEW veltrix_ai_analyst.canonical_fixture_duplicate_case_audit AS
 SELECT
     review_case.case_key,
@@ -282,6 +410,50 @@ WHERE primary_link.provider = '5DollarFootballAPI'
   AND primary_link.source_id = '5dollarfootballapi'
   AND primary_link.provider_team_id = '1102583842'
   AND alias_link.provider_team_id = '3808811746'
+ON CONFLICT (case_key) DO NOTHING;
+
+-- Stage individual team and competition mappings for explicit human review.
+-- These are candidate crosswalks, not automatic identity assertions.
+INSERT INTO veltrix_ai_analyst.canonical_identity_review_cases (
+    case_key, case_type, primary_team_identity_link_id,
+    recommended_action, evidence_uris, evidence_summary
+)
+SELECT
+    'BRAZIL_SERIE_B_RUN_3_TEAM_IDENTITY_' || link.provider_team_id,
+    'TEAM_REAL_WORLD_IDENTITY_CANDIDATE',
+    link.id,
+    'VERIFY_REAL_WORLD_TEAM_IDENTITY',
+    ARRAY['https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_19_05_ee33324167.pdf'],
+    'Provider team ID ' || link.provider_team_id || ' is labelled "' || team.name ||
+    '" in the immutable source catalogue and appears in the imported fixture graph. Compare the club name and home/away schedule against the official CBF 2026 Série B fixture table before confirming real-world identity.'
+FROM veltrix_ai_analyst.provider_team_identity_links link
+JOIN veltrix_ai_analyst.provider_teams team
+  ON team.provider = link.provider
+ AND team.source_id = link.source_id
+ AND team.provider_team_id = link.provider_team_id
+WHERE link.provider = '5DollarFootballAPI'
+  AND link.source_id = '5dollarfootballapi'
+  AND link.provider_team_id <> '3808811746'
+ON CONFLICT (case_key) DO NOTHING;
+
+INSERT INTO veltrix_ai_analyst.canonical_identity_review_cases (
+    case_key, case_type, competition_identity_link_id,
+    recommended_action, evidence_uris, evidence_summary
+)
+SELECT
+    'BRAZIL_SERIE_B_RUN_3_COMPETITION_IDENTITY_522514093',
+    'COMPETITION_REAL_WORLD_IDENTITY_CANDIDATE',
+    link.id,
+    'VERIFY_BRAZIL_SERIE_B_2026_COMPETITION_IDENTITY_AND_SEASON',
+    ARRAY[
+        'https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026?doc=Tabela+Detalhada',
+        'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_19_05_ee33324167.pdf'
+    ],
+    'Provider competition ID 522514093 is labelled Brazil Serie B in the imported source. CBF official 2026 Série B schedule is independent evidence for the competition and season context; human reviewer must verify the provider competition identity and record the season scope explicitly.'
+FROM veltrix_ai_analyst.provider_competition_identity_links link
+WHERE link.provider = '5DollarFootballAPI'
+  AND link.source_id = '5dollarfootballapi'
+  AND link.provider_competition_id = '522514093'
 ON CONFLICT (case_key) DO NOTHING;
 
 INSERT INTO veltrix_ai_analyst.canonical_identity_review_cases (
