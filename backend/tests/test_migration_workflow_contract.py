@@ -32,3 +32,13 @@ def test_manual_migration_workflow_verifies_canonical_migration_007() -> None:
     assert "canonical_fixture_identity_status_guard" in workflow
     assert "canonical_fixture_source_merge_guard" in workflow
     assert "MIGRATION_CHECKSUM_VERIFICATION_FAILED" in workflow
+
+def test_manual_migration_workflow_verifies_canonical_link_uniqueness_008() -> None:
+    workflow = (ROOT / ".github/workflows/apply-database-migrations.yml").read_text()
+    migration = (ROOT / "backend/migrations/008_canonical_identity_link_uniqueness.sql").read_text()
+    assert "008_canonical_identity_link_uniqueness.sql" in workflow
+    assert "provider_team_identity_links_source_identity_uk" in workflow
+    assert "provider_competition_identity_links_source_identity_uk" in workflow
+    assert "MIGRATION_INDEX_VERIFICATION_FAILED" in workflow
+    assert "CREATE UNIQUE INDEX provider_team_identity_links_source_identity_uk" in migration
+    assert "CREATE UNIQUE INDEX provider_competition_identity_links_source_identity_uk" in migration
