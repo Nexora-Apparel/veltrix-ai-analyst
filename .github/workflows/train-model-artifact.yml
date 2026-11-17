@@ -45,5 +45,7 @@ jobs:
         run: python ../scripts/apply_migrations.py
       - name: Run expanding chronological evaluation
         run: python -m app.research.retrospective_run --nested-tuning --output /tmp/veltrix-retrospective-report.json
+      - name: Compare fixed v1 and nested v2 on matched outer folds
+        run: python -m app.research.compare_models --output /tmp/veltrix-matched-v1-v2.json
       - name: Fit and persist immutable research artifact
         run: python -m app.research.train_final_model
