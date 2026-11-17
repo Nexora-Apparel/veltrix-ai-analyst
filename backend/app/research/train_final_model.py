@@ -1,5 +1,7 @@
 """Fit and privately persist a versioned research model from the collected corpus.
 
+The workflow emits held-out calibration diagnostics from chronological evaluation.
+
 The workflow also emits held-out calibration diagnostics from the retrospective evaluator.
 
 The loader is read-only. Only the final immutable model artifact is written.
