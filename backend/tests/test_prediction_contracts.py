@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
@@ -35,7 +36,7 @@ def make_evidence(**changes: object) -> EligibleObservationEvidence:
         "retrieved_at": RETRIEVED,
         "availability_basis": AvailabilityBasis.SOURCE_PUBLISHED_AT,
         "point_in_time_certifiable": True,
-        "rights_approval_id": 7,
+        "rights_approval_id": "approval-7",
         "rights_status_at_cutoff": RightsStatus.APPROVED,
         "permitted_uses": frozenset({"FEATURE_ENGINEERING", "MODEL_TRAINING"}),
         "canonical_identity_status": IdentityStatus.VERIFIED,
@@ -97,10 +98,10 @@ def test_prediction_request_rejects_cutoff_at_or_after_kickoff() -> None:
     with pytest.raises(ValidationError, match="strictly before kickoff"):
         FixturePredictionRequest(
             request_id="r1",
-            canonical_fixture_id=1,
-            canonical_competition_id=1,
-            home_team_id=10,
-            away_team_id=11,
+            canonical_fixture_id=UUID("00000000-0000-0000-0000-000000000001"),
+            canonical_competition_id=UUID("00000000-0000-0000-0000-000000000002"),
+            home_team_id=UUID("00000000-0000-0000-0000-000000000010"),
+            away_team_id=UUID("00000000-0000-0000-0000-000000000011"),
             kickoff_at=CUTOFF,
             prediction_cutoff_at=CUTOFF,
             feature_snapshot_id="snap-1",
@@ -115,10 +116,10 @@ def test_prediction_request_rejects_same_team_on_both_sides() -> None:
     with pytest.raises(ValidationError, match="must differ"):
         FixturePredictionRequest(
             request_id="r1",
-            canonical_fixture_id=1,
-            canonical_competition_id=1,
-            home_team_id=10,
-            away_team_id=10,
+            canonical_fixture_id=UUID("00000000-0000-0000-0000-000000000001"),
+            canonical_competition_id=UUID("00000000-0000-0000-0000-000000000002"),
+            home_team_id=UUID("00000000-0000-0000-0000-000000000010"),
+            away_team_id=UUID("00000000-0000-0000-0000-000000000010"),
             kickoff_at=CUTOFF + timedelta(hours=1),
             prediction_cutoff_at=CUTOFF,
             feature_snapshot_id="snap-1",
