@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from math import exp, isfinite, log
-from typing import Iterable, Sequence
+from math import log
+from collections.abc import Iterable, Sequence
 
 from app.models.elo import EloConfig, EloSystem, HistoricalResult
 from app.models.scoreline import build_scoreline_distribution
@@ -97,7 +97,6 @@ class HistoricalRateModel:
             return 1.35, 1.10
         avg_home = max(0.2, league_home / total_weight)
         avg_away = max(0.2, league_away / total_weight)
-        avg_team = max(0.2, (league_home + league_away) / (2.0 * total_weight))
         prior = self.prior_matches
 
         def smoothed(total: float, count: float, baseline: float) -> float:
@@ -190,7 +189,7 @@ def chronological_research_run(
     """Generate honest forward-in-time predictions within the available result history."""
     if not 0.0 <= ensemble_elo_weight <= 1.0:
         raise ValueError("ensemble_elo_weight must be between zero and one")
-    rows = sorted(tuple(fixtures), key=lambda row: (row.kickoff_at, row.fixture_id))
+    rows = sorted(fixtures, key=lambda row: (row.kickoff_at, row.fixture_id))
     ids = [row.fixture_id for row in rows]
     if len(ids) != len(set(ids)):
         raise ValueError("duplicate fixture IDs")
