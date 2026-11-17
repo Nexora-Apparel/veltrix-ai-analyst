@@ -433,3 +433,17 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - Database name check passed for `veltrix_ai_analyst`. Seven canonical tables, four functions and ten required triggers verified by the workflow.
 - Canonical materialization is now the next stage. No canonical records were inserted during migration. Begin with dry-run/idempotency design and source provenance reconciliation. Keep the 374 source fixtures unchanged; all observations remain non-PIT-certified; America MG / América Mineiro remain unresolved; four UNKNOWN fixtures remain scoreless.
 - No provider API requests, model training or prediction publication were performed by this migration workflow.
+
+
+## Canonical materialization executed and independently verified — 2026-11-17
+
+- [x] User-dispatched guarded production workflow [#44086857898](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44086857898), job [#134051435015](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44086857898/job/134051435015), completed successfully on main commit `e6ca720ca556c5cb6aea7e867075e841b0f7bf3e`.
+- [x] Runner emitted `MATERIALIZATION_COMMITTED` and `CANONICAL_MATERIALIZATION_COMMITTED`; exact database identity was `veltrix_ai_analyst`.
+- [x] Transaction reconciled before/after counts: canonical teams 0→21; competitions 0→1; fixtures 0→374; provider team identity links 0→21; provider competition identity links 0→1; fixture-source links 0→374; identity review events remained 0.
+- [x] Runner reported 21 teams created, one competition created, 374 fixtures created, zero fixtures reused, zero identity reviews, zero PIT promotions, and zero provider HTTP requests. Plan remained exact: 5DollarFootballAPI Brazil Serie B `522514093`, import run 3; 370 FINISHED, four UNKNOWN; conflicts `2341822348` and `3116209225`; 396 non-PIT observations.
+- [x] Independent read-only Neon query against project `young-wind-27772160`, database `veltrix_ai_analyst`, independently confirmed all seven canonical table counts exactly match the workflow report; `pre_match_feature_observations=0`.
+- [x] Independent status audit: 21 team links and one competition link remain `REVIEW_REQUIRED`; all 374 fixture-source links remain `REVIEW_REQUIRED`; all 374 fixtures remain `SOURCE_ROW_ONLY`; two fixtures are `CONFLICT`, 372 are `IDENTITY_REVIEW_REQUIRED`; 370 fixtures are FINISHED and four UNKNOWN.
+- [x] Independent source audit confirmed 374 fixture/result observations and 374 sightings, with zero PIT-certifiable observations and zero PIT-certifiable sightings.
+- **Current stage:** Canonical source-row materialization is complete. Next stage is evidence-backed historical identity review and source/season coverage reconciliation, followed by rights/PIT eligibility work.
+- **Hard restrictions:** Do not auto-verify or merge team identities; do not clear the two fixture conflicts without independent evidence; do not use the 396 non-PIT observations or source-row-only canonical fixtures as pre-match features; no model training, calibration, prediction publication or production API is authorized.
+- Android runtime testing and typed backend integration remain deferred until the appropriate later stage and real prediction endpoints exist.
