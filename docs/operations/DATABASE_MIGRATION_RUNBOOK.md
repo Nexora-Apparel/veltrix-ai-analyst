@@ -15,8 +15,8 @@ set `ALLOW_REMOTE_MIGRATIONS` globally.
 5. The runner applies pending SQL files in lexical order, validates existing
    checksums, rejects checksum drift, and enables remote writes only for that
    one invocation.
-6. The final workflow step verifies the exact SHA-256 recorded for migration 006,
-   the PIT feature table, trigger function, and both table triggers.
+6. The final workflow step verifies the exact SHA-256 recorded for migrations 006
+   and 007, plus their required tables, functions and triggers.
 
 The workflow is schema-only. It does not import data, backfill observations,
 change PIT flags, create features, train models, or publish predictions.
@@ -30,3 +30,23 @@ change PIT flags, create features, train models, or publish predictions.
 - Both `pre_match_feature_pit_guard` and
   `pre_match_feature_observations_append_only` triggers exist.
 - Existing retrieval-only 5Dollar observations remain ineligible.
+
+
+## Expected migration 007 result
+
+- `007_canonical_entity_layer.sql` exists in `public.schema_migrations`
+  with the exact file SHA-256.
+- Canonical teams, competitions and fixtures exist as a separate layer above
+  immutable provider projections.
+- Provider team/competition identity links and canonical fixture source links
+  retain exact provider rows, observations, sightings, responses, rights grants
+  and payload hashes.
+- `canonical_identity_review_events` is append-only; effective link status is
+  derived from the latest review event.
+- Canonical fixture verification is blocked until its source fixture,
+  competition, home-team and away-team mappings have explicit review events.
+- A second provider fixture source cannot be attached to an existing canonical
+  fixture without manual evidence and review of the existing source link.
+- The migration creates no canonical records and performs no provider requests,
+  fixture backfill, identity merge, PIT promotion, model training or prediction
+  publication.
