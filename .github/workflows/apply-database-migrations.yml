@@ -119,6 +119,8 @@ jobs:
                       "effective_canonical_identity_review_cases",
                       "canonical_team_identity_provenance_audit",
                       "canonical_fixture_duplicate_case_audit",
+                      "canonical_competition_identity_provenance_audit",
+                      "canonical_fixture_source_provenance_audit",
                   ],
                   "functions": [],
                   "triggers": [
