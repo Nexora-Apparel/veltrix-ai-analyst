@@ -1,0 +1,60 @@
+name: Controlled Brazil Serie B Round 38 Incremental Import
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_collection:
+        description: Type COLLECT_BRAZIL_SERIE_B_ROUND_38 to authorize this bounded import
+        required: true
+        type: choice
+        options:
+          - NO
+          - COLLECT_BRAZIL_SERIE_B_ROUND_38
+        default: NO
+
+concurrency:
+  group: veltrix-brazil-serie-b-round38-import
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    if: inputs.confirm_collection == 'COLLECT_BRAZIL_SERIE_B_ROUND_38'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: veltrix-historical-import
+    env:
+      VELTRIX_AI_ANALYST_DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY: ${{ secrets.FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY }}
+      VELTRIX_ENABLE_HISTORICAL_COLLECTION: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install importer
+        run: python -m pip install -e backend
+      - name: Apply checksum-verified database migrations
+        env:
+          DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+        run: |
+          python -c "import os; from app.db.migrations import apply_migrations; print('MIGRATIONS_APPLIED:', ','.join(apply_migrations(os.environ['DATABASE_URL'], expected_database='veltrix_ai_analyst', allow_remote=True)))"
+      - name: Run bounded Round 38 import
+        id: import
+        run: |
+          set -euo pipefail
+          IMPORT_OUTPUT="$(python scripts/collect_brazil_serie_b_history.py --execute --start-at 2026-11-09T00:00:00+00:00 --end-at 2026-11-17T00:00:00+00:00 --request-budget 4)"
+          printf '%s\n' "$IMPORT_OUTPUT"
+          RUN_ID="$(printf '%s\n' "$IMPORT_OUTPUT" | sed -n 's/^HISTORICAL_IMPORT_FINISHED:run_id=//p' | tail -n 1)"
+          if [[ ! "$RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "Importer did not return a valid completed run ID" >&2
+            exit 1
+          fi
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+      - name: Validate bounded import
+        run: python scripts/validate_brazil_serie_b_import.py --run-id "${{ steps.import.outputs.run_id }}"

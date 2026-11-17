@@ -35,7 +35,7 @@ PROVIDER_NAME = "5DollarFootballAPI"
 BOUNDARY_START = datetime(2026, 3, 21, tzinfo=UTC)
 BOUNDARY_END = datetime(2026, 11, 9, tzinfo=UTC)
 REQUEST_BUDGET = 40
-IMPORTER_VERSION = "brazil-serie-b-resumable-v1"
+IMPORTER_VERSION = "brazil-serie-b-resumable-v2"
 IMPORT_APPROVAL = FIVEDOLLAR_COMMUNITY_APPROVAL
 SCHEMA_VERSION = "5dollar-fixture-v1"
 
@@ -632,8 +632,11 @@ async def run_brazil_serie_b_historical_import(
     import_run_id: int | None = None,
     approval: SourceApproval = IMPORT_APPROVAL,
     provider: FiveDollarFootballProvider | None = None,
+    boundary_start: datetime = BOUNDARY_START,
+    boundary_end: datetime = BOUNDARY_END,
+    request_budget: int = REQUEST_BUDGET,
 ) -> int:
-    """Run or resume the fixed, non-commercial Brazil Serie B historical import.
+    """Run or resume a bounded, non-commercial Brazil Serie B historical import.
 
     Live HTTP requires both an explicit execute=True argument and the
     VELTRIX_ENABLE_HISTORICAL_COLLECTION=true environment gate.
@@ -646,8 +649,27 @@ async def run_brazil_serie_b_historical_import(
         raise HistoricalImportError("UNRECOGNIZED_SOURCE_APPROVAL")
     if COMPETITION_ID not in approval.scope_values:
         raise HistoricalImportError("COMPETITION_NOT_IN_APPROVED_SOURCE_SCOPE")
-
-    windows = build_date_windows(BOUNDARY_START, BOUNDARY_END, window_days=7)
+    if (
+        boundary_start.tzinfo is None
+        or boundary_start.utcoffset() is None
+        or boundary_end.tzinfo is None
+        or boundary_end.utcoffset() is None
+    ):
+        raise HistoricalImportError("IMPORT_BOUNDARIES_MUST_BE_TIMEZONE_AWARE")
+    boundary_start = boundary_start.astimezone(UTC)
+    boundary_end = boundary_end.astimezone(UTC)
+    if boundary_end <= boundary_start:
+        raise HistoricalImportError("IMPORT_BOUNDARY_END_MUST_FOLLOW_START")
+    if (
+        isinstance(request_budget, bool)
+        or not isinstance(request_budget, int)
+        or request_budget < 1
+        or request_budget > REQUEST_BUDGET
+    ):
+        raise HistoricalImportError("REQUEST_BUDGET_OUTSIDE_HARD_CAP")
+    windows = build_date_windows(boundary_start, boundary_end, window_days=7)
+    if request_budget < len(windows):
+        raise HistoricalImportError("REQUEST_BUDGET_BELOW_MINIMUM_WINDOW_COUNT")
     with psycopg.connect(database_url) as connection:
         database_name = connection.execute("SELECT current_database()").fetchone()[0]
         if database_name != EXPECTED_DATABASE_NAME:
@@ -659,9 +681,9 @@ async def run_brazil_serie_b_historical_import(
                 scope_value=COMPETITION_ID,
                 data_type="fixtures_and_results",
                 import_type="historical_backfill",
-                boundary_start=BOUNDARY_START,
-                boundary_end=BOUNDARY_END,
-                request_budget=REQUEST_BUDGET,
+                boundary_start=boundary_start,
+                boundary_end=boundary_end,
+                request_budget=request_budget,
                 importer_version=IMPORTER_VERSION,
                 started_at=datetime.now(UTC),
             )
@@ -676,16 +698,16 @@ async def run_brazil_serie_b_historical_import(
                 (import_run_id,),
             ).fetchone()
             expected = (
-                BOUNDARY_START,
-                BOUNDARY_END,
+                boundary_start,
+                boundary_end,
                 PROVIDER_NAME,
                 SOURCE_ID,
                 approval.approval_id,
             )
             if (
                 row is None
-                or row[1] != REQUEST_BUDGET
-                or int(row[2]) > REQUEST_BUDGET
+                or row[1] != request_budget
+                or int(row[2]) > request_budget
                 or tuple(row[3:]) != expected
             ):
                 raise HistoricalImportError("IMPORT_RUN_IDENTITY_OR_ENVELOPE_MISMATCH")
