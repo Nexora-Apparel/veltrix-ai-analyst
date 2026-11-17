@@ -339,6 +339,20 @@ BEGIN
         RAISE EXCEPTION 'CANONICAL_SOURCE_RESPONSE_OR_RIGHTS_MISMATCH';
     END IF;
 
+    IF TG_TABLE_NAME = 'canonical_fixture_sources' AND NOT EXISTS (
+        SELECT 1
+        FROM veltrix_ai_analyst.provider_fixtures pf
+        JOIN veltrix_ai_analyst.canonical_fixtures cf
+          ON cf.id = NEW.canonical_fixture_id
+        WHERE pf.id = NEW.provider_fixture_row_id
+          AND pf.kickoff_at = cf.kickoff_at
+          AND pf.status = cf.status
+          AND pf.home_goals IS NOT DISTINCT FROM cf.home_goals
+          AND pf.away_goals IS NOT DISTINCT FROM cf.away_goals
+    ) THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_SOURCE_FACTS_MISMATCH';
+    END IF;
+
     RETURN NEW;
 END;
 $$;
