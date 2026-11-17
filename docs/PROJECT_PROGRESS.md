@@ -602,3 +602,17 @@ older progress text that conflicts with it.
 - **Limitations:** one competition/season; event-time retrospective only; not PIT-certified; no market benchmark or prospective paper record; no multi-league generalization claim.
 - **Next:** fold-level diagnostics, calibration diagnostics with fold-contained fitting, uncertainty intervals, and wider competition/season coverage. README remains untouched. No production endpoint, Android prediction integration, value-bet activation, or public prediction publication.
 - Detailed evidence: [nested outer evaluation ledger](ledger/2026-11-17-retrospective-model-screening.md#nested-chronological-outer-evaluation--completed-2026-11-17).
+
+
+## Stage 3 research update — paired uncertainty and matched model comparison (2026-11-17)
+
+- [x] PR [#39](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/39) merged as `7ab2610837e6ba5be0e222feb5373a4883ddce82`; exact-head CI passed backend tests/Ruff and Android debug build.
+- [x] Post-merge retrospective workflow [#44171335925](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44171335925) succeeded. It loaded 380 FINISHED rows, evaluated 305 held-out fixtures over 12 chronological folds, and idempotently re-persisted the immutable v2 research artifact.
+- [x] Nested v2 versus league baseline: Brier 0.6124461060 vs 0.6420315331; log loss 1.0215836752 vs 1.0633200835.
+- [x] Paired 5,000-resample chronological fold-block bootstrap (seed 20261117): Brier difference -0.0295854271, 95% interval [-0.0417743132, -0.0177778528]; log-loss difference -0.0417364083, 95% interval [-0.0596155640, -0.0248281955]. Negative differences favour v2. Intervals remain exploratory because there are only 12 fold blocks.
+- [x] Calibration diagnostics: classwise ECE 0.0394121500; top-label ECE 0.0498733163. These are descriptive, not certification.
+- [x] PR [#40](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/40) merged as `43f393e632c026f33cb3fbee752523b701f07719`; exact-head backend tests/Ruff and Android debug build passed. Added same-fold v1/v2 comparison with paired fold-block intervals and a tested temperature-scaling utility.
+- [ ] Matched v1-v2 execution is queued behind the existing private model-training workflow; do not choose a champion until its exact paired results are reviewed.
+- [ ] Temperature scaling is not yet part of the evaluated outer predictions. Integration work must fit temperatures only from inner OOF predictions within each outer training window, then score untouched outer predictions.
+- **Research status:** no production model champion, PIT certification, production API, Android prediction integration, value-bet activation or public forecast publication. Current evidence remains one competition/season and retrospective event-time only.
+- Detailed metrics, bootstrap intervals, parameter instability and limitations: [Retrospective model screening ledger](ledger/2026-11-17-retrospective-model-screening.md).
