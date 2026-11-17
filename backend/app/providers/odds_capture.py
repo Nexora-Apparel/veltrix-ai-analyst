@@ -1,9 +1,12 @@
 """Fail-closed normalization boundary for 5DollarFootballAPI odds payloads."""
 from __future__ import annotations
+
+import json
+from collections.abc import Mapping
 from datetime import datetime
 from hashlib import sha256
-import json
-from typing import Any, Mapping
+from typing import Any
+
 from app.providers.odds_contracts import OddsObservation
 
 class OddsPayloadError(ValueError):
@@ -48,7 +51,7 @@ def normalize_5dollar_odds(
                 if not raw_tick:
                     raise OddsPayloadError("odds outcome is missing recorded_at/opened_at")
                 try:
-                    tick = datetime.fromisoformat(str(raw_tick).replace("Z", "+00:00"))
+                    tick = datetime.fromisoformat(str(raw_tick))
                     price = float(outcome.get("odds", outcome.get("price")))
                     line = float(outcome["line"]) if outcome.get("line") is not None else None
                 except (TypeError, ValueError):
