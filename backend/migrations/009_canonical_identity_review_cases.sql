@@ -228,6 +228,7 @@ SELECT
          AND observation.payload_sha256 = link.payload_sha256
          AND observation.rights_approval_id = link.rights_approval_id
          AND sighting.id IS NOT NULL
+         AND sighting.source_observation_id = link.source_observation_id
          AND sighting.provider_response_id = link.provider_response_id
          AND sighting.payload_sha256 = link.payload_sha256
          AND response.provider = link.provider
@@ -279,6 +280,7 @@ SELECT
          AND observation.payload_sha256 = link.payload_sha256
          AND observation.rights_approval_id = link.rights_approval_id
          AND sighting.id IS NOT NULL
+         AND sighting.source_observation_id = link.source_observation_id
          AND sighting.provider_response_id = link.provider_response_id
          AND sighting.payload_sha256 = link.payload_sha256
          AND response.provider = link.provider
