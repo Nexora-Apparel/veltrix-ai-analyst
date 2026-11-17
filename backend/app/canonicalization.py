@@ -181,19 +181,20 @@ def _load_candidates(
         connection,
         f"""
         WITH scoped_ids AS (
-            SELECT home_team_provider_id AS provider_team_id
-            FROM veltrix_ai_analyst.provider_fixtures
-            WHERE provider = %s AND source_id = %s AND provider_competition_id = %s
+            SELECT source.home_team_provider_id AS provider_team_id
+            FROM veltrix_ai_analyst.provider_fixtures source
+            WHERE source.provider = %s AND source.source_id = %s AND source.provider_competition_id = %s
               AND ({_fixture_run_predicate(scope)})
             UNION
-            SELECT away_team_provider_id
-            FROM veltrix_ai_analyst.provider_fixtures
-            WHERE provider = %s AND source_id = %s AND provider_competition_id = %s
+            SELECT source.away_team_provider_id
+            FROM veltrix_ai_analyst.provider_fixtures source
+            WHERE source.provider = %s AND source.source_id = %s AND source.provider_competition_id = %s
               AND ({_fixture_run_predicate(scope)})
         )
         SELECT source.provider_team_id, source.name, source.source_observation_id,
                source.rights_approval_id, observation.payload_sha256,
                observation.entity_type, observation.provider_entity_id,
+               observation.point_in_time_certifiable,
                provenance.source_sighting_id, provenance.provider_response_id
         FROM scoped_ids
         JOIN veltrix_ai_analyst.provider_teams source
@@ -405,18 +406,8 @@ def build_brazil_serie_b_materialization_plan(
             finished_count += 1
         elif fixture["status"] == "UNKNOWN":
             unknown_count += 1
-        if fixture["source_observation_id"] is not None:
-            pit = _one(
-                connection,
-                """
-                SELECT point_in_time_certifiable
-                FROM veltrix_ai_analyst.source_observations
-                WHERE id = %s
-                """,
-                (fixture["source_observation_id"],),
-            )
-            if pit is not None and not pit["point_in_time_certifiable"]:
-                non_pit_count += 1
+        if fixture["source_observation_id"] is not None and not fixture["point_in_time_certifiable"]:
+            non_pit_count += 1
     if valid_fixture_count != len(fixtures):
         blockers.append("FIXTURE_SOURCE_PROVENANCE_INCOMPLETE")
     if not fixtures:
