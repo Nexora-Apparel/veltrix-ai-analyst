@@ -589,3 +589,16 @@ older progress text that conflicts with it.
 - v2 inner OOF scores: 1X2 Brier 0.6188714654, log loss 1.0305409710, scoreline log loss 2.7461398753. These are tuning-fold metrics, not independent outer-test metrics.
 - Main CI after PR #35 passed backend tests/Ruff and Android debug build.
 - Nested outer walk-forward evaluation is still running. Do not publish or deploy v2 until its outer-fold metrics are reviewed.
+
+
+## 2026-11-17 — Nested outer evaluation completed and model selection
+
+- [x] Nested outer evaluation workflow [#44160528516](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44160528516) completed successfully: 380 completed fixtures loaded, 75 initial training fixtures, 305 held-out fixtures and 12 expanding chronological folds.
+- [x] Nested-tuned model metrics: 1X2 Brier **0.6124461060**, 1X2 log loss **1.0215836752**, mean scoreline log loss **2.7313871693**.
+- [x] Same-fold league baseline: Brier **0.6420315331**, log loss **1.0633200835**. Nested model improves on baseline by approximately 4.61% Brier and 3.92% log loss.
+- [x] Compared with the corrected fixed-parameter evaluation (Brier **0.6081835337**, log loss **1.0153185492**), nested tuning was worse by approximately 0.70% Brier and 0.62% log loss.
+- [x] Workflow successfully re-persisted v2 artifact `v2-5790da5427a7029b9267778728386b8d` idempotently; no duplicate artifact or overwrite of v1.
+- **Selection:** v1/fixed-parameter attack/defence Poisson remains the best current research candidate. v2 is preserved as an immutable research artifact but is not promoted.
+- **Limitations:** one competition/season; event-time retrospective only; not PIT-certified; no market benchmark or prospective paper record; no multi-league generalization claim.
+- **Next:** fold-level diagnostics, calibration diagnostics with fold-contained fitting, uncertainty intervals, and wider competition/season coverage. README remains untouched. No production endpoint, Android prediction integration, value-bet activation, or public prediction publication.
+- Detailed evidence: [nested outer evaluation ledger](ledger/2026-11-17-retrospective-model-screening.md#nested-chronological-outer-evaluation--completed-2026-11-17).
