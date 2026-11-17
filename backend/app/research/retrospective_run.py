@@ -121,6 +121,10 @@ def main() -> None:
             "nested_tuning": report.nested_tuning,
             "classwise_ece": report.classwise_ece,
             "top_label_ece": report.top_label_ece,
+            "calibrated_brier_1x2": report.calibrated_brier_1x2,
+            "calibrated_log_loss_1x2": report.calibrated_log_loss_1x2,
+            "calibrated_classwise_ece": report.calibrated_classwise_ece,
+            "calibrated_top_label_ece": report.calibrated_top_label_ece,
             "paired_fold_block_bootstrap": {
                 "resamples": report.paired_bootstrap.resamples,
                 "seed": report.paired_bootstrap.seed,
@@ -153,6 +157,12 @@ def main() -> None:
                     "rho": row.rho,
                     "classwise_ece": row.classwise_ece,
                     "top_label_ece": row.top_label_ece,
+                    "calibrated_brier_1x2": row.calibrated_brier_1x2,
+                    "calibrated_log_loss_1x2": row.calibrated_log_loss_1x2,
+                    "calibrated_classwise_ece": row.calibrated_classwise_ece,
+                    "calibrated_top_label_ece": row.calibrated_top_label_ece,
+                    "temperature": row.temperature,
+                    "calibration_samples": row.calibration_samples,
                 }
                 for row in report.fold_metrics
             ],
@@ -171,6 +181,13 @@ def main() -> None:
                 "kickoff_at": row.kickoff_at.isoformat(),
                 "actual_score": [row.actual_home_goals, row.actual_away_goals],
                 "expected_goals": [row.home_lambda, row.away_lambda],
+                "calibrated_probabilities_1x2": {
+                    "home": row.calibrated_home_win,
+                    "draw": row.calibrated_draw,
+                    "away": row.calibrated_away_win,
+                },
+                "temperature": row.temperature,
+                "calibration_samples": row.calibration_samples,
                 "probabilities_1x2": {
                     "home": row.home_win,
                     "draw": row.draw,

@@ -24,6 +24,7 @@ def compare_models(results):
         raise RuntimeError("MODEL_COMPARISON_OUTER_FOLD_MISMATCH")
 
     paired_folds = []
+    paired_calibrated_folds = []
     fold_output = []
     for fixed_fold, nested_fold in zip(fixed.fold_metrics, nested.fold_metrics):
         if fixed_fold.fold_index != nested_fold.fold_index:
@@ -34,6 +35,13 @@ def compare_models(results):
             baseline_brier_1x2=fixed_fold.brier_1x2,
             log_loss_1x2=nested_fold.log_loss_1x2,
             baseline_log_loss_1x2=fixed_fold.log_loss_1x2,
+        ))
+        paired_calibrated_folds.append(SimpleNamespace(
+            fixture_count=fixed_fold.fixture_count,
+            brier_1x2=nested_fold.calibrated_brier_1x2,
+            baseline_brier_1x2=fixed_fold.calibrated_brier_1x2,
+            log_loss_1x2=nested_fold.calibrated_log_loss_1x2,
+            baseline_log_loss_1x2=fixed_fold.calibrated_log_loss_1x2,
         ))
         fold_output.append({
             "fold_index": fixed_fold.fold_index,
@@ -49,9 +57,18 @@ def compare_models(results):
             "v2_half_life_days": nested_fold.half_life_days,
             "v2_ridge": nested_fold.ridge,
             "v2_rho": nested_fold.rho,
+            "fixed_v1_calibrated_brier": fixed_fold.calibrated_brier_1x2,
+            "nested_v2_calibrated_brier": nested_fold.calibrated_brier_1x2,
+            "fixed_v1_calibrated_log_loss": fixed_fold.calibrated_log_loss_1x2,
+            "nested_v2_calibrated_log_loss": nested_fold.calibrated_log_loss_1x2,
+            "fixed_v1_temperature": fixed_fold.temperature,
+            "nested_v2_temperature": nested_fold.temperature,
+            "fixed_v1_calibration_samples": fixed_fold.calibration_samples,
+            "nested_v2_calibration_samples": nested_fold.calibration_samples,
         })
 
     bootstrap = paired_fold_block_bootstrap(paired_folds)
+    calibrated_bootstrap = paired_fold_block_bootstrap(paired_calibrated_folds)
     return {
         "evaluation_type": "MATCHED_RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED",
         "fixed_v1": {
@@ -61,6 +78,10 @@ def compare_models(results):
             "log_loss_1x2": fixed.log_loss_1x2,
             "classwise_ece": fixed.classwise_ece,
             "top_label_ece": fixed.top_label_ece,
+            "calibrated_brier_1x2": fixed.calibrated_brier_1x2,
+            "calibrated_log_loss_1x2": fixed.calibrated_log_loss_1x2,
+            "calibrated_classwise_ece": fixed.calibrated_classwise_ece,
+            "calibrated_top_label_ece": fixed.calibrated_top_label_ece,
         },
         "nested_v2": {
             "evaluated_fixtures": nested.evaluated_fixtures,
@@ -69,6 +90,10 @@ def compare_models(results):
             "log_loss_1x2": nested.log_loss_1x2,
             "classwise_ece": nested.classwise_ece,
             "top_label_ece": nested.top_label_ece,
+            "calibrated_brier_1x2": nested.calibrated_brier_1x2,
+            "calibrated_log_loss_1x2": nested.calibrated_log_loss_1x2,
+            "calibrated_classwise_ece": nested.calibrated_classwise_ece,
+            "calibrated_top_label_ece": nested.calibrated_top_label_ece,
         },
         "paired_differences": {
             "convention": "NESTED_V2_MINUS_FIXED_V1; NEGATIVE_FAVOURS_V2",
@@ -85,6 +110,19 @@ def compare_models(results):
             "resamples": bootstrap.resamples,
             "seed": bootstrap.seed,
             "interpretation": "EXPLORATORY_FOLD_BLOCK_BOOTSTRAP_ONLY_12_FOLDS",
+            "calibrated": {
+                "brier": {
+                    "mean": calibrated_bootstrap.brier_difference.mean_difference,
+                    "lower_95": calibrated_bootstrap.brier_difference.lower_95,
+                    "upper_95": calibrated_bootstrap.brier_difference.upper_95,
+                },
+                "log_loss": {
+                    "mean": calibrated_bootstrap.log_loss_difference.mean_difference,
+                    "lower_95": calibrated_bootstrap.log_loss_difference.lower_95,
+                    "upper_95": calibrated_bootstrap.log_loss_difference.upper_95,
+                },
+                "convention": "NESTED_V2_MINUS_FIXED_V1; NEGATIVE_FAVOURS_V2",
+            },
         },
         "folds": fold_output,
     }

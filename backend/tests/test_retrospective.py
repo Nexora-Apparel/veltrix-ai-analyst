@@ -5,7 +5,7 @@ import pytest
 from app.models.attack_defence import GoalResult
 from app.validation.bootstrap import paired_fold_block_bootstrap
 from app.validation.calibration import multiclass_calibration_diagnostics
-from app.validation.retrospective import evaluate_retrospective
+from app.validation.retrospective import _inner_calibration_data, evaluate_retrospective
 
 BASE = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -40,6 +40,8 @@ def test_retrospective_evaluation_uses_only_prior_event_time_results():
     assert all(row.baseline_brier_1x2 >= 0 and row.baseline_log_loss_1x2 > 0 for row in report.fold_metrics)
     assert 0 <= report.brier_1x2 <= 2
     assert report.log_loss_1x2 > 0
+    assert 0 <= report.calibrated_brier_1x2 <= 2
+    assert report.calibrated_log_loss_1x2 > 0
     assert 0 <= report.baseline_brier_1x2 <= 2
     assert report.baseline_log_loss_1x2 > 0
 
@@ -76,6 +78,12 @@ def test_nested_tuning_selects_only_chronological_inner_fold_parameters():
     assert report.nested_tuning is True
     assert len(report.selected_parameters) == report.fold_count
     assert len(report.fold_metrics) == report.fold_count
+    assert all(
+        row.calibrated_home_win + row.calibrated_draw + row.calibrated_away_win
+        == pytest.approx(1.0)
+        for row in report.predictions
+    )
+    assert all(row.temperature > 0 and row.calibration_samples >= 0 for row in report.predictions)
     assert all(half_life in (90.0, 180.0, 365.0) for half_life, _, _ in report.selected_parameters)
     assert all(ridge in (0.01, 0.08, 0.25) for _, ridge, _ in report.selected_parameters)
     assert all(rho in (-0.15, -0.10, -0.05, 0.0, 0.05, 0.10, 0.15)
@@ -128,3 +136,14 @@ def test_paired_fold_bootstrap_rejects_invalid_inputs():
         paired_fold_block_bootstrap([fold])
     with pytest.raises(ValueError, match="100"):
         paired_fold_block_bootstrap([fold, fold], resamples=50)
+
+
+
+def test_inner_calibration_predictions_are_chronological_and_sufficient_for_fit():
+    probabilities, outcomes = _inner_calibration_data(
+        make_rows(60), half_life_days=180.0, ridge=0.08, rho=0.0,
+        min_train_fixtures=10, test_window_fixtures=5,
+    )
+    assert len(probabilities) == len(outcomes)
+    assert len(probabilities) >= 30
+    assert all(sum(row) == pytest.approx(1.0) for row in probabilities)
