@@ -233,7 +233,7 @@ def test_dry_run_and_materialization_are_provenance_bound_and_idempotent(
     assert preview["plan"]["fixture_count"] == 2
     assert preview["plan"]["finished_fixture_count"] == 1
     assert preview["plan"]["unknown_fixture_count"] == 1
-    assert preview["plan"]["non_pit_observation_count"] == 2
+    assert preview["plan"]["non_pit_observation_count"] == 5
 
     first = materialize_brazil_serie_b_canonical_entities(
         connection, execute=True, scope=scope
