@@ -167,9 +167,13 @@ SELECT
          AND observation.entity_type = 'team'
          AND observation.provider_entity_id = link.provider_team_id
          AND observation.payload_sha256 = link.payload_sha256
+         AND observation.rights_approval_id = link.rights_approval_id
          AND sighting.id IS NOT NULL
          AND sighting.provider_response_id = link.provider_response_id
          AND sighting.payload_sha256 = link.payload_sha256
+         AND response.provider = link.provider
+         AND response.source_id = link.source_id
+         AND response.rights_approval_id = link.rights_approval_id
          AND response.http_status BETWEEN 200 AND 299
         THEN 'PROVENANCE_VERIFIED'
         ELSE 'PROVENANCE_INVALID'
@@ -491,13 +495,17 @@ SELECT
     review_case.evidence_uris[1],
     'Evidence gathered and recommendation staged. This is not a human identity decision; no canonical links or source rows were changed.'
 FROM veltrix_ai_analyst.canonical_identity_review_cases review_case
-WHERE review_case.case_key IN (
-    'BRAZIL_SERIE_B_RUN_3_DUPLICATE_AMERICA_MG',
-    'BRAZIL_SERIE_B_RUN_3_DUPLICATE_FORTALEZA_LONDRINA',
-    'BRAZIL_SERIE_B_RUN_3_DUPLICATE_FORTALEZA_BOTAFOGO',
-    'BRAZIL_SERIE_B_RUN_3_DUPLICATE_CEARA_LONDRINA',
-    'BRAZIL_SERIE_B_RUN_3_TEAM_ALIAS_AMERICA_MG',
-    'BRAZIL_SERIE_B_RUN_3_COVERAGE_2026',
-    'BRAZIL_SERIE_B_RUN_3_PIT_TIMESTAMP_GAP'
+WHERE (
+    review_case.case_key IN (
+        'BRAZIL_SERIE_B_RUN_3_DUPLICATE_AMERICA_MG',
+        'BRAZIL_SERIE_B_RUN_3_DUPLICATE_FORTALEZA_LONDRINA',
+        'BRAZIL_SERIE_B_RUN_3_DUPLICATE_FORTALEZA_BOTAFOGO',
+        'BRAZIL_SERIE_B_RUN_3_DUPLICATE_CEARA_LONDRINA',
+        'BRAZIL_SERIE_B_RUN_3_TEAM_ALIAS_AMERICA_MG',
+        'BRAZIL_SERIE_B_RUN_3_COMPETITION_IDENTITY_522514093',
+        'BRAZIL_SERIE_B_RUN_3_COVERAGE_2026',
+        'BRAZIL_SERIE_B_RUN_3_PIT_TIMESTAMP_GAP'
+    )
+    OR review_case.case_key LIKE 'BRAZIL_SERIE_B_RUN_3_TEAM_IDENTITY_%'
 )
 ON CONFLICT (case_id, event_type, reviewer_id) DO NOTHING;
