@@ -113,8 +113,7 @@ class EloSystem:
                     self.config.margin_multiplier_cap,
                     log10(margin + 1.0) * 2.2 / denominator,
                 )
-                margin_multiplier = max(1.0, margin_multiplier)
-            delta = self.config.k_factor * margin_multiplier * (actual - expected)
+                delta = self.config.k_factor * margin_multiplier * (actual - expected)
             deltas[item.home_team_id] = delta
             deltas[item.away_team_id] = -delta
 
@@ -129,7 +128,11 @@ class EloSystem:
         config: EloConfig | None = None,
     ) -> "EloSystem":
         system = cls(config)
-        ordered = sorted(results, key=lambda item: (item.kickoff_at, item.fixture_id))
+        rows = tuple(results)
+        fixture_ids = [item.fixture_id for item in rows]
+        if len(fixture_ids) != len(set(fixture_ids)):
+            raise ValueError("duplicate fixture IDs in Elo history")
+        ordered = sorted(rows, key=lambda item: (item.kickoff_at, item.fixture_id))
         index = 0
         while index < len(ordered):
             kickoff = ordered[index].kickoff_at
