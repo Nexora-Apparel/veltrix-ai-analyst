@@ -28,7 +28,7 @@ def test_dataset_fingerprint_is_order_independent():
 
 def test_final_training_artifact_is_research_only_and_keeps_models_separate():
     artifact_id, fingerprint, artifact = build_artifact(make_results())
-    assert artifact_id == f"v1-{fingerprint[:32]}"
+    assert artifact_id == f"v2-{fingerprint[:32]}"
     assert artifact["training_fixtures"] == 24
     assert artifact["distinct_provider_team_ids"] == 4
     assert artifact["temporal_certification"] == "RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED"
