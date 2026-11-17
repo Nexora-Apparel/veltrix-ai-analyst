@@ -2,13 +2,28 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-17 (canonical materialization independently verified; official CBF duplicate evidence reconciled; migration 009 review queue prepared)
+**Last updated:** 2026-11-17 (Stage 2 closure audit: production migrations/materialization verified; 370-fixture schedule structure reconciled; Round 38 incremental import remains manual-gated)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
 **Product:** Personal-use, cloud-backed native Android football analysis and prediction application
 
-## Latest execution checkpoint — canonical materialization and identity/coverage audit (2026-11-17)
+## Latest execution checkpoint — Stage 2 closure audit (2026-11-17)
+
+- [x] Production migrations 001–009 are applied; migration 009 is independently read-verified.
+- [x] Production canonical layer: 21 teams, one competition, 374 fixtures; 21 team links, one competition link, 374 fixture-source links.
+- [x] Review queue: 28 cases and 28 automated recommendation events; zero active aliases and zero active duplicate exclusions. No automatic identity promotion occurred.
+- [x] Historical import run 3 completed: 34/40 requests, 374 rows inserted, 370 FINISHED and four UNKNOWN.
+- [x] Independent matchup audit: 20 teams, 37 appearances per team, 370 distinct directed pairings, no repeated directed pairing; 180 unordered pairs have both directions and exactly 10 directed pairings are absent.
+- [x] The 10 absent directed pairings match exactly the CBF Round 38 schedule: América MG–Avaí; Atlético-GO–Cuiabá; CRB–Ceará; Criciúma–Novorizontino; Fortaleza–Vila Nova; Juventude–Botafogo-SP; Londrina–Náutico; Ponte Preta–Operário-PR; São Bernardo–Athletic; Sport–Goiás.
+- [x] CBF official report confirms all 10 Round 38 results; those results are reconciliation evidence only and have not been inserted into Neon.
+- [x] Four UNKNOWN rows remain scoreless duplicate/stale candidates; America MG identity collision and all 28 review cases remain human-pending.
+- [x] PIT audit remains fail-closed: 374 observations, 374 sightings, zero PIT-certifiable. No pre-match feature promotion or model training.
+- [ ] Final 10 Round 38 fixtures must be imported through a dedicated bounded 5Dollar ingestion path. The current historical importer hard-codes the 2026-03-21 to 2026-11-09 interval; add and CI-validate a separate incremental path, then manually dispatch it. This session cannot dispatch GitHub Actions workflow events.
+- **Stage 2 status: close-ready, pending the manual Round 38 incremental import.** Human identity review and PIT-source qualification remain explicit gates; they do not justify unsafe auto-merges or feature promotion.
+- Detailed evidence and exact final-round results: [Stage 2 closure audit](ledger/2026-11-17-stage-2-closure-audit.md).
+
+## Historical checkpoint — canonical materialization and identity/coverage audit (2026-11-17)
 
 - [x] Guarded canonical materialization workflow [#44086857898](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44086857898), job [#134051435015](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44086857898/job/134051435015), completed successfully on commit `e6ca720ca556c5cb6aea7e867075e841b0f7bf3e`; runner reported `MATERIALIZATION_COMMITTED`.
 - [x] Independent read-only Neon verification confirmed 21 canonical teams, one competition, 374 canonical fixtures, 21 team links, one competition link, 374 fixture-source links, zero identity review events and zero pre-match feature observations.
