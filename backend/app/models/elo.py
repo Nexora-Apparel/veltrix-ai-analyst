@@ -1,10 +1,10 @@
 """Chronological Elo ratings with simultaneous-kickoff isolation."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite, log10
-from collections.abc import Iterable
 
 
 @dataclass(frozen=True, slots=True)
