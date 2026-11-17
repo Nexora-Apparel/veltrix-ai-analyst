@@ -103,6 +103,15 @@ jobs:
                       "canonical_identity_review_events_append_only",
                   ],
               },
+              "008_canonical_identity_link_uniqueness.sql": {
+                  "tables": [],
+                  "functions": [],
+                  "triggers": [],
+                  "indexes": [
+                      "provider_team_identity_links_source_identity_uk",
+                      "provider_competition_identity_links_source_identity_uk",
+                  ],
+              },
           }
 
           with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
@@ -130,6 +139,12 @@ jobs:
                           (f"veltrix_ai_analyst.{function}",),
                       ).fetchone()[0] is None:
                           raise SystemExit(f"MIGRATION_FUNCTION_VERIFICATION_FAILED:{function}")
+
+                  for index in expected.get("indexes", []):
+                      if connection.execute(
+                          "SELECT to_regclass(%s)", (f"veltrix_ai_analyst.{index}",)
+                      ).fetchone()[0] is None:
+                          raise SystemExit(f"MIGRATION_INDEX_VERIFICATION_FAILED:{index}")
 
                   if filename.startswith("006_"):
                       trigger_count = connection.execute(
