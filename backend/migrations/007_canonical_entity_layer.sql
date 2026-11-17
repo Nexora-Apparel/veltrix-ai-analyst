@@ -24,7 +24,7 @@ CREATE TABLE veltrix_ai_analyst.canonical_teams (
     country_code TEXT CHECK (country_code IS NULL OR country_code ~ '^[A-Z]{2}$'),
     association TEXT,
     identity_basis TEXT NOT NULL DEFAULT 'SOURCE_LOCAL_ONLY'
-        CHECK (identity_basis IN ('SOURCE_LOCAL_ONLY', 'REAL_WORLD_VERIFIED', 'UNRESOLVED')),
+        CHECK (identity_basis IN ('SOURCE_LOCAL_ONLY', 'UNRESOLVED')),
     lifecycle_status TEXT NOT NULL DEFAULT 'ACTIVE'
         CHECK (lifecycle_status IN ('ACTIVE', 'INACTIVE', 'RETIRED')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -38,7 +38,7 @@ CREATE TABLE veltrix_ai_analyst.canonical_competitions (
     competition_level TEXT,
     season_model TEXT,
     identity_basis TEXT NOT NULL DEFAULT 'SOURCE_LOCAL_ONLY'
-        CHECK (identity_basis IN ('SOURCE_LOCAL_ONLY', 'REAL_WORLD_VERIFIED', 'UNRESOLVED')),
+        CHECK (identity_basis IN ('SOURCE_LOCAL_ONLY', 'UNRESOLVED')),
     lifecycle_status TEXT NOT NULL DEFAULT 'ACTIVE'
         CHECK (lifecycle_status IN ('ACTIVE', 'INACTIVE', 'RETIRED')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -95,10 +95,7 @@ CREATE TABLE veltrix_ai_analyst.provider_team_identity_links (
     ),
     mapping_status TEXT NOT NULL DEFAULT 'REVIEW_REQUIRED'
         CHECK (
-            mapping_status IN (
-                'SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED',
-                'REVIEW_REQUIRED', 'CONFLICT', 'REJECTED'
-            )
+            mapping_status = 'REVIEW_REQUIRED'
         ),
     evidence_uri TEXT,
     evidence_sha256 CHAR(64) CHECK (
@@ -149,10 +146,7 @@ CREATE TABLE veltrix_ai_analyst.provider_competition_identity_links (
     ),
     mapping_status TEXT NOT NULL DEFAULT 'REVIEW_REQUIRED'
         CHECK (
-            mapping_status IN (
-                'SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED',
-                'REVIEW_REQUIRED', 'CONFLICT', 'REJECTED'
-            )
+            mapping_status = 'REVIEW_REQUIRED'
         ),
     evidence_uri TEXT,
     evidence_sha256 CHAR(64) CHECK (
@@ -205,7 +199,7 @@ CREATE TABLE veltrix_ai_analyst.canonical_fixture_sources (
         mapping_method IN ('EXACT_PROVIDER_FIXTURE_ID', 'MANUAL_EVIDENCE')
     ),
     mapping_status TEXT NOT NULL DEFAULT 'REVIEW_REQUIRED'
-        CHECK (mapping_status IN ('SOURCE_ROW_LINKED', 'REVIEW_REQUIRED', 'CONFLICT', 'REJECTED')),
+        CHECK (mapping_status = 'REVIEW_REQUIRED'),
     evidence_uri TEXT,
     evidence_sha256 CHAR(64) CHECK (
         evidence_sha256 IS NULL OR evidence_sha256 ~ '^[0-9a-f]{64}$'
@@ -235,6 +229,46 @@ CREATE TABLE veltrix_ai_analyst.canonical_fixture_sources (
 );
 CREATE INDEX canonical_fixture_sources_canonical_idx
     ON veltrix_ai_analyst.canonical_fixture_sources(canonical_fixture_id);
+
+-- A second provider row may be linked to the same canonical fixture only after
+-- an existing source link has an explicit human review event and the new link
+-- is recorded as independently evidenced manual mapping.
+CREATE OR REPLACE FUNCTION veltrix_ai_analyst.guard_canonical_fixture_source_merge()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM veltrix_ai_analyst.canonical_fixture_sources existing_link
+        WHERE existing_link.canonical_fixture_id = NEW.canonical_fixture_id
+    ) AND (
+        NEW.mapping_method <> 'MANUAL_EVIDENCE'
+        OR NOT EXISTS (
+            SELECT 1
+            FROM veltrix_ai_analyst.canonical_fixture_sources existing_link
+            JOIN LATERAL (
+                SELECT decision
+                FROM veltrix_ai_analyst.canonical_identity_review_events event
+                WHERE event.fixture_source_link_id = existing_link.id
+                ORDER BY event.reviewed_at DESC, event.id DESC
+                LIMIT 1
+            ) latest_review ON TRUE
+              ON TRUE
+            WHERE existing_link.canonical_fixture_id = NEW.canonical_fixture_id
+              AND latest_review.decision = 'SOURCE_FIXTURE_LINK_REVIEWED'
+        )
+    ) THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_MULTI_SOURCE_REQUIRES_REVIEW';
+    END IF;
+    RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER canonical_fixture_source_merge_guard
+    BEFORE INSERT ON veltrix_ai_analyst.canonical_fixture_sources
+    FOR EACH ROW EXECUTE FUNCTION veltrix_ai_analyst.guard_canonical_fixture_source_merge();
+
 
 -- The same trigger validates exact observation/sighting/response/hash provenance
 -- for every canonical provider link. The composite foreign keys above bind each
@@ -371,6 +405,112 @@ $$;
 CREATE TRIGGER canonical_review_supersession_guard
     BEFORE INSERT ON veltrix_ai_analyst.canonical_identity_review_events
     FOR EACH ROW EXECUTE FUNCTION veltrix_ai_analyst.validate_canonical_review_supersession();
+
+-- A fixture cannot be marked verified until its exact source fixture, competition,
+-- home team and away team links each have an explicit review event.
+CREATE OR REPLACE FUNCTION veltrix_ai_analyst.enforce_canonical_fixture_identity_status()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $
+DECLARE
+    source_link RECORD;
+    source_status TEXT;
+    competition_status TEXT;
+    home_team_status TEXT;
+    away_team_status TEXT;
+BEGIN
+    IF NEW.identity_status <> 'VERIFIED' THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT cs.id, pf.provider, pf.source_id, pf.provider_competition_id,
+           pf.home_team_provider_id, pf.away_team_provider_id
+    INTO source_link
+    FROM veltrix_ai_analyst.canonical_fixture_sources cs
+    JOIN veltrix_ai_analyst.provider_fixtures pf
+      ON pf.id = cs.provider_fixture_row_id
+    WHERE cs.canonical_fixture_id = NEW.id
+    ORDER BY cs.id
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_SOURCE_LINK_REVIEW_REQUIRED';
+    END IF;
+
+    SELECT decision INTO source_status
+    FROM veltrix_ai_analyst.canonical_identity_review_events
+    WHERE fixture_source_link_id = source_link.id
+    ORDER BY reviewed_at DESC, id DESC
+    LIMIT 1;
+
+    SELECT COALESCE(latest.decision, link.mapping_status)
+    INTO competition_status
+    FROM veltrix_ai_analyst.provider_competition_identity_links link
+    LEFT JOIN LATERAL (
+        SELECT decision
+        FROM veltrix_ai_analyst.canonical_identity_review_events event
+        WHERE event.competition_identity_link_id = link.id
+        ORDER BY reviewed_at DESC, id DESC
+        LIMIT 1
+    ) latest ON TRUE
+    WHERE link.provider = source_link.provider
+      AND link.source_id = source_link.source_id
+      AND link.provider_competition_id = source_link.provider_competition_id
+      AND link.canonical_competition_id = NEW.canonical_competition_id
+    ORDER BY link.id
+    LIMIT 1;
+
+    SELECT COALESCE(latest.decision, link.mapping_status)
+    INTO home_team_status
+    FROM veltrix_ai_analyst.provider_team_identity_links link
+    LEFT JOIN LATERAL (
+        SELECT decision
+        FROM veltrix_ai_analyst.canonical_identity_review_events event
+        WHERE event.team_identity_link_id = link.id
+        ORDER BY reviewed_at DESC, id DESC
+        LIMIT 1
+    ) latest ON TRUE
+    WHERE link.provider = source_link.provider
+      AND link.source_id = source_link.source_id
+      AND link.provider_team_id = source_link.home_team_provider_id
+      AND link.canonical_team_id = NEW.home_canonical_team_id
+    ORDER BY link.id
+    LIMIT 1;
+
+    SELECT COALESCE(latest.decision, link.mapping_status)
+    INTO away_team_status
+    FROM veltrix_ai_analyst.provider_team_identity_links link
+    LEFT JOIN LATERAL (
+        SELECT decision
+        FROM veltrix_ai_analyst.canonical_identity_review_events event
+        WHERE event.team_identity_link_id = link.id
+        ORDER BY reviewed_at DESC, id DESC
+        LIMIT 1
+    ) latest ON TRUE
+    WHERE link.provider = source_link.provider
+      AND link.source_id = source_link.source_id
+      AND link.provider_team_id = source_link.away_team_provider_id
+      AND link.canonical_team_id = NEW.away_canonical_team_id
+    ORDER BY link.id
+    LIMIT 1;
+
+    IF source_status <> 'SOURCE_FIXTURE_LINK_REVIEWED'
+       OR competition_status NOT IN ('SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED')
+       OR home_team_status NOT IN ('SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED')
+       OR away_team_status NOT IN ('SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED') THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_IDENTITY_LINKS_NOT_REVIEWED';
+    END IF;
+
+    RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER canonical_fixture_identity_status_guard
+    BEFORE INSERT OR UPDATE OF identity_status, canonical_competition_id,
+        home_canonical_team_id, away_canonical_team_id
+    ON veltrix_ai_analyst.canonical_fixtures
+    FOR EACH ROW EXECUTE FUNCTION veltrix_ai_analyst.enforce_canonical_fixture_identity_status();
+
 
 CREATE TRIGGER provider_team_identity_links_append_only
     BEFORE UPDATE OR DELETE ON veltrix_ai_analyst.provider_team_identity_links
