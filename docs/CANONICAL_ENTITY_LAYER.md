@@ -148,13 +148,13 @@ The run-3 date boundary ends 2026-11-09. CBF's basic 2026 schedule places Round 
 
 ### Migration 009 — review queue and provenance audit (prepared; not applied)
 
-Branch `identity-review-coverage-reconciliation-20261117` adds:
+Merged PR [#18](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/18) at `0d069138aad8ce4e25a2339cce3056f00431b9f0` adds:
 - Immutable `canonical_identity_review_cases` and `canonical_identity_review_case_events` tables. Automated recommendations are explicitly tagged `AUTOMATED_SYSTEM`; only `HUMAN` events can confirm or reject a case.
 - Seeded cases for the 20 distinct source-local team candidates, America alias candidate, competition/season identity, four duplicate fixtures, official schedule coverage reconciliation, and PIT timestamp gap.
 - Provenance audit views separating source-local provenance integrity from real-world identity review.
 - No updates to provider rows, source observations, canonical teams, canonical fixtures or existing links. No identity is marked human-verified by this migration.
 
-After CI and merge, Migration 009 must be applied through the existing manual checksum-verified workflow. Production verification must confirm the review-case seed counts and audit-view results before any human review decisions are recorded.
+CI [#44092601005](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44092601005) passed backend tests, Ruff, Android debug build and APK upload. Migration 009 was also prepared and tested on an isolated Neon branch copied from production: 28 cases, 28 automated recommendations, 21/1/374 provenance rows verified, four duplicate cases, zero activated aliases/dedup exclusions, and no canonical/PIT row-count changes. Migration 009 has not been applied to production. It must be applied through the existing manual checksum-verified workflow after explicit user approval. Production verification must confirm the review-case seed counts and audit-view results before any human review decisions are recorded.
 
 ### Current release gates
 
