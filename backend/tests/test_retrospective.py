@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.models.attack_defence import GoalResult
+from app.validation.bootstrap import paired_fold_block_bootstrap
 from app.validation.calibration import multiclass_calibration_diagnostics
 from app.validation.retrospective import evaluate_retrospective
 
@@ -95,3 +96,35 @@ def test_calibration_diagnostics_report_classwise_and_top_label_error():
 def test_calibration_diagnostics_reject_invalid_probability_rows():
     with pytest.raises(ValueError, match="sum to one"):
         multiclass_calibration_diagnostics([(0.7, 0.4)], [0])
+
+
+
+def test_paired_fold_bootstrap_is_deterministic_and_uses_model_minus_baseline():
+    from types import SimpleNamespace
+
+    folds = [
+        SimpleNamespace(fixture_count=20, brier_1x2=0.50, baseline_brier_1x2=0.60,
+                        log_loss_1x2=0.80, baseline_log_loss_1x2=0.90),
+        SimpleNamespace(fixture_count=10, brier_1x2=0.70, baseline_brier_1x2=0.65,
+                        log_loss_1x2=1.10, baseline_log_loss_1x2=1.00),
+        SimpleNamespace(fixture_count=15, brier_1x2=0.55, baseline_brier_1x2=0.60,
+                        log_loss_1x2=0.90, baseline_log_loss_1x2=0.95),
+    ]
+    first = paired_fold_block_bootstrap(folds, resamples=500, seed=42)
+    second = paired_fold_block_bootstrap(folds, resamples=500, seed=42)
+    assert first == second
+    assert first.brier_difference.mean_difference == pytest.approx(
+        (20 * -0.10 + 10 * 0.05 + 15 * -0.05) / 45
+    )
+    assert first.log_loss_difference.mean_difference < 0
+
+
+def test_paired_fold_bootstrap_rejects_invalid_inputs():
+    from types import SimpleNamespace
+
+    fold = SimpleNamespace(fixture_count=10, brier_1x2=0.5, baseline_brier_1x2=0.6,
+                           log_loss_1x2=0.8, baseline_log_loss_1x2=0.9)
+    with pytest.raises(ValueError, match="two chronological folds"):
+        paired_fold_block_bootstrap([fold])
+    with pytest.raises(ValueError, match="100"):
+        paired_fold_block_bootstrap([fold, fold], resamples=50)
