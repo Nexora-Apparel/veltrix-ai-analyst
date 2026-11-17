@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from math import log
+from math import exp, log
 
 from app.models.attack_defence import GoalResult, fit_attack_defence
 from app.models.scoreline import build_scoreline_distribution
