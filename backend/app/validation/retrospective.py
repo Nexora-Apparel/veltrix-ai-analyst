@@ -14,6 +14,7 @@ from math import exp, log
 
 from app.models.attack_defence import GoalResult, fit_attack_defence
 from app.models.scoreline import build_scoreline_distribution
+from app.validation.calibration import multiclass_calibration_diagnostics
 from app.validation.tuning import tune_attack_defence
 
 
@@ -31,6 +32,8 @@ class RetrospectiveFoldMetrics:
     half_life_days: float
     ridge: float
     rho: float
+    classwise_ece: float
+    top_label_ece: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +66,8 @@ class RetrospectiveReport:
     mean_scoreline_log_loss: float
     baseline_brier_1x2: float
     baseline_log_loss_1x2: float
+    classwise_ece: float
+    top_label_ece: float
     nested_tuning: bool
     selected_parameters: tuple[tuple[float, float, float], ...]
     fold_metrics: tuple[RetrospectiveFoldMetrics, ...]
@@ -231,6 +236,12 @@ def evaluate_retrospective(
         ))
         baseline_log_losses.append(-log(max(1e-15, probabilities[actual])))
 
+    overall_calibration = multiclass_calibration_diagnostics(
+        [(row.home_win, row.draw, row.away_win) for row in predictions],
+        [0 if row.actual_home_goals > row.actual_away_goals else (
+            1 if row.actual_home_goals == row.actual_away_goals else 2
+        ) for row in predictions],
+    )
     fold_metrics: list[RetrospectiveFoldMetrics] = []
     for fold_index in range(1, folds + 1):
         fold_rows = [row for row in predictions if row.fold_index == fold_index]
@@ -260,6 +271,12 @@ def evaluate_retrospective(
         if not fold_rows:
             continue
         first, last = fold_rows[0], fold_rows[-1]
+        fold_calibration = multiclass_calibration_diagnostics(
+            [(row.home_win, row.draw, row.away_win) for row in fold_rows],
+            [0 if row.actual_home_goals > row.actual_away_goals else (
+                1 if row.actual_home_goals == row.actual_away_goals else 2
+            ) for row in fold_rows],
+        )
         fold_metrics.append(RetrospectiveFoldMetrics(
             fold_index=fold_index,
             fixture_count=len(fold_rows),
@@ -276,6 +293,8 @@ def evaluate_retrospective(
             half_life_days=first.half_life_days,
             ridge=first.ridge,
             rho=first.rho,
+            classwise_ece=fold_calibration.classwise_ece,
+            top_label_ece=fold_calibration.top_label_ece,
         ))
 
     return RetrospectiveReport(
@@ -291,6 +310,8 @@ def evaluate_retrospective(
         ),
         baseline_brier_1x2=sum(baseline_brier_values) / len(baseline_brier_values),
         baseline_log_loss_1x2=sum(baseline_log_losses) / len(baseline_log_losses),
+        classwise_ece=overall_calibration.classwise_ece,
+        top_label_ece=overall_calibration.top_label_ece,
         nested_tuning=nested_tuning,
         selected_parameters=tuple(selected_parameters),
         fold_metrics=tuple(fold_metrics),
