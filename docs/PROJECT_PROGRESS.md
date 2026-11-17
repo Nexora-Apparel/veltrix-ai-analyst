@@ -2,40 +2,34 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-17 (Migration 007 applied and verified; canonical materialization opened)
+**Last updated:** 2026-11-17 (Migration 007 applied; materializer PR #15 merged; Migration 008 pending)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
 **Product:** Personal-use, cloud-backed native Android football analysis and prediction application
 
-## Latest execution checkpoint — 2026-11-17 (Migration 007 CI passed and PR merged)
+## Latest execution checkpoint — 2026-11-17 (Migration 007 verified; materializer PR merged)
 
-- Latest CI [#44068513459](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44068513459) passed on commit `5f57a1afc869c7ea5f5f953269dcb33d6ae6ac7a`: backend tests, Ruff lint, Android debug build and APK artifact upload all succeeded.
-- CI found and corrected the actual malformed PL/pgSQL delimiter in Migration 007, then caught and corrected a faulty regression-test string assertion. The final run is green.
-- PR [#14](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/14) merged by squash at `759f2fa80b9c05551e278af7eb306760875a0063`.
-- Migration 007 is still **NOT applied** to Neon. The controlled manual workflow requires `confirm_migrations=APPLY_CHECKSUM_VERIFIED_MIGRATIONS`. The current GitHub connector does not expose workflow dispatch, so a manual dispatch is required; do not apply SQL directly or bypass the workflow.
-- Checksum and database object verification remain pending workflow success. Canonical materialization has not started.
-- Existing data boundaries remain: 374 imported fixtures, 370 finished/scored, four UNKNOWN/scoreless; all 374 source observations non-PIT-certified; America MG and América Mineiro remain separate/unresolved. No predictions or model training are enabled.
-
-## Latest execution checkpoint — 2026-11-17
-
-- `main` is at dashboard commit `c23dc52f8c267236aa1ccf0c9234ab85515054aa`. Android CI compiled the dashboard and uploaded the debug APK. The six-screen dashboard still contains sample data; runtime testing and backend integration are deferred until the proper application stage.
-- Current execution remains Stage 1 canonical data foundation. No Android integration work is being performed in this stage.
-- Existing branch `stage1/canonical-entity-schema-007-20261117` contains initial Migration 007 work at commit `d07478223511bb4a1079c2ae95dc7b53fbdc8a4e`; current PR head is `b948cbd20ca3c53ea57fa17daa86e35d60ce769e`. The migration is under review and has not been merged or applied to Neon.
-- Migration 007 defines canonical teams, competitions, fixtures, source identity links, canonical fixture-source links, append-only identity review events, provenance guards and fail-closed fixture verification gates.
-- Draft PR [#14](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/14) is open. CI run [#44065008513](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44065008513) failed because Migration 007 had a malformed PL/pgSQL dollar-quote delimiter; corrected in commit `23a3ac026e703db6748c165cd5d0638b7c97c2d1`, with a regression assertion in `ae670ffb1e4fb8ee4c091a79b657d074ba6c1bec`. Android build passed. Backend rerun is pending; migration 007 remains unmerged and unapplied.
-- No canonical records have been materialized. The 374 imported provider fixtures remain unchanged; 370 are finished/scored and four remain UNKNOWN/scoreless.
-- `America MG` (provider ID `1102583842`) and `América Mineiro` (provider ID `3808811746`) remain separate and unresolved. No accent normalization, fuzzy matching or automatic merge is allowed.
-- All 374 imported source observations remain non-PIT-certified and excluded from pre-match features. No model training or prediction publication is enabled.
+- Migration 007 was applied and verified through controlled workflow [#44072112212](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44072112212), job `134000664117`, against `veltrix_ai_analyst`. Exact SHA-256: `5503622ac57bd1875e08cf40cf1d87220cec99deb79e8fc23dd4ec6ebbffc30b`. Seven tables, four functions and ten triggers verified.
+- PR [#14](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/14) merged at `759f2fa80b9c05551e278af7eb306760875a0063`.
+- Canonical materializer PR [#15](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/15) merged at `f7a73046be1b3ab0459815c636adfa202ba41e9f`.
+- Final PR #15 CI [#44075667064](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44075667064) passed on `42cd5c8b311d5c96c56e2cf733a74a6f6ae04dd4`: 113 backend tests passed, Ruff passed, Android debug build and APK artifact upload passed.
+- Integration testing exposed a latent Migration 007 trigger defect: `NEW.canonical_fixture_id` was evaluated for team-link trigger rows. Migration 008 replaces the trigger function with branch-scoped fixture-only field access, enforces exact source observation data types, and adds unique indexes for provider-local team/competition links. Regression tests now pass.
+- **Migration 008 is not yet applied to Neon.** Apply it only through the manual checksum-controlled workflow `.github/workflows/apply-database-migrations.yml`, using `confirm_migrations=APPLY_CHECKSUM_VERIFIED_MIGRATIONS`. The available GitHub integration does not expose workflow dispatch; manual dispatch is required. Do not apply SQL directly.
+- Read-only Neon audit confirms import run 3 is COMPLETED: 34/34 windows, 374 fixtures, 21 source team identities, one competition identity. Status/score: 370 FINISHED with scores, four UNKNOWN and scoreless. The scoped canonical source set has 396 observations (374 fixtures + 21 teams + 1 competition), and 0/396 are PIT-certifiable.
+- All 374 fixture source rows have matching observation/sighting/response provenance. The active source approval is APPROVED and covers this competition and required uses.
+- Known collision pair retained separately: provider fixtures `3116209225` and `2341822348`, 2026-03-22 20:58:35Z and 21:00:00Z, both versus Goiás provider ID `3126624865`. America MG `1102583842` and América Mineiro `3808811746` remain separate; both fixtures are flagged CONFLICT by the materializer. Four UNKNOWN fixtures remain scoreless.
+- Production canonical tables and identity-link tables remain empty. No production canonical materialization, provider calls, PIT promotion, model training or prediction publication has occurred.
+- Android dashboard runtime testing and backend integration remain deferred to the scheduled application stage.
 
 ## Current verified position
 
-- **Stage:** Stage 2 — Data integrations and historical migration.
-- **Completed foundations:** Stage 1; PostgreSQL provenance schema and runtime ingestion store (PR #1 and #2); hybrid ML architecture specification; AI Midas pinned snapshot verification; 5Dollar Community account/Brazil competition preflight; bounded 5Dollar Brazil Serie B fixture endpoint probe; deterministic date-window planner; persistent request-budget enforcement; checkpoint recovery; controlled ephemeral-PostgreSQL dry-run.
-- **Infrastructure verified:** dedicated Neon database, GitHub Actions environment secret, source approval, four migrations, request reservations, checkpoints and bounded importer are configured. No live historical import has yet completed.
-- **Not built:** football feature pipeline, model training/calibration, prediction API, Android product flows, production deployment.
+- **Current stage:** Canonical materialization foundation, after controlled Migration 007 application.
+- **Merged:** canonical schema Migration 007 and read-only-by-default, guarded canonical materializer implementation.
+- **Pending:** controlled application/verification of Migration 008; then production dry-run reconciliation; then a separately authorized materialization execution.
+- **Not built:** point-in-time feature pipeline, model training/calibration, prediction API, production deployment.
 - **No prediction model has been trained or certified.**
-- **Project isolation:** no legacy VELTRIX FOOTBALL 2.0 prediction logic, weights, priors, calibration or decision rules are reused.
+- **Project isolation:** no VELTRIX FOOTBALL 2.0 prediction logic, weights, priors, calibration, historical data or decision rules are reused.
 
 ## Historical import attempt #1 — BLOCKED BEFORE PROVIDER HTTP
 
