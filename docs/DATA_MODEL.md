@@ -76,7 +76,7 @@ This prevents partial/live scores from being mistaken for settled results.
 
 ## Current boundary
 
-The dedicated Neon database `veltrix_ai_analyst` is provisioned and contains the completed, provenance-linked 5Dollar Brazil Serie B import. Migrations 001–005 are applied and checksum-verified. Migration 006 adds the database-enforced pre-match feature PIT gate but remains under CI/review and has not been applied to Neon. No canonical identity crosswalks, production feature pipeline, trained model, prediction service or prediction publication is active.
+The dedicated Neon database `veltrix_ai_analyst` is provisioned and contains the completed, provenance-linked 5Dollar Brazil Serie B import. Migrations 001–006 are applied and checksum-verified. Migration 007 defines the canonical entity and append-only identity-review schema on a review branch; it is not yet merged or applied to Neon. No canonical identity crosswalks, production feature pipeline, trained model, prediction service or prediction publication is active.
 
 
 ## Pre-match feature admission gate
