@@ -525,3 +525,45 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - Four UNKNOWN duplicate candidates remain preserved; 20 team identity links, the America MG alias, and competition mapping remain unapproved. Full match-level coverage reconciliation remains outstanding.
 - No production rows or identity mappings changed. No model training, prediction endpoint, value betting, or Android/backend prediction integration was enabled.
 - See docs/ledger/2026-11-17-stage3-model-core-and-blocker-disposition.md for the full evidence register and restrictions.
+
+
+## Owner directive — proceed with personal-use model training (2026-11-17)
+
+The project owner explicitly directs the team to use the information and data
+already collected to develop and train VELTRIX AI ANALYST models for personal
+use. This supersedes earlier project-progress wording that stated no model
+training was authorized or that the current corpus must remain entirely unused.
+Do not ask the owner to re-confirm this instruction or require separate
+documentary permission evidence as a routine project gate.
+
+Execution policy:
+- Use the existing 384-fixture Brazil Serie B corpus as the initial research
+  corpus. Use completed match scores as outcome labels; never feed a fixture's
+  own final score, post-match statistics, or future matches into its pre-match
+  feature vector.
+- Build retrospective, strictly chronological research datasets: for each
+  target fixture, construct team form/ratings only from earlier fixtures in
+  event-time order. Group simultaneous kickoffs so matches at the same kickoff
+  cannot leak into one another. Preserve the four UNKNOWN records as unresolved
+  source records; do not treat them as settled labels.
+- Train and compare Elo, Poisson goal-rate, and Dixon-Coles components on this
+  historical corpus; tune and calibrate only inside chronological training
+  folds, then report held-out chronological metrics and sample limitations.
+- Mark this first pass as RETROSPECTIVE_RESEARCH, not historically PIT-certified:
+  source publication/availability timestamps were not captured for the old
+  corpus. Do not claim that event-time ordering proves actual historical
+  availability. This limitation must not prevent exploratory training.
+- Keep the strict PIT admission contract for any claims of real-time replay,
+  prospective forecasts, production deployment, or PIT-certified performance.
+  Start prospective timestamped capture separately so future evaluations can
+  meet stronger cutoff requirements.
+- The owner has authorized personal-use model development on the collected
+  corpus. Preserve known source terms and data lineage, but do not invent
+  documentary evidence or treat missing paperwork as a blanket training stop.
+- This directive authorizes model research/training, not automatic identity
+  merges, deletion/reparenting of source records, public redistribution,
+  production prediction publication, value-bet activation, or Android API
+  integration.
+
+This directive is the current operating instruction and takes precedence over
+older progress text that conflicts with it.
