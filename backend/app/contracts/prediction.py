@@ -99,7 +99,7 @@ class FixturePredictionRequest(ContractModel):
     data_quality_tier: str = Field(min_length=1)
 
     @model_validator(mode="after")
-    def validate_fixture_cutoff(self) -> "FixturePredictionRequest":
+    def validate_fixture_cutoff(self) -> FixturePredictionRequest:
         for name in ("kickoff_at", "prediction_cutoff_at"):
             value = getattr(self, name)
             if value.tzinfo is None or value.utcoffset() is None:
