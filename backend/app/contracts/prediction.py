@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import StrEnum
 from math import isfinite
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -52,7 +53,7 @@ class EligibleObservationEvidence(ContractModel):
     retrieved_at: datetime
     availability_basis: AvailabilityBasis
     point_in_time_certifiable: bool
-    rights_approval_id: int = Field(gt=0)
+    rights_approval_id: str = Field(min_length=1)
     rights_status_at_cutoff: RightsStatus
     permitted_uses: frozenset[str]
     canonical_identity_status: IdentityStatus
@@ -86,10 +87,10 @@ class FeatureAdmissionRequest(ContractModel):
 
 class FixturePredictionRequest(ContractModel):
     request_id: str = Field(min_length=1)
-    canonical_fixture_id: int = Field(gt=0)
-    canonical_competition_id: int = Field(gt=0)
-    home_team_id: int = Field(gt=0)
-    away_team_id: int = Field(gt=0)
+    canonical_fixture_id: UUID
+    canonical_competition_id: UUID
+    home_team_id: UUID
+    away_team_id: UUID
     kickoff_at: datetime
     prediction_cutoff_at: datetime
     feature_snapshot_id: str = Field(min_length=1)
