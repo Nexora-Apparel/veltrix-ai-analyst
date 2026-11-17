@@ -19,7 +19,6 @@ from psycopg.types.json import Jsonb
 from app.models.attack_defence import GoalResult, fit_attack_defence
 from app.models.elo import EloConfig, EloSystem, HistoricalResult
 
-
 DATABASE_NAME = "veltrix_ai_analyst"
 PROVIDER = "5DollarFootballAPI"
 SOURCE_ID = "5dollarfootballapi"
