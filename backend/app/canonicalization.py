@@ -151,6 +151,10 @@ def _load_candidates(
         f"""
         SELECT source.provider_competition_id, source.name, source.source_observation_id,
                source.rights_approval_id, observation.payload_sha256,
+               observation.provider AS observation_provider,
+               observation.source_id AS observation_source_id,
+               observation.entity_type, observation.provider_entity_id,
+               observation.rights_approval_id AS observation_rights_approval_id,
                provenance.source_sighting_id, provenance.provider_response_id
         FROM veltrix_ai_analyst.provider_competitions source
         LEFT JOIN veltrix_ai_analyst.source_observations observation
@@ -235,7 +239,11 @@ def _load_candidates(
                source.away_team_provider_id, source.kickoff_at, source.status,
                source.home_goals, source.away_goals, source.source_observation_id,
                source.rights_approval_id, observation.payload_sha256,
+               observation.provider AS observation_provider,
+               observation.source_id AS observation_source_id,
                observation.entity_type, observation.provider_entity_id,
+               observation.rights_approval_id AS observation_rights_approval_id,
+               observation.point_in_time_certifiable,
                provenance.source_sighting_id, provenance.provider_response_id
         FROM veltrix_ai_analyst.provider_fixtures source
         LEFT JOIN veltrix_ai_analyst.source_observations observation
@@ -362,6 +370,9 @@ def build_brazil_serie_b_materialization_plan(
         if (
             team["source_observation_id"] is not None
             and team["rights_approval_id"] == scope.rights_approval_id
+            and team["observation_provider"] == scope.provider
+            and team["observation_source_id"] == scope.source_id
+            and team["observation_rights_approval_id"] == scope.rights_approval_id
             and team["entity_type"] == "team"
             and team["provider_entity_id"] == team["provider_team_id"]
             and team["payload_sha256"] is not None
@@ -373,12 +384,19 @@ def build_brazil_serie_b_materialization_plan(
         blockers.append("TEAM_SOURCE_PROVENANCE_INCOMPLETE")
     if not teams:
         blockers.append("NO_SOURCE_TEAMS_FOUND")
+    if scope.expected_team_count is not None and len(teams) != scope.expected_team_count:
+        blockers.append("TEAM_SCOPE_COUNT_MISMATCH")
 
     valid_competition_count = 0
     for competition in competitions:
         if (
             competition["rights_approval_id"] == scope.rights_approval_id
             and competition["source_observation_id"] is not None
+            and competition["observation_provider"] == scope.provider
+            and competition["observation_source_id"] == scope.source_id
+            and competition["observation_rights_approval_id"] == scope.rights_approval_id
+            and competition["entity_type"] == "competition"
+            and competition["provider_entity_id"] == scope.competition_id
             and competition["payload_sha256"] is not None
             and competition["source_sighting_id"] is not None
             and competition["provider_response_id"] is not None
@@ -395,6 +413,9 @@ def build_brazil_serie_b_materialization_plan(
         if (
             fixture["rights_approval_id"] == scope.rights_approval_id
             and fixture["source_observation_id"] is not None
+            and fixture["observation_provider"] == scope.provider
+            and fixture["observation_source_id"] == scope.source_id
+            and fixture["observation_rights_approval_id"] == scope.rights_approval_id
             and fixture["entity_type"] == "fixture"
             and fixture["provider_entity_id"] == fixture["provider_fixture_id"]
             and fixture["payload_sha256"] is not None
