@@ -492,3 +492,25 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - **Current stage:** Canonical source-row materialization is complete. Next stage is evidence-backed historical identity review and source/season coverage reconciliation, followed by rights/PIT eligibility work.
 - **Hard restrictions:** Do not auto-verify or merge team identities; do not clear the two fixture conflicts without independent evidence; do not use the 396 non-PIT observations or source-row-only canonical fixtures as pre-match features; no model training, calibration, prediction publication or production API is authorized.
 - Android runtime testing and typed backend integration remain deferred until the appropriate later stage and real prediction endpoints exist.
+
+
+## Stage 3 execution checkpoint — architecture, contracts and PIT admission (2026-11-17)
+
+- [x] Repository isolation audit: confirmed this is the independent `Nexora-Apparel/veltrix-ai-analyst` repository with its own FastAPI backend, Android client and dedicated `veltrix_ai_analyst` Neon database. No legacy prediction engine is present in the inspected backend; the prediction implementation starts from a clean module boundary.
+- [x] Architecture decision record added: [ADR-001](ADR-001-PREDICTION-ENGINE-ARCHITECTURE.md). It defines contracts/features/models/validation/predictions/registry boundaries, identity and rights gates, model progression, Elo/Poisson/Dixon–Coles mathematical conventions, chronological evaluation and abstention.
+- [x] Formalized immutable prediction contracts in `backend/app/contracts/prediction.py`: eligible source observation evidence, feature admission request, fixture prediction request and model prediction output.
+- [x] Added `backend/app/features/admission.py`, requiring exact source observation/sighting/response lineage, publication/availability evidence before cutoff, active rights for FEATURE_ENGINEERING and MODEL_TRAINING, verified canonical identity and non-quarantined status.
+- [x] Added synthetic-only contract tests in `backend/tests/test_prediction_contracts.py`; these are software-contract tests, not model-performance evidence.
+- [x] Added [Prediction Engine Contracts](PREDICTION_ENGINE_CONTRACTS.md).
+- [ ] PR #23 CI validation pending: [Stage 3 contracts and PIT admission](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/23).
+- **Stage 3 status:** architecture and contract implementation underway. No model training, prediction endpoint, production forecast or Android prediction integration is enabled.
+- **Hard gate:** current 384 Brazil Serie B canonical fixtures remain excluded from pre-match model training until identity and source PIT requirements are independently satisfied.
+
+### Next implementation sequence
+
+1. Complete PR #23 CI; correct any contract/test failures before merge.
+2. Implement deterministic Elo engine and synthetic mathematical tests.
+3. Implement independent Poisson scoreline matrix and market derivations.
+4. Implement Dixon–Coles low-score correction and parameter-validity tests.
+5. Implement chronological walk-forward split/embargo and metric harness.
+6. Keep training, calibration, publication and Android integration gated on qualified PIT data.
