@@ -567,3 +567,14 @@ Execution policy:
 
 This directive is the current operating instruction and takes precedence over
 older progress text that conflicts with it.
+
+
+## 2026-11-17 — First trained research artifact
+
+- Merged PR #29: attack/defence Poisson model, Elo draw correction, chronological retrospective evaluator and timestamp-aware odds contracts.
+- Merged PR #31: corrected ridge regularization and added same-fold league-average benchmark.
+- Merged PR #33: private full-corpus training runner, immutable model artifact migration and training workflow.
+- Dedicated Neon database contains model artifact `v1-5790da5427a7029b9267778728386b8d`, trained on 380 finished fixtures and 20 provider-local team IDs through 2026-11-14T19:30:00Z.
+- Corrected expanding event-time evaluation: 305 held-out fixtures, 12 folds, 1X2 Brier 0.6081835337 and log loss 1.0153185492; same-fold league baseline 0.6420315331 and 1.0633200835.
+- Artifact remains research-only and not PIT-certified. Elo is retained separately, not selected for ensemble. Dixon–Coles rho remains uncalibrated at zero.
+- No production prediction endpoint, Android prediction integration, or value-bet activation.
