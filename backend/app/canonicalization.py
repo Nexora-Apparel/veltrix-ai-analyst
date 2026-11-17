@@ -21,6 +21,7 @@ class CanonicalMaterializationScope:
     rights_approval_id: str
     import_run_id: int | None
     expected_fixture_count: int | None = None
+    expected_team_count: int | None = None
 
 
 BRAZIL_SERIE_B_RUN_3 = CanonicalMaterializationScope(
@@ -30,6 +31,7 @@ BRAZIL_SERIE_B_RUN_3 = CanonicalMaterializationScope(
     rights_approval_id="approval-5dollar-community-fixtures-2026-11-12",
     import_run_id=3,
     expected_fixture_count=374,
+    expected_team_count=21,
 )
 
 AMERICA_MG_PROVIDER_ID = "1102583842"
@@ -197,7 +199,10 @@ def _load_candidates(
         )
         SELECT source.provider_team_id, source.name, source.source_observation_id,
                source.rights_approval_id, observation.payload_sha256,
+               observation.provider AS observation_provider,
+               observation.source_id AS observation_source_id,
                observation.entity_type, observation.provider_entity_id,
+               observation.rights_approval_id AS observation_rights_approval_id,
                observation.point_in_time_certifiable,
                provenance.source_sighting_id, provenance.provider_response_id
         FROM scoped_ids
