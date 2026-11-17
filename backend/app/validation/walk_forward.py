@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from math import isfinite, log
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
 
 @dataclass(frozen=True, slots=True)
