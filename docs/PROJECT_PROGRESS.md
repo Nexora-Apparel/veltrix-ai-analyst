@@ -2,31 +2,31 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-17 (Migration 007 applied; materializer PR #15 merged; Migration 008 pending)
+**Last updated:** 2026-11-17 (Migration 008 verified; canonical preview workflow PR #16 merged; preview dispatch pending)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
 **Product:** Personal-use, cloud-backed native Android football analysis and prediction application
 
-## Latest execution checkpoint — 2026-11-17 (Migration 007 verified; materializer PR merged)
+## Latest execution checkpoint — 2026-11-17 (Read-only canonical preview ready; manual dispatch pending)
 
-- Migration 007 was applied and verified through controlled workflow [#44072112212](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44072112212), job `134000664117`, against `veltrix_ai_analyst`. Exact SHA-256: `5503622ac57bd1875e08cf40cf1d87220cec99deb79e8fc23dd4ec6ebbffc30b`. Seven tables, four functions and ten triggers verified.
-- PR [#14](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/14) merged at `759f2fa80b9c05551e278af7eb306760875a0063`.
-- Canonical materializer PR [#15](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/15) merged at `f7a73046be1b3ab0459815c636adfa202ba41e9f`.
-- Final PR #15 CI [#44075667064](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44075667064) passed on `42cd5c8b311d5c96c56e2cf733a74a6f6ae04dd4`: 113 backend tests passed, Ruff passed, Android debug build and APK artifact upload passed.
-- Integration testing exposed a latent Migration 007 trigger defect: `NEW.canonical_fixture_id` was evaluated for team-link trigger rows. Migration 008 replaces the trigger function with branch-scoped fixture-only field access, enforces exact source observation data types, and adds unique indexes for provider-local team/competition links. Regression tests now pass.
-- **Migration 008 is not yet applied to Neon.** Apply it only through the manual checksum-controlled workflow `.github/workflows/apply-database-migrations.yml`, using `confirm_migrations=APPLY_CHECKSUM_VERIFIED_MIGRATIONS`. The available GitHub integration does not expose workflow dispatch; manual dispatch is required. Do not apply SQL directly.
-- Read-only Neon audit confirms import run 3 is COMPLETED: 34/34 windows, 374 fixtures, 21 source team identities, one competition identity. Status/score: 370 FINISHED with scores, four UNKNOWN and scoreless. The scoped canonical source set has 396 observations (374 fixtures + 21 teams + 1 competition), and 0/396 are PIT-certifiable.
-- All 374 fixture source rows have matching observation/sighting/response provenance. The active source approval is APPROVED and covers this competition and required uses.
-- Known collision pair retained separately: provider fixtures `3116209225` and `2341822348`, 2026-03-22 20:58:35Z and 21:00:00Z, both versus Goiás provider ID `3126624865`. America MG `1102583842` and América Mineiro `3808811746` remain separate; both fixtures are flagged CONFLICT by the materializer. Four UNKNOWN fixtures remain scoreless.
-- Production canonical tables and identity-link tables remain empty. No production canonical materialization, provider calls, PIT promotion, model training or prediction publication has occurred.
-- Android dashboard runtime testing and backend integration remain deferred to the scheduled application stage.
+- Migration 008 was successfully applied and verified against Neon database `veltrix_ai_analyst` through controlled workflow [#44078914169](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44078914169), job `134024119643`. Exact SHA-256: `bbd3276a85d7e6d9c8293379b173b15753fb96c3f2877c6488229f5a011c8130`.
+- Live read-only database checks confirmed migration records 006, 007 and 008, the corrected `enforce_canonical_link_provenance()` function, and unique provider-local team and competition identity-link indexes.
+- Canonical materializer PR [#15](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/15) remains merged at `f7a73046be1b3ab0459815c636adfa202ba41e9f`.
+- Read-only production preview PR [#16](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/16) merged at `7cf34b5f0541667b2ebcd2ddaabff13cfc738a6c). Its validated head was `d1ebe60997e2023681de3b8f826ebd1f39b84971`.
+- CI run [#44080635104](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44080635104) passed Android debug build, backend tests and Ruff lint including the preview runner.
+- Patch review confirmed the preview workflow is manual-only, defaults to NO, requires `PREVIEW_BRAZIL_SERIE_B_RUN_3`, targets the dedicated GitHub Actions environment/secret, checks the exact database name, and enforces PostgreSQL read-only mode at both connection and transaction levels. The runner calls only `build_brazil_serie_b_materialization_plan`; it never calls the writer or passes `execute=True`.
+- **Manual action pending:** dispatch [Preview canonical materialization](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/preview-canonical-materialization.yml) with `confirm_preview=PREVIEW_BRAZIL_SERIE_B_RUN_3`. The connected GitHub integration does not expose workflow dispatch, so a repository user must launch it in the Actions UI. No credentials or SQL should be pasted into chat.
+- Live Neon checks confirmed all seven canonical tables remain empty. No canonical materialization, identity review event, PIT promotion, provider HTTP request, model training or prediction publication has occurred.
+- Source scope remains 5DollarFootballAPI Brazil Serie B competition `522514093`, import run 3: 374 fixtures, 21 teams and one competition. 370 fixtures are FINISHED with scores; four remain UNKNOWN and scoreless. The America MG / América Mineiro near-simultaneous fixture pair remains unresolved and must remain conflicted.
+- The 396 scoped source observations remain non-PIT-certifiable. A successful canonical preview or later source-row materialization does not grant PIT eligibility or authorize model training.
+- Supplemental evidence is recorded in `docs/ledger/2026-11-17-canonical-materialization-review.md` and `docs/ledger/2026-11-17-read-only-preview-pr16.md`.
 
 ## Current verified position
 
-- **Current stage:** Canonical materialization foundation, after controlled Migration 007 application.
-- **Merged:** canonical schema Migration 007 and read-only-by-default, guarded canonical materializer implementation.
-- **Pending:** controlled application/verification of Migration 008; then production dry-run reconciliation; then a separately authorized materialization execution.
+- **Current stage:** Canonical materialization foundation; next gate is read-only production preview.
+- **Merged:** canonical schema migrations 007/008, read-only-by-default canonical materializer, and read-only preview workflow.
+- **Pending:** manually dispatch and review the production preview. Only after a clean, reconciled report should a separate controlled write operation be designed and reviewed.
 - **Not built:** point-in-time feature pipeline, model training/calibration, prediction API, production deployment.
 - **No prediction model has been trained or certified.**
 - **Project isolation:** no VELTRIX FOOTBALL 2.0 prediction logic, weights, priors, calibration, historical data or decision rules are reused.
