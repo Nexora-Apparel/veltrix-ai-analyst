@@ -51,7 +51,7 @@ def test_prequential_run_emits_three_model_scorecards_and_excludes_no_rows() -> 
         assert report[model]["matches"] == 6.0
         assert 0 <= report[model]["brier"] <= 2
         assert report[model]["log_loss"] > 0
-    assert report["rho_used_for_prequential_predictions"] == 0.0
+    assert report["rho_used_for_prequential_predictions"] == "updated_from_prior_results_only"
     assert len(report["predictions"]) == 6
 
 
@@ -73,3 +73,31 @@ def test_duplicate_fixture_ids_are_rejected() -> None:
     fixture = row("same", 1, "A", "B", 1, 0)
     with pytest.raises(ValueError, match="duplicate fixture IDs"):
         chronological_research_run([fixture, fixture])
+
+
+
+def test_dixon_coles_rho_fit_handles_simultaneous_kickoff_batches() -> None:
+    from app.models.retrospective import fit_dixon_coles_rho
+
+    fixtures = [
+        row("1", 1, "A", "B", 0, 0),
+        row("2", 1, "C", "D", 1, 1),
+        row("3", 2, "A", "C", 2, 1),
+        row("4", 3, "B", "D", 0, 1),
+        row("5", 4, "A", "D", 1, 0),
+        row("6", 5, "B", "C", 1, 1),
+    ] * 6
+    # Keep fixture IDs unique while retaining simultaneous kickoff groups.
+    fixtures = [
+        ResearchFixture(
+            f"{item.fixture_id}-{index}",
+            item.kickoff_at,
+            item.home_team_id,
+            item.away_team_id,
+            item.home_goals,
+            item.away_goals,
+        )
+        for index, item in enumerate(fixtures)
+    ]
+    rho = fit_dixon_coles_rho(fixtures)
+    assert -0.18 <= rho <= 0.18
