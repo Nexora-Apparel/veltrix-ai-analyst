@@ -126,15 +126,6 @@ def _inner_calibration_data(
             train.extend(batch)
             continue
         cutoff = batch[0].kickoff_at
-        calibration_probabilities, calibration_outcomes = _inner_calibration_data(
-            train, half_life_days=selected_half_life, ridge=selected_ridge, rho=selected_rho
-        )
-        temperature = 1.0
-        calibration_samples = len(calibration_probabilities)
-        if calibration_samples >= 30:
-            temperature = fit_temperature(
-                calibration_probabilities, calibration_outcomes, min_samples=30
-            ).temperature
         model = fit_attack_defence(
             train,
             as_of=cutoff,
@@ -209,6 +200,15 @@ def evaluate_retrospective(
                 selected_ridge = tuning.ridge
                 selected_rho = tuning.rho
         selected_parameters.append((selected_half_life, selected_ridge, selected_rho))
+        calibration_probabilities, calibration_outcomes = _inner_calibration_data(
+            train, half_life_days=selected_half_life, ridge=selected_ridge, rho=selected_rho
+        )
+        temperature = 1.0
+        calibration_samples = len(calibration_probabilities)
+        if calibration_samples >= 30:
+            temperature = fit_temperature(
+                calibration_probabilities, calibration_outcomes, min_samples=30
+            ).temperature
         model = fit_attack_defence(
             train,
             as_of=cutoff,
