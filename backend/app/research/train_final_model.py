@@ -1,6 +1,7 @@
 """Fit and privately persist a versioned research model from the collected corpus.
 
 Retrospective report execution trigger after bootstrap diagnostics merge.
+Post-merge evaluator run includes paired chronological fold-block uncertainty intervals.
 
 The loader is read-only. Only the final immutable model artifact is written.
 This runner makes no provider requests and never changes source fixtures or identity
