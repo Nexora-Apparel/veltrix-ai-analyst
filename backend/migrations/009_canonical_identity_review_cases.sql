@@ -483,7 +483,7 @@ VALUES
         'https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026?doc=Tabela+Detalhada',
         'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_19_05_ee33324167.pdf'
     ],
-    'The imported interval ends 2026-11-09 and contains 370 FINISHED records, numerically matching 37 rounds of 10 matches. CBF lists Round 37 on 2026-11-06 to 2026-11-08 and Round 38 on 2026-11-14. Four UNKNOWN provider rows are duplicate candidates. Counts alone do not prove all 370 pairings match the official schedule; complete fixture-by-fixture reconciliation remains required.'
+    'The imported interval ends 2026-11-09 and contains 370 FINISHED records: 20 provider team IDs, exactly 37 appearances per team, 370 distinct ordered home/away pairs, and zero repeated ordered pairs. All 10 Round 37 pairings match the official CBF Round 37 schedule; the detailed CBF match record dates Botafogo SP-Londrina to 2026-11-05, within the import window. Round 38 is 2026-11-14 and outside run 3. Four UNKNOWN provider rows are duplicate candidates. These structural checks are strong coverage evidence but do not replace a full 370-pair fixture-by-fixture official schedule reconciliation.'
 ),
 (
     'BRAZIL_SERIE_B_RUN_3_PIT_TIMESTAMP_GAP',
