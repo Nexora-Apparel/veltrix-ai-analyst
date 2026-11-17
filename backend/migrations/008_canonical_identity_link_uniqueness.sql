@@ -8,21 +8,25 @@ DECLARE
     response RECORD;
     expected_entity_type TEXT;
     expected_entity_id TEXT;
+    expected_data_type TEXT;
 BEGIN
     IF TG_TABLE_NAME = 'provider_team_identity_links' THEN
         expected_entity_type := 'team';
         expected_entity_id := NEW.provider_team_id;
+        expected_data_type := 'team_catalogue';
     ELSIF TG_TABLE_NAME = 'provider_competition_identity_links' THEN
         expected_entity_type := 'competition';
         expected_entity_id := NEW.provider_competition_id;
+        expected_data_type := 'competition_catalogue';
     ELSIF TG_TABLE_NAME = 'canonical_fixture_sources' THEN
         expected_entity_type := 'fixture';
         expected_entity_id := NEW.provider_fixture_id;
+        expected_data_type := 'fixtures_and_results';
     ELSE
         RAISE EXCEPTION 'CANONICAL_LINK_TABLE_NOT_SUPPORTED';
     END IF;
 
-    SELECT provider, source_id, entity_type, provider_entity_id,
+    SELECT provider, source_id, data_type, entity_type, provider_entity_id,
            payload_sha256, rights_approval_id
     INTO observation
     FROM veltrix_ai_analyst.source_observations
@@ -31,6 +35,7 @@ BEGIN
     IF NOT FOUND
        OR observation.provider <> NEW.provider
        OR observation.source_id <> NEW.source_id
+       OR observation.data_type <> expected_data_type
        OR observation.entity_type <> expected_entity_type
        OR observation.provider_entity_id <> expected_entity_id
        OR observation.payload_sha256 <> NEW.payload_sha256
