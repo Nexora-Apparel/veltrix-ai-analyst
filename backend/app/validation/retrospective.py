@@ -222,8 +222,7 @@ def evaluate_retrospective(
             for i, probability in enumerate(probabilities)
         ))
         log_losses.append(-log(max(1e-15, probabilities[actual])))
-        if prediction.scoreline_probability > 0:
-            scoreline_losses.append(-log(prediction.scoreline_probability))
+        scoreline_losses.append(-log(max(1e-15, prediction.scoreline_probability)))
 
     # Same-fold, recency-weighted league baseline: no team-specific effects.
     train = []
