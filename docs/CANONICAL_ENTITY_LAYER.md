@@ -88,6 +88,26 @@ erase earlier decisions.
 - 0/374 observations are PIT-certifiable. Canonicalization cannot promote any of them into
   pre-match features.
 
+## Schema implementation — PR preparation (2026-11-17)
+
+Migration `007_canonical_entity_layer.sql` is being reviewed on branch
+`stage1/canonical-entity-schema-007-20261117`. It creates the canonical entity,
+provider identity-link, fixture-source and append-only review-event tables.
+It also adds exact provenance guards, review supersession checks, a guard against
+unreviewed multi-source fixture linking, and a gate that prevents a canonical
+fixture from being marked verified until its source fixture, competition and
+both team mappings have explicit review events.
+
+New identity links start in `REVIEW_REQUIRED`; review outcomes are recorded as
+append-only events. Real-world verification requires a separate evidence-backed
+review decision. Source-local placeholders do not assert a real-world club
+identity.
+
+The migration is schema-only. It does not insert canonical entities, create
+crosswalks, change provider projections, call providers or alter PIT eligibility.
+It is not yet merged or applied to Neon. CI and PostgreSQL migration verification
+remain required before release.
+
 ## Materialization sequence
 
 1. Apply migration 006 through the checksum-verified runner and verify its exact ledger checksum,

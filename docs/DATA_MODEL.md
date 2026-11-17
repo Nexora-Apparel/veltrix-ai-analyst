@@ -76,7 +76,7 @@ This prevents partial/live scores from being mistaken for settled results.
 
 ## Current boundary
 
-The dedicated Neon database `veltrix_ai_analyst` is provisioned and contains the completed, provenance-linked 5Dollar Brazil Serie B import. Migrations 001–005 are applied and checksum-verified. Migration 006 adds the database-enforced pre-match feature PIT gate but remains under CI/review and has not been applied to Neon. No canonical identity crosswalks, production feature pipeline, trained model, prediction service or prediction publication is active.
+The dedicated Neon database `veltrix_ai_analyst` is provisioned and contains the completed, provenance-linked 5Dollar Brazil Serie B import. Migrations 001–006 are applied and checksum-verified. Migration 007 defines the canonical entity and append-only identity-review schema on a review branch; it is not yet merged or applied to Neon. No canonical identity crosswalks, production feature pipeline, trained model, prediction service or prediction publication is active.
 
 
 ## Pre-match feature admission gate
@@ -91,7 +91,7 @@ An input is accepted only when its exact `source_observation_sightings` row:
 - was published and available no later than `prediction_cutoff_at`;
 - is covered by an approved source grant that permits both `FEATURE_ENGINEERING` and `MODEL_TRAINING`, and was not revoked at the cutoff.
 
-Kickoff/event time, provider update time, retrieval time and post-event availability proxies cannot satisfy this gate. Every feature row references the exact observation and exact retrieval sighting used. The table is append-only. Migration 006 is being reviewed and tested; it has not yet been applied to the dedicated Neon database.
+Kickoff/event time, provider update time, retrieval time and post-event availability proxies cannot satisfy this gate. Every feature row references the exact observation and exact retrieval sighting used. The table is append-only. Migration 006 is applied and checksum-verified in the dedicated Neon database. Migration 007 is under PR review and has not yet been applied.
 
 ## Historical Brazil Serie B audit (2026-11-16)
 
