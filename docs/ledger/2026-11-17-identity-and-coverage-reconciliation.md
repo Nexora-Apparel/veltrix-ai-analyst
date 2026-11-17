@@ -120,3 +120,18 @@ Added CI coverage for the migration, append-only case/event behavior, seeded bas
 7. Keep all 374 observations excluded from pre-match features until valid publication/availability timestamps and rights approval for FEATURE_ENGINEERING and MODEL_TRAINING are available.
 
 No model training, calibration, prediction publication, or Android prediction API integration is authorized by this stage.
+
+
+## PR and isolated migration validation result
+
+- PR [#18](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/18) merged by squash at `0d069138aad8ce4e25a2339cce3056f00431b9f0`.
+- CI run [#44092601005](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44092601005) passed:
+  - Backend tests passed.
+  - Ruff lint passed.
+  - Android debug APK build passed.
+  - APK artifact upload passed.
+- Migration 009 was prepared against an isolated Neon branch copied from the populated production database. The migration executed successfully on the temporary branch.
+- Test-branch SQL verified 28 cases: 20 team identity candidates, one America alias, one competition/season identity, four duplicate fixtures, one schedule coverage case and one PIT timestamp gap.
+- Test-branch SQL verified 28 automated recommendations, 28 cases awaiting human review, 21 team / 1 competition / 374 fixture source-provenance rows verified, four duplicate case audit rows, zero effective human-confirmed aliases and zero effective human-confirmed duplicate exclusions.
+- Canonical row counts remained 21 teams, one competition, 374 fixtures, 21 team links, one competition link, 374 fixture links. Identity review events and PIT feature rows remained zero. The migration did not mutate source or canonical records.
+- **Production migration not applied.** The temporary validation branch remains available for explicit cleanup. The production Migration 009 must be applied through the repository's controlled checksum-verified manual workflow, not by a direct SQL write.
