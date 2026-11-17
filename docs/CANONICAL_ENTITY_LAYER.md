@@ -144,7 +144,7 @@ Three UNKNOWN rows share exact ordered home/away provider team IDs with their co
 
 The America team collision has the same pattern: provider ID `1102583842` (`America MG`) appears in 37 fixture rows; provider ID `3808811746` (`América Mineiro`) appears only in the duplicate UNKNOWN Goiás row. CBF identifies the actual Round 1 match as Goiás 3–1 América MG. This is strong evidence that the second provider ID is an alias/duplicate identity, but canonical placeholders and source IDs must remain unchanged until a human reviewer confirms the mapping.
 
-The run-3 date boundary ends 2026-11-09. CBF's official 2026 schedule places Round 37 on 6–8 November and Round 38 on 14 November. The 370 FINISHED rows equal 37 rounds × 10 matches, but count equality is not a complete schedule reconciliation. All 370 finished pairings must be compared to the official CBF rounds 1–37 schedule; the final 10 Round 38 fixtures are outside run 3's scope.
+The run-3 date boundary ends 2026-11-09. CBF's basic 2026 schedule places Round 37 on 6–8 November and Round 38 on 14 November; the detailed CBF match page records Botafogo SP–Londrina on 5 November, also within run 3. The 370 FINISHED rows cover 20 teams × 37 appearances, with 370 distinct ordered home/away pairs and no repeated ordered pairs. All 10 Round 37 pairings match the official CBF schedule. The final 10 Round 38 fixtures are outside run 3's scope. Full 370-pair schedule reconciliation remains the certification gate.
 
 ### Migration 009 — review queue and provenance audit (prepared; not applied)
 
