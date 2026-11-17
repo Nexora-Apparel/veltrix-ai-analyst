@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime
 from math import log
-from typing import Any
 
 from app.models.attack_defence import GoalResult, fit_attack_defence
 from app.models.scoreline import build_scoreline_distribution
@@ -19,7 +19,7 @@ from app.models.scoreline import build_scoreline_distribution
 @dataclass(frozen=True, slots=True)
 class RetrospectivePrediction:
     fixture_id: str
-    kickoff_at: Any
+    kickoff_at: datetime
     actual_home_goals: int
     actual_away_goals: int
     home_lambda: float
