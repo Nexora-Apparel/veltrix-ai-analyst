@@ -198,7 +198,14 @@ def persist_artifact(dsn: str, artifact_id: str, fingerprint: str, artifact: dic
                 """,
                 (artifact_id,),
             ).fetchone()
-            if stored is None or stored[1].strip() != fingerprint or stored[0] != artifact:
+            if stored is None or stored[1].strip() != fingerprint:
+                raise RuntimeError("MODEL_ARTIFACT_IMMUTABILITY_CHECK_FAILED")
+            stored_payload = dict(stored[0])
+            candidate_payload = dict(artifact)
+            # created_at is metadata; the model payload must remain byte-for-byte equivalent.
+            stored_payload.pop("created_at", None)
+            candidate_payload.pop("created_at", None)
+            if stored_payload != candidate_payload:
                 raise RuntimeError("MODEL_ARTIFACT_IMMUTABILITY_CHECK_FAILED")
 
 
