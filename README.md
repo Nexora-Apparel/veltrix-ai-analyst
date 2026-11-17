@@ -4,7 +4,7 @@ A personal-use, cloud-backed football analysis and prediction platform with a na
 
 ## Project status
 
-**Stage 1 of 10 is complete. Stage 2 — data integrations, source qualification and historical-data foundation — is in progress.** The backend and Android foundations exist, but no production database, live provider import, prediction model, or prediction service is claimed to be operational.
+**Stage 1 and Stage 2 are complete. Stage 3 — prediction-engine architecture and implementation — is underway.** The dedicated production database and historical ingestion/provenance foundation are operational. Formal prediction contracts and strict PIT admission are under review in [PR #23](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/23). No trained or certified prediction model or production prediction service is claimed.
 
 ## Project records
 
