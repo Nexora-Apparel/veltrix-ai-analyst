@@ -1,5 +1,7 @@
 """Fit and privately persist a versioned research model from the collected corpus.
 
+Retrospective report execution trigger after bootstrap diagnostics merge.
+
 The loader is read-only. Only the final immutable model artifact is written.
 This runner makes no provider requests and never changes source fixtures or identity
 mappings. The artifact is retrospective and is not PIT-certified.
