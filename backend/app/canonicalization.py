@@ -155,7 +155,7 @@ def _load_candidates(
                source.rights_approval_id, observation.payload_sha256,
                observation.provider AS observation_provider,
                observation.source_id AS observation_source_id,
-               observation.entity_type, observation.provider_entity_id,
+               observation.data_type, observation.entity_type, observation.provider_entity_id,
                observation.rights_approval_id AS observation_rights_approval_id,
                provenance.source_sighting_id, provenance.provider_response_id
         FROM veltrix_ai_analyst.provider_competitions source
@@ -362,6 +362,8 @@ def build_brazil_serie_b_materialization_plan(
             approval["valid_until"] is not None and now >= approval["valid_until"]
         ):
             blockers.append("SOURCE_APPROVAL_OUTSIDE_VALIDITY")
+        if approval["scope_type"] != "competition_id":
+            blockers.append("SOURCE_APPROVAL_SCOPE_TYPE_MISMATCH")
         if scope.competition_id not in approval["scope_values"]:
             blockers.append("SOURCE_APPROVAL_SCOPE_MISMATCH")
         required_types = {"fixtures_and_results", "team_catalogue", "competition_catalogue"}
@@ -378,6 +380,7 @@ def build_brazil_serie_b_materialization_plan(
             and team["observation_provider"] == scope.provider
             and team["observation_source_id"] == scope.source_id
             and team["observation_rights_approval_id"] == scope.rights_approval_id
+            and team["data_type"] == "team_catalogue"
             and team["entity_type"] == "team"
             and team["provider_entity_id"] == team["provider_team_id"]
             and team["payload_sha256"] is not None
@@ -400,6 +403,7 @@ def build_brazil_serie_b_materialization_plan(
             and competition["observation_provider"] == scope.provider
             and competition["observation_source_id"] == scope.source_id
             and competition["observation_rights_approval_id"] == scope.rights_approval_id
+            and competition["data_type"] == "competition_catalogue"
             and competition["entity_type"] == "competition"
             and competition["provider_entity_id"] == scope.competition_id
             and competition["payload_sha256"] is not None
@@ -421,6 +425,7 @@ def build_brazil_serie_b_materialization_plan(
             and fixture["observation_provider"] == scope.provider
             and fixture["observation_source_id"] == scope.source_id
             and fixture["observation_rights_approval_id"] == scope.rights_approval_id
+            and fixture["data_type"] == "fixtures_and_results"
             and fixture["entity_type"] == "fixture"
             and fixture["provider_entity_id"] == fixture["provider_fixture_id"]
             and fixture["payload_sha256"] is not None
@@ -625,7 +630,11 @@ def materialize_brazil_serie_b_canonical_entities(
                 SELECT source.canonical_fixture_id, canonical.kickoff_at, canonical.status,
                        canonical.home_goals, canonical.away_goals,
                        canonical.canonical_competition_id, canonical.home_canonical_team_id,
-                       canonical.away_canonical_team_id, canonical.identity_status
+                       canonical.away_canonical_team_id, canonical.identity_status,
+                       source.provider, source.source_id, source.provider_fixture_id,
+                       source.source_observation_id, source.source_sighting_id,
+                       source.provider_response_id, source.rights_approval_id,
+                       source.payload_sha256, source.mapping_method, source.mapping_status
                 FROM veltrix_ai_analyst.canonical_fixture_sources source
                 JOIN veltrix_ai_analyst.canonical_fixtures canonical
                   ON canonical.id = source.canonical_fixture_id
@@ -643,13 +652,21 @@ def materialize_brazil_serie_b_canonical_entities(
                 expected = (
                     fixture["kickoff_at"], fixture["status"], fixture["home_goals"],
                     fixture["away_goals"], canonical_competition_id, expected_home,
-                    expected_away, expected_identity,
+                    expected_away, expected_identity, scope.provider, scope.source_id,
+                    fixture["provider_fixture_id"], fixture["source_observation_id"],
+                    fixture["source_sighting_id"], fixture["provider_response_id"],
+                    scope.rights_approval_id, fixture["payload_sha256"],
+                    "EXACT_PROVIDER_FIXTURE_ID", "REVIEW_REQUIRED",
                 )
                 actual = (
                     existing["kickoff_at"], existing["status"], existing["home_goals"],
                     existing["away_goals"], existing["canonical_competition_id"],
                     existing["home_canonical_team_id"], existing["away_canonical_team_id"],
-                    existing["identity_status"],
+                    existing["identity_status"], existing["provider"], existing["source_id"],
+                    existing["provider_fixture_id"], existing["source_observation_id"],
+                    existing["source_sighting_id"], existing["provider_response_id"],
+                    existing["rights_approval_id"], existing["payload_sha256"].strip(),
+                    existing["mapping_method"], existing["mapping_status"],
                 )
                 if actual != expected:
                     raise CanonicalMaterializationError(
