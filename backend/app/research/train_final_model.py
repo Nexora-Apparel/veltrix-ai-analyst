@@ -18,13 +18,14 @@ from psycopg.types.json import Jsonb
 
 from app.models.attack_defence import GoalResult, fit_attack_defence
 from app.models.elo import EloConfig, EloSystem, HistoricalResult
+from app.validation.tuning import tune_attack_defence
 
 DATABASE_NAME = "veltrix_ai_analyst"
 PROVIDER = "5DollarFootballAPI"
 SOURCE_ID = "5dollarfootballapi"
 RIGHTS_DECLARATION_ID = "PROJECT_OWNER_PERSONAL_USE_AUTHORIZATION_2026-11-17"
 MODEL_FAMILY = "RECENCY_WEIGHTED_ATTACK_DEFENCE_POISSON"
-MODEL_VERSION = "attack-defence-poisson-v1"
+MODEL_VERSION = "attack-defence-poisson-v2-nested-tuned"
 
 
 def load_completed_results(dsn: str) -> list[GoalResult]:
@@ -92,11 +93,12 @@ def build_artifact(results: list[GoalResult]) -> tuple[str, str, dict[str, Any]]
     fingerprint = dataset_fingerprint(results)
     teams = sorted({row.home_team for row in results} | {row.away_team for row in results})
 
+    tuning = tune_attack_defence(results)
     model = fit_attack_defence(
         results,
         as_of=cutoff,
-        half_life_days=180.0,
-        ridge=0.08,
+        half_life_days=tuning.half_life_days,
+        ridge=tuning.ridge,
         max_iterations=3000,
     )
     elo_history = [
@@ -136,6 +138,16 @@ def build_artifact(results: list[GoalResult]) -> tuple[str, str, dict[str, Any]]
             "attack": model.attack,
             "defence": model.defence,
             "training_fixtures": model.training_fixtures,
+            "inner_tuning": {
+                "half_life_days": tuning.half_life_days,
+                "ridge": tuning.ridge,
+                "rho": tuning.rho,
+                "inner_folds": tuning.inner_folds,
+                "inner_predictions": tuning.inner_predictions,
+                "inner_log_loss_1x2": tuning.inner_log_loss_1x2,
+                "inner_brier_1x2": tuning.inner_brier_1x2,
+                "inner_scoreline_log_loss": tuning.inner_scoreline_log_loss,
+            },
         },
         "elo_comparator": {
             "status": "RETAINED_FOR_RESEARCH_NOT_SELECTED_FOR_ENSEMBLE",
@@ -152,12 +164,12 @@ def build_artifact(results: list[GoalResult]) -> tuple[str, str, dict[str, Any]]
             },
         },
         "dixon_coles": {
-            "rho": 0.0,
-            "status": "NOT_CALIBRATED; INDEPENDENT_POISSON_BASELINE",
+            "rho": tuning.rho,
+            "status": "SELECTED_BY_INNER_CHRONOLOGICAL_SCORELINE_LIKELIHOOD",
         },
         "deployment_status": "RESEARCH_ARTIFACT_ONLY",
     }
-    artifact_id = f"v1-{fingerprint[:32]}"
+    artifact_id = f"v2-{fingerprint[:32]}"
     return artifact_id, fingerprint, artifact
 
 
