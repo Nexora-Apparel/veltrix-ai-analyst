@@ -247,6 +247,17 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
                 """,
                 (event_id,),
             )
+        with pytest.raises(psycopg.errors.CheckViolation), connection.transaction():
+            connection.execute(
+                """
+                INSERT INTO veltrix_ai_analyst.canonical_identity_review_case_events (
+                    case_id, event_type, reviewer_type, reviewer_id, reviewed_at,
+                    evidence_uri, notes
+                ) VALUES (%s, 'HUMAN_CONFIRMED', 'HUMAN',
+                          'ci-human-reviewer', %s, 'urn:test:evidence', 'missing evidence hash')
+                """,
+                (case_id, datetime.now(UTC)),
+            )
 
         suffix = uuid4().hex
         approval_id = f"test-approval-{suffix}"
