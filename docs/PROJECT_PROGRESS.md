@@ -578,3 +578,14 @@ older progress text that conflicts with it.
 - Corrected expanding event-time evaluation: 305 held-out fixtures, 12 folds, 1X2 Brier 0.6081835337 and log loss 1.0153185492; same-fold league baseline 0.6420315331 and 1.0633200835.
 - Artifact remains research-only and not PIT-certified. Elo is retained separately, not selected for ensemble. Dixon–Coles rho remains uncalibrated at zero.
 - No production prediction endpoint, Android prediction integration, or value-bet activation.
+
+
+## 2026-11-17 — Nested tuning and v2 model artifact
+
+- PR #34 merged: inner expanding-window selection for attack/defence half-life/ridge and Dixon–Coles rho; outer chronological evaluation remains isolated.
+- PR #35 merged: full-corpus trainer now builds a separately versioned v2 model; v1 is preserved.
+- Private v2 artifact persisted in Neon: `v2-5790da5427a7029b9267778728386b8d`, trained on 380 FINISHED fixtures / 20 provider-local team IDs.
+- Inner tuning selected half-life 180 days, ridge 0.08, Dixon–Coles rho 0.10 using 34 inner folds / 340 predictions.
+- v2 inner OOF scores: 1X2 Brier 0.6188714654, log loss 1.0305409710, scoreline log loss 2.7461398753. These are tuning-fold metrics, not independent outer-test metrics.
+- Main CI after PR #35 passed backend tests/Ruff and Android debug build.
+- Nested outer walk-forward evaluation is still running. Do not publish or deploy v2 until its outer-fold metrics are reviewed.
