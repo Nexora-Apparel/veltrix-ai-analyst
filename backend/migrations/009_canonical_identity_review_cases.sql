@@ -390,10 +390,10 @@ SELECT *
 FROM veltrix_ai_analyst.canonical_fixture_duplicate_case_audit
 WHERE effective_case_status = 'HUMAN_CONFIRMED';
 
--- Four UNKNOWN rows are duplicate/stale candidates: three match exact provider team IDs;
+-- Four UNKNOWN rows are duplicate/stale candidates: three match exact provider team IDs,
 -- the Goiás-América pair uses a second provider ID supported by official alias evidence.
 -- Official CBF match pages establish one real fixture and the settled result.
--- We stage evidence and a recommended deduplication only; no source or canonical
+-- We stage evidence and a recommended deduplication only, no source or canonical
 -- row is rewritten, and a human must confirm before any canonical resolution.
 INSERT INTO veltrix_ai_analyst.canonical_identity_review_cases (
     case_key, case_type, primary_fixture_source_link_id, related_fixture_source_link_id,
@@ -412,25 +412,25 @@ FROM (VALUES
         'BRAZIL_SERIE_B_RUN_3_DUPLICATE_AMERICA_MG',
         '3116209225', '2341822348',
         'https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-america/832843',
-        'CBF records one Round 1 Goiás 3-1 América MG fixture on 2026-03-22 at Hailé Pinheiro. Provider fixture 3116209225 is FINISHED 3-1; provider fixture 2341822348 is UNKNOWN, same teams, 85 seconds later. This is one official match represented by two provider IDs.'
+        'CBF records one Round 1 Goiás 3-1 América MG fixture on 2026-03-22 at Hailé Pinheiro. Provider fixture 3116209225 is FINISHED 3-1, provider fixture 2341822348 is UNKNOWN, same teams, 85 seconds later. This is one official match represented by two provider IDs.'
     ),
     (
         'BRAZIL_SERIE_B_RUN_3_DUPLICATE_FORTALEZA_LONDRINA',
         '1587564237', '2336910968',
         'https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/fortaleza-saf-x-londrina-saf/832976',
-        'CBF records Fortaleza 3-0 Londrina on 2026-05-23, Round 10. Provider fixture 1587564237 is FINISHED 3-0; provider fixture 2336910968 is UNKNOWN with the same team IDs but an August timestamp. The August row is a stale or duplicate representation of the May match.'
+        'CBF records Fortaleza 3-0 Londrina on 2026-05-23, Round 10. Provider fixture 1587564237 is FINISHED 3-0, provider fixture 2336910968 is UNKNOWN with the same team IDs but an August timestamp. The August row is a stale or duplicate representation of the May match.'
     ),
     (
         'BRAZIL_SERIE_B_RUN_3_DUPLICATE_FORTALEZA_BOTAFOGO',
         '236839304', '933498248',
         'https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/fortaleza-saf-x-botafogo/833076',
-        'CBF records Fortaleza 1-0 Botafogo SP on 2026-07-28, Round 20. Provider fixture 236839304 is FINISHED 1-0; provider fixture 933498248 is UNKNOWN with the same team IDs but an August timestamp. The August row is a stale or duplicate representation of the July match.'
+        'CBF records Fortaleza 1-0 Botafogo SP on 2026-07-28, Round 20. Provider fixture 236839304 is FINISHED 1-0, provider fixture 933498248 is UNKNOWN with the same team IDs but an August timestamp. The August row is a stale or duplicate representation of the July match.'
     ),
     (
         'BRAZIL_SERIE_B_RUN_3_DUPLICATE_CEARA_LONDRINA',
         '553958702', '1988139832',
         'https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/ceara-x-londrina-saf/833116',
-        'CBF records Ceará 2-1 Londrina on 2026-08-22, Round 24. Provider fixture 553958702 is FINISHED 2-1; provider fixture 1988139832 is UNKNOWN with the same team IDs but an August 20 timestamp. The earlier UNKNOWN row is a stale or duplicate representation of the August 22 match.'
+        'CBF records Ceará 2-1 Londrina on 2026-08-22, Round 24. Provider fixture 553958702 is FINISHED 2-1, provider fixture 1988139832 is UNKNOWN with the same team IDs but an August 20 timestamp. The earlier UNKNOWN row is a stale or duplicate representation of the August 22 match.'
     )
 ) AS candidate(case_key, primary_fixture_id, duplicate_fixture_id, evidence_uri, evidence_summary)
 JOIN veltrix_ai_analyst.canonical_fixture_sources primary_link
@@ -460,7 +460,7 @@ SELECT
         'https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-america/832843',
         'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf'
     ],
-    'CBF identifies the sole Round 1 fixture as Goiás 3-1 América MG. Provider team ID 1102583842 (America MG) appears in 37 fixtures; provider team ID 3808811746 (América Mineiro) appears only in the duplicate UNKNOWN Goiás row. Strong alias evidence; preserve both source identities until a human confirms the alias.'
+    'CBF identifies the sole Round 1 fixture as Goiás 3-1 América MG. Provider team ID 1102583842 (America MG) appears in 37 fixtures; provider team ID 3808811746 (América Mineiro) appears only in the duplicate UNKNOWN Goiás row. Strong alias evidence, preserve both source identities until a human confirms the alias.'
 FROM veltrix_ai_analyst.provider_team_identity_links primary_link
 JOIN veltrix_ai_analyst.provider_team_identity_links alias_link
   ON alias_link.provider = primary_link.provider
@@ -511,7 +511,7 @@ SELECT
         'https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026?doc=Tabela+Detalhada',
         'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf'
     ],
-    'Provider competition ID 522514093 is labelled Brazil Serie B in the imported source. CBF official 2026 Série B schedule is independent evidence for the competition and season context; human reviewer must verify the provider competition identity and record the season scope explicitly.'
+    'Provider competition ID 522514093 is labelled Brazil Serie B in the imported source. CBF official 2026 Série B schedule is independent evidence for the competition and season context, human reviewer must verify the provider competition identity and record the season scope explicitly.'
 FROM veltrix_ai_analyst.provider_competition_identity_links link
 WHERE link.provider = '5DollarFootballAPI'
   AND link.source_id = '5dollarfootballapi'
@@ -552,7 +552,7 @@ SELECT
     'VELTRIX_AI_ANALYST_EVIDENCE_AUDIT',
     NOW(),
     review_case.evidence_uris[1],
-    'Evidence gathered and recommendation staged. This is not a human identity decision; no canonical links or source rows were changed.'
+    'Evidence gathered and recommendation staged. This is not a human identity decision, no canonical links or source rows were changed.'
 FROM veltrix_ai_analyst.canonical_identity_review_cases review_case
 WHERE (
     review_case.case_key IN (
