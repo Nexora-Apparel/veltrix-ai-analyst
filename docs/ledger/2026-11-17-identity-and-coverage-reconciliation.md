@@ -72,11 +72,12 @@ Exact DB comparison:
 
 The run-3 collection window is `[2026-03-21T00:00:00Z, 2026-11-09T00:00:00Z)`.
 
-The official CBF 2026 schedule lists Round 37 on 6–8 November and Round 38 on 14 November. The run-3 dataset contains 370 FINISHED rows, numerically matching 37 rounds × 10 matches. The four UNKNOWN rows are duplicate candidates, not additional unique fixtures.
+The official CBF basic 2026 schedule lists Round 37 on 6–8 November and Round 38 on 14 November; the detailed CBF record dates Botafogo SP–Londrina to 5 November. The run-3 dataset contains 370 FINISHED rows. A separate aggregate query confirms 20 distinct team IDs, exactly 37 appearances per team, 370 distinct ordered home/away pairs and zero repeated ordered pairs. All 10 Round 37 pairings match the official CBF schedule. The four UNKNOWN rows are duplicate candidates, not additional unique fixtures.
 
 Coverage conclusion:
 - The imported interval is consistent with rounds 1–37.
-- Count equality alone is not proof that all 370 exact pairings match the official schedule.
+- The 370-match / 20-team / 37-appearance structure and complete Round 37 pairing match are strong coverage evidence.
+- Count equality and the structural audit are not proof that all 370 exact pairings match the official schedule.
 - A fixture-by-fixture comparison of all 370 FINISHED rows against the CBF round 1–37 schedule is still required.
 - The 10 Round 38 fixtures (14 November) are outside run 3's scope and are not present in this import.
 - Do not call the 2026 season complete based on run 3.
