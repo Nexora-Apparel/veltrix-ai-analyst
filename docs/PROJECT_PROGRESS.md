@@ -525,3 +525,18 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - Four UNKNOWN duplicate candidates remain preserved; 20 team identity links, the America MG alias, and competition mapping remain unapproved. Full match-level coverage reconciliation remains outstanding.
 - No production rows or identity mappings changed. No model training, prediction endpoint, value betting, or Android/backend prediction integration was enabled.
 - See docs/ledger/2026-11-17-stage3-model-core-and-blocker-disposition.md for the full evidence register and restrictions.
+
+
+## 2026-11-17 — Owner directive: use collected corpus for retrospective model development
+
+The project owner has explicitly directed that the collected data be used for personal-use model development and training. This supersedes earlier broad "no model training" statements for retrospective research on this corpus. Do not repeatedly request documentary permission evidence or treat missing historical publication timestamps as a blanket prohibition on retrospective model research.
+
+- Use the 5DollarFootballAPI finished-score corpus with provider-local team IDs.
+- Exclude UNKNOWN rows without scores; preserve source records.
+- Build lagged features only from strictly earlier kickoffs; same-time fixtures share pre-batch state.
+- Label all resulting artifacts `RETROSPECTIVE_RESEARCH_NOT_PIT_CERTIFIED`, because source publication/availability timestamps were not captured.
+- Initial implementation: `backend/app/models/retrospective.py`, `backend/scripts/train_retrospective_research.py`, and `backend/tests/test_retrospective_training.py`.
+- Elo, smoothed recency-weighted Poisson goal rates, training-only Dixon-Coles rho and a baseline ensemble are evaluated prequentially.
+- This does not enable production predictions or Android/backend integration.
+
+See [retrospective training ledger](ledger/2026-11-17-retrospective-training-pipeline.md).
