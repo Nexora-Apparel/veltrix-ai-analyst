@@ -144,3 +144,52 @@ The selected parameters varied across outer folds; they were not stable enough t
 4. Expand the corpus across seasons and competitions before attempting a multi-league champion.
 5. Keep Elo as a comparator until an inner-fold-selected ensemble shows repeatable outer-fold gains.
 6. Do not use the current one-season retrospective metrics as a forecast-accuracy guarantee.
+
+
+
+## Paired chronological fold-block bootstrap — completed 2026-11-17
+
+PR [#39](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/39) was squash-merged as `7ab2610837e6ba5be0e222feb5373a4883ddce82`. Exact-head CI for `25f505c6aeeaeaef651562a42d955a011c09ea12` passed backend tests/Ruff and Android debug build.
+
+Post-merge evaluator workflow [#44171335925](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44171335925) completed successfully. It read 380 FINISHED provider rows, used 75 initial training fixtures, and evaluated 305 fixtures across 12 expanding chronological outer folds. Simultaneous kickoff groups remained intact. The v2 research artifact was re-persisted idempotently as `v2-5790da5427a7029b9267778728386b8d`; no artifact replacement or production deployment occurred.
+
+### Nested-v2 versus same-fold league baseline
+
+| Metric | Nested v2 | League baseline |
+|---|---:|---:|
+| 1X2 Brier (lower is better) | 0.6124461060 | 0.6420315331 |
+| 1X2 log loss (lower is better) | 1.0215836752 | 1.0633200835 |
+| Mean scoreline log loss | 2.7313871693 | — |
+
+Calibration diagnostics for the uncalibrated nested-v2 probabilities:
+- Classwise ECE: **0.0394121500**.
+- Top-label ECE: **0.0498733163**.
+
+### Paired chronological fold-block bootstrap
+
+The evaluator ran 5,000 deterministic resamples (seed `20261117`), resampling the 12 outer folds as blocks and weighting sampled folds by their held-out fixture counts. Differences are model minus league baseline; negative favours nested v2.
+
+| Difference | Point estimate | 95% percentile interval |
+|---|---:|---:|
+| 1X2 Brier | -0.0295854271 | [-0.0417743132, -0.0177778528] |
+| 1X2 log loss | -0.0417364083 | [-0.0596155640, -0.0248281955] |
+
+Both exploratory intervals are below zero, consistent with the nested-v2 model outperforming the league-average baseline on this retrospective sample. This is not evidence that v2 beats fixed v1; the matched v1/v2 run is tracked separately.
+
+### Limitations and disposition
+
+- Only 12 chronological outer folds are available. Fold-block bootstrap intervals with so few blocks are exploratory and sensitive to which dates are represented; they are not a high-powered inferential guarantee.
+- All 305 test fixtures come from one competition and one season. No multi-league or cross-season generalization claim is supported.
+- Historical publication/availability timestamps remain absent. This is event-time retrospective evaluation, not PIT-certified validation.
+- Identity review, duplicate adjudication, and source provenance constraints remain unchanged.
+- No timestamped odds benchmark, bookmaker comparison, prospective paper ledger, CLV test, or live prediction settlement was included.
+- Nested hyperparameter selections varied across outer folds (half-life 90/180/365 days, ridge 0.08/0.25, rho -0.10/0.00/0.05), so the final v2 parameterization is not established as stable.
+- Earlier fixed-v1 outer metrics were numerically better than nested-v2, but the exact paired v1-v2 rerun is still required before selecting a champion.
+- ECE is descriptive and bin-dependent. It is not sufficient alone to certify calibrated probabilities.
+- v1 and v2 remain immutable research artifacts; neither is production/PIT-certified. No production endpoint, Android prediction integration, value-bet activation, or public forecast publication is enabled.
+
+## Matched v1-v2 and calibration follow-up
+
+PR [#40](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/40) merged as `43f393e632c026f33cb3fbee752523b701f07719`. It adds an evaluator that runs fixed-v1 and nested-v2 on the same chronological outer folds, rejects fixture/fold mismatches, and reports paired fold-block intervals for Brier and log loss. The private research workflow now runs this matched comparison before artifact persistence.
+
+PR #40 also adds a tested scalar multiclass temperature-scaling utility. At merge time it was not yet integrated into the outer-fold evaluator. Calibration integration is being developed separately and must fit each fold's temperature only from inner out-of-fold predictions contained within that fold's training history; outer test labels remain excluded.
