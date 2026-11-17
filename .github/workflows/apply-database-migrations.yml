@@ -57,7 +57,7 @@ jobs:
           if "006_pre_match_feature_pit_gate.sql" not in applied:
               print("Migration 006 was already applied with a matching checksum.")
           PY
-      - name: Verify migration 006 and 007 checksum ledgers and database objects
+      - name: Verify migration 006-009 checksum ledgers and database objects
         run: |
           python - <<'PY'
           import hashlib
@@ -110,6 +110,20 @@ jobs:
                   "indexes": [
                       "provider_team_identity_links_source_identity_uk",
                       "provider_competition_identity_links_source_identity_uk",
+                  ],
+              },
+              "009_canonical_identity_review_cases.sql": {
+                  "tables": [
+                      "canonical_identity_review_cases",
+                      "canonical_identity_review_case_events",
+                      "effective_canonical_identity_review_cases",
+                      "canonical_team_identity_provenance_audit",
+                      "canonical_fixture_duplicate_case_audit",
+                  ],
+                  "functions": [],
+                  "triggers": [
+                      "canonical_identity_review_cases_append_only",
+                      "canonical_identity_review_case_events_append_only",
                   ],
               },
           }
