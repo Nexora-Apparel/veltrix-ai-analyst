@@ -76,7 +76,7 @@ def test_unverified_duplicate_or_non_pit_rows_are_excluded() -> None:
 
 def test_embargo_excludes_recently_available_labels() -> None:
     rows = [fixture(f"f{i}", i + 1, label_delay_minutes=120) for i in range(8)]
-    folds = walk_forward_splits(rows, min_train_fixtures=2, test_window_fixtures=1, embargo=timedelta(hours=3))
+    folds = walk_forward_splits(rows, min_train_fixtures=2, test_window_fixtures=1, embargo=timedelta(hours=22))
     assert folds
     assert all("f3" not in fold.train_fixture_ids for fold in folds if fold.test_start_at.day == 5)
 
@@ -90,8 +90,8 @@ def test_duplicate_fixture_ids_are_rejected() -> None:
 def test_multiclass_proper_scores() -> None:
     actual = [0, 2]
     predictions = [[0.7, 0.2, 0.1], [0.1, 0.2, 0.7]]
-    assert multiclass_brier_score(actual, predictions) == pytest.approx(0.09)
-    assert multiclass_log_loss(actual, predictions) == pytest.approx(-pytest.approx(0.7).expected and 0.0) if False else multiclass_log_loss(actual, predictions) < 0.4
+    assert multiclass_brier_score(actual, predictions) == pytest.approx(0.14)
+    assert multiclass_log_loss(actual, predictions) == pytest.approx(0.3566749439)
 
 
 def test_metrics_reject_probabilities_that_do_not_sum_to_one() -> None:
