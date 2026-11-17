@@ -49,3 +49,23 @@ After the run completes:
 ## Safety conclusion
 
 PR #16 is merged and CI-verified. The read-only production preview is implemented but has **not yet been run**. Canonical tables remain empty; no production materialization, model training, prediction API, or prediction publication has occurred.
+
+## Production preview execution — successful, 2026-11-17
+
+- Manual workflow run [#44085484843](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44085484843), job `134046688821`, completed with conclusion `success`.
+- The runner checked out main commit `ab0dc0a50af6cbde66431ad7e872c2e4e8b8f41a` and connected to the expected dedicated database `veltrix_ai_analyst`.
+- Planner emitted `CANONICAL_MATERIALIZATION_PLAN_READY`, `ready=true`, and an empty blockers list.
+- Exact report: provider `5DollarFootballAPI`; source `5dollarfootballapi`; competition `522514093`; import run 3; competition count 1; team count 21; fixture count 374.
+- Provenance-complete counts: 1/1 competitions, 21/21 teams, 374/374 fixtures.
+- Fixture states: 370 finished, four unknown. Conflict fixture IDs: `2341822348`, `3116209225`.
+- Non-PIT observation count: 396. This remains a hard model-feature eligibility boundary; preview readiness does not certify publication/availability timestamps or authorize pre-match feature use.
+- Independent post-run read-only Neon query confirmed all seven canonical tables still contain zero rows:
+  - `canonical_teams`: 0
+  - `canonical_competitions`: 0
+  - `canonical_fixtures`: 0
+  - `provider_team_identity_links`: 0
+  - `provider_competition_identity_links`: 0
+  - `canonical_fixture_sources`: 0
+  - `canonical_identity_review_events`: 0
+- No provider requests, canonical writes, identity reviews, PIT promotions, model training or prediction publication occurred.
+- **Decision:** read-only plan passes structural/provenance readiness. Proceed to a separate controlled materialization implementation/review stage. Production writer must remain manual-only, default-deny, database-identity-checked, transactional, idempotent and auditable. Do not dispatch it automatically as a consequence of preview success.
