@@ -8,6 +8,15 @@
 **Repository visibility:** Public  
 **Product:** Personal-use, cloud-backed native Android football analysis and prediction application
 
+## Latest execution checkpoint — 2026-11-17 (Migration 007 CI passed and PR merged)
+
+- Latest CI [#44068513459](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44068513459) passed on commit `5f57a1afc869c7ea5f5f953269dcb33d6ae6ac7a`: backend tests, Ruff lint, Android debug build and APK artifact upload all succeeded.
+- CI found and corrected the actual malformed PL/pgSQL delimiter in Migration 007, then caught and corrected a faulty regression-test string assertion. The final run is green.
+- PR [#14](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/14) merged by squash at `759f2fa80b9c05551e278af7eb306760875a0063`.
+- Migration 007 is still **NOT applied** to Neon. The controlled manual workflow requires `confirm_migrations=APPLY_CHECKSUM_VERIFIED_MIGRATIONS`. The current GitHub connector does not expose workflow dispatch, so a manual dispatch is required; do not apply SQL directly or bypass the workflow.
+- Checksum and database object verification remain pending workflow success. Canonical materialization has not started.
+- Existing data boundaries remain: 374 imported fixtures, 370 finished/scored, four UNKNOWN/scoreless; all 374 source observations non-PIT-certified; America MG and América Mineiro remain separate/unresolved. No predictions or model training are enabled.
+
 ## Latest execution checkpoint — 2026-11-17
 
 - `main` is at dashboard commit `c23dc52f8c267236aa1ccf0c9234ab85515054aa`. Android CI compiled the dashboard and uploaded the debug APK. The six-screen dashboard still contains sample data; runtime testing and backend integration are deferred until the proper application stage.
