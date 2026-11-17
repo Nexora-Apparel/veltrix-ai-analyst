@@ -113,7 +113,7 @@ class EloSystem:
                     self.config.margin_multiplier_cap,
                     log10(margin + 1.0) * 2.2 / denominator,
                 )
-                delta = self.config.k_factor * margin_multiplier * (actual - expected)
+            delta = self.config.k_factor * margin_multiplier * (actual - expected)
             deltas[item.home_team_id] = delta
             deltas[item.away_team_id] = -delta
 
