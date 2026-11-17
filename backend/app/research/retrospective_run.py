@@ -22,7 +22,6 @@ from psycopg.rows import dict_row
 from app.models.attack_defence import GoalResult
 from app.validation.retrospective import evaluate_retrospective
 
-
 DATABASE_NAME = "veltrix_ai_analyst"
 PROVIDER = "5DollarFootballAPI"
 SOURCE_ID = "5dollarfootballapi"
