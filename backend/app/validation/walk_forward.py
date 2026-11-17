@@ -20,6 +20,7 @@ class EvaluationFixture:
     duplicate_excluded: bool
     rights_approved: bool
     pit_eligible: bool
+    competition_identity_verified: bool = False
 
     def __post_init__(self) -> None:
         if not self.fixture_id:
@@ -32,14 +33,27 @@ class EvaluationFixture:
             raise ValueError("goals cannot be negative")
 
     @property
+    def ineligibility_reasons(self) -> tuple[str, ...]:
+        reasons: list[str] = []
+        if not self.identity_verified:
+            reasons.append("TEAM_OR_FIXTURE_IDENTITY_UNVERIFIED")
+        if not self.competition_identity_verified:
+            reasons.append("COMPETITION_IDENTITY_UNVERIFIED")
+        if not self.duplicate_excluded:
+            reasons.append("DUPLICATE_STATUS_UNRESOLVED")
+        if not self.rights_approved:
+            reasons.append("SOURCE_RIGHTS_NOT_APPROVED")
+        if not self.pit_eligible:
+            reasons.append("SOURCE_NOT_POINT_IN_TIME_ELIGIBLE")
+        if self.features_available_at > self.prediction_cutoff_at:
+            reasons.append("FEATURES_NOT_AVAILABLE_AT_PREDICTION_CUTOFF")
+        if self.prediction_cutoff_at >= self.kickoff_at:
+            reasons.append("PREDICTION_CUTOFF_NOT_BEFORE_KICKOFF")
+        return tuple(reasons)
+
+    @property
     def eligible(self) -> bool:
-        return (
-            self.identity_verified
-            and self.duplicate_excluded
-            and self.rights_approved
-            and self.pit_eligible
-            and self.features_available_at <= self.prediction_cutoff_at < self.kickoff_at
-        )
+        return not self.ineligibility_reasons
 
 
 @dataclass(frozen=True, slots=True)
