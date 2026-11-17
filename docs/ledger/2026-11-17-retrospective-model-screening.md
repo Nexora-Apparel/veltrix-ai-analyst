@@ -85,3 +85,24 @@ Elo ratings were retained as a separate research comparator and are not selected
 The original attack/defence optimizer divided the ridge penalty gradient by total training weight along with the likelihood gradient. This unintentionally weakened regularization as sample volume increased. The corrected implementation applies the penalty to the normalized objective, and a regression test verifies that stronger ridge strength shrinks team effects.
 
 The corrected model, baseline evaluator, final-corpus training runner, migration, private workflow and tests are merged to main. PR CI passed backend tests/lint and Android debug build.
+
+
+## Nested-tuned v2 model artifact — 2026-11-17
+
+PR #34 added the nested chronological tuner; PR #35 integrated it into the full-corpus trainer. Both are merged, and main-branch CI passed.
+
+The successful v2 training run persisted:
+- Artifact ID: `v2-5790da5427a7029b9267778728386b8d`.
+- Model version: `attack-defence-poisson-v2-nested-tuned`.
+- Training rows: 380; provider-local team IDs: 20.
+- Inner OOF tuning: 34 chronological folds and 340 inner predictions.
+- Selected half-life: 180 days.
+- Selected ridge: 0.08.
+- Selected Dixon–Coles rho: 0.10.
+- Inner 1X2 Brier: 0.6188714654.
+- Inner 1X2 log loss: 1.0305409710.
+- Inner scoreline log loss: 2.7461398753.
+
+The selected hyperparameters match the existing defaults for half-life/ridge; the inner tuning selected rho 0.10. The v1 artifact remains immutable and preserved. The v2 artifact remains research-only and not PIT-certified.
+
+A separate nested outer walk-forward run is still in progress to evaluate whether this tuning generalizes to unseen chronological folds. Do not treat the inner OOF metrics as independent outer-test performance. No production endpoint or Android integration is enabled.
