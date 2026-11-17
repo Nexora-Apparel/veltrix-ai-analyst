@@ -182,7 +182,13 @@ def chronological_research_run(
     rate_model = HistoricalRateModel(prior_matches=prior_matches, half_life_days=half_life_days)
     history: list[ResearchFixture] = []
     predictions: list[ResearchPrediction] = []
+    # Keep rho fixed at the neutral value during prequential scoring. A rho
+    # estimated from the full corpus is reported separately and never leaked
+    # backward into earlier predictions.
     rho = 0.0
+    scored: dict[str, list[tuple[int, tuple[float, float, float]]]] = {
+        "elo": [], "poisson": [], "ensemble": []
+    }
     index = 0
     while index < len(rows):
         kickoff = rows[index].kickoff_at
@@ -203,6 +209,10 @@ def chronological_research_run(
             ensemble = tuple(weight * elo_probs[i] + (1.0 - weight) * p_probs[i] for i in range(3))
             total = sum(ensemble)
             ensemble = tuple(value / total for value in ensemble)
+            actual = _actual_index(row)
+            scored["elo"].append((actual, elo_probs))
+            scored["poisson"].append((actual, p_probs))
+            scored["ensemble"].append((actual, ensemble))
             predictions.append(ResearchPrediction(
                 row.fixture_id, row.kickoff_at, row.home_goals, row.away_goals,
                 elo_probs[0], elo_probs[1], elo_probs[2],
@@ -215,23 +225,16 @@ def chronological_research_run(
             r.fixture_id, r.kickoff_at, r.home_team_id, r.away_team_id, r.home_goals, r.away_goals
         ) for r in batch_results))
         history.extend(batch)
-        if len(history) >= 30:
-            rho = fit_dixon_coles_rho(history, prior_matches=prior_matches, half_life_days=half_life_days)
         index = end
 
     def summarize(which: str) -> dict[str, float]:
-        actuals = [_actual_index(row) for row in rows]
-        vectors = []
-        for pred in predictions:
-            if which == "elo":
-                vectors.append((pred.elo_home, pred.elo_draw, pred.elo_away))
-            else:
-                vectors.append((pred.poisson_home, pred.poisson_draw, pred.poisson_away))
+        values = scored[which]
         return {
-            "matches": float(len(vectors)),
-            "brier": sum(_brier(a, p) for a, p in zip(actuals, vectors, strict=True)) / len(vectors),
-            "log_loss": sum(_log_loss(a, p) for a, p in zip(actuals, vectors, strict=True)) / len(vectors),
+            "matches": float(len(values)),
+            "brier": sum(_brier(a, p) for a, p in values) / len(values),
+            "log_loss": sum(_log_loss(a, p) for a, p in values) / len(values),
         }
+    fitted_rho = fit_dixon_coles_rho(rows, prior_matches=prior_matches, half_life_days=half_life_days)
 
     return {
         "dataset_type": "RETROSPECTIVE_RESEARCH_NOT_PIT_CERTIFIED",
@@ -241,8 +244,10 @@ def chronological_research_run(
         "date_end": rows[-1].kickoff_at.isoformat(),
         "elo": summarize("elo"),
         "poisson": summarize("poisson"),
+        "ensemble": summarize("ensemble"),
         "ensemble_elo_weight": ensemble_elo_weight,
-        "dixon_coles_rho_final": rho,
+        "dixon_coles_rho_full_corpus_diagnostic_only": fitted_rho,
+        "rho_used_for_prequential_predictions": 0.0,
         "predictions": [
             {
                 "fixture_id": p.fixture_id, "kickoff_at": p.kickoff_at.isoformat(),
