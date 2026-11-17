@@ -7,13 +7,14 @@
 
 ## Executive status
 
-**Stage 2 is close-ready but not fully closed.** The historical foundation, migrations, canonical materialization, provenance audit and first-37-round matchup reconciliation are verified. One bounded final-round import remains blocked on a manual GitHub Actions dispatch because this session can inspect and update repository files but cannot trigger `workflow_dispatch` events. No credentials are exposed and no direct SQL fixture inserts will be used to bypass the provenance pipeline.
+**Stage 2 is close-ready but not fully closed.** The historical foundation, migrations, provenance audit, first-37-round matchup reconciliation and Round 38 provider import are verified. The ten new provider fixtures still require the separate guarded canonical incremental workflow to be manually dispatched and independently verified. No credentials are exposed and no direct SQL fixture inserts will be used to bypass the provenance pipeline.
 
 ## 1. Production database and migration state
 
 - Migrations 001–009 are applied; migration 009 was independently read-verified in production.
-- Canonical layer: 21 teams, one competition, 374 canonical fixtures.
-- Source links: 21 team links, one competition link, 374 fixture-source links.
+- Canonical layer before Round 38 incremental materialization: 21 teams, one competition, 374 canonical fixtures.
+- Source links before Round 38 incremental materialization: 21 team links, one competition link, 374 fixture-source links.
+- Current provider scope after import run 5: 384 fixtures; ten are awaiting canonical source links. Read-only provenance checks confirm the existing 374 fixture links, all 21 team links and the competition link match the earliest matching source sightings.
 - Review queue: 28 cases and 28 automated recommendation events.
 - Effective active aliases: zero. Effective duplicate exclusions: zero.
 - PIT feature observations: zero.
@@ -97,14 +98,11 @@ The pinned Brazil Série B snapshot remains non-commercial only, with 368 descri
 
 ## 5. Final bounded import — manual blocker
 
-The final 10 Round 38 records are not in historical import run 3 because its end boundary is 9 November. The 5Dollar historical import workflow is deliberately manual and gated. [PR #20](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/20) has merged as `69f91a99b162804fa6a1baa8cd35d9cdc3388488`. It adds timezone-aware half-open interval parameters, enforces the existing 40-request global ceiling, and creates a dedicated Round 38 workflow with the fixed `[2026-11-09T00:00:00Z, 2026-11-17T00:00:00Z)` interval and a four-request cap. The validator checks the actual persisted run boundaries and budget. CI run [#44102095868](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44102095868) passed backend tests, Ruff and Android debug APK build. The workflow is ready for manual dispatch. This session cannot dispatch GitHub Actions workflow events.
+PR #20 merged as `69f91a99b162804fa6a1baa8cd35d9cdc3388488` and the controlled Round 38 import has now completed in workflow run [#44107179999](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44107179999). Import run 5 used two of four permitted requests and inserted ten fixtures with zero duplicates, rejects or quarantines. Provider scope is now 384 fixtures: 380 FINISHED with scores and four UNKNOWN.
 
-Required manual assistance:
-1. [PR #20](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/20) is merged and CI is green.
-2. Open [GitHub Actions — Controlled Brazil Serie B Round 38 Incremental Import](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/historical-brazil-serie-b-round38.yml) and dispatch with `confirm_collection=COLLECT_BRAZIL_SERIE_B_ROUND_38`. The workflow uses `[2026-11-09T00:00:00Z, 2026-11-17T00:00:00Z)` and a four-request budget.
-3. Verify the run's sanitized report and independently read-check that the 10 fixtures are ingested with provider response IDs, payload hashes, source observations and sightings; confirm there are no duplicate or rejected writes.
+PR #22 adds the separate guarded canonical incremental path and merged as `1f45c1b3547d77d3127b84a111e3611e63efeb72`. CI run [#44116261032](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44116261032) passed 122 backend tests, Ruff and Android debug build. Read-only Neon checks confirm the existing 374 fixture mappings and all 22 team/competition mappings match the materializer's expected provenance; exactly ten fixture source links remain absent. The new runner is intentionally a full-scope reconciliation: reuse 374 mappings, create ten, preserve the 28-case review queue, and retain all REVIEW_REQUIRED/SOURCE_ROW_ONLY states.
 
-No manual score insertion or migration bypass is acceptable.
+**Manual execution blocker:** this session has no GitHub Actions workflow-dispatch operation. Open [Materialize Round 38 canonical fixtures](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/materialize-round38-canonical-incremental.yml) and dispatch with `confirm_materialization=MATERIALIZE_BRAZIL_SERIE_B_RUN_5_INCREMENTAL`. Then independently verify 384 canonical fixtures and source links, zero unlinked provider fixtures, unchanged review queue (28 cases / 28 events), no identity approvals, and zero PIT feature promotion. Do not insert scores or canonical rows directly through SQL.
 
 ## 6. Stage 2 exit decision
 
@@ -118,8 +116,8 @@ Completed:
 - AI Midas snapshot pinning and anomaly quarantine.
 
 Still open:
-- Bounded ingestion of the 10 final-round results through the approved 5Dollar provider path.
+- Guarded canonical materialization of the 10 imported Round 38 fixtures, followed by independent production count/provenance verification.
 - Human decisions on the 28 identity/coverage review cases; these must remain pending until a human reviews evidence. No automatic promotion is permitted.
 - A future source/provider qualification that supplies defensible source-publication and availability timestamps for PIT features.
 
-**Stage 2 status: close-ready, pending the manual Round 38 incremental import.** Human identity decisions and PIT-source qualification remain explicit downstream gates; neither may be silently waived. No model training, feature engineering from PIT-ineligible data, prediction API activation, value-bet activation or Android/backend prediction integration is authorized by this audit.
+**Stage 2 status: close-ready, pending manual Round 38 canonical materialization and production verification.** Human identity decisions and PIT-source qualification remain explicit downstream gates; neither may be silently waived. No model training, feature engineering from PIT-ineligible data, prediction API activation, value-bet activation or Android/backend prediction integration is authorized by this audit.
