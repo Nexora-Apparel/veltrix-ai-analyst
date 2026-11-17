@@ -355,6 +355,10 @@ WHERE effective_case_status = 'HUMAN_CONFIRMED';
 CREATE VIEW veltrix_ai_analyst.canonical_fixture_duplicate_case_audit AS
 SELECT
     review_case.case_key,
+    primary_link.id AS primary_fixture_source_link_id,
+    duplicate_link.id AS duplicate_fixture_source_link_id,
+    primary_link.canonical_fixture_id AS primary_canonical_fixture_id,
+    duplicate_link.canonical_fixture_id AS duplicate_canonical_fixture_id,
     primary_link.provider_fixture_id AS primary_provider_fixture_id,
     duplicate_link.provider_fixture_id AS duplicate_provider_fixture_id,
     primary_fixture.kickoff_at AS primary_provider_kickoff_at,
