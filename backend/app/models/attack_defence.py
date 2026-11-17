@@ -94,9 +94,16 @@ def fit_attack_defence(
     n = len(teams)
     attack = [0.0] * n
     defence = [0.0] * n
-    total_goals = sum(r.home_goals + r.away_goals for r in rows)
-    total_weight = sum(_weight((latest-r.kickoff_at).total_seconds()/86400, half_life_days) for r in rows)
-    mean_rate = max(0.05, total_goals / max(1.0, 2.0 * total_weight))
+    weighted_goals = sum(
+        _weight((latest - row.kickoff_at).total_seconds() / 86400, half_life_days)
+        * (row.home_goals + row.away_goals)
+        for row in rows
+    )
+    total_weight = sum(
+        _weight((latest - row.kickoff_at).total_seconds() / 86400, half_life_days)
+        for row in rows
+    )
+    mean_rate = max(0.05, weighted_goals / max(1.0, 2.0 * total_weight))
     intercept = log(mean_rate)
     home_advantage = 0.12
 
