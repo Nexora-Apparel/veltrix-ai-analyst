@@ -78,6 +78,9 @@ class HistoricalRateModel:
         away_against = defaultdict(float)
         home_n = defaultdict(float)
         away_n = defaultdict(float)
+        overall_for = defaultdict(float)
+        overall_against = defaultdict(float)
+        overall_n = defaultdict(float)
         league_home = league_away = total_weight = 0.0
         for row in history:
             if row.kickoff_at >= fixture.kickoff_at:
@@ -93,19 +96,39 @@ class HistoricalRateModel:
             away_for[row.away_team_id] += row.away_goals * weight
             away_against[row.away_team_id] += row.home_goals * weight
             away_n[row.away_team_id] += weight
+            overall_for[row.home_team_id] += row.home_goals * weight
+            overall_against[row.home_team_id] += row.away_goals * weight
+            overall_n[row.home_team_id] += weight
+            overall_for[row.away_team_id] += row.away_goals * weight
+            overall_against[row.away_team_id] += row.home_goals * weight
+            overall_n[row.away_team_id] += weight
         if total_weight <= 0:
             return 1.35, 1.10
         avg_home = max(0.2, league_home / total_weight)
         avg_away = max(0.2, league_away / total_weight)
+        avg_team = max(0.2, (league_home + league_away) / (2.0 * total_weight))
         prior = self.prior_matches
 
         def smoothed(total: float, count: float, baseline: float) -> float:
             return (total + prior * baseline) / (count + prior)
 
-        h_att = smoothed(home_for[fixture.home_team_id], home_n[fixture.home_team_id], avg_home) / avg_home
-        h_def = smoothed(home_against[fixture.home_team_id], home_n[fixture.home_team_id], avg_away) / avg_away
-        a_att = smoothed(away_for[fixture.away_team_id], away_n[fixture.away_team_id], avg_away) / avg_away
-        a_def = smoothed(away_against[fixture.away_team_id], away_n[fixture.away_team_id], avg_home) / avg_home
+        # Blend full-venue-independent team strength with venue-specific form.
+        # Overall rates carry more sample mass; venue rates retain home/away signal.
+        def blend(overall: float, venue: float) -> float:
+            return overall**0.65 * venue**0.35
+
+        h_overall_att = smoothed(overall_for[fixture.home_team_id], overall_n[fixture.home_team_id], avg_team) / avg_team
+        h_overall_def = smoothed(overall_against[fixture.home_team_id], overall_n[fixture.home_team_id], avg_team) / avg_team
+        a_overall_att = smoothed(overall_for[fixture.away_team_id], overall_n[fixture.away_team_id], avg_team) / avg_team
+        a_overall_def = smoothed(overall_against[fixture.away_team_id], overall_n[fixture.away_team_id], avg_team) / avg_team
+        h_venue_att = smoothed(home_for[fixture.home_team_id], home_n[fixture.home_team_id], avg_home) / avg_home
+        h_venue_def = smoothed(home_against[fixture.home_team_id], home_n[fixture.home_team_id], avg_away) / avg_away
+        a_venue_att = smoothed(away_for[fixture.away_team_id], away_n[fixture.away_team_id], avg_away) / avg_away
+        a_venue_def = smoothed(away_against[fixture.away_team_id], away_n[fixture.away_team_id], avg_home) / avg_home
+        h_att = blend(h_overall_att, h_venue_att)
+        h_def = blend(h_overall_def, h_venue_def)
+        a_att = blend(a_overall_att, a_venue_att)
+        a_def = blend(a_overall_def, a_venue_def)
         home_rate = avg_home * h_att * a_def
         away_rate = avg_away * a_att * h_def
         return min(4.5, max(0.15, home_rate)), min(4.5, max(0.15, away_rate))
