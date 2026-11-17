@@ -1,5 +1,7 @@
 """Fit and privately persist a versioned research model from the collected corpus.
 
+Matched v1/v2 comparison and fold-contained calibration research are separate.
+
 Retrospective report execution trigger after bootstrap diagnostics merge.
 
 The loader is read-only. Only the final immutable model artifact is written.
