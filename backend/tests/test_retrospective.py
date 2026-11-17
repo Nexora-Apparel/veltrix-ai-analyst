@@ -1,9 +1,9 @@
-from app.validation.calibration import multiclass_calibration_diagnostics
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from app.models.attack_defence import GoalResult
+from app.validation.calibration import multiclass_calibration_diagnostics
 from app.validation.retrospective import evaluate_retrospective
 
 BASE = datetime(2026, 1, 1, tzinfo=UTC)
