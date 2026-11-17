@@ -119,6 +119,8 @@ def main() -> None:
             "league_baseline_brier_1x2": report.baseline_brier_1x2,
             "league_baseline_log_loss_1x2": report.baseline_log_loss_1x2,
             "nested_tuning": report.nested_tuning,
+            "classwise_ece": report.classwise_ece,
+            "top_label_ece": report.top_label_ece,
             "fold_metrics": [
                 {
                     "fold_index": row.fold_index,
@@ -133,6 +135,8 @@ def main() -> None:
                     "half_life_days": row.half_life_days,
                     "ridge": row.ridge,
                     "rho": row.rho,
+                    "classwise_ece": row.classwise_ece,
+                    "top_label_ece": row.top_label_ece,
                 }
                 for row in report.fold_metrics
             ],

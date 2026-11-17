@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.models.attack_defence import GoalResult
+from app.validation.calibration import multiclass_calibration_diagnostics
 from app.validation.retrospective import evaluate_retrospective
 
 BASE = datetime(2026, 1, 1, tzinfo=UTC)
@@ -78,3 +79,19 @@ def test_nested_tuning_selects_only_chronological_inner_fold_parameters():
     assert all(ridge in (0.01, 0.08, 0.25) for _, ridge, _ in report.selected_parameters)
     assert all(rho in (-0.15, -0.10, -0.05, 0.0, 0.05, 0.10, 0.15)
                for _, _, rho in report.selected_parameters)
+
+
+
+def test_calibration_diagnostics_report_classwise_and_top_label_error():
+    result = multiclass_calibration_diagnostics(
+        [(0.8, 0.2), (0.2, 0.8), (0.8, 0.2), (0.2, 0.8)],
+        [0, 1, 0, 1],
+        bins=5,
+    )
+    assert result.classwise_ece == pytest.approx(0.2)
+    assert result.top_label_ece == pytest.approx(0.2)
+
+
+def test_calibration_diagnostics_reject_invalid_probability_rows():
+    with pytest.raises(ValueError, match="sum to one"):
+        multiclass_calibration_diagnostics([(0.7, 0.4)], [0])
