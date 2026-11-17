@@ -1,6 +1,8 @@
 from datetime import UTC, datetime, timedelta
+
 import pytest
 from pydantic import ValidationError
+
 from app.providers.odds_capture import normalize_5dollar_odds
 
 CUTOFF = datetime(2026, 11, 17, 12, tzinfo=UTC)
@@ -15,9 +17,15 @@ def payload():
     ]}]}]}
 
 def normalize(data, **overrides):
-    args = dict(provider_fixture_id="fx-1", kickoff_at=KICKOFF, retrieved_at=RETRIEVED,
-        prediction_cutoff_at=CUTOFF, source_observation_id="obs-1",
-        rights_approval_id="rights-1", rights_allow_model_training=True)
+    args = {
+        "provider_fixture_id": "fx-1",
+        "kickoff_at": KICKOFF,
+        "retrieved_at": RETRIEVED,
+        "prediction_cutoff_at": CUTOFF,
+        "source_observation_id": "obs-1",
+        "rights_approval_id": "rights-1",
+        "rights_allow_model_training": True,
+    }
     args.update(overrides)
     return normalize_5dollar_odds(data, **args)
 
