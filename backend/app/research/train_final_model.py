@@ -165,7 +165,11 @@ def build_artifact(results: list[GoalResult]) -> tuple[str, str, dict[str, Any]]
         },
         "dixon_coles": {
             "rho": tuning.rho,
-            "status": "SELECTED_BY_INNER_CHRONOLOGICAL_SCORELINE_LIKELIHOOD",
+            "status": (
+                "SELECTED_BY_INNER_CHRONOLOGICAL_SCORELINE_LIKELIHOOD"
+                if tuning.inner_folds
+                else "INSUFFICIENT_INNER_FOLDS; DEFAULT_RHO_ZERO"
+            ),
         },
         "deployment_status": "RESEARCH_ARTIFACT_ONLY",
     }
