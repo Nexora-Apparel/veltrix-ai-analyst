@@ -50,3 +50,18 @@ calibration parameters on these records. Synthetic tests validate code
 invariants, not forecast quality. Fit parameters only inside each chronological
 training fold after identity, competition, duplicate, rights, source-time, and
 label-availability gates pass; evaluate on untouched future folds.
+
+## Project-owner review authorization — 2026-11-17
+
+The project owner reports that they reviewed the recommendations, that a peer
+also reviewed them, and that a professional reviewer agreed with the conservative
+approach. The project owner authorizes proceeding with the evidence-first policy
+and implementation plan recorded above. This entry records the owner's report
+and authorization only; it is not a substitute for named reviewer attestations,
+individual case-level evidence, or the required immutable human-review events.
+
+No case is changed to HUMAN_CONFIRMED by this authorization alone. Automated
+recommendations remain recommendations. Any future identity decision must cite
+specific authoritative evidence and record the actual reviewer identity and
+evidence hash. Personal/non-commercial use does not alter point-in-time feature
+eligibility or waive provider terms.
