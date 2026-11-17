@@ -126,15 +126,25 @@ def fit_dixon_coles_rho(
     candidates = tuple(i / 1000 for i in range(-180, 181, 10))
     losses = {rho: 0.0 for rho in candidates}
     count = 0
-    for row in ordered:
+    index = 0
+    while index < len(ordered):
+        end = index + 1
+        while end < len(ordered) and ordered[end].kickoff_at == ordered[index].kickoff_at:
+            end += 1
+        batch = ordered[index:end]
         if history:
-            home_rate, away_rate = model.rates(history, row)
-            for rho in candidates:
-                matrix = build_scoreline_distribution(home_rate, away_rate, rho=rho, max_goals=10)
-                probability = matrix.probabilities[row.home_goals][row.away_goals] if max(row.home_goals, row.away_goals) <= 10 else 1e-15
-                losses[rho] -= log(max(1e-15, probability))
-            count += 1
-        history.append(row)
+            for row in batch:
+                home_rate, away_rate = model.rates(history, row)
+                for rho in candidates:
+                    matrix = build_scoreline_distribution(home_rate, away_rate, rho=rho, max_goals=10)
+                    probability = (
+                        matrix.probabilities[row.home_goals][row.away_goals]
+                        if max(row.home_goals, row.away_goals) <= 10 else 1e-15
+                    )
+                    losses[rho] -= log(max(1e-15, probability))
+                count += 1
+        history.extend(batch)
+        index = end
     if count == 0:
         return 0.0
     return min(candidates, key=lambda rho: (losses[rho], abs(rho)))
