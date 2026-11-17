@@ -1,0 +1,154 @@
+"""Event-time-ordered retrospective research evaluation.
+
+This evaluator is intentionally distinct from PIT-certified walk-forward
+validation: the legacy corpus lacks verified historical publication and
+availability timestamps. It prevents future-event leakage, but its results
+must never be labelled historically PIT-certified.
+"""
+from __future__ import annotations
+
+from collections.abc import Iterable
+from dataclasses import dataclass
+from datetime import datetime
+from math import log
+
+from app.models.attack_defence import GoalResult, fit_attack_defence
+from app.models.scoreline import build_scoreline_distribution
+
+
+@dataclass(frozen=True, slots=True)
+class RetrospectivePrediction:
+    fixture_id: str
+    kickoff_at: datetime
+    actual_home_goals: int
+    actual_away_goals: int
+    home_lambda: float
+    away_lambda: float
+    home_win: float
+    draw: float
+    away_win: float
+    scoreline_probability: float
+
+
+@dataclass(frozen=True, slots=True)
+class RetrospectiveReport:
+    evaluation_type: str
+    training_fixtures: int
+    evaluated_fixtures: int
+    excluded_initial_fixtures: int
+    fold_count: int
+    brier_1x2: float
+    log_loss_1x2: float
+    mean_scoreline_log_loss: float
+    predictions: tuple[RetrospectivePrediction, ...]
+
+
+def _groups(rows: list[GoalResult]) -> list[list[GoalResult]]:
+    groups: list[list[GoalResult]] = []
+    for row in sorted(rows, key=lambda item: (item.kickoff_at, item.fixture_id)):
+        if not groups or groups[-1][0].kickoff_at != row.kickoff_at:
+            groups.append([row])
+        else:
+            groups[-1].append(row)
+    return groups
+
+
+def evaluate_retrospective(
+    results: Iterable[GoalResult],
+    *,
+    min_train_fixtures: int = 60,
+    test_window_fixtures: int = 25,
+    half_life_days: float = 180.0,
+    ridge: float = 0.08,
+    rho: float = 0.0,
+    max_goals: int = 12,
+) -> RetrospectiveReport:
+    """Expanding event-time evaluation with simultaneous-kickoff isolation."""
+    rows = list(results)
+    if not rows:
+        raise ValueError("no completed results supplied")
+    ids = [row.fixture_id for row in rows]
+    if len(ids) != len(set(ids)):
+        raise ValueError("duplicate fixture IDs in retrospective corpus")
+    if min_train_fixtures < 2 or test_window_fixtures < 1:
+        raise ValueError("invalid retrospective fold sizes")
+    groups = _groups(rows)
+    train: list[GoalResult] = []
+    predictions: list[RetrospectivePrediction] = []
+    folds = 0
+    index = 0
+    while index < len(groups):
+        batch: list[GoalResult] = []
+        while index < len(groups) and len(batch) < test_window_fixtures:
+            batch.extend(groups[index])
+            index += 1
+        if len(train) < min_train_fixtures:
+            train.extend(batch)
+            continue
+        cutoff = batch[0].kickoff_at
+        model = fit_attack_defence(
+            train,
+            as_of=cutoff,
+            half_life_days=half_life_days,
+            ridge=ridge,
+            max_iterations=1200,
+        )
+        folds += 1
+        for target in batch:
+            rates = model.predict(target.home_team, target.away_team)
+            distribution = build_scoreline_distribution(
+                rates.home_lambda,
+                rates.away_lambda,
+                rho=rho,
+                max_goals=max_goals,
+            )
+            score_probability = (
+                distribution.probabilities[target.home_goals][target.away_goals]
+                if target.home_goals <= max_goals and target.away_goals <= max_goals
+                else 0.0
+            )
+            predictions.append(RetrospectivePrediction(
+                fixture_id=target.fixture_id,
+                kickoff_at=target.kickoff_at,
+                actual_home_goals=target.home_goals,
+                actual_away_goals=target.away_goals,
+                home_lambda=rates.home_lambda,
+                away_lambda=rates.away_lambda,
+                home_win=distribution.home_win,
+                draw=distribution.draw,
+                away_win=distribution.away_win,
+                scoreline_probability=score_probability,
+            ))
+        train.extend(batch)
+
+    if not predictions:
+        raise ValueError("insufficient chronological history to form an evaluation fold")
+    brier_values: list[float] = []
+    log_losses: list[float] = []
+    scoreline_losses: list[float] = []
+    for prediction in predictions:
+        probabilities = (prediction.home_win, prediction.draw, prediction.away_win)
+        actual = 0 if prediction.actual_home_goals > prediction.actual_away_goals else (
+            1 if prediction.actual_home_goals == prediction.actual_away_goals else 2
+        )
+        brier_values.append(sum(
+            (probability - (1.0 if i == actual else 0.0)) ** 2
+            for i, probability in enumerate(probabilities)
+        ))
+        log_losses.append(-log(max(1e-15, probabilities[actual])))
+        if prediction.scoreline_probability > 0:
+            scoreline_losses.append(-log(prediction.scoreline_probability))
+
+    return RetrospectiveReport(
+        evaluation_type="RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED",
+        training_fixtures=len(rows) - len(predictions),
+        evaluated_fixtures=len(predictions),
+        excluded_initial_fixtures=len(rows) - len(predictions),
+        fold_count=folds,
+        brier_1x2=sum(brier_values) / len(brier_values),
+        log_loss_1x2=sum(log_losses) / len(log_losses),
+        mean_scoreline_log_loss=(
+            sum(scoreline_losses) / len(scoreline_losses) if scoreline_losses else float("inf")
+        ),
+        predictions=tuple(predictions),
+    )
