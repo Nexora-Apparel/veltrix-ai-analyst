@@ -140,12 +140,20 @@ def fit_dixon_coles_rho(
     return min(candidates, key=lambda rho: (losses[rho], abs(rho)))
 
 
-def _elo_probabilities(system: EloSystem, home: str, away: str) -> tuple[float, float, float]:
+def _elo_probabilities(
+    system: EloSystem, home: str, away: str, history: Sequence[ResearchFixture]
+) -> tuple[float, float, float]:
     expected = system.expected_home_score(home, away)
-    # Map expected score to a symmetric 1X2 distribution; draw mass is an
-    # explicit conservative baseline, then home/away split the remainder.
-    draw = 0.26
-    return expected * (1.0 - draw), draw, (1.0 - expected) * (1.0 - draw)
+    # Estimate draw frequency from prior results with Bayesian shrinkage.
+    # Convert Elo expected score into coherent H/D/A probabilities.
+    draws = sum(row.home_goals == row.away_goals for row in history)
+    prior_matches = 8.0
+    draw = (draws + prior_matches * 0.26) / (len(history) + prior_matches)
+    draw = min(draw, 2.0 * min(expected, 1.0 - expected))
+    home_probability = max(0.0, expected - 0.5 * draw)
+    away_probability = max(0.0, 1.0 - expected - 0.5 * draw)
+    total = home_probability + draw + away_probability
+    return home_probability / total, draw / total, away_probability / total
 
 
 def _actual_index(row: ResearchFixture) -> int:
@@ -182,10 +190,10 @@ def chronological_research_run(
     rate_model = HistoricalRateModel(prior_matches=prior_matches, half_life_days=half_life_days)
     history: list[ResearchFixture] = []
     predictions: list[ResearchPrediction] = []
-    # Keep rho fixed at the neutral value during prequential scoring. A rho
-    # estimated from the full corpus is reported separately and never leaked
-    # backward into earlier predictions.
+    # Refit Dixon-Coles rho only on results already observed by the current
+    # prequential cutoff. Never fit on the target fixture or later outcomes.
     rho = 0.0
+    last_rho_fit_count = 0
     scored: dict[str, list[tuple[int, tuple[float, float, float]]]] = {
         "elo": [], "poisson": [], "ensemble": []
     }
@@ -196,6 +204,11 @@ def chronological_research_run(
         while end < len(rows) and rows[end].kickoff_at == kickoff:
             end += 1
         batch = rows[index:end]
+        if len(history) >= 30 and len(history) - last_rho_fit_count >= 25:
+            rho = fit_dixon_coles_rho(
+                history, prior_matches=prior_matches, half_life_days=half_life_days
+            )
+            last_rho_fit_count = len(history)
         batch_results = []
         for row in batch:
             if history:
@@ -203,7 +216,7 @@ def chronological_research_run(
             else:
                 home_rate, away_rate = 1.35, 1.10
             poisson = build_scoreline_distribution(home_rate, away_rate, rho=rho, max_goals=10)
-            elo_probs = _elo_probabilities(elo, row.home_team_id, row.away_team_id)
+            elo_probs = _elo_probabilities(elo, row.home_team_id, row.away_team_id, history)
             p_probs = (poisson.home_win, poisson.draw, poisson.away_win)
             weight = ensemble_elo_weight
             ensemble = tuple(weight * elo_probs[i] + (1.0 - weight) * p_probs[i] for i in range(3))
@@ -247,7 +260,8 @@ def chronological_research_run(
         "ensemble": summarize("ensemble"),
         "ensemble_elo_weight": ensemble_elo_weight,
         "dixon_coles_rho_full_corpus_diagnostic_only": fitted_rho,
-        "rho_used_for_prequential_predictions": 0.0,
+        "scoreline_model": "POISSON_WITH_TRAINING_ONLY_DIXON_COLES_RHO",
+        "rho_used_for_prequential_predictions": "updated_from_prior_results_only",
         "predictions": [
             {
                 "fixture_id": p.fixture_id, "kickoff_at": p.kickoff_at.isoformat(),
