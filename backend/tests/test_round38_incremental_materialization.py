@@ -49,4 +49,4 @@ def test_round38_incremental_scope_is_pinned_and_non_destructive() -> None:
     assert EXPECTED_AFTER["canonical_fixtures"] == 384
     assert EXPECTED_BEFORE["canonical_fixture_sources"] == 374
     assert EXPECTED_AFTER["canonical_fixture_sources"] == 384
-    assert len(EXPECTED_CONFLICT_IDS) == 8
+    assert EXPECTED_CONFLICT_IDS == {"2341822348", "3116209225"}
