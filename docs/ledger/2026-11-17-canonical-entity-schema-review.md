@@ -39,6 +39,16 @@ Prepare Migration 007 for the canonical team, competition, fixture, provider ide
 - Extended workflow contract tests and the database migration runbook.
 - PR CI run [#44064737019](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44064737019) was superseded/cancelled as the branch was hardened. The current head's CI is queued/running; results are not yet verified. PostgreSQL execution of migration 007 remains required.
 
+## CI failure diagnosis and correction — 2026-11-17
+
+- Run [#44065008513](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44065008513) failed in the backend test job; Android debug build succeeded and uploaded its APK.
+- Backend result: 86 passed, 1 failed, 20 errors. The setup errors were downstream effects of Migration 007 failing to parse.
+- PostgreSQL reported `syntax error at or near "$" at character 10874` in `guard_canonical_fixture_source_merge()`. The function delimiter had one dollar sign instead of the required paired `$`.
+- Corrected the delimiter in commit `23a3ac026e703db6748c165cd5d0638b7c97c2d1`.
+- Added a static regression assertion for the malformed delimiter in commit `ae670ffb1e4fb8ee4c091a79b657d074ba6c1bec`.
+- This is a source-level correction only. The failing run used an ephemeral CI PostgreSQL service; no Neon schema was changed.
+- Rerun CI is required. Migration 007 remains unvalidated until backend tests/lint and Android build pass, followed by controlled PostgreSQL verification.
+
 ## Data and safety disposition
 
 - No provider HTTP requests.
