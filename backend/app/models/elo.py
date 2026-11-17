@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite, log10
-from typing import Iterable
+from collections.abc import Iterable
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,7 +126,7 @@ class EloSystem:
         cls,
         results: Iterable[HistoricalResult],
         config: EloConfig | None = None,
-    ) -> "EloSystem":
+    ) -> EloSystem:
         system = cls(config)
         rows = tuple(results)
         fixture_ids = [item.fixture_id for item in rows]
