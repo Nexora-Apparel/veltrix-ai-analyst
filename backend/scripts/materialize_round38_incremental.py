@@ -31,8 +31,7 @@ EXPECTED_BEFORE = {
 }
 EXPECTED_AFTER = {**EXPECTED_BEFORE, "canonical_fixtures": 384, "canonical_fixture_sources": 384}
 EXPECTED_CONFLICT_IDS = {
-    "2341822348", "3116209225", "2336910968", "1587564237",
-    "933498248", "236839304", "1988139832", "553958702",
+    "2341822348", "3116209225",
 }
 SCOPE = CanonicalMaterializationScope(
     provider=BRAZIL_SERIE_B_RUN_3.provider,
@@ -59,7 +58,7 @@ SELECT
  (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_identity_review_case_events)
 """
 NEW_FIXTURES_SQL = """
-SELECT COUNT(*)
+SELECT COUNT(DISTINCT fixture.id)
 FROM veltrix_ai_analyst.provider_fixtures fixture
 JOIN veltrix_ai_analyst.source_observation_sightings sighting
   ON sighting.source_observation_id = fixture.source_observation_id
