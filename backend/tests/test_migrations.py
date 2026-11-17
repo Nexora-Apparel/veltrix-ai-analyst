@@ -125,6 +125,8 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "005_reservation_response_link.sql",
             "006_pre_match_feature_pit_gate.sql",
             "007_canonical_entity_layer.sql",
+            "008_canonical_identity_link_uniqueness.sql",
+            "009_canonical_identity_review_cases.sql",
         }
     )
 
@@ -159,6 +161,8 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "005_reservation_response_link.sql",
             "006_pre_match_feature_pit_gate.sql",
             "007_canonical_entity_layer.sql",
+            "008_canonical_identity_link_uniqueness.sql",
+            "009_canonical_identity_review_cases.sql",
         }.issubset(migration_versions)
 
         assert {
@@ -190,7 +194,54 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "effective_provider_team_identity_links",
             "effective_provider_competition_identity_links",
             "effective_canonical_fixture_sources",
+            "canonical_identity_review_cases",
+            "canonical_identity_review_case_events",
+            "effective_canonical_identity_review_cases",
+            "canonical_team_identity_provenance_audit",
+            "canonical_fixture_duplicate_case_audit",
         }.issubset(tables)
+
+        case_count = connection.execute(
+            """
+            SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_identity_review_cases
+            WHERE case_key IN (
+                'BRAZIL_SERIE_B_RUN_3_COVERAGE_2026',
+                'BRAZIL_SERIE_B_RUN_3_PIT_TIMESTAMP_GAP'
+            )
+            """
+        ).fetchone()[0]
+        assert case_count == 2
+
+        case_suffix = uuid4().hex
+        case_id = connection.execute(
+            """
+            INSERT INTO veltrix_ai_analyst.canonical_identity_review_cases (
+                case_key, case_type, recommended_action, evidence_uris, evidence_summary
+            ) VALUES (%s, 'PIT_TIMESTAMP_GAP', 'KEEP_BLOCKED',
+                      ARRAY['urn:test:evidence'], 'PIT evidence is absent')
+            RETURNING id
+            """,
+            (f"test-pit-case-{case_suffix}",),
+        ).fetchone()[0]
+        event_id = connection.execute(
+            """
+            INSERT INTO veltrix_ai_analyst.canonical_identity_review_case_events (
+                case_id, event_type, reviewer_type, reviewer_id, reviewed_at,
+                evidence_uri, notes
+            ) VALUES (%s, 'AUTOMATED_RECOMMENDATION', 'AUTOMATED_SYSTEM',
+                      'ci-evidence-audit', %s, 'urn:test:evidence', 'not a human decision')
+            RETURNING id
+            """,
+            (case_id, datetime.now(UTC)),
+        ).fetchone()[0]
+        with pytest.raises(psycopg.errors.RaiseException), connection.transaction():
+            connection.execute(
+                """
+                UPDATE veltrix_ai_analyst.canonical_identity_review_case_events
+                SET notes = 'tampered' WHERE id = %s
+                """,
+                (event_id,),
+            )
 
         suffix = uuid4().hex
         approval_id = f"test-approval-{suffix}"
