@@ -9,6 +9,7 @@ from typing import Any
 
 from app.providers.odds_contracts import OddsObservation
 
+
 class OddsPayloadError(ValueError):
     """Provider odds response cannot be admitted as a pre-match observation."""
 
