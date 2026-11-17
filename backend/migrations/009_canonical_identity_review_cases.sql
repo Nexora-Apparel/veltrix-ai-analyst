@@ -460,7 +460,7 @@ SELECT
         'https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-america/832843',
         'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf'
     ],
-    'CBF identifies the sole Round 1 fixture as Goiás 3-1 América MG. Provider team ID 1102583842 (America MG) appears in 37 fixtures; provider team ID 3808811746 (América Mineiro) appears only in the duplicate UNKNOWN Goiás row. Strong alias evidence, preserve both source identities until a human confirms the alias.'
+    'CBF identifies the sole Round 1 fixture as Goiás 3-1 América MG. Provider team ID 1102583842 (America MG) appears in 37 fixtures, provider team ID 3808811746 (América Mineiro) appears only in the duplicate UNKNOWN Goiás row. Strong alias evidence, preserve both source identities until a human confirms the alias.'
 FROM veltrix_ai_analyst.provider_team_identity_links primary_link
 JOIN veltrix_ai_analyst.provider_team_identity_links alias_link
   ON alias_link.provider = primary_link.provider
@@ -531,7 +531,7 @@ VALUES
         'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf',
         'https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/botafogo-x-londrina-saf/833272'
     ],
-    'The imported interval ends 2026-11-09 and contains 370 FINISHED records: 20 provider team IDs, exactly 37 appearances per team, 370 distinct ordered home/away pairs, and zero repeated ordered pairs. All 10 Round 37 pairings match the official CBF Round 37 schedule; the detailed CBF match record dates Botafogo SP-Londrina to 2026-11-05, within the import window. Round 38 is 2026-11-14 and outside run 3. Four UNKNOWN provider rows are duplicate candidates. These structural checks are strong coverage evidence but do not replace a full 370-pair fixture-by-fixture official schedule reconciliation.'
+    'The imported interval ends 2026-11-09 and contains 370 FINISHED records: 20 provider team IDs, exactly 37 appearances per team, 370 distinct ordered home/away pairs, and zero repeated ordered pairs. All 10 Round 37 pairings match the official CBF Round 37 schedule, the detailed CBF match record dates Botafogo SP-Londrina to 2026-11-05, within the import window. Round 38 is 2026-11-14 and outside run 3. Four UNKNOWN provider rows are duplicate candidates. These structural checks are strong coverage evidence but do not replace a full 370-pair fixture-by-fixture official schedule reconciliation.'
 ),
 (
     'BRAZIL_SERIE_B_RUN_3_PIT_TIMESTAMP_GAP',
