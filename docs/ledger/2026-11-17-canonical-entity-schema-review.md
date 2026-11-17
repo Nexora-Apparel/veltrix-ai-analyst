@@ -67,3 +67,20 @@ Prepare Migration 007 for the canonical team, competition, fixture, provider ide
 3. Open/complete PR review; do not merge if SQL checks fail.
 4. After review and merge, use the controlled migration workflow against the exact `veltrix_ai_analyst` database and verify migration 007 checksum plus objects.
 5. Only then begin the separate canonical materialization service and read-only reconciliation tests. Human review must not be fabricated.
+
+
+## Final CI, review and merge result — 2026-11-17
+
+- The latest pre-fix run [#44067281973](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44067281973) failed on commit `d9fb10bf8efe53ef62330d559b153f1188b76490`: PostgreSQL still found a single-dollar PL/pgSQL delimiter in `guard_canonical_fixture_source_merge()`. Backend result was 86 passed, 1 failed, 20 setup errors; Android build and APK artifact upload passed.
+- Corrected the actual migration source in commit `3269ae69d315071dc09a227fed969f35e6af7c38`; the earlier ledger claim that the delimiter had been corrected was premature because the checked-out migration still contained the malformed delimiter.
+- Added a delimiter regression test. Its first version had an assertion-string escaping error and failed run #44068347158 (106 passed, 1 failed). Corrected the test in commit `5f57a1afc869c7ea5f5f953269dcb33d6ae6ac7a`.
+- Final CI [#44068513459](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44068513459) completed successfully on commit `5f57a1afc869c7ea5f5f953269dcb33d6ae6ac7a`: backend tests passed, Ruff lint passed, Android debug APK assembly passed, and APK artifact upload passed.
+- Migration source review confirmed four paired PL/pgSQL function delimiters, no remaining malformed single-dollar opener, schema-only behavior, provenance-bound source links, append-only identity/review records, and fail-closed canonical fixture verification gates.
+- PR [#14](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/14) was marked ready and squash-merged after successful CI. Merge commit: `759f2fa80b9c05551e278af7eb306760875a0063`.
+- **Migration 007 is NOT yet applied to Neon.** No production database mutation, provider request, canonical row materialization, PIT promotion, or model operation was performed during this review/merge.
+- Controlled migration workflow: [Apply checksum-verified database migrations](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/apply-database-migrations.yml). It is manual `workflow_dispatch` and requires `confirm_migrations=APPLY_CHECKSUM_VERIFIED_MIGRATIONS`; the workflow then verifies the exact migration-file SHA-256 against `public.schema_migrations` and checks the required Migration 006/007 tables, functions and triggers.
+- The connected GitHub actions do not expose a workflow-dispatch write operation in this session. Therefore the manual dispatch is a logged blocker; do not bypass the controlled workflow by applying SQL directly. Migration checksum and Neon object verification remain pending until the workflow completes successfully.
+
+## Materialization gate
+
+Canonical materialization remains blocked until the controlled Migration 007 workflow reports success and its checksum/object verification is inspected. After that, materialization must use source-native placeholders and preserve unresolved mappings as `REVIEW_REQUIRED`; the America MG / América Mineiro pair must remain separate and flagged. No human review may be fabricated. The 374 imported observations remain non-PIT-certified and excluded from pre-match features.
