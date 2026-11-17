@@ -12,9 +12,9 @@
 
 - `main` is at dashboard commit `c23dc52f8c267236aa1ccf0c9234ab85515054aa`. Android CI compiled the dashboard and uploaded the debug APK. The six-screen dashboard still contains sample data; runtime testing and backend integration are deferred until the proper application stage.
 - Current execution remains Stage 1 canonical data foundation. No Android integration work is being performed in this stage.
-- Existing branch `stage1/canonical-entity-schema-007-20261117` contains initial Migration 007 work at commit `d07478223511bb4a1079c2ae95dc7b53fbdc8a4e`. The migration is under review and has not been merged or applied to Neon.
+- Existing branch `stage1/canonical-entity-schema-007-20261117` contains initial Migration 007 work at commit `d07478223511bb4a1079c2ae95dc7b53fbdc8a4e`; current PR head is `b948cbd20ca3c53ea57fa17daa86e35d60ce769e`. The migration is under review and has not been merged or applied to Neon.
 - Migration 007 defines canonical teams, competitions, fixtures, source identity links, canonical fixture-source links, append-only identity review events, provenance guards and fail-closed fixture verification gates.
-- Tests, workflow verification and documentation are being extended before opening the PR. Do not claim migration 007 is validated until CI passes and the controlled database migration workflow verifies the exact checksum and objects.
+- Draft PR [#14](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/14) is open. CI is running against the branch; migration 007 remains unmerged and unapplied. Do not claim migration 007 is validated until CI passes and the controlled database migration workflow verifies the exact checksum and objects.
 - No canonical records have been materialized. The 374 imported provider fixtures remain unchanged; 370 are finished/scored and four remain UNKNOWN/scoreless.
 - `America MG` (provider ID `1102583842`) and `América Mineiro` (provider ID `3808811746`) remain separate and unresolved. No accent normalization, fuzzy matching or automatic merge is allowed.
 - All 374 imported source observations remain non-PIT-certified and excluded from pre-match features. No model training or prediction publication is enabled.
