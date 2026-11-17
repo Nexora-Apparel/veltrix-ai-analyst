@@ -10,8 +10,6 @@ from psycopg.types.json import Jsonb
 
 from app.providers.collection_plan import build_date_windows
 from app.providers.historical_import import (
-    BOUNDARY_END,
-    BOUNDARY_START,
     COMPETITION_ID,
     EXPECTED_DATABASE_NAME,
     PROVIDER_NAME,
