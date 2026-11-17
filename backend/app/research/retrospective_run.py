@@ -119,6 +119,23 @@ def main() -> None:
             "league_baseline_brier_1x2": report.baseline_brier_1x2,
             "league_baseline_log_loss_1x2": report.baseline_log_loss_1x2,
             "nested_tuning": report.nested_tuning,
+            "fold_metrics": [
+                {
+                    "fold_index": row.fold_index,
+                    "fixture_count": row.fixture_count,
+                    "test_start_at": row.test_start_at.isoformat(),
+                    "test_end_at": row.test_end_at.isoformat(),
+                    "brier_1x2": row.brier_1x2,
+                    "log_loss_1x2": row.log_loss_1x2,
+                    "baseline_brier_1x2": row.baseline_brier_1x2,
+                    "baseline_log_loss_1x2": row.baseline_log_loss_1x2,
+                    "mean_scoreline_log_loss": row.mean_scoreline_log_loss,
+                    "half_life_days": row.half_life_days,
+                    "ridge": row.ridge,
+                    "rho": row.rho,
+                }
+                for row in report.fold_metrics
+            ],
             "selected_parameters_by_fold": [
                 {
                     "half_life_days": values[0],
