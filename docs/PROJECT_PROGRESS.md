@@ -19,8 +19,8 @@
 - [x] CBF official report confirms all 10 Round 38 results; those results are reconciliation evidence only and have not been inserted into Neon.
 - [x] Four UNKNOWN rows remain scoreless duplicate/stale candidates; America MG identity collision and all 28 review cases remain human-pending.
 - [x] PIT audit remains fail-closed: 374 observations, 374 sightings, zero PIT-certifiable. No pre-match feature promotion or model training.
-- [ ] Final 10 Round 38 fixtures must be imported through a dedicated bounded 5Dollar ingestion path. The current historical importer hard-codes the 2026-03-21 to 2026-11-09 interval; add and CI-validate a separate incremental path, then manually dispatch it. This session cannot dispatch GitHub Actions workflow events.
-- **Stage 2 status: close-ready, pending the manual Round 38 incremental import.** Human identity review and PIT-source qualification remain explicit gates; they do not justify unsafe auto-merges or feature promotion.
+- [ ] Final 10 Round 38 fixtures must be imported through the dedicated bounded 5Dollar ingestion path in [PR #20](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/20). The path now accepts timezone-aware half-open intervals, validates against the persisted run envelope, and caps this import at four requests. It must pass CI, merge, then be manually dispatched; this session cannot dispatch GitHub Actions workflow events.
+- **Stage 2 status: close-ready, pending PR #20 CI/merge and the manual Round 38 incremental import.** Human identity review and PIT-source qualification remain explicit gates; they do not justify unsafe auto-merges or feature promotion.
 - Detailed evidence and exact final-round results: [Stage 2 closure audit](ledger/2026-11-17-stage-2-closure-audit.md).
 
 ## Historical checkpoint — canonical materialization and identity/coverage audit (2026-11-17)
