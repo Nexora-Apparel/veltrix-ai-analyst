@@ -16,6 +16,7 @@ from app.models.attack_defence import GoalResult, fit_attack_defence
 from app.models.scoreline import build_scoreline_distribution
 from app.validation.bootstrap import PairedFoldBootstrap, paired_fold_block_bootstrap
 from app.validation.calibration import multiclass_calibration_diagnostics
+from app.validation.temperature_scaling import apply_temperature, fit_temperature
 from app.validation.tuning import tune_attack_defence
 
 
@@ -35,6 +36,12 @@ class RetrospectiveFoldMetrics:
     rho: float
     classwise_ece: float
     top_label_ece: float
+    calibrated_brier_1x2: float
+    calibrated_log_loss_1x2: float
+    calibrated_classwise_ece: float
+    calibrated_top_label_ece: float
+    temperature: float
+    calibration_samples: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +56,11 @@ class RetrospectivePrediction:
     home_win: float
     draw: float
     away_win: float
+    calibrated_home_win: float
+    calibrated_draw: float
+    calibrated_away_win: float
+    temperature: float
+    calibration_samples: int
     scoreline_probability: float
     half_life_days: float
     ridge: float
@@ -69,6 +81,10 @@ class RetrospectiveReport:
     baseline_log_loss_1x2: float
     classwise_ece: float
     top_label_ece: float
+    calibrated_brier_1x2: float
+    calibrated_log_loss_1x2: float
+    calibrated_classwise_ece: float
+    calibrated_top_label_ece: float
     nested_tuning: bool
     selected_parameters: tuple[tuple[float, float, float], ...]
     fold_metrics: tuple[RetrospectiveFoldMetrics, ...]
@@ -84,6 +100,62 @@ def _groups(rows: list[GoalResult]) -> list[list[GoalResult]]:
         else:
             groups[-1].append(row)
     return groups
+
+
+def _inner_calibration_data(
+    rows: list[GoalResult],
+    *,
+    half_life_days: float,
+    ridge: float,
+    rho: float,
+    min_train_fixtures: int = 35,
+    test_window_fixtures: int = 10,
+) -> tuple[list[tuple[float, float, float]], list[int]]:
+    """Build chronological inner-OOF probabilities strictly inside outer training."""
+    groups = _groups(rows)
+    train: list[GoalResult] = []
+    probabilities: list[tuple[float, float, float]] = []
+    outcomes: list[int] = []
+    index = 0
+    while index < len(groups):
+        batch: list[GoalResult] = []
+        while index < len(groups) and len(batch) < test_window_fixtures:
+            batch.extend(groups[index])
+            index += 1
+        if len(train) < min_train_fixtures:
+            train.extend(batch)
+            continue
+        cutoff = batch[0].kickoff_at
+        calibration_probabilities, calibration_outcomes = _inner_calibration_data(
+            train, half_life_days=selected_half_life, ridge=selected_ridge, rho=selected_rho
+        )
+        temperature = 1.0
+        calibration_samples = len(calibration_probabilities)
+        if calibration_samples >= 30:
+            temperature = fit_temperature(
+                calibration_probabilities, calibration_outcomes, min_samples=30
+            ).temperature
+        model = fit_attack_defence(
+            train,
+            as_of=cutoff,
+            half_life_days=half_life_days,
+            ridge=ridge,
+            max_iterations=1200,
+        )
+        for target in batch:
+            rates = model.predict(target.home_team, target.away_team)
+            distribution = build_scoreline_distribution(
+                rates.home_lambda, rates.away_lambda, rho=rho, max_goals=12
+            )
+            probabilities.append((
+                distribution.home_win, distribution.draw, distribution.away_win
+            ))
+            outcomes.append(
+                0 if target.home_goals > target.away_goals
+                else 1 if target.home_goals == target.away_goals else 2
+            )
+        train.extend(batch)
+    return probabilities, outcomes
 
 
 def evaluate_retrospective(
@@ -158,6 +230,10 @@ def evaluate_retrospective(
                 if target.home_goals <= max_goals and target.away_goals <= max_goals
                 else 0.0
             )
+            calibrated = apply_temperature(
+                [(distribution.home_win, distribution.draw, distribution.away_win)],
+                temperature,
+            )[0]
             predictions.append(RetrospectivePrediction(
                 fixture_id=target.fixture_id,
                 fold_index=folds,
@@ -169,6 +245,11 @@ def evaluate_retrospective(
                 home_win=distribution.home_win,
                 draw=distribution.draw,
                 away_win=distribution.away_win,
+                calibrated_home_win=calibrated[0],
+                calibrated_draw=calibrated[1],
+                calibrated_away_win=calibrated[2],
+                temperature=temperature,
+                calibration_samples=calibration_samples,
                 scoreline_probability=score_probability,
                 half_life_days=selected_half_life,
                 ridge=selected_ridge,
@@ -238,6 +319,27 @@ def evaluate_retrospective(
         ))
         baseline_log_losses.append(-log(max(1e-15, probabilities[actual])))
 
+    calibrated_probabilities = [
+        (row.calibrated_home_win, row.calibrated_draw, row.calibrated_away_win)
+        for row in predictions
+    ]
+    calibrated_brier_values = []
+    calibrated_log_losses = []
+    for row, probs in zip(predictions, calibrated_probabilities):
+        actual = 0 if row.actual_home_goals > row.actual_away_goals else (
+            1 if row.actual_home_goals == row.actual_away_goals else 2
+        )
+        calibrated_brier_values.append(sum(
+            (probability - (1.0 if i == actual else 0.0)) ** 2
+            for i, probability in enumerate(probs)
+        ))
+        calibrated_log_losses.append(-log(max(1e-15, probs[actual])))
+    calibrated_overall = multiclass_calibration_diagnostics(
+        calibrated_probabilities,
+        [0 if row.actual_home_goals > row.actual_away_goals else (
+            1 if row.actual_home_goals == row.actual_away_goals else 2
+        ) for row in predictions],
+    )
     overall_calibration = multiclass_calibration_diagnostics(
         [(row.home_win, row.draw, row.away_win) for row in predictions],
         [0 if row.actual_home_goals > row.actual_away_goals else (
@@ -252,6 +354,8 @@ def evaluate_retrospective(
         fold_baseline_brier: list[float] = []
         fold_baseline_log_loss: list[float] = []
         fold_scoreline_loss: list[float] = []
+        fold_calibrated_brier: list[float] = []
+        fold_calibrated_log_loss: list[float] = []
         for row in fold_rows:
             probs = (row.home_win, row.draw, row.away_win)
             actual = 0 if row.actual_home_goals > row.actual_away_goals else (
@@ -262,6 +366,14 @@ def evaluate_retrospective(
                 for i, probability in enumerate(probs)
             ))
             fold_log_loss.append(-log(max(1e-15, probs[actual])))
+            calibrated_probs = (
+                row.calibrated_home_win, row.calibrated_draw, row.calibrated_away_win
+            )
+            fold_calibrated_brier.append(sum(
+                (probability - (1.0 if i == actual else 0.0)) ** 2
+                for i, probability in enumerate(calibrated_probs)
+            ))
+            fold_calibrated_log_loss.append(-log(max(1e-15, calibrated_probs[actual])))
             base_probs = baseline_predictions[row.fixture_id]
             fold_baseline_brier.append(sum(
                 (probability - (1.0 if i == actual else 0.0)) ** 2
@@ -273,6 +385,13 @@ def evaluate_retrospective(
         if not fold_rows:
             continue
         first, last = fold_rows[0], fold_rows[-1]
+        fold_calibrated_calibration = multiclass_calibration_diagnostics(
+            [(row.calibrated_home_win, row.calibrated_draw, row.calibrated_away_win)
+             for row in fold_rows],
+            [0 if row.actual_home_goals > row.actual_away_goals else (
+                1 if row.actual_home_goals == row.actual_away_goals else 2
+            ) for row in fold_rows],
+        )
         fold_calibration = multiclass_calibration_diagnostics(
             [(row.home_win, row.draw, row.away_win) for row in fold_rows],
             [0 if row.actual_home_goals > row.actual_away_goals else (
@@ -297,6 +416,12 @@ def evaluate_retrospective(
             rho=first.rho,
             classwise_ece=fold_calibration.classwise_ece,
             top_label_ece=fold_calibration.top_label_ece,
+            calibrated_brier_1x2=sum(fold_calibrated_brier) / len(fold_calibrated_brier),
+            calibrated_log_loss_1x2=sum(fold_calibrated_log_loss) / len(fold_calibrated_log_loss),
+            calibrated_classwise_ece=fold_calibrated_calibration.classwise_ece,
+            calibrated_top_label_ece=fold_calibrated_calibration.top_label_ece,
+            temperature=first.temperature,
+            calibration_samples=first.calibration_samples,
         ))
 
     return RetrospectiveReport(
@@ -314,6 +439,10 @@ def evaluate_retrospective(
         baseline_log_loss_1x2=sum(baseline_log_losses) / len(baseline_log_losses),
         classwise_ece=overall_calibration.classwise_ece,
         top_label_ece=overall_calibration.top_label_ece,
+        calibrated_brier_1x2=sum(calibrated_brier_values) / len(calibrated_brier_values),
+        calibrated_log_loss_1x2=sum(calibrated_log_losses) / len(calibrated_log_losses),
+        calibrated_classwise_ece=calibrated_overall.classwise_ece,
+        calibrated_top_label_ece=calibrated_overall.top_label_ece,
         nested_tuning=nested_tuning,
         selected_parameters=tuple(selected_parameters),
         fold_metrics=tuple(fold_metrics),
