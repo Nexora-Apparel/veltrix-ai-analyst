@@ -114,6 +114,8 @@ def main() -> None:
             "brier_1x2": report.brier_1x2,
             "log_loss_1x2": report.log_loss_1x2,
             "mean_scoreline_log_loss": report.mean_scoreline_log_loss,
+            "league_baseline_brier_1x2": report.baseline_brier_1x2,
+            "league_baseline_log_loss_1x2": report.baseline_log_loss_1x2,
         },
         "predictions": [
             {

@@ -34,6 +34,8 @@ def test_retrospective_evaluation_uses_only_prior_event_time_results():
     assert report.fold_count > 0
     assert 0 <= report.brier_1x2 <= 2
     assert report.log_loss_1x2 > 0
+    assert 0 <= report.baseline_brier_1x2 <= 2
+    assert report.baseline_log_loss_1x2 > 0
 
 
 def test_simultaneous_kickoff_batch_never_splits_between_train_and_test():

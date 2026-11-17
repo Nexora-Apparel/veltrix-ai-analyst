@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from math import log
+from math import exp, log
 
 from app.models.attack_defence import GoalResult, fit_attack_defence
 from app.models.scoreline import build_scoreline_distribution
@@ -40,6 +40,8 @@ class RetrospectiveReport:
     brier_1x2: float
     log_loss_1x2: float
     mean_scoreline_log_loss: float
+    baseline_brier_1x2: float
+    baseline_log_loss_1x2: float
     predictions: tuple[RetrospectivePrediction, ...]
 
 
@@ -126,6 +128,8 @@ def evaluate_retrospective(
     brier_values: list[float] = []
     log_losses: list[float] = []
     scoreline_losses: list[float] = []
+    baseline_brier_values: list[float] = []
+    baseline_log_losses: list[float] = []
     for prediction in predictions:
         probabilities = (prediction.home_win, prediction.draw, prediction.away_win)
         actual = 0 if prediction.actual_home_goals > prediction.actual_away_goals else (
@@ -139,6 +143,48 @@ def evaluate_retrospective(
         if prediction.scoreline_probability > 0:
             scoreline_losses.append(-log(prediction.scoreline_probability))
 
+    # Same-fold, recency-weighted league baseline: no team-specific effects.
+    train = []
+    baseline_predictions: dict[str, tuple[float, float, float]] = {}
+    index = 0
+    while index < len(groups):
+        batch: list[GoalResult] = []
+        while index < len(groups) and len(batch) < test_window_fixtures:
+            batch.extend(groups[index])
+            index += 1
+        if len(train) < min_train_fixtures:
+            train.extend(batch)
+            continue
+        cutoff = batch[0].kickoff_at
+        weights = [
+            exp(-0.6931471805599453 * max(0.0, (cutoff-row.kickoff_at).total_seconds()/86400) / half_life_days)
+            for row in train
+        ]
+        weight_sum = max(1e-12, sum(weights))
+        home_rate = max(0.05, sum(w*r.home_goals for w, r in zip(weights, train)) / weight_sum)
+        away_rate = max(0.05, sum(w*r.away_goals for w, r in zip(weights, train)) / weight_sum)
+        baseline_distribution = build_scoreline_distribution(
+            home_rate, away_rate, rho=0.0, max_goals=max_goals
+        )
+        for target in batch:
+            baseline_predictions[target.fixture_id] = (
+                baseline_distribution.home_win,
+                baseline_distribution.draw,
+                baseline_distribution.away_win,
+            )
+        train.extend(batch)
+
+    for prediction in predictions:
+        probabilities = baseline_predictions[prediction.fixture_id]
+        actual = 0 if prediction.actual_home_goals > prediction.actual_away_goals else (
+            1 if prediction.actual_home_goals == prediction.actual_away_goals else 2
+        )
+        baseline_brier_values.append(sum(
+            (probability - (1.0 if i == actual else 0.0)) ** 2
+            for i, probability in enumerate(probabilities)
+        ))
+        baseline_log_losses.append(-log(max(1e-15, probabilities[actual])))
+
     return RetrospectiveReport(
         evaluation_type="RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED",
         training_fixtures=len(rows) - len(predictions),
@@ -150,5 +196,7 @@ def evaluate_retrospective(
         mean_scoreline_log_loss=(
             sum(scoreline_losses) / len(scoreline_losses) if scoreline_losses else float("inf")
         ),
+        baseline_brier_1x2=sum(baseline_brier_values) / len(baseline_brier_values),
+        baseline_log_loss_1x2=sum(baseline_log_losses) / len(baseline_log_losses),
         predictions=tuple(predictions),
     )

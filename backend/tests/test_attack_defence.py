@@ -53,3 +53,27 @@ def test_unknown_team_is_not_silently_given_a_prior():
     model = fit_attack_defence([row("x", 1, "A", "B", 1, 0)])
     with pytest.raises(KeyError):
         model.predict("A", "C")
+
+
+def test_stronger_ridge_penalty_shrinks_team_effects():
+    teams = ("A", "B", "C", "D")
+    rows = [
+        row(
+            f"ridge-{day}",
+            day + 1,
+            teams[day % 4],
+            teams[(day + 1) % 4],
+            3 if day % 5 == 0 else day % 2,
+            0 if day % 4 else 2,
+        )
+        for day in range(40)
+    ]
+    weak = fit_attack_defence(rows, ridge=0.001, max_iterations=2500)
+    strong = fit_attack_defence(rows, ridge=20.0, max_iterations=2500)
+    weak_effect = sum(abs(v) for v in weak.attack.values()) + sum(
+        abs(v) for v in weak.defence.values()
+    )
+    strong_effect = sum(abs(v) for v in strong.attack.values()) + sum(
+        abs(v) for v in strong.defence.values()
+    )
+    assert strong_effect < weak_effect

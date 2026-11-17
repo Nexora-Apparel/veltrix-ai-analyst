@@ -128,8 +128,12 @@ def fit_attack_defence(
             grad_d[h] -= err_a
         scale = 1.0 / max(1.0, total_weight)
         gradients = [g * scale for g in (grad_mu, grad_home)]
-        gradients.extend(g * scale for g in grad_a)
-        gradients.extend(g * scale for g in grad_d)
+        gradients.extend(
+            g * scale + ridge * value for g, value in zip(grad_a, attack)
+        )
+        gradients.extend(
+            g * scale + ridge * value for g, value in zip(grad_d, defence)
+        )
         if not all(isfinite(g) for g in gradients):
             raise ArithmeticError("non-finite optimizer gradient")
         if max(abs(g) for g in gradients) < tolerance:
