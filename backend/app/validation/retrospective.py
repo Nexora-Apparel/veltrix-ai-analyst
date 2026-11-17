@@ -43,6 +43,7 @@ class RetrospectiveReport:
     baseline_brier_1x2: float
     baseline_log_loss_1x2: float
     predictions: tuple[RetrospectivePrediction, ...]
+    selected_parameters: tuple[tuple[float, float, float], ...] = ()
 
 
 def _groups(rows: list[GoalResult]) -> list[list[GoalResult]]:
@@ -55,6 +56,80 @@ def _groups(rows: list[GoalResult]) -> list[list[GoalResult]]:
     return groups
 
 
+
+def _select_inner_parameters(
+    training: list[GoalResult],
+    *,
+    max_goals: int,
+) -> tuple[float, float, float]:
+    """Select half-life, ridge and Dixon-Coles rho from inner prequential folds."""
+    if len(training) < 100:
+        return 180.0, 0.08, 0.0
+    inner_min_train = max(40, min(80, len(training) // 2))
+    best: tuple[float, float, float, float] | None = None
+    for half_life in (90.0, 180.0, 365.0):
+        for ridge in (0.02, 0.08, 0.2):
+            try:
+                inner = evaluate_retrospective(
+                    training,
+                    min_train_fixtures=inner_min_train,
+                    test_window_fixtures=20,
+                    half_life_days=half_life,
+                    ridge=ridge,
+                    rho=0.0,
+                    max_goals=max_goals,
+                    tune=False,
+                )
+            except ValueError:
+                continue
+            if not inner.predictions:
+                continue
+            for rho in (-0.12, -0.08, -0.04, 0.0, 0.04, 0.08, 0.12):
+                log_losses: list[float] = []
+                scoreline_losses: list[float] = []
+                for prediction in inner.predictions:
+                    distribution = build_scoreline_distribution(
+                        prediction.home_lambda,
+                        prediction.away_lambda,
+                        rho=rho,
+                        max_goals=max_goals,
+                    )
+                    probabilities = (
+                        distribution.home_win,
+                        distribution.draw,
+                        distribution.away_win,
+                    )
+                    actual = (
+                        0 if prediction.actual_home_goals > prediction.actual_away_goals
+                        else 1 if prediction.actual_home_goals == prediction.actual_away_goals
+                        else 2
+                    )
+                    log_losses.append(-log(max(1e-15, probabilities[actual])))
+                    if (
+                        prediction.actual_home_goals <= max_goals
+                        and prediction.actual_away_goals <= max_goals
+                    ):
+                        score_probability = distribution.probabilities[
+                            prediction.actual_home_goals
+                        ][prediction.actual_away_goals]
+                    else:
+                        score_probability = 1e-15
+                    scoreline_losses.append(-log(max(1e-15, score_probability)))
+                objective = (
+                    sum(log_losses) / len(log_losses)
+                    + 0.10 * sum(scoreline_losses) / len(scoreline_losses)
+                    + 0.002 * abs(log(half_life / 180.0))
+                    + 0.002 * abs(log(ridge / 0.08))
+                    + 0.001 * abs(rho)
+                )
+                candidate = (objective, half_life, ridge, rho)
+                if best is None or candidate < best:
+                    best = candidate
+    if best is None:
+        return 180.0, 0.08, 0.0
+    return best[1], best[2], best[3]
+
+
 def evaluate_retrospective(
     results: Iterable[GoalResult],
     *,
@@ -64,6 +139,7 @@ def evaluate_retrospective(
     ridge: float = 0.08,
     rho: float = 0.0,
     max_goals: int = 12,
+    tune: bool = False,
 ) -> RetrospectiveReport:
     """Expanding event-time evaluation with simultaneous-kickoff isolation."""
     rows = list(results)
@@ -77,6 +153,7 @@ def evaluate_retrospective(
     groups = _groups(rows)
     train: list[GoalResult] = []
     predictions: list[RetrospectivePrediction] = []
+    selected_parameters: list[tuple[float, float, float]] = []
     folds = 0
     index = 0
     while index < len(groups):
@@ -88,11 +165,16 @@ def evaluate_retrospective(
             train.extend(batch)
             continue
         cutoff = batch[0].kickoff_at
+        fold_half_life, fold_ridge, fold_rho = (
+            _select_inner_parameters(train, max_goals=max_goals)
+            if tune else (half_life_days, ridge, rho)
+        )
+        selected_parameters.append((fold_half_life, fold_ridge, fold_rho))
         model = fit_attack_defence(
             train,
             as_of=cutoff,
-            half_life_days=half_life_days,
-            ridge=ridge,
+            half_life_days=fold_half_life,
+            ridge=fold_ridge,
             max_iterations=1200,
         )
         folds += 1
@@ -101,7 +183,7 @@ def evaluate_retrospective(
             distribution = build_scoreline_distribution(
                 rates.home_lambda,
                 rates.away_lambda,
-                rho=rho,
+                rho=fold_rho,
                 max_goals=max_goals,
             )
             score_probability = (
@@ -146,6 +228,7 @@ def evaluate_retrospective(
     # Same-fold, recency-weighted league baseline: no team-specific effects.
     train = []
     baseline_predictions: dict[str, tuple[float, float, float]] = {}
+    baseline_fold_index = 0
     index = 0
     while index < len(groups):
         batch: list[GoalResult] = []
@@ -156,8 +239,10 @@ def evaluate_retrospective(
             train.extend(batch)
             continue
         cutoff = batch[0].kickoff_at
+        fold_half_life = selected_parameters[baseline_fold_index][0]
+        baseline_fold_index += 1
         weights = [
-            exp(-0.6931471805599453 * max(0.0, (cutoff-row.kickoff_at).total_seconds()/86400) / half_life_days)
+            exp(-0.6931471805599453 * max(0.0, (cutoff-row.kickoff_at).total_seconds()/86400) / fold_half_life)
             for row in train
         ]
         weight_sum = max(1e-12, sum(weights))
@@ -199,4 +284,5 @@ def evaluate_retrospective(
         baseline_brier_1x2=sum(baseline_brier_values) / len(baseline_brier_values),
         baseline_log_loss_1x2=sum(baseline_log_losses) / len(baseline_log_losses),
         predictions=tuple(predictions),
+        selected_parameters=tuple(selected_parameters),
     )
