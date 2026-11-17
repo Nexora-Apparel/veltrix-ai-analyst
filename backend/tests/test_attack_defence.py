@@ -1,6 +1,5 @@
-from datetime import UTC, datetime, timedelta
-
 import pytest
+from datetime import UTC, datetime, timedelta
 
 from app.models.attack_defence import GoalResult, fit_attack_defence
 
