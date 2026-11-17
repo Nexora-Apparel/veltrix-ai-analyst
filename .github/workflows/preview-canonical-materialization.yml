@@ -1,0 +1,44 @@
+name: Preview canonical materialization
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_preview:
+        description: Type PREVIEW_BRAZIL_SERIE_B_RUN_3 to run a read-only production preview
+        required: true
+        type: choice
+        options:
+          - NO
+          - PREVIEW_BRAZIL_SERIE_B_RUN_3
+        default: NO
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-ai-analyst-canonical-preview
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    if: inputs.confirm_preview == 'PREVIEW_BRAZIL_SERIE_B_RUN_3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: veltrix-historical-import
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install preview runner
+        run: python -m pip install -e .
+      - name: Build read-only canonical materialization plan
+        run: python scripts/preview_canonical_materialization.py

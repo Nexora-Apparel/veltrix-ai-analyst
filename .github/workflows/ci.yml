@@ -65,7 +65,7 @@ jobs:
       - name: Run tests
         run: pytest
       - name: Run lint
-        run: ruff check app tests ../scripts/verify_5dollar_access.py ../scripts/collect_aimidas_brazil_serie_b_snapshot.py ../scripts/apply_migrations.py ../scripts/collect_brazil_serie_b_history.py ../scripts/validate_brazil_serie_b_import.py
+        run: ruff check app tests ../scripts/verify_5dollar_access.py ../scripts/collect_aimidas_brazil_serie_b_snapshot.py ../scripts/apply_migrations.py ../scripts/collect_brazil_serie_b_history.py ../scripts/validate_brazil_serie_b_import.py scripts/preview_canonical_materialization.py
 
   android:
     name: Android debug build
