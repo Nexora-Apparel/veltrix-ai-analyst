@@ -35,4 +35,4 @@ def test_final_training_artifact_is_research_only_and_keeps_models_separate():
     assert artifact["deployment_status"] == "RESEARCH_ARTIFACT_ONLY"
     assert artifact["primary_model"]["family"] == "RECENCY_WEIGHTED_ATTACK_DEFENCE_POISSON"
     assert artifact["elo_comparator"]["status"] == "RETAINED_FOR_RESEARCH_NOT_SELECTED_FOR_ENSEMBLE"
-    assert artifact["dixon_coles"]["status"] == "NOT_CALIBRATED; INDEPENDENT_POISSON_BASELINE"
+    assert artifact["dixon_coles"]["status"] == "INSUFFICIENT_INNER_FOLDS; DEFAULT_RHO_ZERO"
