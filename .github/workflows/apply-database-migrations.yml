@@ -121,6 +121,9 @@ jobs:
                       "canonical_fixture_duplicate_case_audit",
                       "canonical_competition_identity_provenance_audit",
                       "canonical_fixture_source_provenance_audit",
+                      "canonical_team_alias_case_audit",
+                      "effective_canonical_team_aliases",
+                      "effective_canonical_fixture_deduplication",
                   ],
                   "functions": [],
                   "triggers": [
@@ -240,7 +243,20 @@ jobs:
               ).fetchone()
               if audit_counts != (21, 1, 374, 4):
                   raise SystemExit(f"CANONICAL_PROVENANCE_AUDIT_COUNTS_MISMATCH:{audit_counts}")
+
+              resolution_counts = connection.execute(
+                  """
+                  SELECT
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.effective_canonical_team_aliases),
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.effective_canonical_fixture_deduplication),
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.effective_canonical_identity_review_cases
+                     WHERE effective_case_status = 'HUMAN_REVIEW_REQUIRED')
+                  """
+              ).fetchone()
+              if resolution_counts != (0, 0, 28):
+                  raise SystemExit(f"IDENTITY_HUMAN_REVIEW_GATE_MISMATCH:{resolution_counts}")
               print("IDENTITY_REVIEW_CASES_VERIFIED: 28")
+              print("HUMAN_REVIEW_GATE_VERIFIED: no aliases or duplicate exclusions activated")
               print("CANONICAL_PROVENANCE_AUDIT_VERIFIED: 21 teams, 1 competition, 374 fixtures")
               print("OFFICIAL_DUPLICATE_CASES_VERIFIED: 4")
           PY
