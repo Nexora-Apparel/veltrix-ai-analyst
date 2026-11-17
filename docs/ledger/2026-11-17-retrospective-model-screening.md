@@ -193,3 +193,19 @@ Both exploratory intervals are below zero, consistent with the nested-v2 model o
 PR [#40](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/40) merged as `43f393e632c026f33cb3fbee752523b701f07719`. It adds an evaluator that runs fixed-v1 and nested-v2 on the same chronological outer folds, rejects fixture/fold mismatches, and reports paired fold-block intervals for Brier and log loss. The private research workflow now runs this matched comparison before artifact persistence.
 
 PR #40 also adds a tested scalar multiclass temperature-scaling utility. At merge time it was not yet integrated into the outer-fold evaluator. Calibration integration is being developed separately and must fit each fold's temperature only from inner out-of-fold predictions contained within that fold's training history; outer test labels remain excluded.
+
+
+## Fold-contained temperature calibration implementation — merged 2026-11-17
+
+PR [#41](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/41) passed exact-head backend tests/Ruff and Android debug build and was squash-merged as `bbf15e699e072f119c8337575234a46b3e17bf27`.
+
+The retrospective evaluator now:
+- Generates chronological inner-OOF 1X2 probabilities from each outer fold's training history.
+- Fits a scalar multiclass temperature using inner-OOF log loss only when at least 30 inner-OOF predictions are available; otherwise uses identity temperature (1.0).
+- Applies that temperature to the untouched outer-fold probabilities.
+- Reports raw and calibrated Brier, log loss, classwise ECE and top-label ECE, plus per-fold temperature and calibration sample count.
+- Extends matched v1/v2 comparison to include calibrated metrics and paired fold-block intervals.
+
+The outer test labels are not used to fit temperature. The calibration base predictions are generated in event-time order from earlier training results. This remains retrospective event-time evaluation, not PIT certification.
+
+**Evaluation status at merge:** implementation and CI are verified; calibrated outer-fold performance has not yet been run or accepted. A post-merge matched evaluation is required before claiming calibration improves accuracy. Temperature scaling can improve log loss while worsening Brier or ECE; all metrics must be reviewed together.
