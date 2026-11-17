@@ -190,4 +190,57 @@ jobs:
                   if trigger_count != len(expected["triggers"]):
                       raise SystemExit(f"MIGRATION_TRIGGER_VERIFICATION_FAILED:{filename}")
                   print(f"{filename} VERIFIED: {checksum}")
+
+              expected_case_counts = {
+                  "TEAM_REAL_WORLD_IDENTITY_CANDIDATE": 20,
+                  "TEAM_ALIAS_CANDIDATE": 1,
+                  "COMPETITION_REAL_WORLD_IDENTITY_CANDIDATE": 1,
+                  "FIXTURE_DUPLICATE_CANDIDATE": 4,
+                  "SEASON_COVERAGE_RECONCILIATION": 1,
+                  "PIT_TIMESTAMP_GAP": 1,
+              }
+              actual_case_counts = dict(connection.execute(
+                  """
+                  SELECT case_type, COUNT(*)
+                  FROM veltrix_ai_analyst.canonical_identity_review_cases
+                  WHERE case_key LIKE 'BRAZIL_SERIE_B_RUN_3_%'
+                  GROUP BY case_type
+                  """
+              ).fetchall())
+              if actual_case_counts != expected_case_counts:
+                  raise SystemExit(
+                      f"IDENTITY_REVIEW_CASE_COUNTS_MISMATCH:{actual_case_counts}"
+                  )
+
+              event_count = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM veltrix_ai_analyst.canonical_identity_review_case_events event
+                  JOIN veltrix_ai_analyst.canonical_identity_review_cases review_case
+                    ON review_case.id = event.case_id
+                  WHERE review_case.case_key LIKE 'BRAZIL_SERIE_B_RUN_3_%'
+                    AND event.event_type = 'AUTOMATED_RECOMMENDATION'
+                    AND event.reviewer_type = 'AUTOMATED_SYSTEM'
+              """
+              ).fetchone()[0]
+              if event_count != 28:
+                  raise SystemExit(f"IDENTITY_REVIEW_RECOMMENDATION_COUNT_MISMATCH:{event_count}")
+
+              audit_counts = connection.execute(
+                  """
+                  SELECT
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_team_identity_provenance_audit
+                     WHERE source_identity_provenance_status = 'PROVENANCE_VERIFIED'),
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_competition_identity_provenance_audit
+                     WHERE source_identity_provenance_status = 'PROVENANCE_VERIFIED'),
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_fixture_source_provenance_audit
+                     WHERE source_fixture_provenance_status = 'PROVENANCE_VERIFIED'),
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_fixture_duplicate_case_audit)
+                  """
+              ).fetchone()
+              if audit_counts != (21, 1, 374, 4):
+                  raise SystemExit(f"CANONICAL_PROVENANCE_AUDIT_COUNTS_MISMATCH:{audit_counts}")
+              print("IDENTITY_REVIEW_CASES_VERIFIED: 28")
+              print("CANONICAL_PROVENANCE_AUDIT_VERIFIED: 21 teams, 1 competition, 374 fixtures")
+              print("OFFICIAL_DUPLICATE_CASES_VERIFIED: 4")
           PY
