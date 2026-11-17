@@ -106,3 +106,41 @@ The successful v2 training run persisted:
 The selected hyperparameters match the existing defaults for half-life/ridge; the inner tuning selected rho 0.10. The v1 artifact remains immutable and preserved. The v2 artifact remains research-only and not PIT-certified.
 
 A separate nested outer walk-forward run is still in progress to evaluate whether this tuning generalizes to unseen chronological folds. Do not treat the inner OOF metrics as independent outer-test performance. No production endpoint or Android integration is enabled.
+
+
+## Nested chronological outer evaluation — completed 2026-11-17
+
+Workflow run [#44160528516](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44160528516) completed successfully on commit `5174259f072c24b9ef94d4992068f84a985217cb`. The expanding chronological evaluation ran before the idempotent v2 artifact persistence step.
+
+- Completed fixtures loaded: 380.
+- Initial training fixtures: 75.
+- Held-out fixtures: 305.
+- Outer folds: 12.
+- Simultaneous kickoff groups remained intact.
+- Nested-tuned attack/defence 1X2 Brier: **0.6124461060**.
+- Nested-tuned attack/defence 1X2 log loss: **1.0215836752**.
+- Mean scoreline log loss: **2.7313871693**.
+- Same-fold league baseline 1X2 Brier: **0.6420315331**.
+- Same-fold league baseline 1X2 log loss: **1.0633200835**.
+- Relative to the league baseline, nested tuning improved Brier by approximately **4.61%** and log loss by approximately **3.92%**.
+- Relative to the corrected fixed-parameter Python evaluation (Brier **0.6081835337**, log loss **1.0153185492**), nested tuning was worse by approximately **0.70%** Brier and **0.62%** log loss.
+
+The selected parameters varied across outer folds; they were not stable enough to establish that the full-corpus v2 settings generalize. Fold selections included half-lives of 90/180/365 days, ridge values 0.08/0.25, and rho values from -0.10 to 0.05. The final full-corpus v2 artifact was then successfully re-persisted idempotently as `v2-5790da5427a7029b9267778728386b8d`, with 380 training fixtures, 20 provider-local team IDs, cutoff `2026-11-14T19:30:00Z`, `point_in_time_certified=false`, and `RESEARCH_ARTIFACT_ONLY`.
+
+### Model selection decision
+
+- Retain v1/fixed-parameter attack/defence Poisson as the current **best research candidate** because its same-fold outer metrics are better than the nested-tuned evaluation.
+- Preserve v2 as a separate immutable research artifact; do not delete or overwrite it.
+- Do not promote v2 to champion solely because its inner tuning selected rho 0.10.
+- Elo remains a separate comparator and is not selected for an ensemble.
+- Neither artifact is production-certified, PIT-certified, calibrated against timestamped market odds, or validated across multiple competitions/seasons.
+- No production endpoint, Android prediction integration, value-bet activation, or public prediction publication is enabled.
+
+### Next model research work
+
+1. Diagnose fold-level parameter instability and compare fold-by-fold predictions, not only aggregate scores.
+2. Add probability calibration only with calibration fitted inside each training fold and assessed on untouched outer predictions.
+3. Add reliability diagrams, classwise Brier decomposition, calibration slope/intercept, and confidence intervals for paired score differences.
+4. Expand the corpus across seasons and competitions before attempting a multi-league champion.
+5. Keep Elo as a comparator until an inner-fold-selected ensemble shows repeatable outer-fold gains.
+6. Do not use the current one-season retrospective metrics as a forecast-accuracy guarantee.
