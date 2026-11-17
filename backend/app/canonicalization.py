@@ -155,7 +155,7 @@ def _load_candidates(
                source.rights_approval_id, observation.payload_sha256,
                observation.provider AS observation_provider,
                observation.source_id AS observation_source_id,
-               observation.data_type, observation.entity_type, observation.provider_entity_id,
+               observation.data_type, observation.data_type, observation.entity_type, observation.provider_entity_id,
                observation.rights_approval_id AS observation_rights_approval_id,
                provenance.source_sighting_id, provenance.provider_response_id
         FROM veltrix_ai_analyst.provider_competitions source
@@ -201,7 +201,7 @@ def _load_candidates(
                source.rights_approval_id, observation.payload_sha256,
                observation.provider AS observation_provider,
                observation.source_id AS observation_source_id,
-               observation.entity_type, observation.provider_entity_id,
+               observation.data_type, observation.entity_type, observation.provider_entity_id,
                observation.rights_approval_id AS observation_rights_approval_id,
                observation.point_in_time_certifiable,
                provenance.source_sighting_id, provenance.provider_response_id
@@ -246,7 +246,7 @@ def _load_candidates(
                source.rights_approval_id, observation.payload_sha256,
                observation.provider AS observation_provider,
                observation.source_id AS observation_source_id,
-               observation.entity_type, observation.provider_entity_id,
+               observation.data_type, observation.entity_type, observation.provider_entity_id,
                observation.rights_approval_id AS observation_rights_approval_id,
                observation.point_in_time_certifiable,
                provenance.source_sighting_id, provenance.provider_response_id
