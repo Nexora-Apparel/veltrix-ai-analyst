@@ -22,6 +22,7 @@ def fixture(
     duplicate_excluded: bool = True,
     rights_approved: bool = True,
     pit_eligible: bool = True,
+    competition_identity_verified: bool = True,
     feature_delay_minutes: int = -90,
 ) -> EvaluationFixture:
     kickoff = datetime(2026, 1, day, 15, minute, tzinfo=UTC)
@@ -38,6 +39,7 @@ def fixture(
         duplicate_excluded=duplicate_excluded,
         rights_approved=rights_approved,
         pit_eligible=pit_eligible,
+        competition_identity_verified=competition_identity_verified,
     )
 
 
@@ -99,3 +101,9 @@ def test_multiclass_proper_scores() -> None:
 def test_metrics_reject_probabilities_that_do_not_sum_to_one() -> None:
     with pytest.raises(ValueError, match="sum to one"):
         multiclass_brier_score([0], [[0.5, 0.2]])
+
+
+def test_unverified_competition_is_a_hard_exclusion_with_reason() -> None:
+    row = fixture("unverified-competition", 1, competition_identity_verified=False)
+    assert not row.eligible
+    assert "COMPETITION_IDENTITY_UNVERIFIED" in row.ineligibility_reasons
