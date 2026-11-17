@@ -55,9 +55,13 @@ def normalize_5dollar_odds(
                     raise OddsPayloadError("invalid odds timestamp, price, or line") from None
                 if tick.tzinfo is None or tick.utcoffset() is None:
                     raise OddsPayloadError("odds tick timestamp must include timezone")
-                in_play_value = outcome.get("in_play", bookmaker_row.get("in_play"))
-                if not isinstance(in_play_value, bool):
+                in_play_values = (outcome.get("in_play"), bookmaker_row.get("in_play"))
+                if any(value is not None and not isinstance(value, bool) for value in in_play_values):
                     raise OddsPayloadError("in_play must be an explicit boolean")
+                if all(value is None for value in in_play_values):
+                    raise OddsPayloadError("in_play must be an explicit boolean")
+                # Any explicit in-play signal wins; conflicting source levels fail closed.
+                in_play_value = any(value is True for value in in_play_values)
                 output.append(OddsObservation(
                     provider="5DollarFootballAPI", provider_fixture_id=provider_fixture_id,
                     bookmaker=str(bookmaker or ""), market=market,
