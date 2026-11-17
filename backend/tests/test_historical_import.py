@@ -398,3 +398,104 @@ def test_resume_replays_reserved_response_without_repeating_provider_http(
     assert checkpoint == ("COMPLETED", 1, 1, 1)
     assert fixture == ("99887766",)
     assert request_count == 1
+
+
+
+def test_incremental_import_uses_requested_window_and_small_request_budget(
+    database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
+    monkeypatch.setattr(historical_import, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    monkeypatch.setattr(historical_validation, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        start = int(request.url.params["start_time"])
+        kickoff = datetime.fromtimestamp(start + 3600, tz=UTC).isoformat()
+        fixture_id = 880000 + len(requests)
+        return httpx.Response(
+            200,
+            json={
+                "success": 1,
+                "data": [_fixture(fixture_id, kickoff)],
+                "pagination": {
+                    "page": int(request.url.params["page"]),
+                    "per_page": 100,
+                    "count": 1,
+                    "has_more": False,
+                },
+            },
+            headers={"X-Request-Id": f"round38-request-{fixture_id}"},
+        )
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-only-key",
+        transport=httpx.MockTransport(handler),
+    )
+    start = datetime(2026, 11, 9, tzinfo=UTC)
+    end = datetime(2026, 11, 17, tzinfo=UTC)
+    run_id = asyncio.run(
+        run_brazil_serie_b_historical_import(
+            database_url,
+            api_key="test-only-key",
+            execute=True,
+            approval=IMPORT_APPROVAL,
+            provider=provider,
+            boundary_start=start,
+            boundary_end=end,
+            request_budget=4,
+        )
+    )
+
+    assert len(requests) == 2
+    assert [request.url.params["start_time"] for request in requests] == [
+        str(int(start.timestamp())),
+        str(int(datetime(2026, 11, 16, tzinfo=UTC).timestamp())),
+    ]
+    assert all(request.url.params["per_page"] == "100" for request in requests)
+
+    with psycopg.connect(database_url) as connection:
+        run = connection.execute(
+            """
+            SELECT status, boundary_start, boundary_end, request_budget,
+                   requests_used, records_seen, records_inserted
+            FROM veltrix_ai_analyst.import_runs WHERE id = %s
+            """,
+            (run_id,),
+        ).fetchone()
+        report = historical_validation.validate_brazil_serie_b_import(connection, run_id)
+
+    assert run == ("COMPLETED", start, end, 4, 2, 2, 2)
+    assert report["passed"] is True
+    assert report["checkpoints"] == 2
+    assert report["fixture_sightings"] == 2
+    assert report["request_budget"] == 4
+
+
+def test_incremental_import_rejects_naive_or_oversized_boundaries(
+    database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
+    with pytest.raises(HistoricalImportError, match="IMPORT_BOUNDARIES_MUST_BE_TIMEZONE_AWARE"):
+        asyncio.run(
+            run_brazil_serie_b_historical_import(
+                database_url,
+                api_key="test-only-key",
+                execute=True,
+                boundary_start=datetime(2026, 11, 9),
+                boundary_end=datetime(2026, 11, 17, tzinfo=UTC),
+                request_budget=4,
+            )
+        )
+    with pytest.raises(HistoricalImportError, match="REQUEST_BUDGET_OUTSIDE_HARD_CAP"):
+        asyncio.run(
+            run_brazil_serie_b_historical_import(
+                database_url,
+                api_key="test-only-key",
+                execute=True,
+                boundary_start=datetime(2026, 11, 9, tzinfo=UTC),
+                boundary_end=datetime(2026, 11, 17, tzinfo=UTC),
+                request_budget=41,
+            )
+        )
