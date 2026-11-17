@@ -616,3 +616,8 @@ older progress text that conflicts with it.
 - [ ] Temperature scaling is not yet part of the evaluated outer predictions. Integration work must fit temperatures only from inner OOF predictions within each outer training window, then score untouched outer predictions.
 - **Research status:** no production model champion, PIT certification, production API, Android prediction integration, value-bet activation or public forecast publication. Current evidence remains one competition/season and retrospective event-time only.
 - Detailed metrics, bootstrap intervals, parameter instability and limitations: [Retrospective model screening ledger](ledger/2026-11-17-retrospective-model-screening.md).
+
+
+- [x] PR [#41](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/41) merged as `bbf15e699e072f119c8337575234a46b3e17bf27`; exact-head backend tests/Ruff and Android debug build passed.
+- [x] Fold-contained temperature calibration is now wired into retrospective outer-fold evaluation. Each temperature is fitted only on chronological inner-OOF predictions within that fold's training history; outer test labels are excluded. Reports now include raw and calibrated Brier/log-loss/ECE plus fold temperatures and sample counts.
+- [ ] Post-merge calibrated matched v1-v2 execution is still required. Do not claim calibration improves forecast accuracy until calibrated metrics and paired intervals are reviewed against uncalibrated results.
