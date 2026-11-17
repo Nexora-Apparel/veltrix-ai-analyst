@@ -36,31 +36,35 @@ CI workflow run [#44116261032](https://github.com/Nexora-Apparel/veltrix-ai-anal
 - Android debug build: passed.
 - APK artifact: `veltrix-ai-analyst-debug-apk`, SHA-256 `3b347e0f63dc83f992bedf3e62d12ff198b15de5f646071f73fcf8bfad6dda80`, retained until 2026-11-24.
 
-## Independent production read-only checks before execution
+## Independent production verification after execution
 
-Neon production queries confirmed:
-- 384 provider fixtures in scope.
-- 374 already-linked fixtures have exact source-observation and earliest matching source-sighting provenance.
-- Zero existing fixture source-sighting mismatches.
-- All 21 team identity links match their current source-observation and earliest matching source-sighting provenance.
-- The competition identity link matches its source-observation and earliest matching source-sighting provenance.
-- Exactly 10 fixtures are currently unlinked.
-- Review queue remains 28 cases and 28 case events.
+Workflow run [#44117463950](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44117463950), job [#134159364294](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44117463950/job/134159364294), completed successfully and emitted `CANONICAL_INCREMENTAL_COMMITTED`.
 
-These are read-only checks. The 10 canonical links have **not** yet been written.
+The runner reported:
+- Before: 21 canonical teams, one competition, 374 canonical fixtures and 374 fixture-source links.
+- After: 21 canonical teams, one competition, 384 canonical fixtures and 384 fixture-source links.
+- Ten fixtures created; 374 fixtures reused; no teams or competitions created.
+- Ten run-5 fixtures linked; zero unlinked after execution.
+- Review queue before and after: 28 cases / 28 events.
+- Zero new identity-review events, zero PIT observations promoted, zero provider requests.
 
-## Manual execution blocker
+Independent Neon post-run queries confirmed:
+- Provider fixtures: 384.
+- Canonical teams / competitions / fixtures: 21 / 1 / 384.
+- Team / competition / fixture-source links: 21 / 1 / 384.
+- Unlinked provider fixtures: zero.
+- Identity review cases / events: 28 / 28.
+- PIT feature observations: zero.
+- Exact source-observation and source-sighting provenance matches: 384 of 384.
+- Duplicate provider-fixture source links: zero.
+- Fixture-source mapping status: all 384 `REVIEW_REQUIRED`.
+- Canonical fixture completeness: all 384 `SOURCE_ROW_ONLY`.
+- Canonical fixture identity: 382 `IDENTITY_REVIEW_REQUIRED`, two `CONFLICT`.
 
-This session can inspect and update GitHub repository files but has no GitHub Actions workflow-dispatch operation. No production materialization was attempted.
-
-After confirming PR #22 is merged and the main-branch workflow is available:
-1. Open [Materialize Round 38 canonical fixtures](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/materialize-round38-canonical-incremental.yml).
-2. Select **Run workflow**.
-3. Set `confirm_materialization` to `MATERIALIZE_BRAZIL_SERIE_B_RUN_5_INCREMENTAL`.
-4. Inspect the sanitized JSON result and require `CANONICAL_INCREMENTAL_COMMITTED`.
-
-After dispatch, independently verify 21 canonical teams, one canonical competition, 384 canonical fixtures, 21 team links, one competition link, 384 fixture-source links, zero unlinked provider fixtures, and unchanged review-case/event counts (28/28). Confirm all 384 source links remain `REVIEW_REQUIRED`, all canonical fixtures remain `SOURCE_ROW_ONLY`, and no PIT features were promoted.
+No identity cases were approved or merged, no alias/reparenting/duplicate exclusion was activated, and no PIT features were promoted.
 
 ## Stage 2 exit boundary
 
-Stage 2 remains open until the manual incremental workflow succeeds and production counts are independently verified. The 28 identity cases remain human-pending. The source-publication/availability timestamp gap remains unresolved; zero PIT feature promotion and zero model training remain mandatory. Stage 3 must not start using these historical rows as pre-match training features.
+**Stage 2 is complete for historical ingestion, provenance, canonical coverage and structural reconciliation.** The 28 identity cases remain human-pending and the two America MG identity-conflict rows remain unresolved. The source-publication/availability timestamp gap remains unresolved; no PIT feature engineering or model training using these rows is permitted.
+
+The next stage may proceed with architecture/contracts and synthetic-only mathematical tests, but production training and predictions must remain gated until eligible PIT data and rights are independently established.
