@@ -77,6 +77,7 @@ def main() -> None:
     parser.add_argument("--test-window", type=int, default=25)
     parser.add_argument("--half-life-days", type=float, default=180.0)
     parser.add_argument("--ridge", type=float, default=0.08)
+    parser.add_argument("--nested-tuning", action="store_true")
     args = parser.parse_args()
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
@@ -89,6 +90,7 @@ def main() -> None:
         half_life_days=args.half_life_days,
         ridge=args.ridge,
         rho=0.0,
+        nested_tuning=args.nested_tuning,
     )
     payload = {
         "created_at": datetime.now().astimezone().isoformat(),
@@ -116,6 +118,15 @@ def main() -> None:
             "mean_scoreline_log_loss": report.mean_scoreline_log_loss,
             "league_baseline_brier_1x2": report.baseline_brier_1x2,
             "league_baseline_log_loss_1x2": report.baseline_log_loss_1x2,
+            "nested_tuning": report.nested_tuning,
+            "selected_parameters_by_fold": [
+                {
+                    "half_life_days": values[0],
+                    "ridge": values[1],
+                    "rho": values[2],
+                }
+                for values in report.selected_parameters
+            ],
         },
         "predictions": [
             {
