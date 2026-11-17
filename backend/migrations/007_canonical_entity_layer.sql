@@ -244,19 +244,18 @@ BEGIN
         WHERE existing_link.canonical_fixture_id = NEW.canonical_fixture_id
     ) AND (
         NEW.mapping_method <> 'MANUAL_EVIDENCE'
-        OR NOT EXISTS (
+        OR EXISTS (
             SELECT 1
             FROM veltrix_ai_analyst.canonical_fixture_sources existing_link
-            JOIN LATERAL (
+            LEFT JOIN LATERAL (
                 SELECT decision
                 FROM veltrix_ai_analyst.canonical_identity_review_events event
                 WHERE event.fixture_source_link_id = existing_link.id
                 ORDER BY event.reviewed_at DESC, event.id DESC
                 LIMIT 1
             ) latest_review ON TRUE
-              ON TRUE
             WHERE existing_link.canonical_fixture_id = NEW.canonical_fixture_id
-              AND latest_review.decision = 'SOURCE_FIXTURE_LINK_REVIEWED'
+              AND latest_review.decision IS DISTINCT FROM 'SOURCE_FIXTURE_LINK_REVIEWED'
         )
     ) THEN
         RAISE EXCEPTION 'CANONICAL_FIXTURE_MULTI_SOURCE_REQUIRES_REVIEW';
@@ -494,10 +493,10 @@ BEGIN
     ORDER BY link.id
     LIMIT 1;
 
-    IF source_status <> 'SOURCE_FIXTURE_LINK_REVIEWED'
-       OR competition_status NOT IN ('SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED')
-       OR home_team_status NOT IN ('SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED')
-       OR away_team_status NOT IN ('SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED') THEN
+    IF source_status IS DISTINCT FROM 'SOURCE_FIXTURE_LINK_REVIEWED'
+       OR COALESCE(competition_status, '') NOT IN ('SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED')
+       OR COALESCE(home_team_status, '') NOT IN ('SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED')
+       OR COALESCE(away_team_status, '') NOT IN ('SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED') THEN
         RAISE EXCEPTION 'CANONICAL_FIXTURE_IDENTITY_LINKS_NOT_REVIEWED';
     END IF;
 
