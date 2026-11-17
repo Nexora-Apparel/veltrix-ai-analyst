@@ -97,10 +97,10 @@ The pinned Brazil Série B snapshot remains non-commercial only, with 368 descri
 
 ## 5. Final bounded import — manual blocker
 
-The final 10 Round 38 records are not in historical import run 3 because its end boundary is 9 November. The 5Dollar historical import workflow is deliberately manual and gated. [PR #20](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/20) adds timezone-aware half-open interval parameters, enforces the existing 40-request global ceiling, and creates a dedicated Round 38 workflow with the fixed `[2026-11-09T00:00:00Z, 2026-11-17T00:00:00Z)` interval and a four-request cap. The validator now checks the actual persisted run boundaries and budget. CI must pass and the PR must merge before the workflow can be dispatched. This session cannot dispatch GitHub Actions workflow events.
+The final 10 Round 38 records are not in historical import run 3 because its end boundary is 9 November. The 5Dollar historical import workflow is deliberately manual and gated. [PR #20](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/20) has merged as `69f91a99b162804fa6a1baa8cd35d9cdc3388488`. It adds timezone-aware half-open interval parameters, enforces the existing 40-request global ceiling, and creates a dedicated Round 38 workflow with the fixed `[2026-11-09T00:00:00Z, 2026-11-17T00:00:00Z)` interval and a four-request cap. The validator checks the actual persisted run boundaries and budget. CI run [#44102095868](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44102095868) passed backend tests, Ruff and Android debug APK build. The workflow is ready for manual dispatch. This session cannot dispatch GitHub Actions workflow events.
 
 Required manual assistance:
-1. Merge [PR #20](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/20) only after backend tests, Ruff and Android build all pass.
+1. [PR #20](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/20) is merged and CI is green.
 2. Open [GitHub Actions — Controlled Brazil Serie B Round 38 Incremental Import](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/historical-brazil-serie-b-round38.yml) and dispatch with `confirm_collection=COLLECT_BRAZIL_SERIE_B_ROUND_38`. The workflow uses `[2026-11-09T00:00:00Z, 2026-11-17T00:00:00Z)` and a four-request budget.
 3. Verify the run's sanitized report and independently read-check that the 10 fixtures are ingested with provider response IDs, payload hashes, source observations and sightings; confirm there are no duplicate or rejected writes.
 
