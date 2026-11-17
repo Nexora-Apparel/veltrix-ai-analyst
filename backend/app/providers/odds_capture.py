@@ -62,7 +62,7 @@ def normalize_5dollar_odds(
                     line=line, decimal_odds=price, source_tick_at=tick,
                     retrieved_at=retrieved_at, kickoff_at=kickoff_at,
                     prediction_cutoff_at=prediction_cutoff_at,
-                    in_play=bool(outcome.get("in_play", bookmaker_row.get("in_play", False))),
+                    in_play=in_play_value,
                     source_observation_id=source_observation_id,
                     source_response_sha256=digest, rights_approval_id=rights_approval_id,
                     rights_allow_model_training=rights_allow_model_training,
