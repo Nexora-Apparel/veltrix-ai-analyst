@@ -8,6 +8,7 @@ from pydantic import Field, field_validator, model_validator
 
 from app.providers.contracts import StrictModel
 
+
 class OddsObservation(StrictModel):
     provider: str = Field(min_length=1, max_length=80)
     provider_fixture_id: str = Field(min_length=1, max_length=160)
