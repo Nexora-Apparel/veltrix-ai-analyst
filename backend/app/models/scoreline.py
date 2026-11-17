@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import exp, factorial, isfinite
+from math import exp, isfinite
 
 
 @dataclass(frozen=True, slots=True)
