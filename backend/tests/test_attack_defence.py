@@ -4,7 +4,6 @@ import pytest
 
 from app.models.attack_defence import GoalResult, fit_attack_defence
 
-
 BASE = datetime(2026, 1, 1, tzinfo=UTC)
 
 
