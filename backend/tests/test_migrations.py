@@ -201,6 +201,9 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "canonical_fixture_duplicate_case_audit",
             "canonical_competition_identity_provenance_audit",
             "canonical_fixture_source_provenance_audit",
+            "canonical_team_alias_case_audit",
+            "effective_canonical_team_aliases",
+            "effective_canonical_fixture_deduplication",
         }.issubset(tables)
 
         case_count = connection.execute(
