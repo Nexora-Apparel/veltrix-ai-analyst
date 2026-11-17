@@ -61,6 +61,10 @@ def compare_models(results):
             "nested_v2_calibrated_brier": nested_fold.calibrated_brier_1x2,
             "fixed_v1_calibrated_log_loss": fixed_fold.calibrated_log_loss_1x2,
             "nested_v2_calibrated_log_loss": nested_fold.calibrated_log_loss_1x2,
+            "fixed_v1_temperature": fixed_fold.temperature,
+            "nested_v2_temperature": nested_fold.temperature,
+            "fixed_v1_calibration_samples": fixed_fold.calibration_samples,
+            "nested_v2_calibration_samples": nested_fold.calibration_samples,
         })
 
     bootstrap = paired_fold_block_bootstrap(paired_folds)
