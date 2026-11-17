@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import inspect
-from datetime import UTC, datetime, timedelta
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import psycopg
@@ -12,7 +12,6 @@ from app.canonicalization import (
     BRAZIL_SERIE_B_RUN_3,
     CanonicalMaterializationScope,
     _identity_collision_fixture_ids,
-    build_brazil_serie_b_materialization_plan,
     materialize_brazil_serie_b_canonical_entities,
 )
 from app.db.migrations import apply_migrations
