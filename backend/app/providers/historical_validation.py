@@ -65,8 +65,10 @@ def validate_brazil_serie_b_import(
     failures: list[str] = []
     if status != "COMPLETED":
         failures.append("IMPORT_RUN_NOT_COMPLETED")
-    if (boundary_start, boundary_end) != (BOUNDARY_START, BOUNDARY_END):
-        failures.append("IMPORT_BOUNDARY_MISMATCH")
+    if boundary_start is None or boundary_end is None or boundary_end <= boundary_start:
+        failures.append("IMPORT_BOUNDARY_INVALID")
+    if request_budget < 1 or request_budget > REQUEST_BUDGET:
+        failures.append("REQUEST_BUDGET_OUTSIDE_HARD_CAP")
     if (provider, source_id) != (PROVIDER_NAME, SOURCE_ID):
         failures.append("PROVIDER_SOURCE_MISMATCH")
     if request_budget != REQUEST_BUDGET or requests_used > REQUEST_BUDGET:
@@ -104,8 +106,10 @@ def validate_brazil_serie_b_import(
         if not currently_valid:
             failures.append("RIGHTS_APPROVAL_OUTSIDE_VALIDITY")
 
-    expected_windows = build_date_windows(
-        BOUNDARY_START, BOUNDARY_END, window_days=7
+    expected_windows = (
+        build_date_windows(boundary_start, boundary_end, window_days=7)
+        if boundary_start is not None and boundary_end is not None and boundary_end > boundary_start
+        else ()
     )
     checkpoints = connection.execute(
         """
@@ -144,7 +148,7 @@ def validate_brazil_serie_b_import(
     ).fetchall()
     if len(reservations) != requests_used:
         failures.append("RESERVATION_COUNT_MISMATCH")
-    if len(reservations) > REQUEST_BUDGET:
+    if len(reservations) > int(request_budget):
         failures.append("RESERVATION_HARD_CAP_EXCEEDED")
 
     response_ids: list[int] = []
@@ -245,8 +249,8 @@ def validate_brazil_serie_b_import(
                 PROVIDER_NAME,
                 SOURCE_ID,
                 COMPETITION_ID,
-                BOUNDARY_START,
-                BOUNDARY_END,
+                boundary_start,
+                boundary_end,
             ),
         ).fetchone()[0]
         non_pit_observations = connection.execute(
@@ -288,7 +292,7 @@ def validate_brazil_serie_b_import(
             OR (f.status = 'FINISHED' AND (f.home_goals IS NULL OR f.away_goals IS NULL))
           )
         """,
-        (response_ids or [0], BOUNDARY_START, BOUNDARY_END),
+        (response_ids or [0], boundary_start, boundary_end),
     ).fetchone()[0]
     if int(bad_fixtures) != 0:
         failures.append("FIXTURE_DATA_QUALITY_FAILURE")
@@ -308,8 +312,8 @@ def validate_brazil_serie_b_import(
         "import_run_id": import_run_id,
         "database": database_name,
         "status": status,
-        "boundary_start": BOUNDARY_START.isoformat(),
-        "boundary_end": BOUNDARY_END.isoformat(),
+        "boundary_start": boundary_start.isoformat(),
+        "boundary_end": boundary_end.isoformat(),
         "request_budget": int(request_budget),
         "requests_used": int(requests_used),
         "checkpoints": len(checkpoints),
