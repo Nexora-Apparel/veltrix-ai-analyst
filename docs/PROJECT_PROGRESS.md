@@ -567,3 +567,11 @@ Execution policy:
 
 This directive is the current operating instruction and takes precedence over
 older progress text that conflicts with it.
+
+## 2026-11-17 — Retrospective model accuracy refinements
+- Team goal-rate estimation blends overall team attack/defence with venue-specific performance, using 65/35 log-space weighting and prior-match shrinkage.
+- Elo/Poisson blend weights adapt only from earlier prequential predictions after 50 observations; same-kickoff batches share one fixed weight.
+- Neon corpus extraction is explicitly read-only.
+- Regression tests cover cross-venue transfer and historical-only ensemble-weight adaptation.
+- CI run 44157297293: backend tests passed and Android build passed; Ruff findings were corrected in subsequent commits. A fresh CI run on the current branch head remains required.
+- The corpus remains available for retrospective research training under the owner's personal-use directive; outputs remain explicitly non-PIT-certified.
