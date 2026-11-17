@@ -236,7 +236,7 @@ CREATE INDEX canonical_fixture_sources_canonical_idx
 CREATE OR REPLACE FUNCTION veltrix_ai_analyst.guard_canonical_fixture_source_merge()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $
+AS $$
 BEGIN
     IF EXISTS (
         SELECT 1
@@ -262,7 +262,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$;
+$$;
 
 CREATE TRIGGER canonical_fixture_source_merge_guard
     BEFORE INSERT ON veltrix_ai_analyst.canonical_fixture_sources
