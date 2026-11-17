@@ -1,10 +1,10 @@
 """Leakage-resistant chronological walk-forward folds and proper scoring rules."""
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from math import isfinite, log
-from collections.abc import Iterable, Sequence
 
 
 @dataclass(frozen=True, slots=True)
