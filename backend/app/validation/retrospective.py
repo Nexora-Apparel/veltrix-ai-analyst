@@ -18,8 +18,25 @@ from app.validation.tuning import tune_attack_defence
 
 
 @dataclass(frozen=True, slots=True)
+class RetrospectiveFoldMetrics:
+    fold_index: int
+    fixture_count: int
+    test_start_at: datetime
+    test_end_at: datetime
+    brier_1x2: float
+    log_loss_1x2: float
+    baseline_brier_1x2: float
+    baseline_log_loss_1x2: float
+    mean_scoreline_log_loss: float
+    half_life_days: float
+    ridge: float
+    rho: float
+
+
+@dataclass(frozen=True, slots=True)
 class RetrospectivePrediction:
     fixture_id: str
+    fold_index: int
     kickoff_at: datetime
     actual_home_goals: int
     actual_away_goals: int
@@ -48,6 +65,7 @@ class RetrospectiveReport:
     baseline_log_loss_1x2: float
     nested_tuning: bool
     selected_parameters: tuple[tuple[float, float, float], ...]
+    fold_metrics: tuple[RetrospectiveFoldMetrics, ...]
     predictions: tuple[RetrospectivePrediction, ...]
 
 
@@ -135,6 +153,7 @@ def evaluate_retrospective(
             )
             predictions.append(RetrospectivePrediction(
                 fixture_id=target.fixture_id,
+                fold_index=folds,
                 kickoff_at=target.kickoff_at,
                 actual_home_goals=target.home_goals,
                 actual_away_goals=target.away_goals,
@@ -212,6 +231,53 @@ def evaluate_retrospective(
         ))
         baseline_log_losses.append(-log(max(1e-15, probabilities[actual])))
 
+    fold_metrics: list[RetrospectiveFoldMetrics] = []
+    for fold_index in range(1, folds + 1):
+        fold_rows = [row for row in predictions if row.fold_index == fold_index]
+        fold_brier: list[float] = []
+        fold_log_loss: list[float] = []
+        fold_baseline_brier: list[float] = []
+        fold_baseline_log_loss: list[float] = []
+        fold_scoreline_loss: list[float] = []
+        for row in fold_rows:
+            probs = (row.home_win, row.draw, row.away_win)
+            actual = 0 if row.actual_home_goals > row.actual_away_goals else (
+                1 if row.actual_home_goals == row.actual_away_goals else 2
+            )
+            fold_brier.append(sum(
+                (probability - (1.0 if i == actual else 0.0)) ** 2
+                for i, probability in enumerate(probs)
+            ))
+            fold_log_loss.append(-log(max(1e-15, probs[actual])))
+            base_probs = baseline_predictions[row.fixture_id]
+            fold_baseline_brier.append(sum(
+                (probability - (1.0 if i == actual else 0.0)) ** 2
+                for i, probability in enumerate(base_probs)
+            ))
+            fold_baseline_log_loss.append(-log(max(1e-15, base_probs[actual])))
+            if row.scoreline_probability > 0:
+                fold_scoreline_loss.append(-log(row.scoreline_probability))
+        if not fold_rows:
+            continue
+        first, last = fold_rows[0], fold_rows[-1]
+        fold_metrics.append(RetrospectiveFoldMetrics(
+            fold_index=fold_index,
+            fixture_count=len(fold_rows),
+            test_start_at=first.kickoff_at,
+            test_end_at=last.kickoff_at,
+            brier_1x2=sum(fold_brier) / len(fold_brier),
+            log_loss_1x2=sum(fold_log_loss) / len(fold_log_loss),
+            baseline_brier_1x2=sum(fold_baseline_brier) / len(fold_baseline_brier),
+            baseline_log_loss_1x2=sum(fold_baseline_log_loss) / len(fold_baseline_log_loss),
+            mean_scoreline_log_loss=(
+                sum(fold_scoreline_loss) / len(fold_scoreline_loss)
+                if fold_scoreline_loss else float("inf")
+            ),
+            half_life_days=first.half_life_days,
+            ridge=first.ridge,
+            rho=first.rho,
+        ))
+
     return RetrospectiveReport(
         evaluation_type="RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED",
         training_fixtures=len(rows) - len(predictions),
@@ -227,5 +293,6 @@ def evaluate_retrospective(
         baseline_log_loss_1x2=sum(baseline_log_losses) / len(baseline_log_losses),
         nested_tuning=nested_tuning,
         selected_parameters=tuple(selected_parameters),
+        fold_metrics=tuple(fold_metrics),
         predictions=tuple(predictions),
     )
