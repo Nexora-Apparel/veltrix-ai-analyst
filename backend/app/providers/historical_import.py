@@ -35,7 +35,7 @@ PROVIDER_NAME = "5DollarFootballAPI"
 BOUNDARY_START = datetime(2026, 3, 21, tzinfo=UTC)
 BOUNDARY_END = datetime(2026, 11, 9, tzinfo=UTC)
 REQUEST_BUDGET = 40
-IMPORTER_VERSION = "brazil-serie-b-resumable-v1"
+IMPORTER_VERSION = "brazil-serie-b-resumable-v2"
 IMPORT_APPROVAL = FIVEDOLLAR_COMMUNITY_APPROVAL
 SCHEMA_VERSION = "5dollar-fixture-v1"
 
