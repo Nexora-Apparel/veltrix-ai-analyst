@@ -5,7 +5,6 @@ import pytest
 from app.models.attack_defence import GoalResult
 from app.validation.retrospective import evaluate_retrospective
 
-
 BASE = datetime(2026, 1, 1, tzinfo=UTC)
 
 
