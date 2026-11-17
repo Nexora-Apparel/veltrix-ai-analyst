@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-17 (canonical entity schema PR preparation; dashboard build passed but Android integration deferred)  
+**Last updated:** 2026-11-17 (Migration 007 applied and verified; canonical materialization opened)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -425,3 +425,13 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [x] Added a PostgreSQL integration test for accepted publication evidence and rejected retrieval-only evidence.
 - [ ] CI and review pending. Migration 006 is not applied to Neon; feature pipeline remains unimplemented and all current 5Dollar records remain excluded.
 - [ ] Canonical team/competition/fixture tables and reviewed provider identity crosswalks are designed but not yet materialized. No automatic entity matching or merge is enabled.
+
+
+## Latest verified database checkpoint — Migration 007 applied
+
+- Controlled workflow [#44072112212](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44072112212) succeeded on main commit `3faf3d2ad2ceb293ce322b18ef662782426a2aaf`.
+- Migration runner applied `007_canonical_entity_layer.sql`; Migration 006 was already applied with a matching checksum.
+- Migration 007 checksum: `5503622ac57bd1875e08cf40cf1d87220cec99deb79e8fc23dd4ec6ebbffc30b`. Migration 006 checksum re-verified: `6b7b8d9385d66ec06079a9a8388b3d4f37c45da8ba6f47075166707b8831cb4f`.
+- Database name check passed for `veltrix_ai_analyst`. Seven canonical tables, four functions and ten required triggers verified by the workflow.
+- Canonical materialization is now the next stage. No canonical records were inserted during migration. Begin with dry-run/idempotency design and source provenance reconciliation. Keep the 374 source fixtures unchanged; all observations remain non-PIT-certified; America MG / América Mineiro remain unresolved; four UNKNOWN fixtures remain scoreless.
+- No provider API requests, model training or prediction publication were performed by this migration workflow.
