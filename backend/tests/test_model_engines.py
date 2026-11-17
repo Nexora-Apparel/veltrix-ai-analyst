@@ -81,3 +81,10 @@ def test_scoreline_rejects_invalid_rates_and_goal_cap() -> None:
         build_scoreline_distribution(0.0, 1.0)
     with pytest.raises(ValueError, match="at least 2"):
         build_scoreline_distribution(1.0, 1.0, max_goals=1)
+
+
+def test_elo_draw_updates_rating_against_home_advantage() -> None:
+    system = EloSystem(EloConfig(home_advantage=55))
+    system.update(result("draw-1", "A", "B", 1, 1))
+    assert system.rating("A").rating < 1500
+    assert system.rating("B").rating > 1500
