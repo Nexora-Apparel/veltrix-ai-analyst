@@ -230,6 +230,48 @@ def test_store_upserts_provider_entities_and_fixture_with_settlement_guard(conne
     )
     assert competition_row_id > 0
 
+    # A later catalogue observation must not rewrite the provenance key already
+    # referenced by canonical identity links. The new observation is stored
+    # independently; the provider projection keeps its stable original evidence.
+    later_at = now + timedelta(seconds=5)
+    later_competition = ProviderCompetition(
+        provenance=SourceProvenance(
+            provider=approval.provider,
+            provider_record_id=competition_id,
+            retrieved_at=later_at,
+        ),
+        competition_id=competition_id,
+        name="Brazil Serie B Updated",
+        country_code="BR",
+        country_name="Brazil",
+        seasons=("2026",),
+    )
+    later_observation = store.record_source_observation(
+        approval,
+        scope_value=competition_id,
+        data_type="competition_catalogue",
+        entity_type="competition",
+        provider_entity_id=competition_id,
+        schema_version="provider-competition-v1",
+        retrieved_at=later_at,
+        payload=later_competition.model_dump(mode="json"),
+    )
+    assert store.upsert_provider_competition(
+        later_competition,
+        source_id=approval.source_id,
+        source_observation_id=later_observation,
+        approval=approval,
+    ) == competition_row_id
+    saved_competition = connection.execute(
+        """
+        SELECT source_observation_id, name
+        FROM veltrix_ai_analyst.provider_competitions
+        WHERE id = %s
+        """,
+        (competition_row_id,),
+    ).fetchone()
+    assert saved_competition == (competition_observation, "Brazil Serie B Updated")
+
     for team_id, team_name in ((home_id, "Home FC"), (away_id, "Away FC")):
         team_observation = store.record_source_observation(
             approval,

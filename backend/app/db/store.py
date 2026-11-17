@@ -624,8 +624,7 @@ class PostgresIngestionStore:
                 is_popular = EXCLUDED.is_popular,
                 has_standings = EXCLUDED.has_standings,
                 last_fixture_at = EXCLUDED.last_fixture_at,
-                source_observation_id = EXCLUDED.source_observation_id,
-                rights_approval_id = EXCLUDED.rights_approval_id,
+                -- Keep the original provenance key stable for canonical identity links.
                 last_seen_at = GREATEST(
                     veltrix_ai_analyst.provider_competitions.last_seen_at,
                     EXCLUDED.last_seen_at
@@ -693,8 +692,7 @@ class PostgresIngestionStore:
             ON CONFLICT (provider, source_id, provider_team_id) DO UPDATE SET
                 name = EXCLUDED.name,
                 country_code = EXCLUDED.country_code,
-                source_observation_id = EXCLUDED.source_observation_id,
-                rights_approval_id = EXCLUDED.rights_approval_id,
+                -- Keep the original provenance key stable for canonical identity links.
                 last_seen_at = GREATEST(
                     veltrix_ai_analyst.provider_teams.last_seen_at,
                     EXCLUDED.last_seen_at
@@ -773,8 +771,7 @@ class PostgresIngestionStore:
                 away_yellow_cards = EXCLUDED.away_yellow_cards,
                 home_red_cards = EXCLUDED.home_red_cards,
                 away_red_cards = EXCLUDED.away_red_cards,
-                source_observation_id = EXCLUDED.source_observation_id,
-                rights_approval_id = EXCLUDED.rights_approval_id,
+                -- Keep the original provenance key stable for canonical identity links.
                 last_seen_at = GREATEST(
                     veltrix_ai_analyst.provider_fixtures.last_seen_at,
                     EXCLUDED.last_seen_at
