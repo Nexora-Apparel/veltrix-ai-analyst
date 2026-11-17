@@ -93,3 +93,22 @@ decision for the collected corpus. It does not change source timestamps, fixture
 identity confidence, duplicate status, label availability, or the temporal
 availability of features. In particular, no historical row becomes PIT-eligible
 merely because model-training use is authorized.
+
+
+## Explicit personal-use authorization clarification — project owner, 2026-11-17
+
+The project owner clarifies that VELTRIX AI ANALYST is for personal use only,
+that the owner authorizes use of the information/data already collected to train
+the project's model, and that separate documentary permission evidence was not
+obtained because the project is personal. Treat this as the project owner's
+express project-level authorization and do not impose a new paperwork step as a
+routine prerequisite for using the collected corpus.
+
+Operational decision: proceed with personal-use model-development work on the
+collected data under this owner authorization, while preserving source identity,
+retrieval timestamps, payload hashes, and any known source terms/limitations.
+Do not describe documentary evidence as obtained when it was not. Personal-use
+authorization does not manufacture missing historical publication/availability
+timestamps, resolve identity/duplicate conflicts, or turn post-event information
+into pre-match features. If a source's known terms expressly prohibit the intended
+use, flag that specific conflict rather than treating all data as unusable.
