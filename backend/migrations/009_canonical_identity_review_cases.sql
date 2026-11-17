@@ -314,6 +314,44 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) review ON TRUE;
 
+CREATE VIEW veltrix_ai_analyst.canonical_team_alias_case_audit AS
+SELECT
+    review_case.case_key,
+    primary_link.provider_team_id AS primary_provider_team_id,
+    primary_team.name AS primary_provider_team_name,
+    primary_link.canonical_team_id AS primary_canonical_team_id,
+    alias_link.provider_team_id AS alias_provider_team_id,
+    alias_team.name AS alias_provider_team_name,
+    alias_link.canonical_team_id AS alias_canonical_team_id,
+    review_case.recommended_action,
+    review_case.evidence_uris,
+    review_case.evidence_summary,
+    review_case.human_review_required,
+    effective.effective_case_status,
+    effective.latest_reviewer_id,
+    effective.latest_reviewed_at
+FROM veltrix_ai_analyst.canonical_identity_review_cases review_case
+JOIN veltrix_ai_analyst.provider_team_identity_links primary_link
+  ON primary_link.id = review_case.primary_team_identity_link_id
+JOIN veltrix_ai_analyst.provider_teams primary_team
+  ON primary_team.provider = primary_link.provider
+ AND primary_team.source_id = primary_link.source_id
+ AND primary_team.provider_team_id = primary_link.provider_team_id
+JOIN veltrix_ai_analyst.provider_team_identity_links alias_link
+  ON alias_link.id = review_case.related_team_identity_link_id
+JOIN veltrix_ai_analyst.provider_teams alias_team
+  ON alias_team.provider = alias_link.provider
+ AND alias_team.source_id = alias_link.source_id
+ AND alias_team.provider_team_id = alias_link.provider_team_id
+JOIN veltrix_ai_analyst.effective_canonical_identity_review_cases effective
+  ON effective.id = review_case.id
+WHERE review_case.case_type = 'TEAM_ALIAS_CANDIDATE';
+
+CREATE VIEW veltrix_ai_analyst.effective_canonical_team_aliases AS
+SELECT *
+FROM veltrix_ai_analyst.canonical_team_alias_case_audit
+WHERE effective_case_status = 'HUMAN_CONFIRMED';
+
 CREATE VIEW veltrix_ai_analyst.canonical_fixture_duplicate_case_audit AS
 SELECT
     review_case.case_key,
@@ -342,6 +380,11 @@ JOIN veltrix_ai_analyst.provider_fixtures duplicate_fixture
 JOIN veltrix_ai_analyst.effective_canonical_identity_review_cases effective
   ON effective.id = review_case.id
 WHERE review_case.case_type = 'FIXTURE_DUPLICATE_CANDIDATE';
+
+CREATE VIEW veltrix_ai_analyst.effective_canonical_fixture_deduplication AS
+SELECT *
+FROM veltrix_ai_analyst.canonical_fixture_duplicate_case_audit
+WHERE effective_case_status = 'HUMAN_CONFIRMED';
 
 -- Four UNKNOWN rows are duplicate/stale candidates: three match exact provider team IDs;
 -- the Goiás-América pair uses a second provider ID supported by official alias evidence.
