@@ -1,5 +1,7 @@
 """Fit and privately persist a versioned research model from the collected corpus.
 
+Post-merge matched v1/v2 evaluation run with fold-contained calibration utility.
+
 Matched v1/v2 comparison and fold-contained calibration research are separate.
 
 Retrospective report execution trigger after bootstrap diagnostics merge.
