@@ -77,6 +77,11 @@ def main() -> None:
     parser.add_argument("--test-window", type=int, default=25)
     parser.add_argument("--half-life-days", type=float, default=180.0)
     parser.add_argument("--ridge", type=float, default=0.08)
+    parser.add_argument(
+        "--fixed",
+        action="store_true",
+        help="disable nested fold-contained tuning and use the supplied fixed parameters",
+    )
     args = parser.parse_args()
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
@@ -89,6 +94,7 @@ def main() -> None:
         half_life_days=args.half_life_days,
         ridge=args.ridge,
         rho=0.0,
+        tune=not args.fixed,
     )
     payload = {
         "created_at": datetime.now().astimezone().isoformat(),
@@ -104,8 +110,17 @@ def main() -> None:
             "test_window_fixtures": args.test_window,
             "half_life_days": args.half_life_days,
             "ridge": args.ridge,
-            "dixon_coles_rho": 0.0,
+            "dixon_coles_rho": "INNER_PREQUENTIAL_SELECTION" if not args.fixed else 0.0,
+            "tuning": "NESTED_CHRONOLOGICAL" if not args.fixed else "FIXED_PARAMETERS",
         },
+        "fold_parameters": [
+            {
+                "half_life_days": half_life,
+                "ridge": fold_ridge,
+                "dixon_coles_rho": rho,
+            }
+            for half_life, fold_ridge, rho in report.selected_parameters
+        ],
         "metrics": {
             "finished_fixtures_loaded": len(results),
             "initial_training_fixtures": report.training_fixtures,
