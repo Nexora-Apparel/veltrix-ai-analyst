@@ -87,8 +87,8 @@ The America MG / América Mineiro provider-ID collision remains a human review c
 The provider's public documentation permits using, displaying and caching data in the customer's own products and models, while prohibiting raw-feed resale/redistribution. Community public-facing use requires visible attribution. The production approval is scoped to the observed account-entitled competitions.
 
 The API exposes kickoff/event timestamps and describes continuously updated results/statistics and tick-stored odds. The inspected fixture contract does not expose a verifiable source publication timestamp or source-availability timestamp for historical result/statistic fields. The current production observations are all retrieved-at-only:
-- 374 source observations; zero PIT-certifiable.
-- 374 sightings; zero PIT-certifiable.
+- 406 non-PIT observations across the expanded source scope; zero PIT-certifiable.
+- All 1,062 source-observation sightings remain retrieval-time-only; zero PIT-certifiable.
 - No pre-match feature observation has been promoted.
 
 Therefore, settled scores can serve as outcome labels subject to identity/rights controls, but these rows cannot be used as pre-match features or training inputs that require a proven point-in-time cutoff. Kickoff time is not publication time.
@@ -96,28 +96,37 @@ Therefore, settled scores can serve as outcome labels subject to identity/rights
 ### AI Midas
 The pinned Brazil Série B snapshot remains non-commercial only, with 368 descriptive candidate matches after quarantining one inconsistent match. It has no verified source publication/availability timestamp and is not PIT-eligible. It must not be represented as a timestamp-qualified feature source or commercial feed.
 
-## 5. Final bounded import — manual blocker
+## 5. Final bounded import and canonical materialization — completed
 
-PR #20 merged as `69f91a99b162804fa6a1baa8cd35d9cdc3388488` and the controlled Round 38 import has now completed in workflow run [#44107179999](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44107179999). Import run 5 used two of four permitted requests and inserted ten fixtures with zero duplicates, rejects or quarantines. Provider scope is now 384 fixtures: 380 FINISHED with scores and four UNKNOWN.
+PR #20 merged as `69f91a99b162804fa6a1baa8cd35d9cdc3388488` and the controlled Round 38 import completed in workflow run [#44107179999](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44107179999). Import run 5 used two of four permitted requests and inserted ten fixtures with zero duplicates, rejects or quarantines. Provider scope is 384 fixtures: 380 FINISHED with scores and four UNKNOWN.
 
-PR #22 adds the separate guarded canonical incremental path and merged as `1f45c1b3547d77d3127b84a111e3611e63efeb72`. CI run [#44116261032](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44116261032) passed 122 backend tests, Ruff and Android debug build. Read-only Neon checks confirm the existing 374 fixture mappings and all 22 team/competition mappings match the materializer's expected provenance; exactly ten fixture source links remain absent. The new runner is intentionally a full-scope reconciliation: reuse 374 mappings, create ten, preserve the 28-case review queue, and retain all REVIEW_REQUIRED/SOURCE_ROW_ONLY states.
+PR #22 added the guarded canonical incremental path and merged as `1f45c1b3547d77d3127b84a111e3611e63efeb72`. CI run [#44116261032](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44116261032) passed 122 backend tests, Ruff and Android debug build.
 
-**Manual execution blocker:** this session has no GitHub Actions workflow-dispatch operation. Open [Materialize Round 38 canonical fixtures](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/materialize-round38-canonical-incremental.yml) and dispatch with `confirm_materialization=MATERIALIZE_BRAZIL_SERIE_B_RUN_5_INCREMENTAL`. Then independently verify 384 canonical fixtures and source links, zero unlinked provider fixtures, unchanged review queue (28 cases / 28 events), no identity approvals, and zero PIT feature promotion. Do not insert scores or canonical rows directly through SQL.
+The production incremental materialization completed successfully in workflow run [#44117463950](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44117463950), job [#134159364294](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44117463950/job/134159364294). The runner reported `CANONICAL_INCREMENTAL_COMMITTED` with:
+- Before: 21 teams, one competition, 374 canonical fixtures, 374 fixture-source links.
+- After: 21 teams, one competition, 384 canonical fixtures, 384 fixture-source links.
+- Ten fixtures created; 374 fixtures reused; zero teams or competitions created.
+- Ten run-5 fixtures linked; zero provider fixtures left unlinked.
+- Zero new identity-review events; review cases/events remained 28/28.
+- Zero PIT observations promoted; zero provider requests made.
 
+Independent post-run Neon queries confirmed 384 provider fixtures, 21 canonical teams, one canonical competition, 384 canonical fixtures, 21 team links, one competition link, 384 fixture-source links, zero unlinked fixtures, 28 review cases, 28 review-case events, and zero PIT feature observations. A second integrity query confirmed 384/384 exact source-observation and source-sighting provenance matches, zero duplicate provider-fixture links, and all 384 fixture-source mappings still `REVIEW_REQUIRED`. All 384 canonical fixtures remain `SOURCE_ROW_ONLY`; 382 remain `IDENTITY_REVIEW_REQUIRED` and two remain `CONFLICT`. The two known America MG identity-conflict rows remain unmerged. No identity decision was automatically approved.
 ## 6. Stage 2 exit decision
 
-Completed:
+Completed Stage 2 foundation and ingestion/canonicalization acceptance:
 - Independent project/database isolation and production DB identity.
-- Migrations 001–009 and canonical materialization.
-- Historical import run 3, request ledger and raw-response provenance.
+- Migrations 001–009 and initial plus incremental canonical materialization.
+- Historical import runs 3 and 5, request ledger and raw-response provenance.
+- Full 384-fixture canonical coverage with exact source-observation/sighting provenance and no duplicate provider-fixture links.
 - Canonical identity review queue and fail-closed duplicate controls.
 - 370-fixture structural reconciliation against the official 20-team double round-robin schedule, with the exact 10 missing directed pairings matching CBF Round 38.
 - Source rights review and explicit PIT ineligibility decision.
 - AI Midas snapshot pinning and anomaly quarantine.
 
-Still open:
-- Guarded canonical materialization of the 10 imported Round 38 fixtures, followed by independent production count/provenance verification.
-- Human decisions on the 28 identity/coverage review cases; these must remain pending until a human reviews evidence. No automatic promotion is permitted.
-- A future source/provider qualification that supplies defensible source-publication and availability timestamps for PIT features.
+Explicit downstream restrictions remain:
+- Human decisions on the 28 identity/coverage review cases; these remain pending until a human reviews evidence. No automatic promotion is permitted.
+- The two America MG identity-conflict fixture records remain flagged; no alias merge, reparenting or duplicate exclusion has been activated.
+- A future source/provider qualification must supply defensible source-publication and availability timestamps before any pre-match PIT feature engineering or model training.
+- All 384 canonical fixtures remain `SOURCE_ROW_ONLY`; 382 have `IDENTITY_REVIEW_REQUIRED` and two have `CONFLICT`.
 
-**Stage 2 status: close-ready, pending manual Round 38 canonical materialization and production verification.** Human identity decisions and PIT-source qualification remain explicit downstream gates; neither may be silently waived. No model training, feature engineering from PIT-ineligible data, prediction API activation, value-bet activation or Android/backend prediction integration is authorized by this audit.
+**Stage 2 status: COMPLETE for historical ingestion, provenance, canonical coverage and structural reconciliation.** Identity adjudication and PIT source qualification remain mandatory downstream gates, not silently waived Stage 2 approvals. This completion does not authorize model training on PIT-ineligible rows, prediction API activation, value-bet activation or Android/backend prediction integration.
