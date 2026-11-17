@@ -514,3 +514,14 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 4. Implement Dixon–Coles low-score correction and parameter-validity tests.
 5. Implement chronological walk-forward split/embargo and metric harness.
 6. Keep training, calibration, publication and Android integration gated on qualified PIT data.
+
+
+## 2026-11-17 — Stage 3 statistical core and blocker disposition
+
+- Added deterministic Elo, Poisson scoreline distribution, Dixon–Coles low-score correction, chronological walk-forward folds, embargo/label-availability controls, explicit eligibility reasons, and multiclass Brier/log-loss utilities.
+- CI on the model-core head passed: 152 backend tests, Ruff lint, Android debug APK build, and APK artifact upload.
+- Production review register was independently re-queried: 28/28 cases remain HUMAN_REVIEW_REQUIRED, all latest events are automated recommendations, and zero human review events exist.
+- Current production data remains excluded from pre-match training: 384 provider fixtures, 384 fixture observations/sightings, zero source publication timestamps, zero availability timestamps, and zero PIT-certifiable sightings.
+- Four UNKNOWN duplicate candidates remain preserved; 20 team identity links, the America MG alias, and competition mapping remain unapproved. Full match-level coverage reconciliation remains outstanding.
+- No production rows or identity mappings changed. No model training, prediction endpoint, value betting, or Android/backend prediction integration was enabled.
+- See docs/ledger/2026-11-17-stage3-model-core-and-blocker-disposition.md for the full evidence register and restrictions.
