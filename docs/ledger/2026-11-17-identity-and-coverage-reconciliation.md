@@ -84,7 +84,7 @@ Coverage conclusion:
 
 Official schedule references:
 - [CBF 2026 Série B detailed schedule page](https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026?doc=Tabela+Detalhada)
-- [CBF official 2026 fixture table PDF](https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_19_05_ee33324167.pdf)
+- [CBF official 2026 fixture table PDF](https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf)
 - [CBF 2026 competition page with final Round 38 standings/fixtures](https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026/2009)
 
 ## Migration 009 review-queue implementation
