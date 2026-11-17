@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from datetime import UTC, datetime
 import os
+from datetime import UTC, datetime
 from urllib.parse import urlsplit
 
 from app.providers.historical_import import (
@@ -64,8 +64,8 @@ def main() -> int:
         parser.error("VELTRIX_ENABLE_HISTORICAL_COLLECTION=true is required")
 
     try:
-        boundary_start = datetime.fromisoformat(args.start_at.replace("Z", "+00:00"))
-        boundary_end = datetime.fromisoformat(args.end_at.replace("Z", "+00:00"))
+        boundary_start = datetime.fromisoformat(args.start_at)
+        boundary_end = datetime.fromisoformat(args.end_at)
     except ValueError:
         parser.error("--start-at and --end-at must be valid ISO-8601 timestamps")
     if (
