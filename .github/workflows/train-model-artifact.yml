@@ -43,5 +43,7 @@ jobs:
         run: python -m pip install -e .
       - name: Apply checksum-verified database migrations
         run: python ../scripts/apply_migrations.py
+      - name: Run expanding chronological evaluation
+        run: python -m app.research.retrospective_run --output /tmp/veltrix-retrospective-report.json
       - name: Fit and persist immutable research artifact
         run: python -m app.research.train_final_model
