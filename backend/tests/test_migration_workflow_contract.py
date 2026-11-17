@@ -42,3 +42,12 @@ def test_manual_migration_workflow_verifies_canonical_link_uniqueness_008() -> N
     assert "MIGRATION_INDEX_VERIFICATION_FAILED" in workflow
     assert "CREATE UNIQUE INDEX provider_team_identity_links_source_identity_uk" in migration
     assert "CREATE UNIQUE INDEX provider_competition_identity_links_source_identity_uk" in migration
+
+
+def test_migration_008_scopes_fixture_only_trigger_fields() -> None:
+    migration = (ROOT / "backend/migrations/008_canonical_identity_link_uniqueness.sql").read_text()
+    assert "CREATE OR REPLACE FUNCTION veltrix_ai_analyst.enforce_canonical_link_provenance()" in migration
+    assert "IF TG_TABLE_NAME = 'canonical_fixture_sources' THEN\n        IF NOT EXISTS (" in migration
+    assert "enforce_canonical_link_provenance()" in (
+        ROOT / ".github/workflows/apply-database-migrations.yml"
+    ).read_text()
