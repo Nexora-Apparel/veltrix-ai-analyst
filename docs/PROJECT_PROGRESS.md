@@ -2,20 +2,22 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-17 (Round 38 import complete; incremental canonical materializer merged and CI-green; manual production materialization remains)
+**Last updated:** 2026-11-17 (Stage 2 ingestion/provenance/canonical coverage completed and independently verified; identity and PIT eligibility restrictions remain)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
 **Product:** Personal-use, cloud-backed native Android football analysis and prediction application
 
-## Latest execution checkpoint — Round 38 import and canonical incremental gate (2026-11-17)
+## Latest execution checkpoint — Stage 2 canonical closure (2026-11-17)
 
 - [x] Controlled Round 38 import run [#44107179999](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44107179999) succeeded: import run 5, two of four requests used, ten fixtures inserted, zero duplicates/rejections/quarantines. Provider scope is 384 fixtures (380 FINISHED, four UNKNOWN).
-- [x] PR [#22](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/22) merged as `1f45c1b3547d77d3127b84a111e3611e63efeb72`. Adds guarded incremental canonical materializer and manual workflow; reuses 374 existing mappings and creates exactly ten new mappings after strict checks.
-- [x] CI run [#44116261032](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44116261032) passed: 122 backend tests, Ruff, Android debug build and APK artifact upload.
-- [x] Read-only Neon provenance verification: 374 existing fixture source links, 21 team identity links and one competition identity link all match the materializer's earliest matching source sightings; ten provider fixtures remain unlinked. Review queue remains 28 cases / 28 events.
-- [ ] Manually dispatch [Materialize Round 38 canonical fixtures](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/materialize-round38-canonical-incremental.yml) with `confirm_materialization=MATERIALIZE_BRAZIL_SERIE_B_RUN_5_INCREMENTAL`; then independently verify 384 canonical fixtures and source links, zero unlinked provider fixtures, unchanged review queue, no identity approvals and zero PIT feature promotion. This session cannot dispatch GitHub Actions workflow events.
-- **Stage 2 status: close-ready, pending manual canonical materialization and production verification.** The 28 identity cases and PIT timestamp/rights qualification remain explicit downstream gates.
+- [x] Incremental materializer PR [#22](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/22) merged as `1f45c1b3547d77d3127b84a111e3611e63efeb72`; CI run [#44116261032](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44116261032) passed 122 backend tests, Ruff and Android debug build.
+- [x] Production incremental materialization run [#44117463950](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44117463950), job [#134159364294](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44117463950/job/134159364294), completed with `CANONICAL_INCREMENTAL_COMMITTED`: ten fixtures created, 374 reused, zero unlinked, zero identity-review events created, zero PIT observations promoted.
+- [x] Independent post-run Neon verification: 21 canonical teams, one competition, 384 canonical fixtures; 21 team links, one competition link, 384 fixture-source links; zero unlinked provider fixtures; 28 review cases / 28 review events; zero PIT features.
+- [x] Provenance/uniqueness audit: all 384 fixture-source links match exact source-observation and source-sighting provenance; zero duplicate provider-fixture links; all 384 links remain `REVIEW_REQUIRED`.
+- [x] All 384 canonical fixtures remain `SOURCE_ROW_ONLY`; 382 remain `IDENTITY_REVIEW_REQUIRED`, two remain `CONFLICT`. No identity merge, alias approval, reparenting or duplicate exclusion was activated.
+- **Stage 2 status: COMPLETE for historical ingestion, provenance, canonical coverage and structural reconciliation.** This does not clear the 28 human-pending identity cases or PIT publication/availability timestamp requirements. No model training from PIT-ineligible data is authorized.
+- Detailed evidence: [Stage 2 closure audit](ledger/2026-11-17-stage-2-closure-audit.md) and [Round 38 canonical incremental ledger](ledger/2026-11-17-round38-canonical-incremental.md).
 
 ## Earlier Stage 2 closure checkpoint — before Round 38 incremental import (2026-11-17)
 
