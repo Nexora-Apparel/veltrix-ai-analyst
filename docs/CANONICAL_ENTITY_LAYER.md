@@ -88,35 +88,42 @@ erase earlier decisions.
 - 0/374 observations are PIT-certifiable. Canonicalization cannot promote any of them into
   pre-match features.
 
-## Schema implementation — PR preparation (2026-11-17)
+## Schema implementation — Migration 007 applied; Migration 008 pending
 
-Migration `007_canonical_entity_layer.sql` is being reviewed on branch
-`stage1/canonical-entity-schema-007-20261117`. It creates the canonical entity,
-provider identity-link, fixture-source and append-only review-event tables.
-It also adds exact provenance guards, review supersession checks, a guard against
-unreviewed multi-source fixture linking, and a gate that prevents a canonical
-fixture from being marked verified until its source fixture, competition and
-both team mappings have explicit review events.
+Migration `007_canonical_entity_layer.sql` was merged in PR #14 and applied to the dedicated Neon database through the controlled migration workflow. Workflow [#44072112212](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44072112212) verified SHA-256 `5503622ac57bd1875e08cf40cf1d87220cec99deb79e8fc23dd4ec6ebbffc30b`, all seven canonical tables, four functions and ten triggers.
 
-New identity links start in `REVIEW_REQUIRED`; review outcomes are recorded as
-append-only events. Real-world verification requires a separate evidence-backed
-review decision. Source-local placeholders do not assert a real-world club
-identity.
+Integration testing then exposed a latent defect in the generic provenance trigger: a fixture-only `NEW.canonical_fixture_id` field reference was evaluated for team-link inserts. Migration 008 replaces that function with a branch-scoped fixture check, enforces exact source-observation data types (`team_catalogue`, `competition_catalogue`, `fixtures_and_results`), and adds unique provider/source/team-ID and provider/source/competition-ID indexes. PR #15 is merged and CI passed; Migration 008 has not yet been applied to Neon.
 
-The migration is schema-only. It does not insert canonical entities, create
-crosswalks, change provider projections, call providers or alter PIT eligibility.
-It is not yet merged or applied to Neon. CI and PostgreSQL migration verification
-remain required before release.
+## Materialization implementation — merged, production writes not executed
+
+PR [#15](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/15) adds `backend/app/canonicalization.py` with a read-only-by-default planner and an explicit `execute=True` writer. It is pinned to 5DollarFootballAPI Brazil Serie B import run 3, competition `522514093`.
+
+The implementation:
+- Uses the exact import-run response reservations, source observations, sightings, successful provider responses, rights approval IDs and payload hashes.
+- Chooses a deterministic successful sighting for each source identity and preserves the source-local provider ID.
+- Creates `SOURCE_LOCAL_ONLY` canonical team/competition placeholders; all identity links remain `REVIEW_REQUIRED`.
+- Creates one canonical fixture per provider fixture row, preserving kickoff, status and score; completeness remains `SOURCE_ROW_ONLY`.
+- Marks the known America MG / América Mineiro fixture pair as `CONFLICT` without merging either team or fixture.
+- Keeps UNKNOWN fixtures scoreless and creates no review events, no PIT promotions, and no provider HTTP requests.
+- Uses transaction-scoped advisory locking, uniqueness constraints and strict replay comparisons to make execution idempotent and fail on provenance drift.
+
+Final CI [#44075667064](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44075667064) passed: 113 backend tests, Ruff, Android debug build and APK artifact upload.
+
+## Production source-scope audit — read-only
+
+The exact run-3 scope contains 374 fixture observations, 21 team observations and one competition observation: 396 in total, with 0 PIT-certifiable. There are 370 FINISHED fixtures with both scores and four UNKNOWN fixtures with no scores. All 374 fixture rows have exact source observation/sighting/response provenance. The source approval is APPROVED and permits storage/internal analysis for this competition.
+
+The unresolved pair is provider fixture IDs `3116209225` and `2341822348`, at 2026-03-22 20:58:35Z and 21:00:00Z, respectively. Both list Goiás provider ID `3126624865` as home side and differ only in the America provider ID (`1102583842` versus `3808811746`). Keep both source fixtures and both provider teams separate, and flag both fixture identities CONFLICT. Do not infer full season schedule completeness.
+
+No canonical rows have been inserted into production. All seven canonical tables and source identity-link tables remain empty.
 
 ## Materialization sequence
 
-1. Apply migration 006 through the checksum-verified runner and verify its exact ledger checksum,
-   table, function and triggers.
-2. Add canonical tables and append-only identity-review events in a new checksum migration.
-3. Create provider-native placeholder entities and source-identity links from exact provider IDs,
-   retaining `REVIEW_REQUIRED` for real-world resolution.
-4. Create one canonical fixture per provider fixture row with source links and explicit unresolved
-   identity states; preserve all 4 UNKNOWN records without scores.
-5. Record a reviewed conflict for the America MG / América Mineiro pair; do not merge.
+1. **Completed:** apply Migration 007 through the controlled checksum-verified workflow; checksum and all seven tables, four functions and ten triggers verified.
+2. **Pending:** apply Migration 008 through the same controlled workflow. It repairs the generic provenance trigger and adds unique indexes; verify its exact checksum, function and both indexes.
+3. Run the materialization planner in read-only mode against production and confirm 21 teams, one competition, 374 fixtures, 370 finished, four UNKNOWN, complete provenance, and the expected America identity conflict pair.
+4. Only after the dry-run reports ready, execute the materializer in a separate explicit production write operation. The service must create source-local placeholders, all links `REVIEW_REQUIRED`, and fixture rows `SOURCE_ROW_ONLY`.
+5. Reconcile inserted counts, provenance, status/score invariants, and idempotent replay. Do not create human review events or mark identities verified.
 6. Reconcile season completeness against an authoritative schedule before asserting coverage.
-7. Keep canonical identity, source rights, and PIT feature eligibility as independent gates.
+7. Keep canonical identity, source rights, and PIT feature eligibility as independent gates. No existing run-3 observation may enter pre-match features.
+
