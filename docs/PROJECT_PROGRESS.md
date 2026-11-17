@@ -2,13 +2,31 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-17 (Migration 008 verified; read-only preview passed; guarded materialization workflow merged; production write pending)
+**Last updated:** 2026-11-17 (canonical materialization independently verified; official CBF duplicate evidence reconciled; migration 009 review queue prepared)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
 **Product:** Personal-use, cloud-backed native Android football analysis and prediction application
 
-## Latest execution checkpoint — 2026-11-17 (Read-only preview passed; guarded first-run materializer merged)
+## Latest execution checkpoint — canonical materialization and identity/coverage audit (2026-11-17)
+
+- [x] Guarded canonical materialization workflow [#44086857898](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44086857898), job [#134051435015](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44086857898/job/134051435015), completed successfully on commit `e6ca720ca556c5cb6aea7e867075e841b0f7bf3e`; runner reported `MATERIALIZATION_COMMITTED`.
+- [x] Independent read-only Neon verification confirmed 21 canonical teams, one competition, 374 canonical fixtures, 21 team links, one competition link, 374 fixture-source links, zero identity review events and zero pre-match feature observations.
+- [x] All team and competition links remain `REVIEW_REQUIRED`; all fixture source links remain `REVIEW_REQUIRED`; all 374 fixtures remain `SOURCE_ROW_ONLY`. Two fixture rows remain `CONFLICT`; 372 remain `IDENTITY_REVIEW_REQUIRED`. This is deliberate fail-closed behavior, not a failed materialization.
+- [x] Read-only audit identified all four `UNKNOWN` rows as duplicate/stale candidates (three exact team-ID matches and one America alias match) for already imported `FINISHED` rows. Independent CBF match records:
+  - Goiás 3–1 América MG, 2026-03-22, Round 1, official match [832843](https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-america/832843); provider pair 3116209225 (FINISHED 3–1) / 2341822348 (UNKNOWN).
+  - Fortaleza 3–0 Londrina, 2026-05-23, Round 10, official match [832976](https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/fortaleza-saf-x-londrina-saf/832976); provider pair 1587564237 (FINISHED 3–0) / 2336910968 (UNKNOWN).
+  - Fortaleza 1–0 Botafogo SP, 2026-07-28, Round 20, official match [833076](https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/fortaleza-saf-x-botafogo/833076); provider pair 236839304 (FINISHED 1–0) / 933498248 (UNKNOWN).
+  - Ceará 2–1 Londrina, 2026-08-22, Round 24, official match [833116](https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/ceara-x-londrina-saf/833116); provider pair 553958702 (FINISHED 2–1) / 1988139832 (UNKNOWN).
+- [x] America identity collision evidence: provider team ID `1102583842` / `America MG` appears in 37 fixture rows; ID `3808811746` / `América Mineiro` appears only in the duplicate UNKNOWN Goiás row. CBF records one official Goiás 3–1 América MG match. Strong alias evidence; do not rewrite source IDs or merge canonical placeholders without human confirmation.
+- [x] CBF's 2026 schedule lists Round 37 on 6–8 November and Round 38 on 14 November. Run 3 ends 9 November and contains 370 FINISHED rows, numerically equal to 37 rounds × 10 fixtures. This is not yet fixture-by-fixture proof of completeness; the 370 finished rows still need reconciliation against the official 370 scheduled pairings. The final round of 10 matches is outside run 3's collection window.
+- [x] PIT audit: 374 fixture observations and 374 sightings; zero observations and zero sightings PIT-certifiable. No pre-match feature promotion is permitted.
+- [ ] PR for Migration 009 is in preparation on branch `identity-review-coverage-reconciliation-20261117`. It adds immutable evidence-backed review cases, automated recommendation events, source-provenance audit views, and seeded cases for 20 team identities, the America alias, competition identity, four duplicate fixtures, season coverage and PIT timestamp gap. All require explicit human confirmation; no canonical/source row is rewritten by the migration.
+- [ ] After PR CI/merge, manually dispatch the checksum-verified migration workflow and independently verify the 28 seeded review cases and provenance views. No migration is applied to production by this audit.
+- **Remaining hard gates:** human approval of identity/duplicate cases; exact 370-fixture official schedule reconciliation; source publication/availability timestamps and rights-qualified PIT evidence; final 10 Round 38 results are outside import run 3.
+- **No model training, feature engineering from these records, prediction publication, or Android/backend prediction integration is authorized.**
+
+## Historical checkpoint — before first canonical materialization
 
 - Migration 008 was successfully applied and verified against Neon database `veltrix_ai_analyst` through controlled workflow [#44078914169](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44078914169), job `134024119643`. Exact SHA-256: `bbd3276a85d7e6d9c8293379b173b15753fb96c3f2877c6488229f5a011c8130`.
 - Live read-only database checks confirmed migration records 006, 007 and 008, the corrected `enforce_canonical_link_provenance()` function, and unique provider-local team and competition identity-link indexes.
