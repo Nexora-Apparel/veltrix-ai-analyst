@@ -5,7 +5,6 @@ from datetime import datetime
 
 from app.contracts.prediction import (
     AvailabilityBasis,
-    EligibleObservationEvidence,
     FeatureAdmissionRequest,
     IdentityStatus,
     RightsStatus,
