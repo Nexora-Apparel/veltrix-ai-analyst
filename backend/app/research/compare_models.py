@@ -99,7 +99,7 @@ def main() -> None:
         raise RuntimeError("DATABASE_URL is required")
     report = compare_models(load_completed_results(dsn))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+    args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({key: report[key] for key in ("evaluation_type", "fixed_v1", "nested_v2", "paired_differences")}, indent=2))
 
 
