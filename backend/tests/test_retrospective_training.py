@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
@@ -23,9 +23,13 @@ def test_elo_draw_updates_both_ratings_without_unbound_delta() -> None:
     system.update(HistoricalResult(
         "draw", datetime(2026, 1, 1, tzinfo=UTC), "A", "B", 1, 1
     ))
-    assert system.rating("A").rating == pytest.approx(1500.0)
-    assert system.rating("B").rating == pytest.approx(1500.0)
-    assert system.rating("A").matches_played == 1
+    # Home advantage makes a draw a small negative surprise for the home team.
+    home = system.rating("A")
+    away = system.rating("B")
+    assert home.rating < 1500.0
+    assert away.rating > 1500.0
+    assert home.rating + away.rating == pytest.approx(3000.0)
+    assert home.matches_played == away.matches_played == 1
 
 
 def test_historical_rate_model_rejects_same_or_future_kickoff() -> None:
@@ -75,7 +79,6 @@ def test_duplicate_fixture_ids_are_rejected() -> None:
         chronological_research_run([fixture, fixture])
 
 
-
 def test_dixon_coles_rho_fit_handles_simultaneous_kickoff_batches() -> None:
     from app.models.retrospective import fit_dixon_coles_rho
 
@@ -87,7 +90,6 @@ def test_dixon_coles_rho_fit_handles_simultaneous_kickoff_batches() -> None:
         row("5", 4, "A", "D", 1, 0),
         row("6", 5, "B", "C", 1, 1),
     ] * 6
-    # Keep fixture IDs unique while retaining simultaneous kickoff groups.
     fixtures = [
         ResearchFixture(
             f"{item.fixture_id}-{index}",
