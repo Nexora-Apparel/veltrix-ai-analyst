@@ -10,8 +10,8 @@ RETRIEVED = CUTOFF - timedelta(minutes=4)
 
 def payload():
     return {"odds": [{"bookmaker": "Bet365", "markets": [{"market": "1X2", "outcomes": [
-        {"name": "Home", "odds": 2.1, "recorded_at": TICK.isoformat()},
-        {"name": "Draw", "odds": 3.2, "recorded_at": TICK.isoformat()},
+        {"name": "Home", "odds": 2.1, "recorded_at": TICK.isoformat(), "in_play": False},
+        {"name": "Draw", "odds": 3.2, "recorded_at": TICK.isoformat(), "in_play": False},
     ]}]}]}
 
 def normalize(data, **overrides):
