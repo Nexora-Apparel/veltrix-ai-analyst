@@ -57,7 +57,7 @@ jobs:
           if "006_pre_match_feature_pit_gate.sql" not in applied:
               print("Migration 006 was already applied with a matching checksum.")
           PY
-      - name: Verify migration 006 checksum ledger and database objects
+      - name: Verify migration 006 and 007 checksum ledgers and database objects
         run: |
           python - <<'PY'
           import hashlib
@@ -65,42 +65,98 @@ jobs:
           from pathlib import Path
           import psycopg
 
-          migration = Path("migrations/006_pre_match_feature_pit_gate.sql")
-          expected_checksum = hashlib.sha256(migration.read_bytes()).hexdigest()
+          migrations = {
+              "006_pre_match_feature_pit_gate.sql": {
+                  "tables": ["pre_match_feature_observations"],
+                  "functions": ["enforce_pre_match_feature_pit()"],
+                  "triggers": [
+                      "pre_match_feature_pit_guard",
+                      "pre_match_feature_observations_append_only",
+                  ],
+              },
+              "007_canonical_entity_layer.sql": {
+                  "tables": [
+                      "canonical_teams",
+                      "canonical_competitions",
+                      "canonical_fixtures",
+                      "provider_team_identity_links",
+                      "provider_competition_identity_links",
+                      "canonical_fixture_sources",
+                      "canonical_identity_review_events",
+                  ],
+                  "functions": [
+                      "enforce_canonical_link_provenance()",
+                      "validate_canonical_review_supersession()",
+                      "guard_canonical_fixture_source_merge()",
+                      "enforce_canonical_fixture_identity_status()",
+                  ],
+                  "triggers": [
+                      "provider_team_identity_link_provenance_guard",
+                      "provider_competition_identity_link_provenance_guard",
+                      "canonical_fixture_source_provenance_guard",
+                      "canonical_fixture_source_merge_guard",
+                      "canonical_fixture_identity_status_guard",
+                      "canonical_review_supersession_guard",
+                      "provider_team_identity_links_append_only",
+                      "provider_competition_identity_links_append_only",
+                      "canonical_fixture_sources_append_only",
+                      "canonical_identity_review_events_append_only",
+                  ],
+              },
+          }
+
           with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
               if connection.info.dbname != "veltrix_ai_analyst":
                   raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
-              row = connection.execute(
-                  "SELECT checksum FROM public.schema_migrations WHERE version = %s",
-                  (migration.name,),
-              ).fetchone()
-              if row is None or row[0].strip() != expected_checksum:
-                  raise SystemExit("MIGRATION_006_CHECKSUM_VERIFICATION_FAILED")
-              objects = connection.execute(
-                  """
-                  SELECT
-                    to_regclass('veltrix_ai_analyst.pre_match_feature_observations'),
-                    to_regprocedure('veltrix_ai_analyst.enforce_pre_match_feature_pit()')
-                  """
-              ).fetchone()
-              if objects[0] is None or objects[1] is None:
-                  raise SystemExit("MIGRATION_006_OBJECT_VERIFICATION_FAILED")
-              triggers = connection.execute(
-                  """
-                  SELECT COUNT(*)
-                  FROM pg_trigger t
-                  JOIN pg_class c ON c.oid = t.tgrelid
-                  JOIN pg_namespace n ON n.oid = c.relnamespace
-                  WHERE n.nspname = 'veltrix_ai_analyst'
-                    AND c.relname = 'pre_match_feature_observations'
-                    AND NOT t.tgisinternal
-                    AND t.tgname IN (
-                      'pre_match_feature_pit_guard',
-                      'pre_match_feature_observations_append_only'
-                    )
-                  """
-              ).fetchone()[0]
-              if triggers != 2:
-                  raise SystemExit("MIGRATION_006_TRIGGER_VERIFICATION_FAILED")
-          print("MIGRATION_006_VERIFIED:", expected_checksum)
+              for filename, expected in migrations.items():
+                  migration = Path("migrations") / filename
+                  checksum = hashlib.sha256(migration.read_bytes()).hexdigest()
+                  row = connection.execute(
+                      "SELECT checksum FROM public.schema_migrations WHERE version = %s",
+                      (filename,),
+                  ).fetchone()
+                  if row is None or row[0].strip() != checksum:
+                      raise SystemExit(f"MIGRATION_CHECKSUM_VERIFICATION_FAILED:{filename}")
+
+                  for table in expected["tables"]:
+                      if connection.execute(
+                          "SELECT to_regclass(%s)", (f"veltrix_ai_analyst.{table}",)
+                      ).fetchone()[0] is None:
+                          raise SystemExit(f"MIGRATION_TABLE_VERIFICATION_FAILED:{table}")
+
+                  for function in expected["functions"]:
+                      if connection.execute(
+                          "SELECT to_regprocedure(%s)",
+                          (f"veltrix_ai_analyst.{function}",),
+                      ).fetchone()[0] is None:
+                          raise SystemExit(f"MIGRATION_FUNCTION_VERIFICATION_FAILED:{function}")
+
+                  if filename.startswith("006_"):
+                      trigger_count = connection.execute(
+                          """
+                          SELECT COUNT(*) FROM pg_trigger t
+                          JOIN pg_class c ON c.oid = t.tgrelid
+                          JOIN pg_namespace n ON n.oid = c.relnamespace
+                          WHERE n.nspname = 'veltrix_ai_analyst'
+                            AND c.relname = 'pre_match_feature_observations'
+                            AND NOT t.tgisinternal
+                            AND t.tgname = ANY(%s)
+                          """,
+                          (expected["triggers"],),
+                      ).fetchone()[0]
+                  else:
+                      trigger_count = connection.execute(
+                          """
+                          SELECT COUNT(*) FROM pg_trigger t
+                          JOIN pg_class c ON c.oid = t.tgrelid
+                          JOIN pg_namespace n ON n.oid = c.relnamespace
+                          WHERE n.nspname = 'veltrix_ai_analyst'
+                            AND NOT t.tgisinternal
+                            AND t.tgname = ANY(%s)
+                          """,
+                          (expected["triggers"],),
+                      ).fetchone()[0]
+                  if trigger_count != len(expected["triggers"]):
+                      raise SystemExit(f"MIGRATION_TRIGGER_VERIFICATION_FAILED:{filename}")
+                  print(f"{filename} VERIFIED: {checksum}")
           PY
