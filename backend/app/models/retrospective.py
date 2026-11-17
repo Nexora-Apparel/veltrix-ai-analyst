@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from math import log
 from collections.abc import Iterable, Sequence
+from math import log
 
 from app.models.elo import EloConfig, EloSystem, HistoricalResult
 from app.models.scoreline import build_scoreline_distribution
