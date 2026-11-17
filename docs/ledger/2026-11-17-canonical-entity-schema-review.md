@@ -84,3 +84,20 @@ Prepare Migration 007 for the canonical team, competition, fixture, provider ide
 ## Materialization gate
 
 Canonical materialization remains blocked until the controlled Migration 007 workflow reports success and its checksum/object verification is inspected. After that, materialization must use source-native placeholders and preserve unresolved mappings as `REVIEW_REQUIRED`; the America MG / América Mineiro pair must remain separate and flagged. No human review may be fabricated. The 374 imported observations remain non-PIT-certified and excluded from pre-match features.
+
+
+## Controlled Migration 007 application and verification — 2026-11-17
+
+- User manually dispatched the protected workflow [#44072112212](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44072112212) against main commit `3faf3d2ad2ceb293ce322b18ef662782426a2aaf`.
+- Workflow event: `workflow_dispatch`; job `134000664117` completed with conclusion `success`.
+- The checksum-verified runner reported `MIGRATIONS_APPLIED: 007_canonical_entity_layer.sql`; Migration 006 was already present with a matching checksum.
+- Exact Migration 007 SHA-256 verified against `public.schema_migrations`: `5503622ac57bd1875e08cf40cf1d87220cec99deb79e8fc23dd4ec6ebbffc30b`.
+- Migration 006 SHA-256 re-verified: `6b7b8d9385d66ec06079a9a8388b3d4f37c45da8ba6f47075166707b8831cb4f`.
+- Database identity check passed for `veltrix_ai_analyst`.
+- Migration 007 object checks passed: seven tables (`canonical_teams`, `canonical_competitions`, `canonical_fixtures`, `provider_team_identity_links`, `provider_competition_identity_links`, `canonical_fixture_sources`, `canonical_identity_review_events`); four functions; ten required triggers.
+- Workflow log confirms no error and successful cleanup. This is direct evidence of controlled application and checksum/object verification.
+- Migration 007 is now applied. Canonical materialization is the next separately controlled stage; no canonical rows were inserted by this schema migration/workflow. No provider calls, PIT promotion, model training or prediction publication occurred.
+
+## Canonical materialization gate — opened
+
+Proceed to design and implement an idempotent, provenance-preserving materialization service and read-only/dry-run reconciliation first. Scope remains only approved 5DollarFootballAPI Brazil Serie B import run 3 (competition `522514093`). Materialization must preserve exact provider identifiers, source rows, response/sighting IDs, payload hashes and rights approval; no fuzzy matching or cross-provider joins. All candidate mappings remain unreviewed unless an actual authorized human review is recorded. The America MG / América Mineiro collision stays explicitly unresolved. Four UNKNOWN fixtures stay scoreless. No PIT eligibility is implied or granted.
