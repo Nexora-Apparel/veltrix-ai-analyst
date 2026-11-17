@@ -42,10 +42,11 @@ def _inner_oof_rates(
     test_window_fixtures: int,
     half_life_days: float,
     ridge: float,
-) -> list[tuple[GoalResult, float, float]]:
+) -> tuple[list[tuple[GoalResult, float, float]], int]:
     groups = _kickoff_groups(rows)
     train: list[GoalResult] = []
     predictions: list[tuple[GoalResult, float, float]] = []
+    folds = 0
     index = 0
     while index < len(groups):
         batch: list[GoalResult] = []
@@ -63,11 +64,12 @@ def _inner_oof_rates(
             ridge=ridge,
             max_iterations=1200,
         )
+        folds += 1
         for target in batch:
             rates = model.predict(target.home_team, target.away_team)
             predictions.append((target, rates.home_lambda, rates.away_lambda))
         train.extend(batch)
-    return predictions
+    return predictions, folds
 
 
 def _outcome_index(row: GoalResult) -> int:
@@ -103,10 +105,12 @@ def tune_attack_defence(
     if any(value < 0 for value in ridge_candidates):
         raise ValueError("ridge candidates cannot be negative")
 
-    candidate_results: list[tuple[float, float, float, float, list[tuple[GoalResult, float, float]]]] = []
+    candidate_results: list[
+        tuple[float, float, float, float, list[tuple[GoalResult, float, float]], int]
+    ] = []
     for half_life in half_life_candidates:
         for ridge in ridge_candidates:
-            predictions = _inner_oof_rates(
+            predictions, folds = _inner_oof_rates(
                 rows,
                 min_train_fixtures=min_train_fixtures,
                 test_window_fixtures=test_window_fixtures,
@@ -138,6 +142,7 @@ def tune_attack_defence(
                 half_life,
                 ridge,
                 predictions,
+                folds,
             ))
 
     if not candidate_results:
@@ -152,9 +157,14 @@ def tune_attack_defence(
             inner_scoreline_log_loss=float("inf"),
         )
 
-    best_log_loss, best_brier, best_half_life, best_ridge, best_predictions = min(
-        candidate_results, key=lambda item: (item[0], item[1], item[2], item[3])
-    )
+    (
+        best_log_loss,
+        best_brier,
+        best_half_life,
+        best_ridge,
+        best_predictions,
+        best_folds,
+    ) = min(candidate_results, key=lambda item: (item[0], item[1], item[2], item[3]))
     rho_scores: list[tuple[float, float]] = []
     for rho in rho_candidates:
         losses: list[float] = []
@@ -172,14 +182,11 @@ def tune_attack_defence(
         rho_scores, key=lambda item: (item[0], abs(item[1]), item[1])
     )
 
-    fold_count = len({
-        row.kickoff_at for row, _, _ in best_predictions
-    })
     return TuningResult(
         half_life_days=best_half_life,
         ridge=best_ridge,
         rho=best_rho,
-        inner_folds=fold_count,
+        inner_folds=best_folds,
         inner_predictions=len(best_predictions),
         inner_log_loss_1x2=best_log_loss,
         inner_brier_1x2=best_brier,
