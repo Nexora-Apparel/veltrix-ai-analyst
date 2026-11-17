@@ -14,6 +14,7 @@ from math import exp, log
 
 from app.models.attack_defence import GoalResult, fit_attack_defence
 from app.models.scoreline import build_scoreline_distribution
+from app.validation.tuning import tune_attack_defence
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +29,9 @@ class RetrospectivePrediction:
     draw: float
     away_win: float
     scoreline_probability: float
+    half_life_days: float
+    ridge: float
+    rho: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +46,8 @@ class RetrospectiveReport:
     mean_scoreline_log_loss: float
     baseline_brier_1x2: float
     baseline_log_loss_1x2: float
+    nested_tuning: bool
+    selected_parameters: tuple[tuple[float, float, float], ...]
     predictions: tuple[RetrospectivePrediction, ...]
 
 
@@ -64,6 +70,9 @@ def evaluate_retrospective(
     ridge: float = 0.08,
     rho: float = 0.0,
     max_goals: int = 12,
+    nested_tuning: bool = False,
+    inner_min_train_fixtures: int = 35,
+    inner_test_window_fixtures: int = 10,
 ) -> RetrospectiveReport:
     """Expanding event-time evaluation with simultaneous-kickoff isolation."""
     rows = list(results)
@@ -78,6 +87,7 @@ def evaluate_retrospective(
     train: list[GoalResult] = []
     predictions: list[RetrospectivePrediction] = []
     folds = 0
+    selected_parameters: list[tuple[float, float, float]] = []
     index = 0
     while index < len(groups):
         batch: list[GoalResult] = []
@@ -88,11 +98,25 @@ def evaluate_retrospective(
             train.extend(batch)
             continue
         cutoff = batch[0].kickoff_at
+        selected_half_life = half_life_days
+        selected_ridge = ridge
+        selected_rho = rho
+        if nested_tuning:
+            tuning = tune_attack_defence(
+                train,
+                min_train_fixtures=inner_min_train_fixtures,
+                test_window_fixtures=inner_test_window_fixtures,
+            )
+            if tuning.inner_folds:
+                selected_half_life = tuning.half_life_days
+                selected_ridge = tuning.ridge
+                selected_rho = tuning.rho
+        selected_parameters.append((selected_half_life, selected_ridge, selected_rho))
         model = fit_attack_defence(
             train,
             as_of=cutoff,
-            half_life_days=half_life_days,
-            ridge=ridge,
+            half_life_days=selected_half_life,
+            ridge=selected_ridge,
             max_iterations=1200,
         )
         folds += 1
@@ -101,7 +125,7 @@ def evaluate_retrospective(
             distribution = build_scoreline_distribution(
                 rates.home_lambda,
                 rates.away_lambda,
-                rho=rho,
+                rho=selected_rho,
                 max_goals=max_goals,
             )
             score_probability = (
@@ -120,6 +144,9 @@ def evaluate_retrospective(
                 draw=distribution.draw,
                 away_win=distribution.away_win,
                 scoreline_probability=score_probability,
+                half_life_days=selected_half_life,
+                ridge=selected_ridge,
+                rho=selected_rho,
             ))
         train.extend(batch)
 
@@ -198,5 +225,7 @@ def evaluate_retrospective(
         ),
         baseline_brier_1x2=sum(baseline_brier_values) / len(baseline_brier_values),
         baseline_log_loss_1x2=sum(baseline_log_losses) / len(baseline_log_losses),
+        nested_tuning=nested_tuning,
+        selected_parameters=tuple(selected_parameters),
         predictions=tuple(predictions),
     )
