@@ -632,8 +632,11 @@ async def run_brazil_serie_b_historical_import(
     import_run_id: int | None = None,
     approval: SourceApproval = IMPORT_APPROVAL,
     provider: FiveDollarFootballProvider | None = None,
+    boundary_start: datetime = BOUNDARY_START,
+    boundary_end: datetime = BOUNDARY_END,
+    request_budget: int = REQUEST_BUDGET,
 ) -> int:
-    """Run or resume the fixed, non-commercial Brazil Serie B historical import.
+    """Run or resume a bounded, non-commercial Brazil Serie B historical import.
 
     Live HTTP requires both an explicit execute=True argument and the
     VELTRIX_ENABLE_HISTORICAL_COLLECTION=true environment gate.
