@@ -71,7 +71,7 @@ def validate_brazil_serie_b_import(
         failures.append("REQUEST_BUDGET_OUTSIDE_HARD_CAP")
     if (provider, source_id) != (PROVIDER_NAME, SOURCE_ID):
         failures.append("PROVIDER_SOURCE_MISMATCH")
-    if request_budget != REQUEST_BUDGET or requests_used > REQUEST_BUDGET:
+    if requests_used > request_budget:
         failures.append("REQUEST_BUDGET_VIOLATION")
     if records_quarantined or records_rejected:
         failures.append("REJECTED_OR_QUARANTINED_RECORDS_PRESENT")
