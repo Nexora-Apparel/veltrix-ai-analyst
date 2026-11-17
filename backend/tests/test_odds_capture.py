@@ -34,7 +34,7 @@ def test_rejects_retrieval_after_prediction_cutoff():
 def test_rejects_source_tick_after_cutoff():
     data = payload()
     data["odds"][0]["markets"][0]["outcomes"][0]["recorded_at"] = (CUTOFF + timedelta(seconds=1)).isoformat()
-    with pytest.raises(ValidationError, match="source odds tick"):
+    with pytest.raises(ValidationError, match="retrieved after"):
         normalize(data, retrieved_at=CUTOFF + timedelta(minutes=2))
 
 def test_rejects_missing_source_tick_instead_of_inventing_it():
