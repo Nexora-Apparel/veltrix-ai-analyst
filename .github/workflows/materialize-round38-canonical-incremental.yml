@@ -1,0 +1,45 @@
+name: Materialize Round 38 canonical fixtures
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_materialization:
+        description: Type MATERIALIZE_BRAZIL_SERIE_B_RUN_5_INCREMENTAL to add the 10 Round 38 fixtures
+        required: true
+        type: choice
+        options:
+          - NO
+          - MATERIALIZE_BRAZIL_SERIE_B_RUN_5_INCREMENTAL
+        default: NO
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-ai-analyst-canonical-materialization
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    if: inputs.confirm_materialization == 'MATERIALIZE_BRAZIL_SERIE_B_RUN_5_INCREMENTAL'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: veltrix-historical-import
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      CANONICAL_INCREMENTAL_CONFIRMATION: ${{ inputs.confirm_materialization }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install materialization runner
+        run: python -m pip install -e .
+      - name: Materialize only the 10 previously unlinked Round 38 fixtures
+        run: python scripts/materialize_round38_incremental.py
