@@ -63,7 +63,7 @@ Official CBF match [832843](https://www.cbf.com.br/futebol-brasileiro/jogos/camp
 | 1988139832 | 217 | 553958702 | 235 | Ceará 2–1 Londrina, Round 24, [833116](https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/ceara-x-londrina-saf/833116) |
 
 Exact DB comparison:
-- Each UNKNOWN row has the same exact ordered home/away provider team IDs as the corresponding FINISHED row.
+- Three UNKNOWN rows have the same exact ordered home/away provider team IDs as the corresponding FINISHED row. The Goiás-América row has a different away provider team ID; CBF official evidence and the source appearance counts support an alias candidate.
 - Each UNKNOWN row has a different provider fixture ID and an incompatible/stale kickoff timestamp.
 - The corresponding CBF official match record provides one actual match and a settled result for each pairing.
 - Therefore the four UNKNOWN rows are strong duplicate/stale source-record candidates. Recommended action: exclude each duplicate source row after explicit human confirmation; keep the original provider rows and canonical source links intact.
