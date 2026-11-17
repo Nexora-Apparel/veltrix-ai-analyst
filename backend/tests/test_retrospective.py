@@ -56,3 +56,19 @@ def test_rejects_duplicate_fixture_ids():
     rows = make_rows(12)
     with pytest.raises(ValueError, match="duplicate"):
         evaluate_retrospective(rows + [rows[0]], min_train_fixtures=4)
+
+
+def test_nested_tuning_selects_parameters_only_from_prior_folds():
+    rows = make_rows(110)
+    report = evaluate_retrospective(
+        rows,
+        min_train_fixtures=20,
+        test_window_fixtures=20,
+        tune=True,
+    )
+    assert report.fold_count == len(report.selected_parameters)
+    assert report.selected_parameters
+    for half_life, ridge, rho in report.selected_parameters:
+        assert half_life in (90.0, 180.0, 365.0)
+        assert ridge in (0.02, 0.08, 0.2)
+        assert rho in (-0.12, -0.08, -0.04, 0.0, 0.04, 0.08, 0.12)
