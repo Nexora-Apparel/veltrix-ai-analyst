@@ -1,9 +1,9 @@
 """Paired fold-block bootstrap uncertainty for retrospective model comparisons."""
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from random import Random
-from collections.abc import Sequence
 
 
 @dataclass(frozen=True, slots=True)
