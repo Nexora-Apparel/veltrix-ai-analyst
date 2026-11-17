@@ -32,6 +32,10 @@ def test_retrospective_evaluation_uses_only_prior_event_time_results():
     assert report.evaluation_type == "RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED"
     assert report.evaluated_fixtures > 0
     assert report.fold_count > 0
+    assert len(report.fold_metrics) == report.fold_count
+    assert sum(row.fixture_count for row in report.fold_metrics) == report.evaluated_fixtures
+    assert all(row.brier_1x2 >= 0 and row.log_loss_1x2 > 0 for row in report.fold_metrics)
+    assert all(row.baseline_brier_1x2 >= 0 and row.baseline_log_loss_1x2 > 0 for row in report.fold_metrics)
     assert 0 <= report.brier_1x2 <= 2
     assert report.log_loss_1x2 > 0
     assert 0 <= report.baseline_brier_1x2 <= 2
@@ -69,6 +73,7 @@ def test_nested_tuning_selects_only_chronological_inner_fold_parameters():
     )
     assert report.nested_tuning is True
     assert len(report.selected_parameters) == report.fold_count
+    assert len(report.fold_metrics) == report.fold_count
     assert all(half_life in (90.0, 180.0, 365.0) for half_life, _, _ in report.selected_parameters)
     assert all(ridge in (0.01, 0.08, 0.25) for _, ridge, _ in report.selected_parameters)
     assert all(rho in (-0.15, -0.10, -0.05, 0.0, 0.05, 0.10, 0.15)
