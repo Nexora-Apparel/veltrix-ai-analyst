@@ -127,3 +127,20 @@ def test_ensemble_weight_tuning_uses_prior_prequential_predictions() -> None:
     assert 0.0 <= report["ensemble_elo_weight_mean"] <= 1.0
     assert 0.0 <= report["ensemble_elo_weight_max"] <= 1.0
     assert report["ensemble_elo_weight_min"] <= report["ensemble_elo_weight_max"]
+
+def test_overall_team_attack_informs_predictions_at_the_other_venue() -> None:
+    model = HistoricalRateModel()
+    target = row("target", 10, "A", "E", 0, 0)
+    strong_away = [
+        row("a1", 1, "A", "B", 4, 0),
+        row("a2", 2, "C", "D", 1, 1),
+        row("a3", 3, "D", "B", 1, 1),
+        row("a4", 4, "C", "E", 1, 1),
+    ]
+    neutral_away = [
+        row("a1", 1, "A", "B", 0, 0),
+        *strong_away[1:],
+    ]
+    strong_rate, _ = model.rates(strong_away, target)
+    neutral_rate, _ = model.rates(neutral_away, target)
+    assert strong_rate > neutral_rate
