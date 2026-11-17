@@ -1,8 +1,11 @@
 """Strict point-in-time contracts for prospective bookmaker odds capture."""
 from __future__ import annotations
+
 from datetime import datetime
 from typing import Literal
+
 from pydantic import Field, field_validator, model_validator
+
 from app.providers.contracts import StrictModel
 
 class OddsObservation(StrictModel):
@@ -31,7 +34,7 @@ class OddsObservation(StrictModel):
         return value
 
     @model_validator(mode="after")
-    def enforce_point_in_time(self) -> "OddsObservation":
+    def enforce_point_in_time(self) -> OddsObservation:
         if self.source_tick_at > self.retrieved_at:
             raise ValueError("source tick cannot be later than retrieval")
         if self.retrieved_at > self.prediction_cutoff_at:
@@ -59,7 +62,7 @@ class OddsCaptureEnvelope(StrictModel):
         return value
 
     @model_validator(mode="after")
-    def capture_not_before_retrieval(self) -> "OddsCaptureEnvelope":
+    def capture_not_before_retrieval(self) -> OddsCaptureEnvelope:
         if any(item.retrieved_at > self.captured_at for item in self.observations):
             raise ValueError("envelope capture cannot precede observation retrieval")
         return self
