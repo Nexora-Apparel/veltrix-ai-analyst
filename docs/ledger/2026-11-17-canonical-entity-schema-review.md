@@ -9,7 +9,7 @@ Prepare Migration 007 for the canonical team, competition, fixture, provider ide
 - Base: `main` at `c23dc52f8c267236aa1ccf0c9234ab85515054aa`.
 - Work branch: `stage1/canonical-entity-schema-007-20261117`.
 - Initial schema commit discovered on the existing branch: `d07478223511bb4a1079c2ae95dc7b53fbdc8a4e`.
-- No open pull request existed when work resumed.
+- No open pull request existed when work resumed; draft PR [#14](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/14) was subsequently opened.
 - Migration 007 and supporting tests/workflow/docs are still unmerged and have not been applied to Neon.
 
 ## Schema design
@@ -37,7 +37,7 @@ Prepare Migration 007 for the canonical team, competition, fixture, provider ide
 - Added static canonical-schema contract tests.
 - Extended the controlled migration workflow to verify checksums and required tables/functions/triggers for migrations 006 and 007.
 - Extended workflow contract tests and the database migration runbook.
-- Full CI has not yet been run for this branch. PostgreSQL execution of migration 007 remains required.
+- PR CI run [#44064737019](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44064737019) was superseded/cancelled as the branch was hardened. The current head's CI is queued/running; results are not yet verified. PostgreSQL execution of migration 007 remains required.
 
 ## Data and safety disposition
 
@@ -55,5 +55,5 @@ Prepare Migration 007 for the canonical team, competition, fixture, provider ide
 1. Run full PR CI and correct every failure.
 2. Review PostgreSQL migration behavior against an ephemeral database.
 3. Open/complete PR review; do not merge if SQL checks fail.
-4. After merge, use the controlled migration workflow against the exact `veltrix_ai_analyst` database and verify migration 007 checksum plus objects.
+4. After review and merge, use the controlled migration workflow against the exact `veltrix_ai_analyst` database and verify migration 007 checksum plus objects.
 5. Only then begin the separate canonical materialization service and read-only reconciliation tests. Human review must not be fabricated.
