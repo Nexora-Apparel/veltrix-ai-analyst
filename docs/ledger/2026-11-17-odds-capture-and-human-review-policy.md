@@ -11,6 +11,25 @@ The existing 28 review cases remain pending: 20 team candidates, four duplicate
 candidates, America MG alias collision, competition-season mapping, coverage
 reconciliation, and PIT timestamp gap. No source row is deleted or reparented.
 
+## Rights authorization declaration — project owner, 2026-11-17
+
+The project owner explicitly confirms that permission has been obtained to use
+all information currently collected for training the VELTRIX AI ANALYST model,
+and that the sources/information being used have been authorized. Record this as
+a project-owner rights declaration covering the current collected corpus and
+personal-use project scope. Do not continue to describe model-training permission
+as categorically absent for that corpus.
+
+Operational handling: preserve the owner declaration as an authorization record,
+but retain source-level rights provenance (provider/source, applicable terms or
+permission evidence, scope, effective date, permitted operations, and any limits)
+when building the immutable dataset manifest. Where a source has an explicit
+non-commercial or personal-use restriction, keep the model and resulting use
+within that scope. If any source's terms conflict with the declaration or do not
+cover model training, quarantine only that source pending clarification rather
+than assuming blanket permission overrides third-party terms. This is a provenance
+and scope check, not a demand for another account or key.
+
 ## Odds point-in-time controls
 Every prospective odds row retains provider fixture ID, bookmaker, market,
 selection, line, decimal price, source tick timestamp (recorded_at/opened_at),
@@ -65,3 +84,12 @@ recommendations remain recommendations. Any future identity decision must cite
 specific authoritative evidence and record the actual reviewer identity and
 evidence hash. Personal/non-commercial use does not alter point-in-time feature
 eligibility or waive provider terms.
+
+
+## Rights and PIT distinction
+
+The project owner's permission confirmation resolves the project-side authorization
+decision for the collected corpus. It does not change source timestamps, fixture
+identity confidence, duplicate status, label availability, or the temporal
+availability of features. In particular, no historical row becomes PIT-eligible
+merely because model-training use is authorized.
