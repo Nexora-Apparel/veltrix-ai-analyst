@@ -117,7 +117,15 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
         migrations_dir=migrations_dir,
     )
     assert set(applied).issubset(
-        {"001_provenance_ingestion.sql", "002_source_observation_sightings.sql", "003_import_request_reservations.sql"}
+        {
+            "001_provenance_ingestion.sql",
+            "002_source_observation_sightings.sql",
+            "003_import_request_reservations.sql",
+            "004_ingestion_quarantine.sql",
+            "005_reservation_response_link.sql",
+            "006_pre_match_feature_pit_gate.sql",
+            "007_canonical_entity_layer.sql",
+        }
     )
 
     assert apply_migrations(
@@ -147,6 +155,10 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "001_provenance_ingestion.sql",
             "002_source_observation_sightings.sql",
             "003_import_request_reservations.sql",
+            "004_ingestion_quarantine.sql",
+            "005_reservation_response_link.sql",
+            "006_pre_match_feature_pit_gate.sql",
+            "007_canonical_entity_layer.sql",
         }.issubset(migration_versions)
 
         assert {
@@ -167,6 +179,17 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "ingestion_quarantine",
             "import_run_events",
             "import_request_reservations",
+            "pre_match_feature_observations",
+            "canonical_teams",
+            "canonical_competitions",
+            "canonical_fixtures",
+            "provider_team_identity_links",
+            "provider_competition_identity_links",
+            "canonical_fixture_sources",
+            "canonical_identity_review_events",
+            "effective_provider_team_identity_links",
+            "effective_provider_competition_identity_links",
+            "effective_canonical_fixture_sources",
         }.issubset(tables)
 
         suffix = uuid4().hex
