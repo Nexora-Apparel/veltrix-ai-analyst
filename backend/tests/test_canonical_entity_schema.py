@@ -29,6 +29,7 @@ def test_canonical_schema_is_provenance_preserving_and_schema_only() -> None:
     assert "payload_sha256" in sql
     assert "IS DISTINCT FROM 'SOURCE_FIXTURE_LINK_REVIEWED'" in sql
     assert "CANONICAL_FIXTURE_IDENTITY_LINKS_NOT_REVIEWED" in sql
+    assert "CANONICAL_FIXTURE_SOURCE_FACTS_MISMATCH" in sql
 
     lowered = sql.lower()
     assert "insert into veltrix_ai_analyst.canonical_" not in lowered
