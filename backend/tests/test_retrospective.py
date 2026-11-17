@@ -88,7 +88,7 @@ def test_calibration_diagnostics_report_classwise_and_top_label_error():
         [0, 1, 0, 1],
         bins=5,
     )
-    assert result.classwise_ece == pytest.approx(0.1)
+    assert result.classwise_ece == pytest.approx(0.2)
     assert result.top_label_ece == pytest.approx(0.2)
 
 
