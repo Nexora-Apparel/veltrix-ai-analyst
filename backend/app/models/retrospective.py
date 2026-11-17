@@ -55,6 +55,7 @@ class ResearchPrediction:
     home_lambda: float
     away_lambda: float
     rho: float
+    ensemble_elo_weight: float
 
 
 class HistoricalRateModel:
@@ -207,6 +208,7 @@ def chronological_research_run(
     scored: dict[str, list[tuple[int, tuple[float, float, float]]]] = {
         "elo": [], "poisson": [], "ensemble": []
     }
+    weights_used: list[float] = []
     index = 0
     while index < len(rows):
         kickoff = rows[index].kickoff_at
@@ -219,6 +221,21 @@ def chronological_research_run(
                 history, prior_matches=prior_matches, half_life_days=half_life_days
             )
             last_rho_fit_count = len(history)
+        # Tune only from already-scored prequential predictions. Shrink early
+        # estimates toward the baseline to reduce variance on a small corpus.
+        weight = ensemble_elo_weight
+        if len(scored["elo"]) >= 50:
+            candidates = tuple(step / 20 for step in range(21))
+            def blend_objective(candidate: float) -> float:
+                losses = []
+                for (actual, elo_prediction), (_, poisson_prediction) in zip(
+                    scored["elo"], scored["poisson"], strict=True
+                ):
+                    probability = candidate * elo_prediction[actual] + (1.0 - candidate) * poisson_prediction[actual]
+                    losses.append(-log(max(1e-15, probability)))
+                return sum(losses) / len(losses) + 0.03 * (candidate - ensemble_elo_weight) ** 2
+            weight = min(candidates, key=lambda candidate: (blend_objective(candidate), abs(candidate - ensemble_elo_weight)))
+        weights_used.append(weight)
         batch_results = []
         for row in batch:
             if history:
@@ -228,7 +245,6 @@ def chronological_research_run(
             poisson = build_scoreline_distribution(home_rate, away_rate, rho=rho, max_goals=10)
             elo_probs = _elo_probabilities(elo, row.home_team_id, row.away_team_id, history)
             p_probs = (poisson.home_win, poisson.draw, poisson.away_win)
-            weight = ensemble_elo_weight
             ensemble = tuple(weight * elo_probs[i] + (1.0 - weight) * p_probs[i] for i in range(3))
             total = sum(ensemble)
             ensemble = tuple(value / total for value in ensemble)
@@ -240,7 +256,7 @@ def chronological_research_run(
                 row.fixture_id, row.kickoff_at, row.home_goals, row.away_goals,
                 elo_probs[0], elo_probs[1], elo_probs[2],
                 p_probs[0], p_probs[1], p_probs[2],
-                home_rate, away_rate, rho,
+                home_rate, away_rate, rho, weight,
             ))
             batch_results.append(row)
         # No match at this kickoff can learn from another simultaneous result.
@@ -268,7 +284,11 @@ def chronological_research_run(
         "elo": summarize("elo"),
         "poisson": summarize("poisson"),
         "ensemble": summarize("ensemble"),
-        "ensemble_elo_weight": ensemble_elo_weight,
+        "ensemble_elo_weight_baseline": ensemble_elo_weight,
+        "ensemble_elo_weight_mean": sum(weights_used) / len(weights_used),
+        "ensemble_elo_weight_min": min(weights_used),
+        "ensemble_elo_weight_max": max(weights_used),
+        "ensemble_weight_selection": "PRIOR_PREQUENTIAL_PREDICTIONS_ONLY_WITH_BASELINE_SHRINKAGE",
         "dixon_coles_rho_full_corpus_diagnostic_only": fitted_rho,
         "scoreline_model": "POISSON_WITH_TRAINING_ONLY_DIXON_COLES_RHO",
         "rho_used_for_prequential_predictions": "updated_from_prior_results_only",
@@ -279,6 +299,7 @@ def chronological_research_run(
                 "elo_1x2": [p.elo_home, p.elo_draw, p.elo_away],
                 "poisson_1x2": [p.poisson_home, p.poisson_draw, p.poisson_away],
                 "goal_rates": [p.home_lambda, p.away_lambda], "rho": p.rho,
+                "ensemble_elo_weight": p.ensemble_elo_weight,
             } for p in predictions
         ],
     }
