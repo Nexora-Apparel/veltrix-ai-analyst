@@ -103,3 +103,27 @@ def test_dixon_coles_rho_fit_handles_simultaneous_kickoff_batches() -> None:
     ]
     rho = fit_dixon_coles_rho(fixtures)
     assert -0.18 <= rho <= 0.18
+
+def test_ensemble_weight_tuning_uses_prior_prequential_predictions() -> None:
+    from datetime import timedelta
+
+    teams = ("A", "B", "C", "D")
+    fixtures = [
+        ResearchFixture(
+            f"tune-{index}",
+            datetime(2026, 1, 1, 15, tzinfo=UTC) + timedelta(days=index),
+            teams[index % 4],
+            teams[(index + 1) % 4],
+            2 if index % 5 in (0, 1) else 0,
+            1 if index % 3 == 0 else 0,
+        )
+        for index in range(65)
+    ]
+    report = chronological_research_run(fixtures)
+    assert report["ensemble_weight_selection"] == (
+        "PRIOR_PREQUENTIAL_PREDICTIONS_ONLY_WITH_BASELINE_SHRINKAGE"
+    )
+    assert 0.0 <= report["ensemble_elo_weight_min"] <= 1.0
+    assert 0.0 <= report["ensemble_elo_weight_mean"] <= 1.0
+    assert 0.0 <= report["ensemble_elo_weight_max"] <= 1.0
+    assert report["ensemble_elo_weight_min"] <= report["ensemble_elo_weight_max"]
