@@ -7,9 +7,9 @@ training window chronologically and must never pass post-cutoff fixtures.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Iterable
 from datetime import datetime
 from math import exp, isfinite, log
-from typing import Iterable
 
 
 @dataclass(frozen=True, slots=True)
