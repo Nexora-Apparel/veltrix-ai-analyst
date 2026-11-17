@@ -1,8 +1,8 @@
 """Execute the first guarded production canonical materialization.
 
-This command is intentionally first-run-only. It requires a workflow confirmation,
-a fresh exact-scope plan, and all canonical target tables to be empty. The entire
-write and post-write reconciliation run in one PostgreSQL transaction.
+This command is intentionally first-run-only. It requires explicit workflow
+confirmation, a fresh exact-scope plan, and empty canonical targets. Planning,
+writing and post-write reconciliation share one serializable transaction.
 """
 from __future__ import annotations
 
@@ -50,6 +50,29 @@ def _require(condition: bool, code: str) -> None:
         raise SystemExit(code)
 
 
+def _validate_plan(plan) -> None:
+    _require(plan.ready, "CANONICAL_MATERIALIZATION_PLAN_BLOCKED")
+    _require(
+        (
+            plan.provider == BRAZIL_SERIE_B_RUN_3.provider
+            and plan.source_id == BRAZIL_SERIE_B_RUN_3.source_id
+            and plan.competition_id == BRAZIL_SERIE_B_RUN_3.competition_id
+            and plan.import_run_id == BRAZIL_SERIE_B_RUN_3.import_run_id
+            and plan.team_count == 21
+            and plan.competition_count == 1
+            and plan.fixture_count == 374
+            and plan.finished_fixture_count == 370
+            and plan.unknown_fixture_count == 4
+            and plan.provenance_complete_team_count == 21
+            and plan.provenance_complete_competition_count == 1
+            and plan.provenance_complete_fixture_count == 374
+            and plan.non_pit_observation_count == 396
+            and set(plan.conflict_fixture_ids) == {"2341822348", "3116209225"}
+        ),
+        "CANONICAL_MATERIALIZATION_PLAN_SCOPE_OR_COUNTS_CHANGED",
+    )
+
+
 def main() -> int:
     _require(
         os.environ.get("CANONICAL_MATERIALIZATION_CONFIRMATION")
@@ -64,44 +87,29 @@ def main() -> int:
         "CANONICAL_MATERIALIZATION_EXPECTED_DATABASE_INVALID",
     )
 
-    # Autocommit allows the explicit outer transaction below to own the complete
-    # write, including the materializer's nested transaction/savepoint.
     with psycopg.connect(database_url, autocommit=True) as connection:
         _require(
             connection.info.dbname == expected_database,
             "CANONICAL_MATERIALIZATION_DATABASE_TARGET_MISMATCH",
         )
 
-        plan = build_brazil_serie_b_materialization_plan(connection)
-        report = plan.as_dict()
-        _require(plan.ready, "CANONICAL_MATERIALIZATION_PLAN_BLOCKED")
-        _require(
-            (
-                plan.provider == BRAZIL_SERIE_B_RUN_3.provider
-                and plan.source_id == BRAZIL_SERIE_B_RUN_3.source_id
-                and plan.competition_id == BRAZIL_SERIE_B_RUN_3.competition_id
-                and plan.import_run_id == BRAZIL_SERIE_B_RUN_3.import_run_id
-                and plan.team_count == 21
-                and plan.competition_count == 1
-                and plan.fixture_count == 374
-                and plan.finished_fixture_count == 370
-                and plan.unknown_fixture_count == 4
-                and plan.provenance_complete_team_count == 21
-                and plan.provenance_complete_competition_count == 1
-                and plan.provenance_complete_fixture_count == 374
-                and plan.non_pit_observation_count == 396
-                and set(plan.conflict_fixture_ids) == {"2341822348", "3116209225"}
-            ),
-            "CANONICAL_MATERIALIZATION_PLAN_SCOPE_OR_COUNTS_CHANGED",
-        )
-
-        before = _counts(connection)
-        _require(
-            all(value == 0 for value in before.values()),
-            "CANONICAL_MATERIALIZATION_TARGET_NOT_EMPTY",
-        )
-
+        # The plan, empty-target gate, writer and post-write checks share one
+        # serializable snapshot. The writer's transaction becomes a savepoint.
         with connection.transaction():
+            connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+            connection.execute("SET LOCAL lock_timeout = '15s'")
+            connection.execute("SET LOCAL statement_timeout = '180s'")
+
+            plan = build_brazil_serie_b_materialization_plan(connection)
+            _validate_plan(plan)
+            report = plan.as_dict()
+
+            before = _counts(connection)
+            _require(
+                all(value == 0 for value in before.values()),
+                "CANONICAL_MATERIALIZATION_TARGET_NOT_EMPTY",
+            )
+
             result = materialize_brazil_serie_b_canonical_entities(
                 connection,
                 execute=True,
@@ -147,7 +155,7 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except SystemExit:
         raise
-    except Exception as exc:  # Fail closed; workflow logs retain the exception type.
+    except Exception as exc:  # Fail closed; do not print connection details.
         print(
             f"CANONICAL_MATERIALIZATION_FAILED:{type(exc).__name__}",
             file=sys.stderr,
