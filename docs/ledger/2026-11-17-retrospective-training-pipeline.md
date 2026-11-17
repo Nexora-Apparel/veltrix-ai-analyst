@@ -33,3 +33,10 @@ This workstream supersedes older progress statements that broadly prohibited mod
 3. Inspect the generated report, exclusions, calibration and model scorecards.
 4. Improve rate priors, recency decay, Elo parameters, Dixon-Coles fitting and ensemble weights through chronological tuning.
 5. Expand to additional authorized collected competitions/sources only after validating their data contracts and retaining source-local identities.
+
+## Follow-up accuracy refinements
+- Historical goal-rate features now blend team-wide attack/defence strength with venue-specific home/away strength. Overall team history contributes 65% in log-space and venue-specific history 35%, with prior-match shrinkage; away-match evidence can inform later home estimates and vice versa.
+- Elo/Poisson ensemble weight is recalibrated from previously scored prequential predictions only, after 50 prior predictions, on a 0.05 grid with shrinkage toward the 0.35 baseline. The current kickoff batch uses one fixed weight and cannot learn from another simultaneous fixture.
+- Training extraction now runs in an explicitly read-only database transaction.
+- CI run 44157297293 confirmed backend tests passed and Android build passed; Ruff failed on unused imports/variable and import/style findings. These were corrected in later branch commits. The latest branch head still needs a fresh CI run before merge.
+- Added regression coverage for cross-venue team-strength transfer and chronological ensemble-weight adaptation.
