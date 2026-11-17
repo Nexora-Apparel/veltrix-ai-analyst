@@ -121,6 +121,22 @@ def main() -> None:
             "nested_tuning": report.nested_tuning,
             "classwise_ece": report.classwise_ece,
             "top_label_ece": report.top_label_ece,
+            "paired_fold_block_bootstrap": {
+                "resamples": report.paired_bootstrap.resamples,
+                "seed": report.paired_bootstrap.seed,
+                "difference_convention": "MODEL_MINUS_LEAGUE_BASELINE; NEGATIVE_FAVOURS_MODEL",
+                "brier_difference": {
+                    "mean": report.paired_bootstrap.brier_difference.mean_difference,
+                    "lower_95": report.paired_bootstrap.brier_difference.lower_95,
+                    "upper_95": report.paired_bootstrap.brier_difference.upper_95,
+                },
+                "log_loss_difference": {
+                    "mean": report.paired_bootstrap.log_loss_difference.mean_difference,
+                    "lower_95": report.paired_bootstrap.log_loss_difference.lower_95,
+                    "upper_95": report.paired_bootstrap.log_loss_difference.upper_95,
+                },
+                "interpretation": "EXPLORATORY_CHRONOLOGICAL_FOLD_BLOCK_BOOTSTRAP_FEW_FOLDS",
+            },
             "fold_metrics": [
                 {
                     "fold_index": row.fold_index,

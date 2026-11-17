@@ -14,6 +14,7 @@ from math import exp, log
 
 from app.models.attack_defence import GoalResult, fit_attack_defence
 from app.models.scoreline import build_scoreline_distribution
+from app.validation.bootstrap import PairedFoldBootstrap, paired_fold_block_bootstrap
 from app.validation.calibration import multiclass_calibration_diagnostics
 from app.validation.tuning import tune_attack_defence
 
@@ -71,6 +72,7 @@ class RetrospectiveReport:
     nested_tuning: bool
     selected_parameters: tuple[tuple[float, float, float], ...]
     fold_metrics: tuple[RetrospectiveFoldMetrics, ...]
+    paired_bootstrap: PairedFoldBootstrap
     predictions: tuple[RetrospectivePrediction, ...]
 
 
@@ -315,5 +317,6 @@ def evaluate_retrospective(
         nested_tuning=nested_tuning,
         selected_parameters=tuple(selected_parameters),
         fold_metrics=tuple(fold_metrics),
+        paired_bootstrap=paired_fold_block_bootstrap(fold_metrics),
         predictions=tuple(predictions),
     )
