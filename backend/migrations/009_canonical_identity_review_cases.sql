@@ -104,6 +104,10 @@ CREATE TABLE veltrix_ai_analyst.canonical_identity_review_case_events (
         OR
         (event_type <> 'AUTOMATED_RECOMMENDATION' AND reviewer_type = 'HUMAN')
     ),
+    CHECK (
+        event_type NOT IN ('HUMAN_CONFIRMED', 'HUMAN_REJECTED')
+        OR evidence_sha256 IS NOT NULL
+    ),
     UNIQUE (case_id, event_type, reviewer_id)
 );
 
@@ -169,6 +173,7 @@ SELECT
          AND observation.payload_sha256 = link.payload_sha256
          AND observation.rights_approval_id = link.rights_approval_id
          AND sighting.id IS NOT NULL
+         AND sighting.source_observation_id = link.source_observation_id
          AND sighting.provider_response_id = link.provider_response_id
          AND sighting.payload_sha256 = link.payload_sha256
          AND response.provider = link.provider
@@ -336,7 +341,8 @@ JOIN veltrix_ai_analyst.effective_canonical_identity_review_cases effective
   ON effective.id = review_case.id
 WHERE review_case.case_type = 'FIXTURE_DUPLICATE_CANDIDATE';
 
--- Four UNKNOWN rows are exact-team-pair duplicates of FINISHED provider rows.
+-- Four UNKNOWN rows are duplicate/stale candidates: three match exact provider team IDs;
+-- the Goiás-América pair uses a second provider ID supported by official alias evidence.
 -- Official CBF match pages establish one real fixture and the settled result.
 -- We stage evidence and a recommended deduplication only; no source or canonical
 -- row is rewritten, and a human must confirm before any canonical resolution.
@@ -427,7 +433,10 @@ SELECT
     'TEAM_REAL_WORLD_IDENTITY_CANDIDATE',
     link.id,
     'VERIFY_REAL_WORLD_TEAM_IDENTITY',
-    ARRAY['https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_19_05_ee33324167.pdf'],
+    ARRAY[
+        'https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026?doc=Tabela+Detalhada',
+        'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_19_05_ee33324167.pdf'
+    ],
     'Provider team ID ' || link.provider_team_id || ' is labelled "' || team.name ||
     '" in the immutable source catalogue and appears in the imported fixture graph. Compare the club name and home/away schedule against the official CBF 2026 Série B fixture table before confirming real-world identity.'
 FROM veltrix_ai_analyst.provider_team_identity_links link
