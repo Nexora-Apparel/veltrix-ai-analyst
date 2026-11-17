@@ -2,13 +2,22 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-17 (Stage 2 closure audit: production migrations/materialization verified; 370-fixture schedule structure reconciled; Round 38 incremental import remains manual-gated)
+**Last updated:** 2026-11-17 (Round 38 import complete; incremental canonical materializer merged and CI-green; manual production materialization remains)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
 **Product:** Personal-use, cloud-backed native Android football analysis and prediction application
 
-## Latest execution checkpoint — Stage 2 closure audit (2026-11-17)
+## Latest execution checkpoint — Round 38 import and canonical incremental gate (2026-11-17)
+
+- [x] Controlled Round 38 import run [#44107179999](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44107179999) succeeded: import run 5, two of four requests used, ten fixtures inserted, zero duplicates/rejections/quarantines. Provider scope is 384 fixtures (380 FINISHED, four UNKNOWN).
+- [x] PR [#22](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/22) merged as `1f45c1b3547d77d3127b84a111e3611e63efeb72`. Adds guarded incremental canonical materializer and manual workflow; reuses 374 existing mappings and creates exactly ten new mappings after strict checks.
+- [x] CI run [#44116261032](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44116261032) passed: 122 backend tests, Ruff, Android debug build and APK artifact upload.
+- [x] Read-only Neon provenance verification: 374 existing fixture source links, 21 team identity links and one competition identity link all match the materializer's earliest matching source sightings; ten provider fixtures remain unlinked. Review queue remains 28 cases / 28 events.
+- [ ] Manually dispatch [Materialize Round 38 canonical fixtures](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/materialize-round38-canonical-incremental.yml) with `confirm_materialization=MATERIALIZE_BRAZIL_SERIE_B_RUN_5_INCREMENTAL`; then independently verify 384 canonical fixtures and source links, zero unlinked provider fixtures, unchanged review queue, no identity approvals and zero PIT feature promotion. This session cannot dispatch GitHub Actions workflow events.
+- **Stage 2 status: close-ready, pending manual canonical materialization and production verification.** The 28 identity cases and PIT timestamp/rights qualification remain explicit downstream gates.
+
+## Earlier Stage 2 closure checkpoint — before Round 38 incremental import (2026-11-17)
 
 - [x] Production migrations 001–009 are applied; migration 009 is independently read-verified.
 - [x] Production canonical layer: 21 teams, one competition, 374 fixtures; 21 team links, one competition link, 374 fixture-source links.
@@ -20,9 +29,9 @@
 - [x] Four UNKNOWN rows remain scoreless duplicate/stale candidates; America MG identity collision and all 28 review cases remain human-pending.
 - [x] PIT audit remains fail-closed: 374 observations, 374 sightings, zero PIT-certifiable. No pre-match feature promotion or model training.
 - [x] Dedicated bounded Round 38 ingestion path merged in [PR #20](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/20), merge commit `69f91a99b162804fa6a1baa8cd35d9cdc3388488`. CI run [#44102095868](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44102095868) passed backend tests, Ruff and Android debug APK build.
-- [ ] Manually dispatch [Controlled Brazil Serie B Round 38 Incremental Import](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/historical-brazil-serie-b-round38.yml) using `confirm_collection=COLLECT_BRAZIL_SERIE_B_ROUND_38`. It is fixed to `[2026-11-09T00:00:00Z, 2026-11-17T00:00:00Z)` and a four-request cap. This session cannot dispatch GitHub Actions workflow events.
-- **Stage 2 status: implementation and CI complete; pending manual Round 38 workflow dispatch and production verification.** Human identity review and PIT-source qualification remain explicit gates; they do not justify unsafe auto-merges or feature promotion.
-- Detailed evidence and exact final-round results: [Stage 2 closure audit](ledger/2026-11-17-stage-2-closure-audit.md).
+- [x] Round 38 import completed in workflow run [#44107179999](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44107179999); see the latest execution checkpoint above for canonical materialization status.
+- **Historical checkpoint status:** the import blocker recorded at the time is resolved; the separate canonical incremental materialization remains pending.
+- Detailed evidence and exact final-round results: [Stage 2 closure audit](ledger/2026-11-17-stage-2-closure-audit.md). Incremental materializer implementation and verification gate: [Round 38 canonical incremental ledger](ledger/2026-11-17-round38-canonical-incremental.md).
 
 ## Historical checkpoint — canonical materialization and identity/coverage audit (2026-11-17)
 
