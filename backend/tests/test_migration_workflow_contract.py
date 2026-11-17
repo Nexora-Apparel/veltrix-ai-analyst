@@ -22,3 +22,13 @@ def test_manual_migration_workflow_verifies_migration_006_objects() -> None:
     assert "enforce_pre_match_feature_pit()" in workflow
     assert "pre_match_feature_pit_guard" in workflow
     assert "pre_match_feature_observations_append_only" in workflow
+
+
+
+def test_manual_migration_workflow_verifies_canonical_migration_007() -> None:
+    workflow = (ROOT / ".github/workflows/apply-database-migrations.yml").read_text()
+    assert "007_canonical_entity_layer.sql" in workflow
+    assert "canonical_identity_review_events" in workflow
+    assert "canonical_fixture_identity_status_guard" in workflow
+    assert "canonical_fixture_source_merge_guard" in workflow
+    assert "MIGRATION_CHECKSUM_VERIFICATION_FAILED" in workflow
