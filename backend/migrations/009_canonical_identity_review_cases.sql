@@ -411,7 +411,7 @@ SELECT
     'MAP_ALIAS_PROVIDER_ID_TO_AMERICA_MINEIRO_AFTER_HUMAN_CONFIRMATION',
     ARRAY[
         'https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-america/832843',
-        'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_19_05_ee33324167.pdf'
+        'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf'
     ],
     'CBF identifies the sole Round 1 fixture as Goiás 3-1 América MG. Provider team ID 1102583842 (America MG) appears in 37 fixtures; provider team ID 3808811746 (América Mineiro) appears only in the duplicate UNKNOWN Goiás row. Strong alias evidence; preserve both source identities until a human confirms the alias.'
 FROM veltrix_ai_analyst.provider_team_identity_links primary_link
@@ -437,7 +437,7 @@ SELECT
     'VERIFY_REAL_WORLD_TEAM_IDENTITY',
     ARRAY[
         'https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026?doc=Tabela+Detalhada',
-        'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_19_05_ee33324167.pdf'
+        'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf'
     ],
     'Provider team ID ' || link.provider_team_id || ' is labelled "' || team.name ||
     '" in the immutable source catalogue and appears in the imported fixture graph. Compare the club name and home/away schedule against the official CBF 2026 Série B fixture table before confirming real-world identity.'
@@ -462,7 +462,7 @@ SELECT
     'VERIFY_BRAZIL_SERIE_B_2026_COMPETITION_IDENTITY_AND_SEASON',
     ARRAY[
         'https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026?doc=Tabela+Detalhada',
-        'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_19_05_ee33324167.pdf'
+        'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf'
     ],
     'Provider competition ID 522514093 is labelled Brazil Serie B in the imported source. CBF official 2026 Série B schedule is independent evidence for the competition and season context; human reviewer must verify the provider competition identity and record the season scope explicitly.'
 FROM veltrix_ai_analyst.provider_competition_identity_links link
@@ -481,7 +481,8 @@ VALUES
     'RECONCILE_ALL_370_FINISHED_ROWS_TO_CBF_ROUNDS_1_TO_37_BEFORE_CERTIFYING_COVERAGE',
     ARRAY[
         'https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026?doc=Tabela+Detalhada',
-        'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_19_05_ee33324167.pdf'
+        'https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf',
+        'https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/botafogo-x-londrina-saf/833272'
     ],
     'The imported interval ends 2026-11-09 and contains 370 FINISHED records: 20 provider team IDs, exactly 37 appearances per team, 370 distinct ordered home/away pairs, and zero repeated ordered pairs. All 10 Round 37 pairings match the official CBF Round 37 schedule; the detailed CBF match record dates Botafogo SP-Londrina to 2026-11-05, within the import window. Round 38 is 2026-11-14 and outside run 3. Four UNKNOWN provider rows are duplicate candidates. These structural checks are strong coverage evidence but do not replace a full 370-pair fixture-by-fixture official schedule reconciliation.'
 ),
