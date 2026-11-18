@@ -24,8 +24,7 @@ def base_args():
         "provider_response_date": RETRIEVED,
         "value_bet_decision_cutoff_at": CUTOFF,
         "source_observation_id": "obs-1",
-        "rights_approval_id": "rights-1",
-        "rights_allow_value_betting": True,
+        "competition_id": "522514093",
     }
 
 
@@ -176,7 +175,7 @@ def test_rejects_unapproved_value_betting_rights():
     with pytest.raises(OddsPayloadError, match="rights"):
         normalize_5dollar_fixture_odds(
             fixture_odds_response(),
-            **{**base_args(), "rights_allow_value_betting": False},
+            **{**base_args(), "competition_id": "unapproved-competition"},
         )
 
 
