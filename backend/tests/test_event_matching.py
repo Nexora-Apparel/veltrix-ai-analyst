@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -6,7 +6,6 @@ from app.providers.event_matching import (
     match_event_to_fixture,
     normalize_team_name,
 )
-
 
 EVENT = {
     "event_id": "odds-event-1",
