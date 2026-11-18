@@ -171,13 +171,20 @@ def download_pdf(url: str) -> bytes:
         return response.read()
 
 
+BRAZIL_UF_CODES = {
+    "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+    "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+    "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+}
+
+
 def split_club_and_state(tokens: list[str], *, away: bool) -> list[str]:
     if away:
         for index, token in enumerate(tokens):
-            if re.fullmatch(r"[A-Z]{2}", token):
+            if token in BRAZIL_UF_CODES:
                 return tokens[:index]
         raise ValueError(f"away team state suffix not found: {tokens}")
-    if tokens and re.fullmatch(r"[A-Z]{2}", tokens[-1]):
+    if tokens and tokens[-1] in BRAZIL_UF_CODES:
         return tokens[:-1]
     raise ValueError(f"home team state suffix not found: {tokens}")
 
