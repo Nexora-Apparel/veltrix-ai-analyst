@@ -1,3 +1,4 @@
+# ruff: noqa: I001
 """Independent binary-market metrics and stratified paired bootstrap intervals."""
 from __future__ import annotations
 
