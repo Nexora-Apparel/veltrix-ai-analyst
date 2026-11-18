@@ -184,7 +184,27 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         },
         "provider_season_id_coverage": sum(1 for row in rows if row["provider_season_id"]),
         "multi_calendar_year_coverage": len({row["calendar_year"] for row in rows}) > 1,
-        "source_evidence": stable,
+        "source_evidence": [
+            {
+                "fixture_id": f"{row['provider_competition_id']}:{row['provider_fixture_id']}",
+                "provider_competition_id": row["provider_competition_id"],
+                "provider_fixture_id": row["provider_fixture_id"],
+                "home_team_provider_id": row["home_team_provider_id"],
+                "away_team_provider_id": row["away_team_provider_id"],
+                "kickoff_at": row["kickoff_at"].isoformat(),
+                "source_observation_id": str(row["source_observation_id"]),
+                "provider_response_id": str(row["provider_response_id"]),
+                "retrieved_at": row["retrieved_at"].isoformat(),
+                "system_observed_at": (
+                    row["system_observed_at"].isoformat()
+                    if row["system_observed_at"] is not None else None
+                ),
+                "availability_basis": row["availability_basis"],
+                "payload_sha256": str(row["payload_sha256"]).strip(),
+                "raw_response_sha256": str(row["raw_response_sha256"]).strip(),
+            }
+            for row in rows
+        ],
         "finished_labeled_rows": len(finished),
         "unknown_unlabeled_rows_excluded": len(unknown),
         "unknown_fixture_ids": sorted(
