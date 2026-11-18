@@ -72,9 +72,13 @@ def test_prospective_evaluator_scores_1x2_btts_and_totals_with_confidence_interv
     )
     assert report["status"] == "RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL"
     assert report["fixtures"] > 0
-    assert set(report["markets"]) == {"1X2", "BTTS", "OVER_UNDER_2_5"}
+    assert set(report["markets"]) == {
+        "1X2", "BTTS", "OVER_UNDER_1_5", "OVER_UNDER_2_5", "OVER_UNDER_3_5"
+    }
     assert "paired_delta_model_minus_baseline" in report["markets"]["BTTS"]
+    assert "per_competition" in report["markets"]["OVER_UNDER_1_5"]
     assert "per_competition" in report["markets"]["OVER_UNDER_2_5"]
+    assert "per_competition" in report["markets"]["OVER_UNDER_3_5"]
     assert report["production_promotion"] == "LOCKED"
     assert report["value_betting"] == "LOCKED"
 
