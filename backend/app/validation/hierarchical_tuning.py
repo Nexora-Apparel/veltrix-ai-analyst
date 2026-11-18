@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from itertools import product
+from itertools import pairwise, product
 from math import lgamma, log
 
 from app.models.hierarchical_poisson import (
@@ -82,7 +82,7 @@ def select_hierarchical_hyperparameters(
     if len({row.fixture_id for row in rows}) != len(rows):
         raise ValueError("duplicate fixture IDs are not allowed")
     ordered = tuple(sorted(folds, key=lambda fold: fold.train_cutoff))
-    for previous, current in zip(ordered, ordered[1:]):
+    for previous, current in pairwise(ordered):
         if current.train_cutoff < previous.validation_end:
             raise ValueError("chronological validation windows overlap")
     candidates = tuple(
