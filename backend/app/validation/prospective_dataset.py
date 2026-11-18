@@ -59,6 +59,10 @@ class FixtureObservation:
             raise ValueError("fixture and provider identity are required")
         _require_aware(self.retrieved_at, "retrieved_at")
         _require_aware(self.observed_at, "observed_at")
+        if self.rights_valid_from is not None:
+            _require_aware(self.rights_valid_from, "rights_valid_from")
+        if self.rights_valid_until is not None:
+            _require_aware(self.rights_valid_until, "rights_valid_until")
         if self.observed_at < self.retrieved_at:
             raise ValueError("system observation cannot precede retrieval")
         for digest in (self.payload_sha256, self.raw_response_sha256):
@@ -179,8 +183,11 @@ def _rights_valid(
                 effective_at = datetime.fromisoformat(effective_at)
             except ValueError:
                 return False
-        if isinstance(effective_at, datetime) and effective_at <= cutoff:
-            effective_events.append((effective_at, str(status)))
+        if isinstance(effective_at, datetime):
+            if effective_at.utcoffset() is None:
+                return False
+            if effective_at <= cutoff:
+                effective_events.append((effective_at, str(status)))
     if effective_events:
         latest = max(effective_events, key=lambda item: item[0])
         if latest[1] != "APPROVED":
