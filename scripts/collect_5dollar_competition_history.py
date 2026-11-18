@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
+
+import psycopg
 from datetime import UTC, datetime
 from urllib.parse import urlsplit
 
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
+from app.providers.historical_validation import validate_competition_import
 from app.providers.historical_import import (
     BOUNDARY_END,
     BOUNDARY_START,
@@ -74,7 +78,9 @@ def main() -> int:
             competition_id=competition_id,
         )
     )
-    print(f"HISTORICAL_IMPORT_FINISHED:competition_id={competition_id}:run_id={run_id}")
+    with psycopg.connect(database_url) as connection:
+        report = validate_competition_import(connection, run_id, competition_id)
+    print(json.dumps(report, sort_keys=True))
     return 0
 
 
