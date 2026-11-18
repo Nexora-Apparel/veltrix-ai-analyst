@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from math import exp, isfinite, lgamma, log
+from math import isfinite, lgamma, log
 
 
 @dataclass(frozen=True, slots=True)
