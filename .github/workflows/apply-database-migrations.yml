@@ -150,6 +150,29 @@ jobs:
                       "source_observation_sightings_pit_evidence_check",
                   ],
               },
+              "012_database_observed_timestamps.sql": {
+                  "tables": [],
+                  "functions": ["enforce_pre_match_feature_pit()"],
+                  "triggers": [
+                      "pre_match_feature_pit_guard",
+                      "pre_match_feature_observations_append_only",
+                  ],
+                  "constraints": [
+                      "source_observations_pit_evidence_check",
+                      "source_observations_system_observed_at_check",
+                      "source_observation_sightings_pit_evidence_check",
+                      "source_observation_sightings_system_observed_at_check",
+                  ],
+              },
+              "013_target_fixture_pre_match_gate.sql": {
+                  "tables": [],
+                  "functions": ["enforce_pre_match_feature_pit()"],
+                  "triggers": [
+                      "pre_match_feature_pit_guard",
+                      "pre_match_feature_observations_append_only",
+                  ],
+                  "indexes": ["pre_match_feature_observations_target_cutoff_idx"],
+              },
           }
 
           with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
@@ -230,6 +253,44 @@ jobs:
                           )
                   print(f"{filename} VERIFIED: {checksum}")
 
+              target_fixture = connection.execute(
+                  """
+                  SELECT is_nullable
+                  FROM information_schema.columns
+                  WHERE table_schema='veltrix_ai_analyst'
+                    AND table_name='pre_match_feature_observations'
+                    AND column_name='target_fixture_id'
+                  """
+              ).fetchone()
+              if target_fixture != ("NO",):
+                  raise SystemExit("MIGRATION_013_TARGET_FIXTURE_COLUMN_NOT_VERIFIED")
+              target_unique = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM pg_constraint
+                  WHERE conrelid='veltrix_ai_analyst.pre_match_feature_observations'::regclass
+                    AND conname='pre_match_feature_observations_target_source_feature_key'
+                    AND contype='u'
+                  """
+              ).fetchone()[0]
+              if target_unique != 1:
+                  raise SystemExit("MIGRATION_013_TARGET_UNIQUE_CONSTRAINT_NOT_VERIFIED")
+              timestamp_columns = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM information_schema.columns
+                  WHERE table_schema='veltrix_ai_analyst'
+                    AND column_name='system_observed_at'
+                    AND table_name IN (
+                      'provider_responses',
+                      'source_observations',
+                      'source_observation_sightings'
+                    )
+                  """
+              ).fetchone()[0]
+              if timestamp_columns != 3:
+                  raise SystemExit("MIGRATION_012_DATABASE_TIMESTAMPS_NOT_VERIFIED")
+              print("MIGRATIONS_012_013_VERIFIED: database-observed PIT and target fixture cutoff")
               expected_case_counts = {
                   "TEAM_REAL_WORLD_IDENTITY_CANDIDATE": 20,
                   "TEAM_ALIAS_CANDIDATE": 1,
