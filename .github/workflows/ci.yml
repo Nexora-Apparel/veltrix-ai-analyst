@@ -129,6 +129,8 @@ jobs:
           "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
       - name: Assemble debug APK
         working-directory: android
+        env:
+          VELTRIX_API_BASE_URL: https://veltrix-ai-analyst-api.vercel.app
         run: gradle :app:assembleDebug
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
