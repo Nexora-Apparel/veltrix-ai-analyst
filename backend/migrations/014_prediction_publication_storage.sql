@@ -255,6 +255,7 @@ DECLARE
     artifact_row RECORD;
     market_count INTEGER;
     latest_decision TEXT;
+    latest_event_at TIMESTAMPTZ;
 BEGIN
     SELECT p.*, snapshot.snapshot_sha256 AS stored_snapshot_sha256,
            snapshot.prediction_cutoff_at AS stored_snapshot_cutoff,
@@ -270,11 +271,18 @@ BEGIN
         RAISE EXCEPTION 'PREDICTION_NOT_FOUND';
     END IF;
 
-    SELECT decision INTO latest_decision
+    SELECT decision, effective_at INTO latest_decision, latest_event_at
     FROM veltrix_ai_analyst.prediction_publication_events
     WHERE prediction_id = NEW.prediction_id
     ORDER BY effective_at DESC, id DESC
     LIMIT 1;
+
+    IF latest_event_at IS NOT NULL AND NEW.effective_at <= latest_event_at THEN
+        RAISE EXCEPTION 'PREDICTION_PUBLICATION_EVENT_TIME_NOT_MONOTONIC';
+    END IF;
+    IF NEW.effective_at > clock_timestamp() THEN
+        RAISE EXCEPTION 'PREDICTION_PUBLICATION_EVENT_CANNOT_BE_FUTURE_DATED';
+    END IF;
 
     IF NEW.decision = 'PUBLISHED' THEN
         IF latest_decision = 'PUBLISHED' THEN
@@ -314,6 +322,7 @@ BEGIN
            OR prediction.prediction_cutoff_at >= fixture.kickoff_at
            OR prediction.generated_at < prediction.prediction_cutoff_at
            OR prediction.generated_at >= fixture.kickoff_at
+           OR NEW.effective_at < prediction.generated_at
            OR NEW.effective_at >= fixture.kickoff_at THEN
             RAISE EXCEPTION 'PREDICTION_PREMATCH_CHRONOLOGY_OR_SNAPSHOT_INVALID';
         END IF;
