@@ -42,7 +42,7 @@ The workflow requires the database secret to be configured in that environment. 
 ## After each run
 
 1. Inspect the import run status, request reservations, raw response hashes, checkpoints and quarantine records.
-2. Run the competition-specific import validation before considering the records usable.
+2. The CLI automatically runs the competition-specific read-only validator after a completed import; preserve its JSON report and require `passed: true` before considering the records usable.
 3. Verify the provider competition ID, season, date range, unique fixture IDs and team IDs.
 4. Keep all canonical identity links in review until independently reconciled.
 5. Update the research dataset manifest only after the source-level checks pass.
