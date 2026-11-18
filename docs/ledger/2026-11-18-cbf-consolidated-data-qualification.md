@@ -104,6 +104,7 @@ The API import windows reconcile internally, but the provider catalogue does not
 
 1. Scoreline verification is complete: 380/380 finished fixtures cross-checked against official CBF evidence.
 2. Complete human review of the 28 identity/quality cases; preserve all conflicting rows until signed off.
-3. Implement forward-looking source snapshot capture with reliable pre-kickoff availability evidence and rights metadata.
-4. Extend independent prospective validation across additional competitions/seasons.
-5. Only then reconsider model selection, production publication and downstream Android integration.
+3. Activate migration 010 through the checksum-gated manual workflow. The prospective `SYSTEM_OBSERVED_AT` capture path is implemented and CI-tested, but is not active in production until that migration is applied and verified.
+4. Begin immutable prospective snapshots before kickoff; verify exact response/retrieval timestamp linkage, source rights and feature cutoffs.
+5. Extend independent prospective validation across additional competitions/seasons.
+6. Only then reconsider model selection, production publication and downstream Android integration.
