@@ -20,6 +20,10 @@ def require_feature_admission(request: FeatureAdmissionRequest) -> None:
     evidence = request.evidence
     cutoff = request.prediction_cutoff_at
 
+    if evidence.data_domain == "BOOKMAKER_ODDS":
+        raise FeatureAdmissionError("BOOKMAKER_ODDS_FORBIDDEN_IN_CORE_PREDICTION_FEATURES")
+    if evidence.data_domain != "FOOTBALL_MATCH_DATA":
+        raise FeatureAdmissionError("UNSUPPORTED_PREDICTION_FEATURE_DATA_DOMAIN")
     if not evidence.point_in_time_certifiable:
         raise FeatureAdmissionError("SOURCE_NOT_POINT_IN_TIME_CERTIFIABLE")
     if evidence.availability_basis is not AvailabilityBasis.SOURCE_PUBLISHED_AT:
