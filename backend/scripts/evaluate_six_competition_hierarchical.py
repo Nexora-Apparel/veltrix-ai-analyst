@@ -27,6 +27,7 @@ from app.validation.hierarchical_tuning import (
     ChronologicalFold,
     select_hierarchical_hyperparameters,
 )
+from app.validation.source_provenance import is_valid_retrospective_observation
 from app.validation.paired_baselines import (
     ProbabilityForecast,
     compare_paired_baselines,
@@ -89,16 +90,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
     fixture_keys = [(row["provider_competition_id"], row["provider_fixture_id"]) for row in rows]
     if len(fixture_keys) != len(set(fixture_keys)):
         raise RuntimeError("DUPLICATE_PROVIDER_FIXTURE_KEYS")
-    invalid = [
-        row for row in rows
-        if row["availability_basis"] != "RETRIEVED_AT_ONLY"
-        or row["point_in_time_certifiable"]
-        or row["source_published_at"] is not None
-        or row["available_at"] is not None
-        or row["provider_response_id"] is None
-        or row["http_status"] is None
-        or not 200 <= row["http_status"] < 300
-    ]
+    invalid = [row for row in rows if not is_valid_retrospective_observation(row)]
     if invalid:
         raise RuntimeError(f"SOURCE_PROVENANCE_AUDIT_FAILED:{len(invalid)}")
 
