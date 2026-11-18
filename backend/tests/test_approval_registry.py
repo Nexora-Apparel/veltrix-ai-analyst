@@ -6,6 +6,7 @@ from app.providers.approvals import (
     AIMIDAS_BRAZIL_SERIE_B_APPROVAL,
     FIVEDOLLAR_ACCOUNT_APPROVAL,
     FIVEDOLLAR_COMMUNITY_APPROVAL,
+    THE_ODDS_API_SOCCER_APPROVAL,
 )
 from app.providers.rights import DataUsePurpose, evaluate_source_use
 
@@ -106,3 +107,54 @@ def test_5dollar_account_approval_is_limited_to_account_metadata() -> None:
 
     assert allowed.allowed is True
     assert denied.allowed is False
+
+
+
+def test_the_odds_api_approval_is_exact_scope_and_noncommercial() -> None:
+    approval = THE_ODDS_API_SOCCER_APPROVAL
+
+    assert len(approval.scope_values) == 8
+    assert approval.scope_type == "sport_key"
+    assert approval.data_types == frozenset(
+        {"sports_catalogue", "event_catalogue", "bookmaker_odds"}
+    )
+    assert approval.commercial_use_allowed is False
+    assert approval.raw_redistribution_allowed is False
+
+    allowed = evaluate_source_use(
+        approval,
+        DataUsePurpose.MODEL_TRAINING,
+        scope_value="soccer_epl",
+        at_utc=datetime(2026, 11, 18, tzinfo=UTC),
+    )
+    denied_scope = evaluate_source_use(
+        approval,
+        DataUsePurpose.MODEL_TRAINING,
+        scope_value="soccer_uefa_champs_league",
+        at_utc=datetime(2026, 11, 18, tzinfo=UTC),
+    )
+    denied_commercial = evaluate_source_use(
+        approval,
+        DataUsePurpose.MODEL_TRAINING,
+        scope_value="soccer_epl",
+        at_utc=datetime(2026, 11, 18, tzinfo=UTC),
+        commercial=True,
+    )
+    denied_raw = evaluate_source_use(
+        approval,
+        DataUsePurpose.RAW_REDISTRIBUTION,
+        scope_value="soccer_epl",
+        at_utc=datetime(2026, 11, 18, tzinfo=UTC),
+    )
+
+    assert allowed.allowed is True
+    assert denied_scope.reason_code == "SOURCE_SCOPE_NOT_APPROVED"
+    assert denied_commercial.reason_code == "COMMERCIAL_USE_NOT_PERMITTED"
+    assert denied_raw.reason_code == "RAW_REDISTRIBUTION_PROHIBITED"
+
+
+def test_the_odds_api_approval_evidence_hash_matches_review() -> None:
+    repository_root = Path(__file__).resolve().parents[2]
+    evidence = repository_root / "docs" / "providers" / "THE_ODDS_API_TERMS_REVIEW.md"
+
+    assert sha256(evidence.read_bytes()).hexdigest() == THE_ODDS_API_SOCCER_APPROVAL.evidence_sha256
