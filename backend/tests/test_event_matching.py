@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from app.providers.event_matching import (
     match_event_to_fixture,
     normalize_team_name,
+    select_market_probe_candidate,
 )
 
 EVENT = {
@@ -81,10 +82,8 @@ def test_rejects_naive_timestamps_and_invalid_tolerance():
             [FIXTURE],
         )
 
-def test_selects_exactly_one_earliest_match_from_multiple_valid_catalogue_matches():
-    from datetime import UTC
-    from app.providers.event_matching import select_market_probe_candidate
 
+def test_selects_exactly_one_earliest_match_from_multiple_valid_catalogue_matches():
     events = [
         {**EVENT, "event_id": "later", "sport_key": "soccer_epl",
          "commence_time": "2026-11-22T19:00:00Z"},
@@ -111,13 +110,13 @@ def test_selects_exactly_one_earliest_match_from_multiple_valid_catalogue_matche
 
 
 def test_single_event_selection_fails_closed_on_unapproved_or_duplicate_reference():
-    from datetime import UTC
-    from app.providers.event_matching import select_market_probe_candidate
-
     event = {**EVENT, "sport_key": "soccer_epl"}
     fixture = dict(FIXTURE)
-    match = {"event_id": EVENT["event_id"], "fixture_id": FIXTURE["provider_fixture_id"],
-             "status": "MATCHED"}
+    match = {
+        "event_id": EVENT["event_id"],
+        "fixture_id": FIXTURE["provider_fixture_id"],
+        "status": "MATCHED",
+    }
     now = datetime(2026, 11, 20, tzinfo=UTC)
     assert select_market_probe_candidate(
         [match], [event], [fixture], allowed_sport_keys=set(), now=now
@@ -125,4 +124,3 @@ def test_single_event_selection_fails_closed_on_unapproved_or_duplicate_referenc
     assert select_market_probe_candidate(
         [match], [event, event], [fixture], allowed_sport_keys={"soccer_epl"}, now=now
     ) is None
-
