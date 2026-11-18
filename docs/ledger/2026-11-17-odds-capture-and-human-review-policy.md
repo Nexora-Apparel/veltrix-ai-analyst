@@ -13,22 +13,28 @@ reconciliation, and PIT timestamp gap. No source row is deleted or reparented.
 
 ## Rights authorization declaration — project owner, 2026-11-17
 
-The project owner explicitly confirms that permission has been obtained to use
-all information currently collected for training the VELTRIX AI ANALYST model,
-and that the sources/information being used have been authorized. Record this as
-a project-owner rights declaration covering the current collected corpus and
-personal-use project scope. Do not continue to describe model-training permission
-as categorically absent for that corpus.
+The project owner confirms that the provider authorized use of data available
+through the account's free mode for personal, non-commercial use, including
+collection and model training. The user has not purchased a subscription.
+The stated condition is no monetization or commercial use while operating on
+the free mode; a paid subscription is required before commercial use. The
+project is private and exclusively for the owner's personal use.
 
-Operational handling: preserve the owner declaration as an authorization record,
-but retain source-level rights provenance (provider/source, applicable terms or
-permission evidence, scope, effective date, permitted operations, and any limits)
-when building the immutable dataset manifest. Where a source has an explicit
-non-commercial or personal-use restriction, keep the model and resulting use
-within that scope. If any source's terms conflict with the declaration or do not
-cover model training, quarantine only that source pending clarification rather
-than assuming blanket permission overrides third-party terms. This is a provenance
-and scope check, not a demand for another account or key.
+Proceed with data collection and model research using the data/features actually
+made available under the existing free-mode account and its documented limits.
+Do not create another account or key, assume paid-tier endpoints are available,
+or exceed rate, request, competition, retention, or other free-plan limits.
+Do not monetize, sell, sublicense, or commercially distribute raw data or model
+outputs under this free-mode authorization. If the project later changes to
+commercial use, stop that use until the required paid subscription/permission
+is in place.
+
+Preserve source-level provenance in dataset manifests: provider/source, access
+mode, retrieval time, response hash, competition/fixture identifiers, and any
+known restrictions. This is an evidence and entitlement record, not a demand
+for additional professional review or paperwork. The owner has already reviewed
+the approach and obtained verbal professional approval; written GitHub comments
+are not required.
 
 ## Odds point-in-time controls
 Every prospective odds row retains provider fixture ID, bookmaker, market,
@@ -59,16 +65,24 @@ from documentation or successful fixture imports. Run the existing access check,
 then one bounded odds endpoint probe before enabling collection.
 
 ## Historical training and calibration
-The production snapshot has 384 provider fixtures, zero sightings with verified
-source publication and availability timestamps, and zero PIT-certified features.
-All 28 review cases remain pending. Thus the eligible historical PIT training set
-is empty under the Stage 3 admission contract.
 
-Do not fit or tune Elo, Poisson goal rates, Dixon-Coles rho, ensemble weights, or
-calibration parameters on these records. Synthetic tests validate code
-invariants, not forecast quality. Fit parameters only inside each chronological
-training fold after identity, competition, duplicate, rights, source-time, and
-label-availability gates pass; evaluate on untouched future folds.
+The 380-fixture CBF retrospective corpus may be used for research-only model
+fitting, feature experiments, and chronological backtesting under the owner's
+personal-use authorization. It is not a point-in-time-certified dataset: the
+historical snapshot has no verified source publication/availability timestamps,
+and the PIT-certified feature set is empty. Therefore, results from this corpus
+must be labelled retrospective/non-PIT research and must not be represented as
+prospective accuracy or production certification.
+
+Fit Elo, Poisson/Dixon-Coles, and ensemble parameters only inside chronological
+training folds; keep future test folds untouched. Preserve fixture/identity/
+duplicate uncertainty, and exclude unresolved rows from supervised labels rather
+than silently merging or deleting them. Compare against simple baselines,
+report Brier score and log loss with uncertainty intervals, and retain per-league
+sample sizes. Do not promote a model or unlock value betting on the basis of this
+small retrospective sample. Build a separate prospective PIT dataset from
+features genuinely captured before kickoff before making claims about live
+forecast performance.
 
 ## Project-owner review authorization — correction recorded 2026-11-18
 
@@ -94,43 +108,25 @@ team, competition, fixture, alias, and duplicate decisions must still be based
 on traceable evidence and recorded accurately; no reviewer identity or approval
 may be fabricated. The owner may make those project-level decisions.
 
-
 ## Rights and PIT distinction
 
-The project owner's permission confirmation resolves the project-side authorization
-decision for the collected corpus. It does not change source timestamps, fixture
-identity confidence, duplicate status, label availability, or the temporal
-availability of features. In particular, no historical row becomes PIT-eligible
+Personal-use permission for free-mode data supports research and training within
+the actual access tier and non-commercial condition. It does not change source
+timestamps, fixture identity confidence, duplicate status, label availability,
+or the temporal availability of features. No historical row becomes PIT-eligible
 merely because model-training use is authorized.
-
-
-## Explicit personal-use authorization clarification — project owner, 2026-11-17
-
-The project owner clarifies that VELTRIX AI ANALYST is for personal use only,
-that the owner authorizes use of the information/data already collected to train
-the project's model, and that separate documentary permission evidence was not
-obtained because the project is personal. Treat this as the project owner's
-express project-level authorization and do not impose a new paperwork step as a
-routine prerequisite for using the collected corpus.
-
-Operational decision: proceed with personal-use model-development work on the
-collected data under this owner authorization, while preserving source identity,
-retrieval timestamps, payload hashes, and any known source terms/limitations.
-Do not describe documentary evidence as obtained when it was not. Personal-use
-authorization does not manufacture missing historical publication/availability
-timestamps, resolve identity/duplicate conflicts, or turn post-event information
-into pre-match features. If a source's known terms expressly prohibit the intended
-use, flag that specific conflict rather than treating all data as unusable.
-
 
 ## Provider schema audit and adapter correction — 2026-11-18
 
-A review of the current public provider documentation found that the first odds normalizer implemented an assumed schema that does not match either documented endpoint. Its synthetic unit fixture was therefore not sufficient to establish provider compatibility.
+A review of the current public provider documentation found that the first odds
+normalizer implemented an assumed schema that does not match either documented
+endpoint. Its synthetic unit fixture was therefore not sufficient to establish
+provider compatibility.
 
 Documented contracts reviewed:
 - Fixture snapshot: https://5dollarfootballapi.com/docs/odds — `GET /v1/fixtures/{id}/odds` returns `data.bookmakers[]`, each with `name`, `slug`, and nested `odds` markets. Bet365 1X2 opening prices carry `opened_at`; closing/in-play and most other market stages have no per-price timestamp in this response.
 - Odds history: https://5dollarfootballapi.com/docs/odds-history — `data.bookmaker`, `data.market`, and `data.ticks[]`; ticks carry `recorded_at`, `minute`, and score. Pre-match examples use `minute: null` and null score; in-play examples carry a minute and/or score. Suspended ticks may carry null prices and must not become observations.
-- The full odds-history endpoint is documented as Ultra-only. Do not infer entitlement from a fixture import or plan name.
+- The full odds-history endpoint is documented as Ultra-only. Do not infer entitlement from documentation or successful fixture imports.
 
 PR [#42](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/42) replaces the assumed parser with separate adapters for the two documented envelopes:
 - Fixture snapshot adapter admits only timestamped 1X2 opening prices. It deliberately ignores closing/in-play and other markets without individual source timestamps.
@@ -138,30 +134,32 @@ PR [#42](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/42) replaces 
 - Both adapters preserve provider tick time separately from our actual retrieval time and pass through the existing cutoff/rights/identity-independent odds contract. A response retrieved after the original prediction cutoff remains rejected even if its provider tick is earlier.
 - Tests now use documented response examples rather than the prior synthetic shape.
 
-No live odds API request was made during this schema review. The user has explicitly confirmed project-owner authorization for all collected data, including odds, for the project's personal-use model research and training. That authorization is recorded; it does not manufacture source timestamps or override any applicable provider contract. The account plan and Brazil Serie B listing were subsequently verified as Community / visible, but the odds snapshot endpoint's account-specific response remains unverified. Odds capture stays inactive pending one bounded live snapshot probe. The full odds-history endpoint is documented as Ultra-only and is not part of the Community-plan probe. No new key/account is to be created.
-
+No live odds API request was made during this schema review. Odds capture stays inactive pending one bounded live snapshot probe that is confirmed to be available under the current free-mode account. The full odds-history endpoint is documented as Ultra-only and is not part of the free-mode probe. No new key/account is to be created.
 
 ## Personal-use and review-scope correction — 2026-11-18
 
 - Intended audience: the project owner only. This is not a public-facing product
   or a multi-user service.
 - Commercial status: non-monetised personal use only. No subscriptions, paid
-  predictions, commercial distribution, or monetised model outputs.
+  predictions, commercial distribution, or monetised model outputs while using
+  the free-mode authorization.
 - Owner review: the project owner personally reviewed the recommendations.
 - Professional review: professionals were contacted after the owner's review,
   reviewed the recommendations, and verbally approved the proposed approach as
   sound and suitable to proceed. They later apologized that they could not add
   comments to the owner's GitHub work. Record this as verbal approval, not as a
-  GitHub review, written sign-off, or approval of code they did not inspect.
+  GitHub review or written sign-off.
 - Review authorship context: the owner presented the recommendations as the
   owner's own; do not claim the professionals were told the assistant authored
   them.
 - External GitHub comments are not required for this private personal-use
   project; the lack of a GitHub comment does not erase the verbal approval.
-- Data use: continue using the already collected and authorized data for the
-  owner's personal model research and training, subject to known provider terms,
-  account entitlements, attribution obligations where applicable, and the
-  prohibition on raw-feed resale or redistribution.
+- Data use: use data available through the existing free-mode account for the
+  owner's personal research and model training, within the provider's free-tier
+  limits and the stated no-monetization condition. A paid subscription is
+  required before commercial use, according to the owner's confirmation.
+- Do not request further professional review or repeat a commercial-approval
+  gate for the current personal-use project.
 - Technical controls remain independent of external review: preserve provenance,
   timestamps, fixture identity, source hashes, and honest point-in-time eligibility.
   These controls protect prediction quality; they are not a requirement to obtain
