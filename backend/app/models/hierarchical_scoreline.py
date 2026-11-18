@@ -42,4 +42,4 @@ def forecast_hierarchical_fixture(
         rho=rho,
         max_goals=max_goals,
     )
-    return HierarchicalFixtureForecast(rates=rates, scoreline=distribution)
+    if distribution.rho != rho:\n        raise ValueError("rho is outside the feasible range for this fixture goal-rate pair")\n    return HierarchicalFixtureForecast(rates=rates, scoreline=distribution)
