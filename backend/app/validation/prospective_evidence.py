@@ -7,10 +7,10 @@ strictly earlier than the fixture kickoff.
 """
 from __future__ import annotations
 
-import hashlib
-import re
 from dataclasses import dataclass
 from datetime import datetime
+import hashlib
+import re
 
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -44,10 +44,10 @@ class FixtureIdentity:
 
     @property
     def stable_key(self) -> str:
-        return ":".join((
-            self.provider, self.source_id, self.provider_competition_id,
-            self.provider_fixture_id,
-        ))
+        return (
+            f"{self.provider}:{self.source_id}:"
+            f"{self.provider_competition_id}:{self.provider_fixture_id}"
+        )
 
 
 @dataclass(frozen=True, slots=True)
