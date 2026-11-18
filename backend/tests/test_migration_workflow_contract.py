@@ -65,3 +65,15 @@ def test_manual_migration_workflow_verifies_system_observed_pit_migration() -> N
     assert "available_at = retrieved_at" in migration
     assert "sighting.retrieved_at > NEW.prediction_cutoff_at" in migration
     assert "source_published_at IS NULL" in migration
+
+
+
+def test_manual_migration_workflow_verifies_system_observed_pit_migration_010() -> None:
+    workflow = (ROOT / ".github/workflows/apply-database-migrations.yml").read_text()
+    migration = (ROOT / "backend/migrations/010_system_observed_pit.sql").read_text()
+    assert "010_system_observed_pit.sql" in workflow
+    assert "source_observations_pit_evidence_check" in workflow
+    assert "source_observation_sightings_pit_evidence_check" in workflow
+    assert "SYSTEM_OBSERVED_AT" in migration
+    assert "sighting.available_at <> sighting.retrieved_at" in migration
+    assert "PRE_MATCH_SYSTEM_OBSERVATION_NOT_AVAILABLE_AT_CUTOFF" in migration
