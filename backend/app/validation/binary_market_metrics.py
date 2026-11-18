@@ -78,6 +78,8 @@ def evaluate_paired_binary_market(
         raise ValueError("at least 200 bootstrap replicates are required")
     model = {row.fixture_id: row for row in model_rows}
     baseline = {row.fixture_id: row for row in baseline_rows}
+    if len(model) != len(model_rows) or len(baseline) != len(baseline_rows):
+        raise ValueError("duplicate fixture forecast")
     if not model or model.keys() != baseline.keys():
         raise ValueError("model and baseline must cover identical non-empty fixtures")
     for fixture_id, row in model.items():
