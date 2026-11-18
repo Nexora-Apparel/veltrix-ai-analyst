@@ -271,7 +271,7 @@ def validate_competition_import(
                 OR s.source_published_at IS NOT NULL
                 OR s.system_observed_at IS NULL
                 OR s.available_at IS DISTINCT FROM s.system_observed_at
-                OR o.system_observed_at IS DISTINCT FROM s.system_observed_at
+                OR s.payload_sha256 IS DISTINCT FROM o.payload_sha256
                 OR r.system_observed_at IS DISTINCT FROM s.system_observed_at
                 OR r.fetched_at IS DISTINCT FROM s.retrieved_at
                 OR s.system_observed_at < s.retrieved_at
