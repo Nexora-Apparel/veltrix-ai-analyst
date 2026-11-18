@@ -3,13 +3,13 @@
 ## Execution and immutable evidence
 
 - Commit: `9af309fbe9d5f34d1e650e0055e843da98bdb047`
-- Workflow: [Rebuild retrospective research report — run 44286437268](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286437268)
+- Workflow: [Rebuild retrospective research report — run 44286932299](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286932299)
 - Result: **SUCCESS**
-- Training report artifact: [corrected-retrospective-research-report](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286437268/artifacts/14419186651)
-- Paired diagnostics artifact: [corrected-paired-chronological-diagnostics](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286437268/artifacts/14418483224)
-- Canonical report SHA-256: `2a411e223508db929c63e26185798c9c94f36dc1ddc2c81a8a9b76d97388fd80`
-- JSON artifact SHA-256: `a6fee89b59b8e4abc5194975421bec002d36391e6c182df11f88bd4484a3730f`
-- Paired diagnostics JSON SHA-256: `da650921df07a017d6dca637617a9f94c5e5552cbb7ac92506c5906a8c331385`
+- Training report artifact: [corrected-retrospective-research-report](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286932299/artifacts/14419193217)
+- Paired diagnostics artifact: [corrected-paired-chronological-diagnostics](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286932299/artifacts/14420445186)
+- Canonical report SHA-256: `e5d8356a4cd34551d5fe2a5a98f0f3b476d338335873c0b721fd507a844c3caa`
+- JSON artifact SHA-256: `0166c3dff1bc167a0e130b90082e9e320888a10d0d833b36d2707961b762275a`
+- Paired diagnostics JSON SHA-256: `4d9701b505311126a4466dae4d99959e2d9217c84785e3f2e740cf92187bf0fb`
 - Database: `veltrix_ai_analyst`; transaction explicitly read-only
 - Provider: 5DollarFootballAPI; competition `522514093`
 - No provider API calls, Odds API credits, or production writes were used.
@@ -24,10 +24,10 @@
 | Invalid rows | 0 |
 | Provider-local teams | 20 |
 | Evidence-backed official kickoff adjudications applied | 2 |
-| Officially cross-checked score labels | 353 / 380 |
-| Score labels still pending independent CBF check | 27 / 380 |
+| Officially cross-checked score labels | 380 / 380 |
+| Score labels still pending independent CBF check | 0 / 380 |
 
-The report uses all 380 provider FINISHED labels for retrospective diagnostics. It explicitly records that 27 scorelines are not yet independently cross-checked against official CBF evidence. Those metrics are therefore provisional research diagnostics. The two chronology corrections are applied only to the research input; raw provider timestamps and source observations remain unchanged.
+The report uses all 380 provider FINISHED labels for retrospective diagnostics, and all 380 scorelines now have independent official CBF cross-checks. The two chronology corrections are applied only to the research input; raw provider timestamps and source observations remain unchanged.
 
 ## Overall prequential metrics
 
@@ -75,7 +75,7 @@ Cold-start and warm-up diagnostics are included in the paired artifact. They rem
 
 ## Next qualification work
 
-1. Independently verify the remaining 27 CBF scorelines in rounds 31, 32 and 37.
+1. Retain the 380/380 official CBF score-verification evidence and monitor future source integrity.
 2. Resolve the 28 identity/quality review cases through evidence-backed human review; do not auto-merge ambiguous teams or fixtures.
 3. Implement forward-only immutable source snapshots with source publication, retrieval and verified availability timestamps plus provider rights metadata.
 4. Expand prospective, multi-competition validation before any model-selection or production decision.
