@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from app.routes.public_predictions import router as public_predictions_router
+
 app = FastAPI(
     title="VELTRIX AI ANALYST API",
     description="Private-use football analysis API.",
@@ -27,3 +29,5 @@ async def health() -> HealthResponse:
 @app.get("/", include_in_schema=False)
 async def root() -> dict[str, str]:
     return {"service": "VELTRIX AI ANALYST API", "docs": "/docs"}
+
+app.include_router(public_predictions_router)
