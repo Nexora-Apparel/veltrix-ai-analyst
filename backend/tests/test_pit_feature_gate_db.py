@@ -178,11 +178,11 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 provider_entity_id=f"system-observed-{marker}",
                 schema_version="system-observed-pit-v1",
                 retrieved_at=now,
-                available_at=now,
                 availability_basis="SYSTEM_OBSERVED_AT",
                 point_in_time_certifiable=True,
                 payload={"test": marker, "case": "system-observed"},
                 provider_response_id=response_id,
+                target_kickoff_at=now + timedelta(hours=1),
             )
             sighting_id = connection.execute(
                 """
@@ -199,21 +199,30 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 """,
                 (observation_id,),
             ).fetchone()[0]
+            response_observed_at = connection.execute(
+                """
+                SELECT system_observed_at
+                FROM veltrix_ai_analyst.provider_responses
+                WHERE id = %s
+                """,
+                (response_id,),
+            ).fetchone()[0]
             mismatched_sighting_id = connection.execute(
                 """
                 INSERT INTO veltrix_ai_analyst.source_observation_sightings (
                     source_observation_id, provider_response_id, retrieved_at,
                     available_at, availability_basis, point_in_time_certifiable,
-                    payload_sha256
-                ) VALUES (%s, %s, %s, %s, 'SYSTEM_OBSERVED_AT', TRUE, %s)
+                    payload_sha256, system_observed_at
+                ) VALUES (%s, %s, %s, %s, 'SYSTEM_OBSERVED_AT', TRUE, %s, %s)
                 RETURNING id
                 """,
                 (
                     observation_id,
                     response_id,
                     now + timedelta(seconds=1),
-                    now + timedelta(seconds=1),
+                    response_observed_at,
                     payload_hash,
+                    response_observed_at,
                 ),
             ).fetchone()[0]
 
