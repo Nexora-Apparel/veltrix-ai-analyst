@@ -1,9 +1,9 @@
-# Corrected retrospective research report — 2026-11-18
+# Corrected retrospective research report — 2026-11-18 (v2)
 
 ## Execution and provenance
 
-- Workflow: [run 44280512801](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44280512801)
-- Source commit: `a45b634daea37221cfdc63b6d31eb7ff584dff3d`
+- Workflow: [run 44281629472](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44281629472)
+- Source commit: `cef8f9efcbfb61a096a890e0083d58e3f5867c98`
 - Database: `veltrix_ai_analyst` (read-only transaction)
 - Provider/source/competition: `5DollarFootballAPI` / `5dollarfootballapi` / `522514093`
 - Raw source rows: 384
@@ -12,32 +12,34 @@
 - Invalid rows: 0
 - Distinct provider-local teams in finished corpus: 20
 - Date range: 2026-03-21T20:00:00Z through 2026-11-14T19:30:00Z
-- Chronology basis: provider kickoff with evidence-backed official CBF adjudication
+- Chronology basis: provider kickoff with evidence-backed official CBF adjudications
 - PIT status: NOT PIT CERTIFIED; retrospective lagged-results research only
 - Odds used: none
 - Provider requests / Neon writes / Odds API credits: none
 
-## Official kickoff adjudication
+## Official kickoff adjudications
 
-Exactly one research-only adjudication was consumed:
+Exactly two research-only adjudications were consumed. Both preserve raw provider rows and source observations unchanged.
 
-- CBF ref 262, São Bernardo x Londrina, provider fixture `2179333578`
-- Raw provider kickoff: `2026-09-10T23:49:59Z`
-- Official CBF kickoff: `2026-09-10T22:30:00Z` (19:30 America/Sao_Paulo)
-- Official CBF match record: https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sao-bernardo-saf-x-londrina-saf/833143
-- The provider score and CBF score both record 1–2.
-- Raw provider fixture and source-observation rows were not changed.
-- Registry validation passed; all registered adjudications were consumed.
+| CBF ref | Fixture | Provider fixture | Raw provider kickoff (UTC) | Official CBF kickoff (UTC) |
+|---:|---|---:|---|---|
+| 6 | Goiás x América | 3116209225 | 2026-03-22 20:58:35 | 2026-03-22 21:00:00 |
+| 262 | São Bernardo x Londrina | 2179333578 | 2026-09-10 23:49:59 | 2026-09-10 22:30:00 |
+
+- Ref 6: CBF records the scheduled kickoff at 18:00 BRT and the 3–1 result. The provider timestamp was 17:58:35 BRT. Normalizing to the official 18:00 batch prevents a potentially unsafe split of simultaneous matches. [Official CBF match page](https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-america/832843)
+- Ref 262: CBF records kickoff at 19:30 BRT (22:30 UTC), score 1–2. The provider timestamp was 23:49:59 UTC. [Official CBF match page](https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sao-bernardo-saf-x-londrina-saf/833143)
+
+Registry validation passed: both entries matched their raw provider rows, and all registered adjudications were consumed.
 
 ## Corrected full-corpus prequential metrics
 
 | Model | Matches | Brier | Log loss |
 |---|---:|---:|---:|
-| Elo | 380 | 0.63330884 | 1.05106409 |
-| Poisson | 380 | 0.63043121 | 1.04788807 |
-| Adaptive ensemble | 380 | 0.62916948 | 1.04567758 |
+| Elo | 380 | 0.63336366 | 1.05113130 |
+| Poisson | 380 | 0.63054946 | 1.04804403 |
+| Adaptive ensemble | 380 | 0.62933489 | 1.04588885 |
 
-The ensemble has the lowest point estimate in this retrospective sample. This is descriptive only and does not establish statistically reliable superiority.
+The ensemble has the lowest point estimate in this retrospective sample. This does not establish statistically reliable superiority.
 
 ## Paired chronological diagnostics
 
@@ -45,15 +47,15 @@ The ensemble has the lowest point estimate in this retrospective sample. This is
 - Protocol: `RETROSPECTIVE_PREQUENTIAL_PAIRED_DIAGNOSTICS_NOT_PIT_CERTIFIED`
 - Predictions: 380
 - Bootstrap: 2,000 resamples; moving chronological blocks of 20 fixtures; whole simultaneous-kickoff batches retained; seed `20261118`.
-- Source report SHA-256: `98c18b77e24e3adb47beaaf834ec2993cb5178982f2f5aec54ea29eec2415ccc`
+- Source report SHA-256: `1eb2ff33999df3d9c83af5d89a9006fca6b3e096ef8b4b83285fc05aa69d8ca3`
 
 Paired differences are left model minus right model; negative values favour the left model.
 
 | Comparison | Brier difference | 95% CI | Log-loss difference | 95% CI |
 |---|---:|---:|---:|---:|
-| Elo − Ensemble | +0.004139 | [-0.000457, +0.011204] | +0.005387 | [-0.001053, +0.015661] |
-| Elo − Poisson | +0.002878 | [-0.008503, +0.017872] | +0.003176 | [-0.013209, +0.025647] |
-| Poisson − Ensemble | +0.001262 | [-0.007691, +0.007650] | +0.002210 | [-0.011355, +0.011441] |
+| Elo − Ensemble | +0.004029 | [-0.000681, +0.010797] | +0.005242 | [-0.001237, +0.015100] |
+| Elo − Poisson | +0.002814 | [-0.007758, +0.018282] | +0.003087 | [-0.012022, +0.026389] |
+| Poisson − Ensemble | +0.001215 | [-0.007751, +0.007759] | +0.002155 | [-0.011253, +0.011626] |
 
 All six confidence intervals cross zero. The sample does not establish a statistically clear winner between Elo, Poisson and the adaptive ensemble. Do not promote a model or tune production parameters from this result.
 
@@ -72,6 +74,8 @@ Four chronological periods contain 91, 97, 99 and 93 fixtures respectively. The 
 
 ## Artifacts
 
-- Corrected report artifact: [download from workflow run](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44280512801/artifacts/14415339764)
-- Paired diagnostics artifact: [download from workflow run](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44280512801/artifacts/14416776631)
-- Report SHA-256: `98c18b77e24e3adb47beaaf834ec2993cb5178982f2f5aec54ea29eec2415ccc`
+- Corrected report artifact: [download from workflow run](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44281629472/artifacts/14417271623)
+- Paired diagnostics artifact: [download from workflow run](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44281629472/artifacts/14417565846)
+- Report SHA-256: `1eb2ff33999df3d9c83af5d89a9006fca6b3e096ef8b4b83285fc05aa69d8ca3`
+
+The earlier 2026-11-18 report generated with only ref 262 adjudicated is superseded by this v2 report.
