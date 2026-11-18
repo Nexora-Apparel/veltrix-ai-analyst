@@ -1,10 +1,10 @@
 """Independent binary-market metrics and stratified paired bootstrap intervals."""
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from math import log
 import random
-from collections import defaultdict
 
 
 _EPSILON = 1e-15
@@ -31,7 +31,9 @@ class BinaryMarketEvaluation:
     log_loss: float
 
 
-def binary_metrics(rows: tuple[BinaryForecast, ...] | list[BinaryForecast]) -> BinaryMarketEvaluation:
+def binary_metrics(
+    rows: tuple[BinaryForecast, ...] | list[BinaryForecast],
+) -> BinaryMarketEvaluation:
     if not rows:
         raise ValueError("binary market evaluation requires at least one row")
     brier = 0.0
@@ -49,12 +51,14 @@ def _interval(values: list[float]) -> dict[str, float]:
     ordered = sorted(values)
     if not ordered:
         raise ValueError("bootstrap produced no replicates")
+
     def percentile(q: float) -> float:
         index = (len(ordered) - 1) * q
         lower = int(index)
         upper = min(lower + 1, len(ordered) - 1)
         fraction = index - lower
         return ordered[lower] * (1.0 - fraction) + ordered[upper] * fraction
+
     return {"lower_95": percentile(0.025), "upper_95": percentile(0.975)}
 
 
@@ -65,11 +69,10 @@ def evaluate_paired_binary_market(
     bootstrap_replicates: int = 2000,
     seed: int = 20261118,
 ) -> dict:
-    """Evaluate identical fixture labels and stratify bootstrap by competition.
+    """Evaluate identical labels with a paired bootstrap stratified by competition.
 
     Delta is model minus baseline, so a negative interval favours the model.
-    Resampling is paired within competition to preserve fixture matching and
-    competition composition. This is a descriptive interval, not a release test.
+    This is a descriptive interval, not a release test.
     """
     if bootstrap_replicates < 200:
         raise ValueError("at least 200 bootstrap replicates are required")
@@ -92,17 +95,18 @@ def evaluate_paired_binary_market(
 
     per_competition = {}
     for competition_id, indices in sorted(by_comp.items()):
+        model_score = binary_metrics([model_ordered[i] for i in indices])
+        baseline_score = binary_metrics([baseline_ordered[i] for i in indices])
         per_competition[competition_id] = {
-            "model": binary_metrics([model_ordered[i] for i in indices]).__dict__
-            if hasattr(BinaryMarketEvaluation, "__dict__") else {
-                "fixtures": len(indices),
-                "brier_score": binary_metrics([model_ordered[i] for i in indices]).brier_score,
-                "log_loss": binary_metrics([model_ordered[i] for i in indices]).log_loss,
+            "model": {
+                "fixtures": model_score.fixtures,
+                "brier_score": model_score.brier_score,
+                "log_loss": model_score.log_loss,
             },
             "baseline": {
-                "fixtures": len(indices),
-                "brier_score": binary_metrics([baseline_ordered[i] for i in indices]).brier_score,
-                "log_loss": binary_metrics([baseline_ordered[i] for i in indices]).log_loss,
+                "fixtures": baseline_score.fixtures,
+                "brier_score": baseline_score.brier_score,
+                "log_loss": baseline_score.log_loss,
             },
         }
 
@@ -114,15 +118,14 @@ def evaluate_paired_binary_market(
     baseline_brier: list[float] = []
     baseline_log: list[float] = []
     for _ in range(bootstrap_replicates):
-        sampled_indices = [
-            rng.choice(indices)
-            for competition_id in sorted(by_comp)
-            for indices in (by_comp[competition_id],)
-            for _ in range(len(indices))
-        ]
+        sampled_indices: list[int] = []
+        for competition_id in sorted(by_comp):
+            indices = by_comp[competition_id]
+            sampled_indices.extend(rng.choice(indices) for _ in range(len(indices)))
         sampled_model = [model_ordered[i] for i in sampled_indices]
         sampled_baseline = [baseline_ordered[i] for i in sampled_indices]
-        mm, bm = binary_metrics(sampled_model), binary_metrics(sampled_baseline)
+        mm = binary_metrics(sampled_model)
+        bm = binary_metrics(sampled_baseline)
         model_brier.append(mm.brier_score)
         model_log.append(mm.log_loss)
         baseline_brier.append(bm.brier_score)
