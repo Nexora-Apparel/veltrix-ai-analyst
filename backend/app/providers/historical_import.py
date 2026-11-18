@@ -99,6 +99,7 @@ class FixturePagePersister:
         if not team_name:
             raise HistoricalImportError("TEAM_NAME_MISSING; refusing incomplete entity write")
         now = fixture.provenance.retrieved_at
+        system_observed_pit = fixture.kickoff_at > now
         payload = {"team_id": team_id, "team_name": team_name}
         observation_id = self.store.record_source_observation(
             self.approval,
@@ -109,6 +110,10 @@ class FixturePagePersister:
             schema_version="5dollar-team-v1",
             retrieved_at=now,
             available_at=now,
+            availability_basis=(
+                "SYSTEM_OBSERVED_AT" if system_observed_pit else "RETRIEVED_AT_ONLY"
+            ),
+            point_in_time_certifiable=system_observed_pit,
             payload=payload,
             provider_response_id=response_id,
         )
@@ -129,6 +134,7 @@ class FixturePagePersister:
         if not self.window.start_at <= fixture.kickoff_at < self.window.end_at:
             raise HistoricalImportError("FIXTURE_OUTSIDE_REQUEST_WINDOW")
         now = fixture.provenance.retrieved_at
+        system_observed_pit = fixture.kickoff_at > now
         competition = ProviderCompetition(
             provenance=SourceProvenance(
                 provider=PROVIDER_NAME,
@@ -148,6 +154,10 @@ class FixturePagePersister:
             schema_version="5dollar-competition-v1",
             retrieved_at=now,
             available_at=now,
+            availability_basis=(
+                "SYSTEM_OBSERVED_AT" if system_observed_pit else "RETRIEVED_AT_ONLY"
+            ),
+            point_in_time_certifiable=system_observed_pit,
             payload=competition.model_dump(mode="json"),
             provider_response_id=response_id,
         )
