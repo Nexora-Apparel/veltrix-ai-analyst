@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "competition": "Brazilian Serie B 2026",
+  "round": 38,
+  "official_cbf_source_url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-e-campeao-da-serie-b",
+  "source_published_at": "2026-11-14",
+  "source_type": "OFFICIAL_CBF_ROUND_RESULTS_ARTICLE",
+  "note": "The article reports the title match, simultaneous-round results, and three fixtures completed earlier in the week. The three previously schedule-changed results (refs 371, 372, 374) overlap the prior individual-match-page checks.",
+  "fixtures": [
+    {
+      "ref": "371",
+      "fixture_id": "2124148156",
+      "home": "Ponte Preta",
+      "away": "Operário-PR",
+      "score": [
+        0,
+        2
+      ]
+    },
+    {
+      "ref": "372",
+      "fixture_id": "2521759856",
+      "home": "São Bernardo",
+      "away": "Athletic-MG",
+      "score": [
+        2,
+        2
+      ]
+    },
+    {
+      "ref": "373",
+      "fixture_id": "1194891794",
+      "home": "América-MG",
+      "away": "Avaí",
+      "score": [
+        0,
+        2
+      ]
+    },
+    {
+      "ref": "374",
+      "fixture_id": "1878457839",
+      "home": "Londrina",
+      "away": "Náutico",
+      "score": [
+        2,
+        1
+      ]
+    },
+    {
+      "ref": "375",
+      "fixture_id": "2100843448",
+      "home": "Fortaleza",
+      "away": "Vila Nova",
+      "score": [
+        1,
+        0
+      ]
+    },
+    {
+      "ref": "376",
+      "fixture_id": "4281273739",
+      "home": "Atlético-GO",
+      "away": "Cuiabá",
+      "score": [
+        1,
+        0
+      ]
+    },
+    {
+      "ref": "377",
+      "fixture_id": "186598545",
+      "home": "Criciúma",
+      "away": "Novorizontino",
+      "score": [
+        0,
+        1
+      ]
+    },
+    {
+      "ref": "378",
+      "fixture_id": "322759957",
+      "home": "Sport",
+      "away": "Goiás",
+      "score": [
+        3,
+        0
+      ]
+    },
+    {
+      "ref": "379",
+      "fixture_id": "930712726",
+      "home": "CRB",
+      "away": "Ceará",
+      "score": [
+        1,
+        1
+      ]
+    },
+    {
+      "ref": "380",
+      "fixture_id": "1366792905",
+      "home": "Juventude",
+      "away": "Botafogo-SP",
+      "score": [
+        2,
+        0
+      ]
+    }
+  ]
+}
