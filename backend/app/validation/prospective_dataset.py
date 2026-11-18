@@ -43,6 +43,7 @@ class FixtureObservation:
     availability_basis: str
     point_in_time_certifiable: bool
     payload_sha256: str
+    raw_response_sha256: str
     payload: dict[str, Any]
 
     def __post_init__(self) -> None:
@@ -54,13 +55,15 @@ class FixtureObservation:
         _require_aware(self.observed_at, "observed_at")
         if self.observed_at < self.retrieved_at:
             raise ValueError("system observation cannot precede retrieval")
-        if len(self.payload_sha256) != 64:
-            raise ValueError("payload_sha256 must be a SHA-256 digest")
+        if len(self.payload_sha256) != 64 or len(self.raw_response_sha256) != 64:
+            raise ValueError("payload and raw response hashes must be SHA-256 digests")
 
 
 @dataclass(frozen=True, slots=True)
 class ProspectiveDatasetRow:
     fixture_id: str
+    provider: str
+    source_id: str
     competition_id: str
     kickoff_at: datetime
     prediction_cutoff_at: datetime
@@ -104,10 +107,16 @@ def _score(payload: dict[str, Any], field: str) -> int | None:
 
 def _lineage(row: FixtureObservation) -> dict[str, Any]:
     return {
+        "fixture_id": row.fixture_id,
+        "provider": row.provider,
+        "source_id": row.source_id,
         "source_observation_id": row.observation_id,
         "source_sighting_id": row.sighting_id,
         "provider_response_id": row.provider_response_id,
         "payload_sha256": row.payload_sha256,
+        "raw_response_sha256": row.raw_response_sha256,
+        "availability_basis": row.availability_basis,
+        "point_in_time_certifiable": row.point_in_time_certifiable,
         "retrieved_at": row.retrieved_at.isoformat(),
         "system_observed_at": row.observed_at.isoformat(),
     }
@@ -220,12 +229,19 @@ def build_prospective_dataset(
         competition_matches = finished_matches_by_competition[
             (fixture.provider, fixture.source_id, fixture.competition_id)
         ]
-        eligible_matches = [
-            item for item in competition_matches
-            if item[0].fixture_id != fixture.fixture_id
-            and item[0].kickoff_at < fixture.kickoff_at
-            and item[1].observed_at <= cutoff
-        ]
+        eligible_by_fixture: dict[str, tuple[FixtureIdentity, FixtureObservation, int, int]] = {}
+        for item in competition_matches:
+            source_fixture, source_observation, _, _ = item
+            if (
+                source_fixture.fixture_id == fixture.fixture_id
+                or source_fixture.kickoff_at >= fixture.kickoff_at
+                or source_observation.observed_at > cutoff
+            ):
+                continue
+            previous = eligible_by_fixture.get(source_fixture.fixture_id)
+            if previous is None or source_observation.observed_at > previous[1].observed_at:
+                eligible_by_fixture[source_fixture.fixture_id] = item
+        eligible_matches = list(eligible_by_fixture.values())
         home_features, home_lineage = _team_form(
             fixture.home_team_id, eligible_matches, fixture.kickoff_at, "home"
         )
@@ -250,7 +266,7 @@ def build_prospective_dataset(
         }
         lineage_by_id = {
             (item.observation_id, item.sighting_id): item
-            for item in [snapshot, *home_lineage, *away_lineage]
+            for item in [snapshot, *home_lineage, *away_lineage, *(match[1] for match in recent_competition)]
         }
         lineage = tuple(
             _lineage(item)
@@ -287,6 +303,8 @@ def build_prospective_dataset(
         rows.append(
             ProspectiveDatasetRow(
                 fixture_id=fixture.fixture_id,
+                provider=fixture.provider,
+                source_id=fixture.source_id,
                 competition_id=fixture.competition_id,
                 kickoff_at=fixture.kickoff_at,
                 prediction_cutoff_at=cutoff,
