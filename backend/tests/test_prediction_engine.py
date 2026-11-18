@@ -6,7 +6,11 @@ from uuid import UUID
 import pytest
 
 from app.contracts.prediction import FixturePredictionRequest
-from app.models.prediction_engine import ModelArtifactNotPromoted, predict_fixture
+from app.models.prediction_engine import (
+    ModelArtifactNotPromoted,
+    VerifiedTeamMapping,
+    predict_fixture,
+)
 
 CUTOFF = datetime(2026, 11, 18, 12, 0, tzinfo=UTC)
 
@@ -56,9 +60,16 @@ def test_v1_inference_returns_all_required_markets_from_one_distribution() -> No
     result = predict_fixture(
         make_artifact(),
         make_request(),
-        home_model_team_id="home",
-        away_model_team_id="away",
-        team_identity_verified=True,
+        home_team_mapping=VerifiedTeamMapping(
+            canonical_team_id=make_request().home_team_id,
+            model_team_id="home",
+            identity_status="VERIFIED",
+        ),
+        away_team_mapping=VerifiedTeamMapping(
+            canonical_team_id=make_request().away_team_id,
+            model_team_id="away",
+            identity_status="VERIFIED",
+        ),
         generated_at=CUTOFF,
     )
     markets = result.market_probabilities
@@ -89,9 +100,16 @@ def test_research_or_non_pit_artifacts_cannot_predict(
         predict_fixture(
             make_artifact(**changes),
             make_request(),
-            home_model_team_id="home",
-            away_model_team_id="away",
-            team_identity_verified=True,
+            home_team_mapping=VerifiedTeamMapping(
+            canonical_team_id=make_request().home_team_id,
+            model_team_id="home",
+            identity_status="VERIFIED",
+        ),
+        away_team_mapping=VerifiedTeamMapping(
+            canonical_team_id=make_request().away_team_id,
+            model_team_id="away",
+            identity_status="VERIFIED",
+        ),
         )
 
 
@@ -103,9 +121,16 @@ def test_training_cutoff_must_precede_prediction_cutoff() -> None:
         predict_fixture(
             artifact,
             make_request(),
-            home_model_team_id="home",
-            away_model_team_id="away",
-            team_identity_verified=True,
+            home_team_mapping=VerifiedTeamMapping(
+            canonical_team_id=make_request().home_team_id,
+            model_team_id="home",
+            identity_status="VERIFIED",
+        ),
+        away_team_mapping=VerifiedTeamMapping(
+            canonical_team_id=make_request().away_team_id,
+            model_team_id="away",
+            identity_status="VERIFIED",
+        ),
         )
 
 
@@ -116,9 +141,16 @@ def test_missing_model_provenance_fails_closed() -> None:
         predict_fixture(
             artifact,
             make_request(),
-            home_model_team_id="home",
-            away_model_team_id="away",
-            team_identity_verified=True,
+            home_team_mapping=VerifiedTeamMapping(
+            canonical_team_id=make_request().home_team_id,
+            model_team_id="home",
+            identity_status="VERIFIED",
+        ),
+        away_team_mapping=VerifiedTeamMapping(
+            canonical_team_id=make_request().away_team_id,
+            model_team_id="away",
+            identity_status="VERIFIED",
+        ),
         )
 
 
@@ -131,9 +163,16 @@ def test_inference_expands_score_grid_for_high_goal_rates() -> None:
     result = predict_fixture(
         artifact,
         make_request(),
-        home_model_team_id="home",
-        away_model_team_id="away",
-        team_identity_verified=True,
+        home_team_mapping=VerifiedTeamMapping(
+            canonical_team_id=make_request().home_team_id,
+            model_team_id="home",
+            identity_status="VERIFIED",
+        ),
+        away_team_mapping=VerifiedTeamMapping(
+            canonical_team_id=make_request().away_team_id,
+            model_team_id="away",
+            identity_status="VERIFIED",
+        ),
         generated_at=CUTOFF,
     )
     assert result.uncertainty["scoreline_probability_mass_before_renormalization"] > 0.99999
