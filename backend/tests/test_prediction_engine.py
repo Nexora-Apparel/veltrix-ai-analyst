@@ -53,7 +53,14 @@ def make_artifact(**changes: object) -> dict[str, object]:
 
 
 def test_v1_inference_returns_all_required_markets_from_one_distribution() -> None:
-    result = predict_fixture(make_artifact(), make_request(), generated_at=CUTOFF)
+    result = predict_fixture(
+        make_artifact(),
+        make_request(),
+        home_model_team_id="home",
+        away_model_team_id="away",
+        team_identity_verified=True,
+        generated_at=CUTOFF,
+    )
     markets = result.market_probabilities
 
     assert set(markets) == {
@@ -79,7 +86,13 @@ def test_research_or_non_pit_artifacts_cannot_predict(
     changes: dict[str, object], reason: str
 ) -> None:
     with pytest.raises(ModelArtifactNotPromoted, match=reason):
-        predict_fixture(make_artifact(**changes), make_request())
+        predict_fixture(
+            make_artifact(**changes),
+            make_request(),
+            home_model_team_id="home",
+            away_model_team_id="away",
+            team_identity_verified=True,
+        )
 
 
 def test_training_cutoff_must_precede_prediction_cutoff() -> None:
@@ -87,7 +100,13 @@ def test_training_cutoff_must_precede_prediction_cutoff() -> None:
     with pytest.raises(
         ModelArtifactNotPromoted, match="MODEL_TRAINING_CUTOFF_NOT_BEFORE_PREDICTION"
     ):
-        predict_fixture(artifact, make_request())
+        predict_fixture(
+            artifact,
+            make_request(),
+            home_model_team_id="home",
+            away_model_team_id="away",
+            team_identity_verified=True,
+        )
 
 
 def test_missing_model_provenance_fails_closed() -> None:
