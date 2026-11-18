@@ -58,6 +58,10 @@ def apply_kickoff_adjudications(
             "official_kickoff_at": official.isoformat(),
             "source_url": item["source_url"],
             "reason": item["reason"],
+            "competition": str(item.get("competition", "")),
+            "cbf_match_reference": str(item.get("cbf_match_reference", "")),
+            "fixture": str(item.get("fixture", "")),
+            "reviewed_at": str(item.get("reviewed_at", "")),
         })
         seen.add(fixture.fixture_id)
     unused = set(adjudications) - seen
