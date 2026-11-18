@@ -77,6 +77,23 @@ jobs:
               """).fetchone()[0]
               if not applied:
                   raise SystemExit("MIGRATION_012_NOT_REGISTERED")
+              target_fixture_column = connection.execute("""
+                  SELECT is_nullable
+                  FROM information_schema.columns
+                  WHERE table_schema='veltrix_ai_analyst'
+                    AND table_name='pre_match_feature_observations'
+                    AND column_name='target_fixture_id'
+              """).fetchone()
+              if target_fixture_column != ("NO",):
+                  raise SystemExit("MIGRATION_013_REQUIRED_BEFORE_CAPTURE")
+              target_gate_applied = connection.execute("""
+                  SELECT EXISTS (
+                    SELECT 1 FROM public.schema_migrations
+                    WHERE version='013_target_fixture_pre_match_gate.sql'
+                  )
+              """).fetchone()[0]
+              if not target_gate_applied:
+                  raise SystemExit("MIGRATION_013_NOT_REGISTERED")
           PY
       - name: Define bounded rolling capture window
         id: window
