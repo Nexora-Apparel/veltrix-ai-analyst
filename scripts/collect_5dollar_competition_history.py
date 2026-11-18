@@ -27,7 +27,10 @@ def main() -> int:
     args = parser.parse_args()
 
     competition_id = args.competition_id.strip()
-    if not competition_id or competition_id not in FIVEDOLLAR_COMMUNITY_APPROVAL.scope_values:
+    if (
+        not competition_id
+        or competition_id not in FIVEDOLLAR_COMMUNITY_APPROVAL.scope_values
+    ):
         parser.error("competition ID is not in the approved 5Dollar collection scope")
     database_url = (
         os.getenv("VELTRIX_AI_ANALYST_DATABASE_URL")
@@ -48,7 +51,10 @@ def main() -> int:
         end_at = datetime.fromisoformat(args.end_at)
     except ValueError:
         parser.error("date boundaries must be valid ISO-8601 timestamps")
-    if any(value.tzinfo is None or value.utcoffset() is None for value in (start_at, end_at)):
+    if any(
+        value.tzinfo is None or value.utcoffset() is None
+        for value in (start_at, end_at)
+    ):
         parser.error("date boundaries must include a timezone offset")
     if end_at <= start_at:
         parser.error("end-at must be later than start-at")
