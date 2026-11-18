@@ -119,7 +119,7 @@ def test_manifest_rejects_source_tick_after_local_retrieval():
 
 def test_manifest_rejects_source_tick_after_decision_cutoff():
     with pytest.raises(ValueError, match="after the decision cutoff"):
-        manifest(source_tick_max_at=CUTOFF + timedelta(seconds=1))
+        manifest(retrieved_at=CUTOFF + timedelta(seconds=2), source_tick_max_at=CUTOFF + timedelta(seconds=1))
 
 
 
