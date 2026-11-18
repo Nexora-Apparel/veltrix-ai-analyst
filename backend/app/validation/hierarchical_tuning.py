@@ -1,17 +1,16 @@
 """Leakage-safe chronological selection for hierarchical Poisson hyperparameters.
 
 Each fold trains strictly before its validation window. Candidate selection uses
-held-out Poisson negative log likelihood; no bookmaker odds or future outcomes
-enter a fitted fold. The selected settings are development-only and must be
-frozen before prospective evaluation.
+held-out Poisson negative log likelihood. Selected settings are development-only
+and must be frozen before prospective evaluation.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from itertools import product
-from math import exp, lgamma, log
-from collections.abc import Iterable, Sequence
+from math import lgamma, log
 
 from app.models.hierarchical_poisson import (
     HierarchicalGoalResult,
@@ -65,17 +64,6 @@ def _poisson_nll(observed: int, rate: float) -> float:
     return rate - observed * log(rate) + lgamma(observed + 1)
 
 
-def _candidate_grid(
-    half_lives: Sequence[float],
-    team_ridges: Sequence[float],
-    competition_ridges: Sequence[float],
-) -> tuple[HierarchicalCandidate, ...]:
-    return tuple(
-        HierarchicalCandidate(*values)
-        for values in product(half_lives, team_ridges, competition_ridges)
-    )
-
-
 def select_hierarchical_hyperparameters(
     results: Iterable[HierarchicalGoalResult],
     folds: Sequence[ChronologicalFold],
@@ -85,13 +73,7 @@ def select_hierarchical_hyperparameters(
     competition_ridges: Sequence[float] = (0.5, 2.0, 8.0),
     min_training_fixtures: int = 30,
 ) -> HyperparameterSelection:
-    """Choose hyperparameters on expanding-window validation folds.
-
-    The fold definitions are explicit and immutable. Every validation fixture
-    must occur after its training cutoff. A fixture may be scored in more than
-    one fold only when the caller intentionally defines non-overlapping or
-    rolling validation windows; overlapping windows are rejected here.
-    """
+    """Choose settings using strictly later held-out chronological windows."""
     rows = tuple(results)
     if not folds:
         raise ValueError("at least one chronological fold is required")
@@ -99,31 +81,30 @@ def select_hierarchical_hyperparameters(
         raise ValueError("min_training_fixtures must be positive")
     if len({row.fixture_id for row in rows}) != len(rows):
         raise ValueError("duplicate fixture IDs are not allowed")
-    ordered_folds = tuple(sorted(folds, key=lambda f: f.train_cutoff))
-    for previous, current in zip(ordered_folds, ordered_folds[1:]):
+    ordered = tuple(sorted(folds, key=lambda fold: fold.train_cutoff))
+    for previous, current in zip(ordered, ordered[1:]):
         if current.train_cutoff < previous.validation_end:
             raise ValueError("chronological validation windows overlap")
-
-    candidates = _candidate_grid(half_lives, team_ridges, competition_ridges)
+    candidates = tuple(
+        HierarchicalCandidate(*values)
+        for values in product(half_lives, team_ridges, competition_ridges)
+    )
     if not candidates:
         raise ValueError("candidate grid cannot be empty")
 
     totals = {candidate: 0.0 for candidate in candidates}
     counts = {candidate: 0 for candidate in candidates}
     fold_counts = {candidate: 0 for candidate in candidates}
-
-    for fold in ordered_folds:
+    for fold in ordered:
         train = tuple(row for row in rows if row.kickoff_at <= fold.train_cutoff)
         validation = tuple(
             row for row in rows
             if fold.train_cutoff < row.kickoff_at <= fold.validation_end
         )
-        if len(train) < min_training_fixtures:
-            continue
-        if not validation:
+        if len(train) < min_training_fixtures or not validation:
             continue
         for candidate in candidates:
-            model = fit_hierarchical_poisson(
+            fitted = fit_hierarchical_poisson(
                 train,
                 as_of=fold.train_cutoff,
                 half_life_days=candidate.half_life_days,
@@ -131,7 +112,7 @@ def select_hierarchical_hyperparameters(
                 competition_ridge=candidate.competition_ridge,
             )
             for row in validation:
-                rates = model.predict(
+                rates = fitted.predict(
                     row.home_team_id, row.away_team_id, row.competition_id
                 )
                 totals[candidate] += (
@@ -143,12 +124,20 @@ def select_hierarchical_hyperparameters(
 
     leaderboard = tuple(sorted(
         (
-            CandidateScore(candidate, totals[candidate] / (2 * counts[candidate]),
-                           counts[candidate], fold_counts[candidate])
+            CandidateScore(
+                candidate,
+                totals[candidate] / (2 * counts[candidate]),
+                counts[candidate],
+                fold_counts[candidate],
+            )
             for candidate in candidates if counts[candidate] > 0
         ),
-        key=lambda item: (item.mean_validation_nll, item.candidate.half_life_days,
-                          item.candidate.team_ridge, item.candidate.competition_ridge),
+        key=lambda item: (
+            item.mean_validation_nll,
+            item.candidate.half_life_days,
+            item.candidate.team_ridge,
+            item.candidate.competition_ridge,
+        ),
     ))
     if not leaderboard:
         raise ValueError("no chronological fold had sufficient training and validation data")
