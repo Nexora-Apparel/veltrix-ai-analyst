@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-17 (Stage 2 ingestion/provenance/canonical coverage completed and independently verified; identity and PIT eligibility restrictions remain)
+**Last updated:** 2026-11-18 (matched fixed-v1/v2 evaluation and fold-contained calibration completed; v1 retained as research benchmark; no production release)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -176,8 +176,7 @@
 - [x] Added a PostgreSQL-backed provider boundary integration test: the first reservation permits one mocked HTTP request; replay of the same page is rejected before a second HTTP request.
 - [x] CI run [#43922283499](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/43922283499) passed: 76 backend tests, Ruff lint, Android debug build and APK artifact upload.
 - [ ] Independent Neon production database is not provisioned. The only connected Neon organization is Vercel-managed; direct Neon project creation is restricted. The Neon Marketplace integration is installed, but resource provisioning requires the Vercel Marketplace/CLI flow. Do not reuse the legacy `VELTRIXFOOTBALL` project.
-- [ ] After the separate Neon resource exists: configure its connection string as a secret, apply checksum-verified migrations with explicit database-name/remote opt-in, verify `current_database() = 'veltrix_ai_analyst'`, then run the dry-run against that database.
-- [ ] Live historical collection remains blocked; no historical provider requests or DB writes have been made.
+- [ ] After the separate Neon resource exists: configure its connection string as a secret, apply checksum-verified migrations with explicit database-name/remote opt-in, verify `current_database() = 'veltrix_ai_analyst'`, then run the dry-run against that database.- [ ] Live historical collection remains blocked; no historical provider requests or DB writes have been made.
 
 
 
@@ -498,126 +497,16 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 
 - [x] Repository isolation audit: confirmed this is the independent `Nexora-Apparel/veltrix-ai-analyst` repository with its own FastAPI backend, Android client and dedicated `veltrix_ai_analyst` Neon database. No legacy prediction engine is present in the inspected backend; the prediction implementation starts from a clean module boundary.
 - [x] Architecture decision record added: [ADR-001](ADR-001-PREDICTION-ENGINE-ARCHITECTURE.md). It defines contracts/features/models/validation/predictions/registry boundaries, identity and rights gates, model progression, Elo/Poisson/Dixon–Coles mathematical conventions, chronological evaluation and abstention.
-- [x] Formalized immutable prediction contracts in `backend/app/contracts/prediction.py`: eligible source observation evidence, feature admission request, fixture prediction request and model prediction output.
-- [x] Added `backend/app/features/admission.py`, requiring exact source observation/sighting/response lineage, publication/availability evidence before cutoff, active rights for FEATURE_ENGINEERING and MODEL_TRAINING, verified canonical identity and non-quarantined status.
-- [x] Added synthetic-only contract tests in `backend/tests/test_prediction_contracts.py`; these are software-contract tests, not model-performance evidence.
-- [x] Added [Prediction Engine Contracts](PREDICTION_ENGINE_CONTRACTS.md).
-- [ ] PR #23 CI validation pending: [Stage 3 contracts and PIT admission](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/23).
-- **Stage 3 status:** architecture and contract implementation underway. No model training, prediction endpoint, production forecast or Android prediction integration is enabled.
-- **Hard gate:** current 384 Brazil Serie B canonical fixtures remain excluded from pre-match model training until identity and source PIT requirements are independently satisfied.
 
-### Next implementation sequence
+## 2026-11-18 — Matched model comparison and calibration disposition
 
-1. Complete PR #23 CI; correct any contract/test failures before merge.
-2. Implement deterministic Elo engine and synthetic mathematical tests.
-3. Implement independent Poisson scoreline matrix and market derivations.
-4. Implement Dixon–Coles low-score correction and parameter-validity tests.
-5. Implement chronological walk-forward split/embargo and metric harness.
-6. Keep training, calibration, publication and Android integration gated on qualified PIT data.
-
-
-## 2026-11-17 — Stage 3 statistical core and blocker disposition
-
-- Added deterministic Elo, Poisson scoreline distribution, Dixon–Coles low-score correction, chronological walk-forward folds, embargo/label-availability controls, explicit eligibility reasons, and multiclass Brier/log-loss utilities.
-- CI on the model-core head passed: 152 backend tests, Ruff lint, Android debug APK build, and APK artifact upload.
-- Production review register was independently re-queried: 28/28 cases remain HUMAN_REVIEW_REQUIRED, all latest events are automated recommendations, and zero human review events exist.
-- Current production data remains excluded from pre-match training: 384 provider fixtures, 384 fixture observations/sightings, zero source publication timestamps, zero availability timestamps, and zero PIT-certifiable sightings.
-- Four UNKNOWN duplicate candidates remain preserved; 20 team identity links, the America MG alias, and competition mapping remain unapproved. Full match-level coverage reconciliation remains outstanding.
-- No production rows or identity mappings changed. No model training, prediction endpoint, value betting, or Android/backend prediction integration was enabled.
-- See docs/ledger/2026-11-17-stage3-model-core-and-blocker-disposition.md for the full evidence register and restrictions.
-
-
-## Owner directive — proceed with personal-use model training (2026-11-17)
-
-The project owner explicitly directs the team to use the information and data
-already collected to develop and train VELTRIX AI ANALYST models for personal
-use. This supersedes earlier project-progress wording that stated no model
-training was authorized or that the current corpus must remain entirely unused.
-Do not ask the owner to re-confirm this instruction or require separate
-documentary permission evidence as a routine project gate.
-
-Execution policy:
-- Use the existing 384-fixture Brazil Serie B corpus as the initial research
-  corpus. Use completed match scores as outcome labels; never feed a fixture's
-  own final score, post-match statistics, or future matches into its pre-match
-  feature vector.
-- Build retrospective, strictly chronological research datasets: for each
-  target fixture, construct team form/ratings only from earlier fixtures in
-  event-time order. Group simultaneous kickoffs so matches at the same kickoff
-  cannot leak into one another. Preserve the four UNKNOWN records as unresolved
-  source records; do not treat them as settled labels.
-- Train and compare Elo, Poisson goal-rate, and Dixon-Coles components on this
-  historical corpus; tune and calibrate only inside chronological training
-  folds, then report held-out chronological metrics and sample limitations.
-- Mark this first pass as RETROSPECTIVE_RESEARCH, not historically PIT-certified:
-  source publication/availability timestamps were not captured for the old
-  corpus. Do not claim that event-time ordering proves actual historical
-  availability. This limitation must not prevent exploratory training.
-- Keep the strict PIT admission contract for any claims of real-time replay,
-  prospective forecasts, production deployment, or PIT-certified performance.
-  Start prospective timestamped capture separately so future evaluations can
-  meet stronger cutoff requirements.
-- The owner has authorized personal-use model development on the collected
-  corpus. Preserve known source terms and data lineage, but do not invent
-  documentary evidence or treat missing paperwork as a blanket training stop.
-- This directive authorizes model research/training, not automatic identity
-  merges, deletion/reparenting of source records, public redistribution,
-  production prediction publication, value-bet activation, or Android API
-  integration.
-
-This directive is the current operating instruction and takes precedence over
-older progress text that conflicts with it.
-
-
-## 2026-11-17 — First trained research artifact
-
-- Merged PR #29: attack/defence Poisson model, Elo draw correction, chronological retrospective evaluator and timestamp-aware odds contracts.
-- Merged PR #31: corrected ridge regularization and added same-fold league-average benchmark.
-- Merged PR #33: private full-corpus training runner, immutable model artifact migration and training workflow.
-- Dedicated Neon database contains model artifact `v1-5790da5427a7029b9267778728386b8d`, trained on 380 finished fixtures and 20 provider-local team IDs through 2026-11-14T19:30:00Z.
-- Corrected expanding event-time evaluation: 305 held-out fixtures, 12 folds, 1X2 Brier 0.6081835337 and log loss 1.0153185492; same-fold league baseline 0.6420315331 and 1.0633200835.
-- Artifact remains research-only and not PIT-certified. Elo is retained separately, not selected for ensemble. Dixon–Coles rho remains uncalibrated at zero.
-- No production prediction endpoint, Android prediction integration, or value-bet activation.
-
-
-## 2026-11-17 — Nested tuning and v2 model artifact
-
-- PR #34 merged: inner expanding-window selection for attack/defence half-life/ridge and Dixon–Coles rho; outer chronological evaluation remains isolated.
-- PR #35 merged: full-corpus trainer now builds a separately versioned v2 model; v1 is preserved.
-- Private v2 artifact persisted in Neon: `v2-5790da5427a7029b9267778728386b8d`, trained on 380 FINISHED fixtures / 20 provider-local team IDs.
-- Inner tuning selected half-life 180 days, ridge 0.08, Dixon–Coles rho 0.10 using 34 inner folds / 340 predictions.
-- v2 inner OOF scores: 1X2 Brier 0.6188714654, log loss 1.0305409710, scoreline log loss 2.7461398753. These are tuning-fold metrics, not independent outer-test metrics.
-- Main CI after PR #35 passed backend tests/Ruff and Android debug build.
-- Nested outer walk-forward evaluation is still running. Do not publish or deploy v2 until its outer-fold metrics are reviewed.
-
-
-## 2026-11-17 — Nested outer evaluation completed and model selection
-
-- [x] Nested outer evaluation workflow [#44160528516](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44160528516) completed successfully: 380 completed fixtures loaded, 75 initial training fixtures, 305 held-out fixtures and 12 expanding chronological folds.
-- [x] Nested-tuned model metrics: 1X2 Brier **0.6124461060**, 1X2 log loss **1.0215836752**, mean scoreline log loss **2.7313871693**.
-- [x] Same-fold league baseline: Brier **0.6420315331**, log loss **1.0633200835**. Nested model improves on baseline by approximately 4.61% Brier and 3.92% log loss.
-- [x] Compared with the corrected fixed-parameter evaluation (Brier **0.6081835337**, log loss **1.0153185492**), nested tuning was worse by approximately 0.70% Brier and 0.62% log loss.
-- [x] Workflow successfully re-persisted v2 artifact `v2-5790da5427a7029b9267778728386b8d` idempotently; no duplicate artifact or overwrite of v1.
-- **Selection:** v1/fixed-parameter attack/defence Poisson remains the best current research candidate. v2 is preserved as an immutable research artifact but is not promoted.
-- **Limitations:** one competition/season; event-time retrospective only; not PIT-certified; no market benchmark or prospective paper record; no multi-league generalization claim.
-- **Next:** fold-level diagnostics, calibration diagnostics with fold-contained fitting, uncertainty intervals, and wider competition/season coverage. README remains untouched. No production endpoint, Android prediction integration, value-bet activation, or public prediction publication.
-- Detailed evidence: [nested outer evaluation ledger](ledger/2026-11-17-retrospective-model-screening.md#nested-chronological-outer-evaluation--completed-2026-11-17).
-
-
-## Stage 3 research update — paired uncertainty and matched model comparison (2026-11-17)
-
-- [x] PR [#39](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/39) merged as `7ab2610837e6ba5be0e222feb5373a4883ddce82`; exact-head CI passed backend tests/Ruff and Android debug build.
-- [x] Post-merge retrospective workflow [#44171335925](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44171335925) succeeded. It loaded 380 FINISHED rows, evaluated 305 held-out fixtures over 12 chronological folds, and idempotently re-persisted the immutable v2 research artifact.
-- [x] Nested v2 versus league baseline: Brier 0.6124461060 vs 0.6420315331; log loss 1.0215836752 vs 1.0633200835.
-- [x] Paired 5,000-resample chronological fold-block bootstrap (seed 20261117): Brier difference -0.0295854271, 95% interval [-0.0417743132, -0.0177778528]; log-loss difference -0.0417364083, 95% interval [-0.0596155640, -0.0248281955]. Negative differences favour v2. Intervals remain exploratory because there are only 12 fold blocks.
-- [x] Calibration diagnostics: classwise ECE 0.0394121500; top-label ECE 0.0498733163. These are descriptive, not certification.
-- [x] PR [#40](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/40) merged as `43f393e632c026f33cb3fbee752523b701f07719`; exact-head backend tests/Ruff and Android debug build passed. Added same-fold v1/v2 comparison with paired fold-block intervals and a tested temperature-scaling utility.
-- [ ] Matched v1-v2 execution is queued behind the existing private model-training workflow; do not choose a champion until its exact paired results are reviewed.
-- [ ] Temperature scaling is not yet part of the evaluated outer predictions. Integration work must fit temperatures only from inner OOF predictions within each outer training window, then score untouched outer predictions.
-- **Research status:** no production model champion, PIT certification, production API, Android prediction integration, value-bet activation or public forecast publication. Current evidence remains one competition/season and retrospective event-time only.
-- Detailed metrics, bootstrap intervals, parameter instability and limitations: [Retrospective model screening ledger](ledger/2026-11-17-retrospective-model-screening.md).
-
-
-- [x] PR [#41](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/41) merged as `bbf15e699e072f119c8337575234a46b3e17bf27`; exact-head backend tests/Ruff and Android debug build passed.
-- [x] Fold-contained temperature calibration is now wired into retrospective outer-fold evaluation. Each temperature is fitted only on chronological inner-OOF predictions within that fold's training history; outer test labels are excluded. Reports now include raw and calibrated Brier/log-loss/ECE plus fold temperatures and sample counts.
-- [ ] Post-merge calibrated matched v1-v2 execution is still required. Do not claim calibration improves forecast accuracy until calibrated metrics and paired intervals are reviewed against uncalibrated results.
+- [x] Uncalibrated matched fixed-v1 vs nested-v2 workflow [#44172376777](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44172376777), job [#134356040176](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44172376777/job/134356040176), completed successfully.
+- [x] Post-PR #41 fold-contained calibrated matched workflow [#44173473173](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44173473173), job [#134364071899](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44173473173/job/134364071899), completed successfully; private artifact persistence was idempotent.
+- [x] Both comparisons used 305 identical held-out fixtures across 12 chronological folds (75 initial training fixtures); simultaneous kickoff groups remained intact.
+- [x] Raw matched metrics: fixed v1 Brier **0.6081835337**, log loss **1.0153185492**; nested v2 Brier **0.6124461060**, log loss **1.0215836752**.
+- [x] Paired raw differences (v2 minus v1): Brier **+0.0042625722**, 95% fold-block interval **[+0.0009324064, +0.0084349691]**; log loss **+0.0062651260**, interval **[+0.0013073868, +0.0120188047]**. Positive favours fixed v1. Bootstrap is exploratory with only 12 fold blocks.
+- [x] Fold-contained temperature scaling worsened Brier and log loss for both models: v1 calibrated Brier/log loss **0.6121281399 / 1.0204752553**; v2 **0.6131554044 / 1.0222996566**. ECE improved in some diagnostics, but primary metrics worsened.
+- [x] Calibrated paired differences v2 minus v1: Brier **+0.0010272646**, 95% interval **[-0.0016028217, +0.0044331101]**; log loss **+0.0018244013**, interval **[-0.0016913271, +0.0065814643]**. Both intervals include zero.
+- **Research disposition:** fixed v1 remains the benchmark candidate; preserve v2 as an immutable comparator; do not use temperature scaling as the default. Neither is production- or PIT-certified.
+- **Restrictions unchanged:** one competition/season; unresolved identity/duplicate cases; no timestamped odds benchmark or prospective paper validation; no production endpoint, Android prediction integration, value-bet activation or public forecast publication. Android work remains deferred until real prediction endpoints exist.
+- Full metrics and limitations: [retrospective model screening ledger](ledger/2026-11-17-retrospective-model-screening.md#matched-v1-v2-evaluation-and-fold-contained-calibration--completed-2026-11-18).
