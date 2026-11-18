@@ -41,6 +41,7 @@ on:
       - "scripts/probe_the_odds_api_events.py"
       - "scripts/probe_5dollar_scheduled_fixtures.py"
       - "scripts/reconcile_odds_api_event_catalogue.py"
+      - "scripts/probe_the_odds_api_event_h2h.py"
       - ".github/workflows/the-odds-api-event-discovery.yml"
       - ".github/workflows/the-odds-api-5dollar-fixture-qualification.yml"
       - ".github/workflows/5dollar-odds-snapshot-probe.yml"
