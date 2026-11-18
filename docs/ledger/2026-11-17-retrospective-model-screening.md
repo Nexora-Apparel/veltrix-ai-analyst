@@ -209,3 +209,60 @@ The retrospective evaluator now:
 The outer test labels are not used to fit temperature. The calibration base predictions are generated in event-time order from earlier training results. This remains retrospective event-time evaluation, not PIT certification.
 
 **Evaluation status at merge:** implementation and CI are verified; calibrated outer-fold performance has not yet been run or accepted. A post-merge matched evaluation is required before claiming calibration improves accuracy. Temperature scaling can improve log loss while worsening Brier or ECE; all metrics must be reviewed together.
+
+
+## Matched v1-v2 evaluation and fold-contained calibration — completed 2026-11-18
+
+Both post-merge research workflows completed successfully:
+- Uncalibrated matched comparison: [workflow #44172376777](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44172376777), job [#134356040176](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44172376777/job/134356040176).
+- Fold-contained calibrated matched comparison: [workflow #44173473173](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44173473173), job [#134364071899](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44173473173/job/134364071899).
+- Both workflows completed all steps successfully, including migrations, chronological evaluation, matched comparison, and idempotent private artifact persistence.
+- Both evaluated the same 305 held-out fixtures across 12 expanding chronological folds, with 75 initial training fixtures and simultaneous kickoff groups intact. Evaluation type is `MATCHED_RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED`.
+
+### Raw matched comparison
+
+| Metric | Fixed v1 | Nested-tuned v2 |
+|---|---:|---:|
+| 1X2 Brier | **0.6081835337** | 0.6124461060 |
+| 1X2 log loss | **1.0153185492** | 1.0215836752 |
+| Classwise ECE | 0.0507209417 | 0.0394121500 |
+| Top-label ECE | 0.0380918581 | 0.0498733163 |
+
+Paired differences are nested v2 minus fixed v1; negative favours v2. The 5,000-resample chronological fold-block bootstrap (seed `20261117`) returned:
+
+| Difference | Mean | 95% percentile interval |
+|---|---:|---:|
+| Brier | +0.0042625722 | [+0.0009324064, +0.0084349691] |
+| Log loss | +0.0062651260 | [+0.0013073868, +0.0120188047] |
+
+Both intervals are positive, favouring fixed v1 on these primary metrics. The intervals are exploratory only because they resample just 12 chronological folds. The exact matched run therefore confirms fixed v1, not nested v2, as the stronger current research benchmark for this corpus.
+
+### Fold-contained temperature calibration comparison
+
+The calibrated matched run reports:
+
+| Model | Raw Brier | Calibrated Brier | Raw log loss | Calibrated log loss |
+|---|---:|---:|---:|---:|
+| Fixed v1 | 0.6081835337 | 0.6121281399 | 1.0153185492 | 1.0204752553 |
+| Nested v2 | 0.6124461060 | 0.6131554044 | 1.0215836752 | 1.0222996566 |
+
+Calibration worsened both primary aggregate metrics for both models. ECE diagnostics changed as follows:
+- Fixed v1 classwise ECE: 0.0507209417 → 0.0424239870; top-label ECE: 0.0380918581 → 0.0400144607.
+- Nested v2 classwise ECE: 0.0394121500 → 0.0339452624; top-label ECE: 0.0498733163 → 0.0412108772.
+
+Calibrated paired differences (v2 minus v1) were Brier +0.0010272646 with 95% interval [-0.0016028217, +0.0044331101], and log loss +0.0018244013 with interval [-0.0016913271, +0.0065814643]. Both intervals include zero. Calibration does not establish a better model and is not accepted as the default probability transformation. Retain raw v1 probabilities for research benchmarking; keep calibration code available for future larger-sample tests.
+
+### Artifact and disposition
+
+The calibrated workflow idempotently persisted/reused artifact `v2-5790da5427a7029b9267778728386b8d` on the unchanged dataset fingerprint; 380 training fixtures, 20 provider-local team IDs, cutoff `2026-11-14T19:30:00Z`, `point_in_time_certified=false`, deployment status `RESEARCH_ARTIFACT_ONLY`. No production deployment or model replacement occurred.
+
+**Current research decision:** fixed v1 remains the benchmark candidate; nested v2 remains preserved as an immutable comparator; temperature scaling is not selected for default use. This is not a production champion decision or accuracy guarantee.
+
+### Limitations and next work
+
+- One competition and one season only; 305 held-out fixtures and 12 folds are insufficient for broad generalization or strong inferential claims.
+- Historical source publication/availability timestamps remain absent. Results are retrospective event-time validation, not PIT-certified replay.
+- Identity review and duplicate adjudication remain open; provider-local IDs are intentionally kept separate.
+- No odds benchmark, bookmaker calibration, prospective paper ledger, CLV or live settlement evaluation has been completed.
+- Continue with multi-season/multi-competition corpus expansion, source-quality/identity adjudication, and prospective timestamped feature/odds capture after verifying existing account entitlement and actual response shape within budget. No new provider key/account.
+- Do not activate production predictions, value betting, public forecast publication or Android/backend prediction integration. Android runtime test and typed API integration remain deferred until real prediction endpoints are independently authorized and built.
