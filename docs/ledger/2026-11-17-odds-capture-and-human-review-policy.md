@@ -112,3 +112,21 @@ authorization does not manufacture missing historical publication/availability
 timestamps, resolve identity/duplicate conflicts, or turn post-event information
 into pre-match features. If a source's known terms expressly prohibit the intended
 use, flag that specific conflict rather than treating all data as unusable.
+
+
+## Provider schema audit and adapter correction — 2026-11-18
+
+A review of the current public provider documentation found that the first odds normalizer implemented an assumed schema that does not match either documented endpoint. Its synthetic unit fixture was therefore not sufficient to establish provider compatibility.
+
+Documented contracts reviewed:
+- Fixture snapshot: https://5dollarfootballapi.com/docs/odds — `GET /v1/fixtures/{id}/odds` returns `data.bookmakers[]`, each with `name`, `slug`, and nested `odds` markets. Bet365 1X2 opening prices carry `opened_at`; closing/in-play and most other market stages have no per-price timestamp in this response.
+- Odds history: https://5dollarfootballapi.com/docs/odds-history — `data.bookmaker`, `data.market`, and `data.ticks[]`; ticks carry `recorded_at`, `minute`, and score. Pre-match examples use `minute: null` and null score; in-play examples carry a minute and/or score. Suspended ticks may carry null prices and must not become observations.
+- The full odds-history endpoint is documented as Ultra-only. Do not infer entitlement from a fixture import or plan name.
+
+PR [#42](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/42) replaces the assumed parser with separate adapters for the two documented envelopes:
+- Fixture snapshot adapter admits only timestamped 1X2 opening prices. It deliberately ignores closing/in-play and other markets without individual source timestamps.
+- History adapter retains timestamped pre-match 1X2 and goal-line ticks, and excludes in-play/suspended ticks.
+- Both adapters preserve provider tick time separately from our actual retrieval time and pass through the existing cutoff/rights/identity-independent odds contract. A response retrieved after the original prediction cutoff remains rejected even if its provider tick is earlier.
+- Tests now use documented response examples rather than the prior synthetic shape.
+
+No live odds API request was made during this schema review. The user has explicitly confirmed project-owner authorization for all collected data, including odds, for the project's personal-use model research and training. That authorization is recorded; it does not manufacture source timestamps or override any applicable provider contract. The account plan and Brazil Serie B listing were subsequently verified as Community / visible, but the odds snapshot endpoint's account-specific response remains unverified. Odds capture stays inactive pending one bounded live snapshot probe. The full odds-history endpoint is documented as Ultra-only and is not part of the Community-plan probe. No new key/account is to be created.
