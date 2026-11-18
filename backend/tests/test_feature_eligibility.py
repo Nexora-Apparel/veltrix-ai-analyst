@@ -43,7 +43,7 @@ def test_verified_publication_before_cutoff_is_eligible() -> None:
         ({"available_at": None}, "SOURCE_AVAILABILITY_TIME_REQUIRED"),
         ({"provider_response_id": None}, "CAPTURED_PROVIDER_RESPONSE_REQUIRED"),
         ({"source_published_at": CUTOFF + timedelta(seconds=1)}, "SOURCE_PUBLICATION_AFTER_RETRIEVAL"),
-        ({"available_at": CUTOFF + timedelta(seconds=1)}, "SOURCE_AVAILABLE_AFTER_PREDICTION_CUTOFF"),
+        ({"available_at": CUTOFF + timedelta(seconds=1)}, "AVAILABILITY_AFTER_RETRIEVAL"),
         ({"available_at": PUBLISHED - timedelta(seconds=1)}, "AVAILABILITY_PRECEDES_SOURCE_PUBLICATION"),
         ({"payload_sha256": "not-a-hash"}, "VALID_PAYLOAD_SHA256_REQUIRED"),
     ],
@@ -113,5 +113,20 @@ def test_system_observed_basis_rejects_non_capture_timestamps(
     ):
         require_pre_match_eligibility(
             evidence(**values),
+            prediction_cutoff_at=CUTOFF,
+        )
+
+
+
+def test_published_source_available_after_cutoff_is_rejected() -> None:
+    with pytest.raises(
+        FeatureEligibilityError,
+        match="SOURCE_AVAILABLE_AFTER_PREDICTION_CUTOFF",
+    ):
+        require_pre_match_eligibility(
+            evidence(
+                available_at=CUTOFF + timedelta(seconds=1),
+                retrieved_at=CUTOFF + timedelta(minutes=1),
+            ),
             prediction_cutoff_at=CUTOFF,
         )
