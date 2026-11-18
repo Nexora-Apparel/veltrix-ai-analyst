@@ -197,3 +197,46 @@ def test_same_provider_fixture_id_isolated_by_competition_scope():
         "league-b:shared-id",
     }
     assert {row.competition_id for row in rows} == {"league-a", "league-b"}
+
+
+def test_dataset_derives_rolling_stats_and_events_only_from_prior_matches():
+    past = fixture("past", "A", "C", 1)
+    target = fixture("target", "A", "B", 5)
+    past_observation = observation(
+        "past", 101, 101, BASE + timedelta(days=2), "finished", 2, 1
+    )
+    past_observation.payload.update({
+        "statistics": {
+            "shots_on_target": {"home": 4, "away": 2},
+            "shots_off_target": {"home": 5, "away": 3},
+            "dangerous_attacks": {"home": 22, "away": 17},
+            "attacks": {"home": 41, "away": 35},
+            "possession": {"home": 58, "away": 42},
+            "first_half": {
+                "shots_on_target": {"home": 2, "away": 1},
+                "dangerous_attacks": {"home": 10, "away": 8},
+            },
+        },
+        "home_corners": 6,
+        "home_yellow_cards": 1,
+        "home_red_cards": 0,
+        "events": [
+            {"type": "goal", "minute": 80, "team": "home"},
+            {"type": "substitution", "minute": 70, "team": "home"},
+        ],
+    })
+    target_observation = observation(
+        "target", 102, 102, BASE + timedelta(days=4), "scheduled"
+    )
+    rows = build_prospective_dataset(
+        [past, target],
+        [past_observation, target_observation],
+    )
+    target_row = next(row for row in rows if row.fixture_id == "target")
+    assert target_row.features["home_shots_on_target_avg_last5"] == 4.0
+    assert target_row.features["home_possession_avg_last5"] == 58.0
+    assert target_row.features["home_corners_avg_last5"] == 6.0
+    assert target_row.features["home_first_half_shots_on_target_avg_last5"] == 2.0
+    assert target_row.features["home_late_goals_for_avg_last5"] == 1.0
+    assert target_row.features["home_substitutions_avg_last5"] == 1.0
+    assert target_row.features["away_stats_coverage_last5"] == 0.0
