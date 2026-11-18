@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
 
+import pytest
+
 from app.providers.the_odds_api_events import (
     OddsApiEventPayloadError,
     normalize_event_catalogue,
 )
-
-import pytest
 
 
 AS_OF = datetime(2026, 11, 18, 0, tzinfo=UTC)
