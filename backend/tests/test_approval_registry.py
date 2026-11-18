@@ -6,6 +6,7 @@ from app.providers.approvals import (
     AIMIDAS_BRAZIL_SERIE_B_APPROVAL,
     FIVEDOLLAR_ACCOUNT_APPROVAL,
     FIVEDOLLAR_COMMUNITY_APPROVAL,
+    FIVEDOLLAR_COMMUNITY_ODDS_APPROVAL,
     THE_ODDS_API_SOCCER_APPROVAL,
 )
 from app.providers.rights import DataUsePurpose, evaluate_source_use
@@ -123,19 +124,19 @@ def test_the_odds_api_approval_is_exact_scope_and_noncommercial() -> None:
 
     allowed = evaluate_source_use(
         approval,
-        DataUsePurpose.MODEL_TRAINING,
+        DataUsePurpose.VALUE_BETTING,
         scope_value="soccer_epl",
         at_utc=datetime(2026, 11, 18, tzinfo=UTC),
     )
     denied_scope = evaluate_source_use(
         approval,
-        DataUsePurpose.MODEL_TRAINING,
+        DataUsePurpose.VALUE_BETTING,
         scope_value="soccer_uefa_champs_league",
         at_utc=datetime(2026, 11, 18, tzinfo=UTC),
     )
     denied_commercial = evaluate_source_use(
         approval,
-        DataUsePurpose.MODEL_TRAINING,
+        DataUsePurpose.VALUE_BETTING,
         scope_value="soccer_epl",
         at_utc=datetime(2026, 11, 18, tzinfo=UTC),
         commercial=True,
@@ -158,3 +159,12 @@ def test_the_odds_api_approval_evidence_hash_matches_review() -> None:
     evidence = repository_root / "docs" / "providers" / "THE_ODDS_API_TERMS_REVIEW.md"
 
     assert sha256(evidence.read_bytes()).hexdigest() == THE_ODDS_API_SOCCER_APPROVAL.evidence_sha256
+
+
+def test_5dollar_odds_approval_is_value_betting_only() -> None:
+    approval = FIVEDOLLAR_COMMUNITY_ODDS_APPROVAL
+    assert approval.data_types == frozenset({"bookmaker_odds"})
+    assert DataUsePurpose.VALUE_BETTING in approval.permitted_uses
+    assert DataUsePurpose.MODEL_TRAINING not in approval.permitted_uses
+    assert DataUsePurpose.FEATURE_ENGINEERING not in approval.permitted_uses
+    assert approval.scope_values == FIVEDOLLAR_COMMUNITY_APPROVAL.scope_values
