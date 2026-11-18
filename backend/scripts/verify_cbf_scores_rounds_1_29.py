@@ -87,16 +87,22 @@ def parse_scored_row(tokens: list[str]) -> dict[str, object] | None:
     if not tokens or not re.fullmatch(r"\d{3}", tokens[0]):
         return None
     try:
-        separator = tokens.index("x", 5)
+        separator = tokens.index("x", 1)
     except ValueError:
         return None
-    if separator < 7 or separator + 2 >= len(tokens):
+    if separator < 3 or separator + 2 >= len(tokens):
         return None
     home_goals_token = tokens[separator - 1]
     away_goals_token = tokens[separator + 1]
     if not home_goals_token.isdigit() or not away_goals_token.isdigit():
         return None
-    home_tokens = split_club_and_state(tokens[5 : separator - 1], away=False)
+    metadata_tokens = {"seg", "ter", "qua", "qui", "sex", "sab", "sáb", "dom"}
+    home_raw = [
+        token for token in tokens[1 : separator - 1]
+        if not re.fullmatch(r"(?:\\d{1,2}ª?|\\d{2}/\\d{2}|\\d{2}:\\d{2})", token)
+        and token.casefold() not in metadata_tokens
+    ]
+    home_tokens = split_club_and_state(home_raw, away=False)
     away_tokens = split_club_and_state(tokens[separator + 2 :], away=True)
     home_label = " ".join(home_tokens)
     away_label = " ".join(away_tokens)
