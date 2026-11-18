@@ -7,7 +7,6 @@ from app.providers.fixture_catalogue import (
     normalize_scheduled_fixture_catalogue,
 )
 
-
 AS_OF = datetime(2026, 11, 18, tzinfo=UTC)
 
 
