@@ -79,6 +79,20 @@ def main() -> int:
         "unknown_unlabeled_rows_excluded": len(unknown),
         "unknown_fixture_ids": sorted(unknown),
         "invalid_rows": 0,
+        "scoreline_evidence": {
+            "finished_labels_in_research_corpus": len(finished),
+            "officially_cross_checked_labels": 353,
+            "not_independently_cross_checked_labels": 27,
+            "cross_check_coverage": 353 / 380,
+            "pending_cbf_rounds": {"31": 10, "32": 10, "37": 7},
+            "evidence_ledger": "docs/ledger/2026-11-18-cbf-consolidated-data-qualification.md",
+            "interpretation": (
+                "The retrospective report scores all provider FINISHED labels. "
+                "353/380 have independent official CBF score cross-checks; 27 remain "
+                "unverified against official CBF score evidence. Treat metrics as "
+                "provisional research diagnostics, not production model-selection evidence."
+            ),
+        },
     }
     canonical = json.dumps(report, sort_keys=True, separators=(",", ":"), allow_nan=False)
     report["report_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
