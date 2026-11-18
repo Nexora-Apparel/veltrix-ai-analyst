@@ -49,10 +49,20 @@ def test_rejects_future_results_and_duplicate_ids():
         fit_attack_defence([repeated, repeated])
 
 
-def test_unknown_team_is_not_silently_given_a_prior():
+def test_unseen_teams_use_neutral_effects_without_fabricated_team_strength():
+    from math import exp
+
     model = fit_attack_defence([row("x", 1, "A", "B", 1, 0)])
-    with pytest.raises(KeyError):
-        model.predict("A", "C")
+
+    one_unseen = model.predict("A", "C")
+    both_unseen = model.predict("C", "D")
+
+    assert one_unseen.home_lambda > 0
+    assert one_unseen.away_lambda > 0
+    assert both_unseen.home_lambda == pytest.approx(
+        exp(model.intercept + model.home_advantage)
+    )
+    assert both_unseen.away_lambda == pytest.approx(exp(model.intercept))
 
 
 def test_stronger_ridge_penalty_shrinks_team_effects():
@@ -77,3 +87,57 @@ def test_stronger_ridge_penalty_shrinks_team_effects():
         abs(v) for v in strong.defence.values()
     )
     assert strong_effect < weak_effect
+
+
+def test_fitted_parameters_satisfy_single_ridge_penalized_objective():
+    from math import exp, log
+
+    teams = ("A", "B", "C", "D")
+    results = [
+        row(
+            f"objective-{day}",
+            day + 1,
+            teams[day % 4],
+            teams[(day + 1) % 4],
+            2 if day % 5 == 0 else day % 2,
+            1 if day % 7 == 0 else 0,
+        )
+        for day in range(40)
+    ]
+    ridge = 0.4
+    model = fit_attack_defence(results, ridge=ridge, max_iterations=6000)
+    as_of = max(item.kickoff_at for item in results)
+    weights = [
+        exp(-log(2) * (as_of - item.kickoff_at).total_seconds() / 86400 / model.half_life_days)
+        for item in results
+    ]
+    total_weight = sum(weights)
+    grad_intercept = 0.0
+    grad_home = 0.0
+    grad_attack = {team: ridge * model.attack[team] for team in model.teams}
+    grad_defence = {team: ridge * model.defence[team] for team in model.teams}
+
+    for item, weight in zip(results, weights):
+        home_rate = exp(
+            model.intercept + model.home_advantage
+            + model.attack[item.home_team] - model.defence[item.away_team]
+        )
+        away_rate = exp(
+            model.intercept + model.attack[item.away_team] - model.defence[item.home_team]
+        )
+        home_error = weight * (home_rate - item.home_goals) / total_weight
+        away_error = weight * (away_rate - item.away_goals) / total_weight
+        grad_intercept += home_error + away_error
+        grad_home += home_error
+        grad_attack[item.home_team] += home_error
+        grad_defence[item.away_team] -= home_error
+        grad_attack[item.away_team] += away_error
+        grad_defence[item.home_team] -= away_error
+
+    gradients = [
+        grad_intercept,
+        grad_home,
+        *grad_attack.values(),
+        *grad_defence.values(),
+    ]
+    assert max(abs(value) for value in gradients) < 1e-4
