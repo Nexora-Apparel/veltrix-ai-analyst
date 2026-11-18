@@ -208,6 +208,10 @@ def build_report(
         "distinct_competitions": len({row.competition_id for row in rows}),
         "distinct_kickoff_dates": len({row.kickoff_at.date() for row in rows}),
         "feature_lineage_records": sum(len(row.feature_lineage) for row in rows),
+        "feature_coverage": {
+            key: sum(1 for row in rows if key in row.features)
+            for key in sorted({key for row in rows for key in row.features})
+        },
         "invalid_system_observed_sightings": invalid_system_observed,
         "expanding_folds": serialized_folds,
         "dataset_sha256": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
