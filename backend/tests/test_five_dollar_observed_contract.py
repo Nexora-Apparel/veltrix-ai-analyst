@@ -47,7 +47,7 @@ def test_observed_fixture_fields_and_pagination_are_normalized_offline() -> None
                 "data": rows,
                 "pagination": {
                     "page": 1,
-                    "per_page": 100,
+                    "per_page": 50,
                     "count": 8,
                     "has_more": False,
                 },
@@ -69,7 +69,7 @@ def test_observed_fixture_fields_and_pagination_are_normalized_offline() -> None
     assert len(requests) == 1
     assert requests[0].url.path == "/v1/leagues/522514093/fixtures"
     assert requests[0].url.params["page"] == "1"
-    assert requests[0].url.params["per_page"] == "100"
+    assert requests[0].url.params["per_page"] == "50"
     assert requests[0].url.params["status"] == "all"
     assert requests[0].url.params["start_time"] == "1794009600"
     assert requests[0].url.params["end_time"] == "1794182400"
@@ -103,7 +103,7 @@ def test_observed_kickoff_timestamp_fallback_is_supported() -> None:
                 "data": [row],
                 "pagination": {
                     "page": 1,
-                    "per_page": 100,
+                    "per_page": 50,
                     "count": 1,
                     "has_more": False,
                 },
