@@ -83,7 +83,7 @@ No team alias, duplicate fixture, competition mapping or canonical merge has bee
 
 The 384 historical provider observations have no source-publication or `available_at` timestamps and none is PIT-certifiable. Retrieval after the event cannot establish pre-match availability. This historical gap cannot be repaired by inventing timestamps or by using final match schedules.
 
-Future ingestion must capture immutable source payloads and verified observation/availability timestamps before kickoff, with source rights and publication metadata. Historical records stay excluded from PIT-certified feature inputs.
+Future ingestion must capture immutable source payloads and exact observation/availability timestamps before kickoff, with approved source rights. When the provider supplies a verified publication timestamp, retain it separately. When it does not, the prospective `SYSTEM_OBSERVED_AT` basis may be used only when the exact response `fetched_at` equals the sighting `retrieved_at`, `available_at = retrieved_at`, and the prediction cutoff is no earlier than capture. Migration 010 is committed and CI-tested but still awaits checksum-gated production activation. Historical records stay excluded from PIT-certified feature inputs.
 
 ### 4. Coverage and competition identity
 
