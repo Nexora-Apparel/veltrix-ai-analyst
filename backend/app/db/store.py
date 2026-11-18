@@ -856,8 +856,9 @@ class PostgresIngestionStore:
             """
             INSERT INTO veltrix_ai_analyst.import_runs (
                 provider, source_id, import_type, boundary_start, boundary_end,
-                status, importer_version, request_budget, rights_approval_id, started_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                status, importer_version, request_budget, rights_approval_id,
+                started_at, scope_value
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -871,6 +872,7 @@ class PostgresIngestionStore:
                 request_budget,
                 approval.approval_id,
                 started_at,
+                scope_value,
             ),
         ).fetchone()
         if row is None:
