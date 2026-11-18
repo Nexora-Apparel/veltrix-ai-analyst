@@ -7,7 +7,6 @@ from app.providers.the_odds_api_markets import (
     normalize_event_h2h_odds_response,
 )
 
-
 # Fixed retrieval instant for deterministic parser tests.
 RETRIEVED = datetime(2026, 11, 18, 2, 30, tzinfo=UTC)
 EVENT = {
