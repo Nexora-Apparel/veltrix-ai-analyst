@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Zero-odds-credit, read-only The Odds API v4 soccer catalogue probe.
 
 Never prints request URLs, API keys, authorization data, or raw response bodies.
@@ -9,7 +8,7 @@ import hashlib
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -20,7 +19,7 @@ TIMEOUT_SECONDS = 20
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def emit(manifest: dict[str, object]) -> None:
