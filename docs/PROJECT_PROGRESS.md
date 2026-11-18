@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-18 (matched fixed-v1/v2 evaluation and fold-contained calibration completed; v1 retained as research benchmark; no production release)
+**Last updated:** 2026-11-18 (single-fixture Bet365 odds snapshot access verified; prospective capture design is next; no production release)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -519,6 +519,17 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [x] Public plan documentation confirms Community Access includes the top-five leagues plus one country pack, Bet365 odds markets, and 12 months of results/odds. The fixture odds snapshot endpoint is the intended first probe. Full odds tick history remains Ultra-only; do not call it with the current plan.
 - [x] PR #42 merged at 36b10411d73d3ecd41c7a239ef6412adaef3bc49: documented fixture-odds and history adapters, Bet365-only timestamped 1X2 snapshot admission, fixed-goal-line history dispatch, separate source tick/retrieval clocks. Backend tests, Ruff and Android debug APK CI all passed.
 - [x] PR #43 merged at e54dce54b8319560a89e86847652b0d0a726e5fd: manual-only one-request odds snapshot probe workflow and compact response manifest. CI passed backend tests, Ruff and Android debug APK build.
-- [ ] Manual dispatch remains required: run the 5Dollar single-fixture odds snapshot probe workflow on main, default fixture ID 1194891794. It makes exactly one GET /fixtures/{id}/odds request, no retries or pagination, and uploads only a compact schema/1X2-opening manifest. This is an operational trigger, not a permission request.
-- [ ] After the probe, verify HTTP status, actual response envelope, Bet365 1X2 opening fields and opened_at semantics. Only then design prospective odds capture; do not backfill historical availability from old provider tick times.
+- [x] Manual probe run [#44216129899](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44216129899), job [#134506317580](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44216129899/job/134506317580), completed successfully on main commit `14b7004fdaf7e2c1b7e29a2e4435154686b157b2`.
+- [x] Exactly one `GET /v1/fixtures/1194891794/odds` request returned HTTP 200; zero retries and zero pagination. Bet365 (`bet365`) returned 12 markets: `1x2`, `asian_handicap`, `asian_handicap_half`, `btts`, `card_asian`, `card_line`, `corner_asian`, `corner_line`, `corner_line_half`, `goal_line`, `goal_line_fixed`, and `goal_line_half`.
+- [x] Bet365 1X2 opening snapshot: home 4.10, draw 3.25, away 1.90; `opened_at=2026-11-09T13:15:09+00:00`. Response HTTP Date `2026-11-18 01:29:05 GMT`; retrieval `2026-11-18T01:29:05.859374+00:00`; response SHA-256 `93c40815c5c587e253cafd2ecbdb55521787ecb9bf1c43611f4fff52b5cf0180`. Rate-limit remaining header was 297/300. Compact manifest artifact ID `14388467126`, SHA-256 `fb66e597e00dd680941ec9da241afe5fe24da133de8ba58806ee1fb1ed67b7e5`, expires 2026-11-25.
+- [x] Probe establishes authenticated endpoint access and a real Bet365 1X2 opening field, not PIT eligibility. This fixture's opening timestamp predates retrieval by over eight days; retrieval after the opening cannot prove when the odds were first available to this system. The observation is not eligible for a historical pre-match cutoff or CLV benchmark.
+- [ ] Next: implement a manual-only, bounded prospective odds capture design that records retrieval time at request receipt, request start/end, response hash, fixture kickoff, prediction cutoff, provider/bookmaker/market/selection/line, and source timestamp separately. Admit only observations actually retrieved before the prediction cutoff; never backfill availability from `opened_at` or provider tick timestamps. Validate schema and idempotency before any DB write or recurring schedule.
 - Restrictions unchanged: no odds pipeline activation, production prediction endpoint, Android/backend prediction integration, model promotion, value-bet activation or public forecast publication. Retrospective corpus remains non-PIT-certified.
+- Restrictions unchanged: no odds pipeline activation, production prediction endpoint, Android/backend prediction integration, model promotion, value-bet activation or public forecast publication. Retrospective corpus remains non-PIT-certified.
+
+
+## 2026-11-18 — Bet365 odds snapshot access confirmed
+
+- Probe evidence and interpretation are recorded above. The successful snapshot is a provider-access/schema confirmation only; it does not certify historical availability, price freshness at the model cutoff, CLV, or betting value.
+- **Next engineering unit:** design the prospective capture contract and test suite first. Keep capture manual and low-volume, keep the current Community quota budget, and do not create a recurring workflow or database writer until contract tests establish strict cutoff, source provenance, duplicate/idempotency, and rights gates.
+- Existing research model disposition is unchanged: fixed v1 remains the retrospective benchmark candidate; v2 remains an immutable comparator; neither is PIT-certified or production-certified.
