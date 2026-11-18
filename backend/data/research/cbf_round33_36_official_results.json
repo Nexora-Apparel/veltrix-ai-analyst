@@ -45,7 +45,7 @@
       "published_at": "2026-11-03"
     }
   ],
-  "note": "The official CBF articles collectively report all 40 results across rounds 33-36. Source URLs are attached per fixture.",
+  "note": "Official CBF results articles supply scores; official detailed schedule PDFs supply the CBF reference numbers. Registry refs were reconciled directly against those schedules. The five prior score checks among these rounds are refs 325, 360, 361, 369 and 370; refs 325 and 360 are in this registry.",
   "fixtures": [
     {
       "ref": "330",
@@ -62,7 +62,8 @@
       "official_source_result": "Juventude 2 x 2 São Bernardo",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "326",
@@ -79,7 +80,8 @@
       "official_source_result": "Atlético-GO 1 x 1 Sport",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "328",
@@ -96,7 +98,8 @@
       "official_source_result": "Náutico 0 x 2 Vila Nova",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "329",
@@ -113,7 +116,8 @@
       "official_source_result": "Cuiabá 0 x 1 Avaí",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "325",
@@ -130,7 +134,8 @@
       "official_source_result": "Fortaleza 2 x 2 CRB",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "324",
@@ -147,7 +152,8 @@
       "official_source_result": "Operário-PR 0 x 2 Goiás",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "322",
@@ -164,7 +170,8 @@
       "official_source_result": "Novorizontino 5 x 1 Ponte Preta",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "327",
@@ -181,7 +188,8 @@
       "official_source_result": "Criciúma 1 x 0 América-MG",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "321",
@@ -198,7 +206,8 @@
       "official_source_result": "Botafogo-SP 1 x 0 Ceará",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "323",
@@ -215,7 +224,8 @@
       "official_source_result": "Athletic-MG 2 x 2 Londrina",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/athletic-e-londrina-empatam-em-2-a-2-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "331",
@@ -232,7 +242,8 @@
       "official_source_result": "Ponte Preta 1 x 1 Atlético-GO",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "338",
@@ -249,7 +260,8 @@
       "official_source_result": "Fortaleza 2 x 0 Sport",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "335",
@@ -266,7 +278,8 @@
       "official_source_result": "Ceará 2 x 2 Juventude",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "333",
@@ -283,7 +296,8 @@
       "official_source_result": "América-MG 1 x 0 Operário-PR",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "337",
@@ -300,7 +314,8 @@
       "official_source_result": "Avaí 0 x 0 Athletic",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "339",
@@ -317,7 +332,8 @@
       "official_source_result": "Botafogo-SP 1 x 0 CRB",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "332",
@@ -334,7 +350,8 @@
       "official_source_result": "Criciúma 1 x 0 São Bernardo",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "340",
@@ -351,7 +368,8 @@
       "official_source_result": "Vila Nova 2 x 2 Novorizontino",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "336",
@@ -368,7 +386,8 @@
       "official_source_result": "Goiás 0 x 0 Náutico",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/goias-e-nautico-nao-movimentam-placar-em-jogo-pela-34a-rodada-da-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "334",
@@ -385,7 +404,8 @@
       "official_source_result": "Londrina 1 x 0 Cuiabá",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-londrina-vence-cuiaba-mas-permanece-na-zona-de-rebaixamento"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf"
     },
     {
       "ref": "344",
@@ -402,7 +422,8 @@
       "official_source_result": "Operário-PR 1 x 0 Athletic-MG",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "348",
@@ -419,7 +440,8 @@
       "official_source_result": "Sport 2 x 1 Criciúma",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "347",
@@ -436,7 +458,8 @@
       "official_source_result": "Avaí 0 x 2 Botafogo-SP",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "346",
@@ -453,7 +476,8 @@
       "official_source_result": "Atlético-GO 0 x 1 Novorizontino",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "342",
@@ -470,7 +494,8 @@
       "official_source_result": "São Bernardo 3 x 2 Vila Nova",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "349",
@@ -487,7 +512,8 @@
       "official_source_result": "CRB 2 x 1 Londrina",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "341",
@@ -504,7 +530,8 @@
       "official_source_result": "Ponte Preta 2 x 2 Fortaleza",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "343",
@@ -521,7 +548,8 @@
       "official_source_result": "América-MG 1 x 0 Cuiabá",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "350",
@@ -538,7 +566,8 @@
       "official_source_result": "Juventude 4 x 0 Náutico",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "345",
@@ -555,7 +584,8 @@
       "official_source_result": "Goiás 2 x 0 Ceará",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "357",
@@ -572,7 +602,8 @@
       "official_source_result": "Criciúma 2 x 0 Ponte Preta",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "351",
@@ -589,7 +620,8 @@
       "official_source_result": "Botafogo-SP 1 x 1 Sport",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "360",
@@ -606,7 +638,8 @@
       "official_source_result": "Vila Nova 2 x 2 Juventude",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "358",
@@ -623,7 +656,8 @@
       "official_source_result": "Náutico 1 x 0 Avaí",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "354",
@@ -640,7 +674,8 @@
       "official_source_result": "Londrina 1 x 3 América-MG",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "359",
@@ -657,7 +692,8 @@
       "official_source_result": "Cuiabá 1 x 2 São Bernardo",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "352",
@@ -674,7 +710,8 @@
       "official_source_result": "Novorizontino 2 x 1 Operário-PR",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "355",
@@ -691,7 +728,8 @@
       "official_source_result": "Fortaleza 0 x 0 Atlético-GO",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "353",
@@ -708,7 +746,8 @@
       "official_source_result": "Athletic-MG 2 x 1 Ceará",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     },
     {
       "ref": "356",
@@ -725,7 +764,8 @@
       "official_source_result": "Goiás 2 x 1 CRB",
       "source_urls": [
         "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
-      ]
+      ],
+      "schedule_reference_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
     }
   ]
 }
