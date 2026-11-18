@@ -373,7 +373,11 @@ def build_expanding_window_folds(
                         fold_number=fold_number,
                         train_fixture_ids=tuple(row.fixture_id for row in eligible_train),
                         validation_fixture_ids=tuple(row.fixture_id for row in validation_rows),
-                        train_cutoff_at=max(row.kickoff_at for row in eligible_train),
+                        train_cutoff_at=max(
+                            row.label_observed_at
+                            for row in eligible_train
+                            if row.label_observed_at is not None
+                        ),
                         validation_start_at=validation_start,
                         validation_end_at=validation_end,
                     )
