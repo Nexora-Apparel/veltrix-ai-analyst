@@ -56,7 +56,7 @@ The CBF 37th-round article also independently lists the revised 5–8 November m
 
 ## Boundaries and next checks
 
-- This pass covers rounds 31–38 only (80/380 fixtures). Rounds 1–30 still require the same fixture-reference, ordered-pairing, and kickoff reconciliation.
+- This pass covers rounds 31–38 only (80/380 fixtures). Rounds 1–30 schedule reconciliation is now recorded in separate ledgers; see [rounds 1–18](2026-11-18-cbf-rounds-1-18-reconciliation.md), [19–24](2026-11-18-cbf-rounds-19-24-reconciliation.md), and [25–30](2026-11-18-cbf-rounds-25-30-reconciliation.md).
 - Only the eight schedule-changed scorelines were individually checked against the cited official CBF match pages in this pass. The remaining 72 scorelines still need their own CBF match-page score comparison.
 - This does not resolve the four UNKNOWN stale/duplicate source rows or the America MG provider-team identity conflict. No team alias was approved and no canonical merge or fixture deduplication was performed.
 - PIT eligibility is unchanged: the 380 FINISHED and four UNKNOWN fixture observations still have zero source-publication timestamps, zero availability timestamps, and zero PIT-certifiable observations. A match schedule or final score is not evidence that a pre-match feature was available before kickoff.
