@@ -73,7 +73,7 @@ def _decode_strict(raw_response: bytes) -> dict[str, Any]:
         reason = str(exc) if str(exc).startswith("JSON_") else "JSON_MALFORMED_OR_NOT_UTF8"
         raise ValueError(reason) from None
     if not isinstance(parsed, dict):
-        raise ValueError("JSON_ROOT_MUST_BE_OBJECT")
+        raise TypeError("JSON_ROOT_MUST_BE_OBJECT")
     return parsed
 
 
@@ -152,7 +152,7 @@ def validate_manual_capture(
             payload = _decode_strict(raw_response)
             data = payload.get("data")
             if not isinstance(data, dict):
-                raise ValueError("PROVIDER_DATA_MUST_BE_OBJECT")
+                raise TypeError("PROVIDER_DATA_MUST_BE_OBJECT")
             returned_fixture_id = data.get("fixture_id")
             if str(returned_fixture_id or "") != expected.provider_fixture_id:
                 raise ValueError("PROVIDER_FIXTURE_ID_MISMATCH")
@@ -194,7 +194,7 @@ def validate_manual_capture(
                 for item in observations
             }) != len(observations):
                 raise ValueError("DUPLICATE_OBSERVATION")
-        except (ValueError, OddsPayloadError) as exc:
+        except (TypeError, ValueError, OddsPayloadError) as exc:
             reasons.append(str(exc) if str(exc).isupper() else "ODDS_PAYLOAD_REJECTED")
 
     if manifest.admission != "ELIGIBLE":
