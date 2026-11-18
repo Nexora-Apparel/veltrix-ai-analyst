@@ -10,7 +10,6 @@ on:
         default: soccer_epl
         options:
           - soccer_epl
-          - soccer_argentina_primera_division
           - soccer_brazil_campeonato
           - soccer_brazil_serie_b
           - soccer_france_ligue_one
