@@ -61,23 +61,37 @@ def main() -> int:
     odds_manifest = json.loads(ODDS_MANIFEST.read_text(encoding="utf-8"))
     fixture_manifest = json.loads(FIXTURE_MANIFEST.read_text(encoding="utf-8"))
     match_manifest = json.loads(MATCH_MANIFEST.read_text(encoding="utf-8"))
-    if match_manifest.get("market_probe_candidate") is not True:
-        return skipped("SKIPPED_NO_UNIQUE_EXACT_FIXTURE_MATCH")
-    if match_manifest.get("market_probe_authorized") is not True:
-        return skipped("SKIPPED_MARKET_PROBE_NOT_AUTHORIZED")
     if match_manifest.get("catalogues_complete") is not True:
         return skipped("SKIPPED_INCOMPLETE_CATALOGUES")
+    if match_manifest.get("market_probe_candidate") is not True:
+        return skipped("SKIPPED_NO_ELIGIBLE_EXACT_FIXTURE_MATCH")
+    if match_manifest.get("market_probe_authorized") is not True:
+        return skipped("SKIPPED_MARKET_PROBE_NOT_AUTHORIZED")
+    selected = match_manifest.get("selected_candidate")
     matches = match_manifest.get("matches")
     events = odds_manifest.get("events")
     fixtures = fixture_manifest.get("fixtures")
-    if not isinstance(matches, list) or not isinstance(events, list) or not isinstance(fixtures, list):
+    if (
+        not isinstance(selected, dict)
+        or not isinstance(matches, list)
+        or not isinstance(events, list)
+        or not isinstance(fixtures, list)
+    ):
         return skipped("SKIPPED_INVALID_CATALOGUE_MANIFEST")
-    exact = [row for row in matches if isinstance(row, dict) and row.get("status") == "MATCHED"]
+    event_id = selected.get("event_id")
+    fixture_id = selected.get("fixture_id")
+    selected_sport_key = selected.get("sport_key")
+    if not isinstance(event_id, str) or not isinstance(fixture_id, str):
+        return skipped("SKIPPED_SELECTED_IDENTIFIERS_INVALID")
+    exact = [
+        row for row in matches
+        if isinstance(row, dict)
+        and row.get("status") == "MATCHED"
+        and row.get("event_id") == event_id
+        and row.get("fixture_id") == fixture_id
+    ]
     if len(exact) != 1:
-        return skipped("SKIPPED_MATCH_NOT_UNIQUE")
-
-    event_id = exact[0].get("event_id")
-    fixture_id = exact[0].get("fixture_id")
+        return skipped("SKIPPED_SELECTED_MATCH_NOT_UNIQUE")
     event_rows = [row for row in events if isinstance(row, dict) and row.get("event_id") == event_id]
     fixture_rows = [
         row for row in fixtures
@@ -88,8 +102,12 @@ def main() -> int:
     event = event_rows[0]
     fixture = fixture_rows[0]
     sport_key = event.get("sport_key")
-    if not isinstance(sport_key, str) or not sport_key.strip():
-        return skipped("SKIPPED_SPORT_KEY_MISSING")
+    if (
+        not isinstance(sport_key, str)
+        or not sport_key.strip()
+        or sport_key != selected_sport_key
+    ):
+        return skipped("SKIPPED_SPORT_KEY_MISSING_OR_MISMATCHED")
     key = os.environ.get("THE_ODDS_API_KEY", "").strip()
     if not key:
         return skipped("SKIPPED_SECRET_MISSING")
