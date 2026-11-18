@@ -1,0 +1,52 @@
+name: Retrospective model training
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_training:
+        description: Type RUN_RETROSPECTIVE_RESEARCH to read the existing corpus and build the training report
+        required: true
+        type: choice
+        options:
+          - NO
+          - RUN_RETROSPECTIVE_RESEARCH
+        default: NO
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-ai-analyst-retrospective-training
+  cancel-in-progress: false
+
+jobs:
+  train:
+    if: inputs.confirm_training == 'RUN_RETROSPECTIVE_RESEARCH'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: veltrix-historical-import
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      TRAINING_REPORT_PATH: artifacts/retrospective-training-report.json
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install training runner
+        run: python -m pip install -e .
+      - name: Train and score retrospective research models
+        run: python scripts/train_retrospective_research.py
+      - name: Upload immutable training report
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-retrospective-training-report
+          path: backend/artifacts/retrospective-training-report.json
+          if-no-files-found: error
+          retention-days: 90
