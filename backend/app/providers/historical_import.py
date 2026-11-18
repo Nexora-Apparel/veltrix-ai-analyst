@@ -488,7 +488,8 @@ def _replay_captured_page(
         "end_time": end,
         "status": "all",
         "page": page_number,
-        "per_page": 100,
+        "per_page": 50,
+        "include": "stats,events",
     }
     endpoint = f"/leagues/{competition_id}/fixtures"
     request_key = (
