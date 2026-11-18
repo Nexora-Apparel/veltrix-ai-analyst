@@ -103,6 +103,11 @@ jobs:
                       "canonical_identity_review_events_append_only",
                   ],
               },
+              "008_model_artifacts.sql": {
+                  "tables": ["model_artifacts"],
+                  "functions": [],
+                  "triggers": [],
+              },
               "008_canonical_identity_link_uniqueness.sql": {
                   "tables": [],
                   "functions": ["enforce_canonical_link_provenance()"],
