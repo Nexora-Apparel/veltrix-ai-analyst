@@ -57,7 +57,7 @@ The retrospective training artifact also contains fixture `2179333578` at `2026-
 Do not rewrite the provider's raw kickoff timestamp. Before this fixture or its downstream prequential metrics are treated as trusted:
 1. Preserve the raw provider timestamp and this CBF evidence.
 2. Add an explicit, separately sourced CBF kickoff adjudication/override in the research data layer, not in the raw provider row.
-3. Ensure all fixtures with the same official kickoff are predicted before any result from that batch updates model state.
+3. Ensure all fixtures with the same official kickoff are predicted before any result from that batch updates model state; this exact batching rule already exists in the training model and must receive corrected official kickoff inputs.
 4. Regenerate the retrospective prequential report from the corrected chronology and re-run the paired diagnostics.
 5. Keep the fixture excluded from PIT-certified evidence until actual source publication/availability evidence exists.
 
