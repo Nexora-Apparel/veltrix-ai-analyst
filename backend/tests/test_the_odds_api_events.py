@@ -7,7 +7,6 @@ from app.providers.the_odds_api_events import (
     normalize_event_catalogue,
 )
 
-
 AS_OF = datetime(2026, 11, 18, 0, tzinfo=UTC)
 
 
