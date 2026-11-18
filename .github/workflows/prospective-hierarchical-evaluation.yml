@@ -1,0 +1,99 @@
+name: Prospective expanding-window market evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_evaluation:
+        description: Type RUN_PROSPECTIVE_MARKET_EVALUATION to run the read-only PIT evaluation
+        required: true
+        type: choice
+        options:
+          - NO
+          - RUN_PROSPECTIVE_MARKET_EVALUATION
+        default: NO
+      bootstrap_replicates:
+        description: Paired competition-stratified bootstrap replicates
+        required: true
+        type: choice
+        default: "2000"
+        options: ["200", "1000", "2000", "5000"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-prospective-market-evaluation
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    if: inputs.confirm_evaluation == 'RUN_PROSPECTIVE_MARKET_EVALUATION'
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        run: python -m pip install -e .
+      - name: Verify read-only database target and PIT migrations
+        run: |
+          test -n "$DATABASE_URL"
+          python - <<'PY'
+          import os
+          import psycopg
+          from urllib.parse import urlsplit
+
+          expected = "veltrix_ai_analyst"
+          if urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/").split("?")[0] != expected:
+              raise SystemExit("DATABASE_URL_TARGET_MISMATCH")
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != expected:
+                  raise SystemExit("DATABASE_TARGET_MISMATCH")
+              required = {
+                  ("provider_responses", "system_observed_at"),
+                  ("source_observations", "system_observed_at"),
+                  ("source_observation_sightings", "system_observed_at"),
+              }
+              columns = set(connection.execute("""
+                  SELECT table_name, column_name
+                  FROM information_schema.columns
+                  WHERE table_schema='veltrix_ai_analyst'
+                    AND column_name='system_observed_at'
+              """).fetchall())
+              if not required.issubset(columns):
+                  raise SystemExit("MIGRATION_012_REQUIRED")
+              target_column = connection.execute("""
+                  SELECT is_nullable
+                  FROM information_schema.columns
+                  WHERE table_schema='veltrix_ai_analyst'
+                    AND table_name='pre_match_feature_observations'
+                    AND column_name='target_fixture_id'
+              """).fetchone()
+              if target_column != ("NO",):
+                  raise SystemExit("MIGRATION_013_REQUIRED")
+          PY
+      - name: Build and score prospective dataset
+        run: |
+          python scripts/evaluate_prospective_hierarchical.py \
+            --output artifacts/prospective-hierarchical-evaluation.json \
+            --bootstrap-replicates "${{ inputs.bootstrap_replicates }}"
+      - name: Upload immutable research report
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-prospective-hierarchical-evaluation
+          path: |
+            backend/artifacts/prospective-hierarchical-evaluation.json
+            backend/artifacts/prospective-dataset.json
+          if-no-files-found: error
+          retention-days: 90

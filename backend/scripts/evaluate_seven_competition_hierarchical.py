@@ -1,4 +1,4 @@
-"""Read-only six-competition hierarchical Poisson/Dixon-Coles development study.
+"""Read-only seven-competition hierarchical Poisson/Dixon-Coles development study.
 
 Uses only finished score labels and provider-local IDs. Historical provider
 retrieval timestamps are not treated as pre-match feature availability. The
@@ -22,6 +22,10 @@ from app.models.hierarchical_poisson import (
 )
 from app.models.hierarchical_scoreline import forecast_hierarchical_fixture
 from app.models.scoreline import build_scoreline_distribution
+from app.validation.binary_market_metrics import (
+    BinaryForecast,
+    evaluate_paired_binary_market,
+)
 from app.validation.dixon_coles import estimate_rho_from_development_folds
 from app.validation.hierarchical_tuning import (
     ChronologicalFold,
@@ -30,6 +34,7 @@ from app.validation.hierarchical_tuning import (
 from app.validation.paired_baselines import (
     ProbabilityForecast,
     compare_paired_baselines,
+    evaluate_paired_multiclass,
 )
 from app.validation.source_provenance import is_valid_retrospective_observation
 
@@ -38,6 +43,7 @@ PROVIDER = "5DollarFootballAPI"
 SOURCE_ID = "5dollarfootballapi"
 COMPETITIONS = {
     "3118717965": "Brazil Serie A",
+    "522514093": "Brazil Serie B",
     "4160026622": "England Premier League",
     "3614399544": "France Ligue 1",
     "686337048": "Germany Bundesliga I",
@@ -59,7 +65,7 @@ MAX_GOALS = 12
 
 
 def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
-    """Load and validate the six scoped competitions in a read-only transaction."""
+    """Load and validate the seven scoped competitions in a read-only transaction."""
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET TRANSACTION READ ONLY")
         if connection.execute("SELECT current_database() AS n").fetchone()["n"] != DATABASE_NAME:
@@ -68,16 +74,55 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             """
             SELECT pf.id::text AS row_id, pf.provider_fixture_id, pf.provider_competition_id,
                    pf.kickoff_at, pf.home_team_provider_id, pf.away_team_provider_id,
-                   pf.home_goals, pf.away_goals, pf.status,
-                   so.availability_basis, so.point_in_time_certifiable,
-                   so.retrieved_at, so.source_published_at, so.available_at,
-                   so.payload_sha256, so.provider_response_id,
-                   pr.http_status
+                   UPPER(COALESCE(evidence.payload->>'status', 'UNKNOWN')) AS status,
+                   NULLIF(evidence.payload->>'home_goals', '')::int AS home_goals,
+                   NULLIF(evidence.payload->>'away_goals', '')::int AS away_goals,
+                   EXTRACT(YEAR FROM pf.kickoff_at)::int AS calendar_year,
+                   evidence.payload->>'season_id' AS provider_season_id,
+                   evidence.source_observation_id, evidence.source_sighting_id,
+                   evidence.availability_basis, evidence.point_in_time_certifiable,
+                   evidence.retrieved_at, evidence.system_observed_at,
+                   evidence.response_fetched_at, evidence.response_system_observed_at,
+                   evidence.source_published_at, evidence.available_at,
+                   evidence.payload_sha256, evidence.provider_response_id,
+                   evidence.http_status, evidence.raw_response_sha256
             FROM veltrix_ai_analyst.provider_fixtures pf
-            JOIN veltrix_ai_analyst.source_observations so
-              ON so.id = pf.source_observation_id
-            LEFT JOIN veltrix_ai_analyst.provider_responses pr
-              ON pr.id = so.provider_response_id
+            JOIN LATERAL (
+                SELECT o.id AS source_observation_id, o.payload,
+                       s.id AS source_sighting_id, s.availability_basis,
+                       s.point_in_time_certifiable, s.retrieved_at,
+                       s.system_observed_at, r.fetched_at AS response_fetched_at,
+                       r.system_observed_at AS response_system_observed_at,
+                       s.source_published_at, s.available_at,
+                       s.payload_sha256, s.provider_response_id,
+                       r.http_status, r.response_sha256 AS raw_response_sha256
+                FROM veltrix_ai_analyst.source_observations o
+                JOIN veltrix_ai_analyst.source_observation_sightings s
+                  ON s.source_observation_id = o.id
+                JOIN veltrix_ai_analyst.provider_responses r
+                  ON r.id = s.provider_response_id
+                WHERE o.provider = pf.provider
+                  AND o.source_id = pf.source_id
+                  AND o.data_type = 'fixtures_and_results'
+                  AND o.entity_type = 'fixture'
+                  AND o.provider_entity_id = pf.provider_fixture_id
+                  AND s.payload_sha256 = o.payload_sha256
+                  AND UPPER(COALESCE(o.payload->>'status', 'UNKNOWN'))
+                      = UPPER(pf.status)
+                  AND UPPER(COALESCE(o.payload->>'status', 'UNKNOWN'))
+                      IN ('FINISHED', 'UNKNOWN')
+                  AND o.payload->>'competition_id' = pf.provider_competition_id
+                  AND o.payload->>'home_team_id' = pf.home_team_provider_id
+                  AND o.payload->>'away_team_id' = pf.away_team_provider_id
+                  AND NULLIF(o.payload->>'kickoff_at', '')::timestamptz = pf.kickoff_at
+                  AND NULLIF(o.payload->>'home_goals', '')::int
+                      IS NOT DISTINCT FROM pf.home_goals
+                  AND NULLIF(o.payload->>'away_goals', '')::int
+                      IS NOT DISTINCT FROM pf.away_goals
+                  AND o.payload #>> '{provenance,provider_record_id}' = pf.provider_fixture_id
+                ORDER BY s.retrieved_at DESC, s.id DESC
+                LIMIT 1
+            ) evidence ON TRUE
             WHERE pf.provider = %s AND pf.source_id = %s
               AND pf.provider_competition_id = ANY(%s)
             ORDER BY pf.kickoff_at, pf.provider_fixture_id
@@ -85,8 +130,18 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             (PROVIDER, SOURCE_ID, list(COMPETITIONS)),
         ).fetchall()
 
-    if len(rows) != 614:
-        raise RuntimeError(f"EXPECTED_614_SCOPED_SOURCE_ROWS_GOT_{len(rows)}")
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        total_fixture_rows = connection.execute(
+            """
+            SELECT COUNT(*) AS n
+            FROM veltrix_ai_analyst.provider_fixtures
+            WHERE provider = %s AND source_id = %s
+              AND provider_competition_id = ANY(%s)
+            """,
+            (PROVIDER, SOURCE_ID, list(COMPETITIONS)),
+        ).fetchone()["n"]
+    if len(rows) < 998:
+        raise RuntimeError(f"INSUFFICIENT_SCOPED_SOURCE_ROWS:{len(rows)}")
     fixture_keys = [(row["provider_competition_id"], row["provider_fixture_id"]) for row in rows]
     if len(fixture_keys) != len(set(fixture_keys)):
         raise RuntimeError("DUPLICATE_PROVIDER_FIXTURE_KEYS")
@@ -104,7 +159,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         if row["status"] == "UNKNOWN"
         and row["home_goals"] is None and row["away_goals"] is None
     ]
-    if len(finished) != 610 or len(unknown) != 4 or len(finished) + len(unknown) != len(rows):
+    if len(finished) < 990 or len(unknown) < 8 or len(finished) + len(unknown) != len(rows):
         raise RuntimeError("SOURCE_STATUS_SCORE_AUDIT_MISMATCH")
 
     results = [
@@ -128,8 +183,24 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             "away_team_id": result.away_team_id,
             "home_goals": result.home_goals,
             "away_goals": result.away_goals,
+            "source_observation_id": str(row["source_observation_id"]),
+            "source_sighting_id": str(row["source_sighting_id"]),
+            "provider_response_id": str(row["provider_response_id"]),
+            "retrieved_at": row["retrieved_at"].isoformat(),
+            "system_observed_at": (
+                row["system_observed_at"].isoformat()
+                if row["system_observed_at"] is not None else None
+            ),
+            "response_fetched_at": row["response_fetched_at"].isoformat(),
+            "response_system_observed_at": (
+                row["response_system_observed_at"].isoformat()
+                if row["response_system_observed_at"] is not None else None
+            ),
+            "availability_basis": row["availability_basis"],
+            "payload_sha256": str(row["payload_sha256"]).strip(),
+            "raw_response_sha256": str(row["raw_response_sha256"]).strip(),
         }
-        for result in results
+        for result, row in zip(results, finished, strict=True)
     ]
     fingerprint = hashlib.sha256(
         json.dumps(stable, sort_keys=True, separators=(",", ":")).encode()
@@ -139,6 +210,85 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         "source_id": SOURCE_ID,
         "competition_ids": COMPETITIONS,
         "source_rows": len(rows),
+        "provider_fixture_rows_total": total_fixture_rows,
+        "excluded_fixture_rows_without_matching_settled_sighting": total_fixture_rows - len(rows),
+        "calendar_year_fixture_counts": {
+            str(year): sum(1 for row in rows if row["calendar_year"] == year)
+            for year in sorted({row["calendar_year"] for row in rows})
+        },
+        "provider_season_id_counts": {
+            str(season): sum(1 for row in rows if row["provider_season_id"] == season)
+            for season in sorted({row["provider_season_id"] for row in rows if row["provider_season_id"]})
+        },
+        "provider_season_id_coverage": sum(1 for row in rows if row["provider_season_id"]),
+        "per_competition_season_coverage": {
+            competition_id: {
+                "fixture_rows": sum(1 for row in rows if row["provider_competition_id"] == competition_id),
+                "season_ids": {
+                    str(season): sum(
+                        1 for row in rows
+                        if row["provider_competition_id"] == competition_id
+                        and row["provider_season_id"] == season
+                    )
+                    for season in sorted({
+                        row["provider_season_id"] for row in rows
+                        if row["provider_competition_id"] == competition_id
+                        and row["provider_season_id"]
+                    })
+                },
+                "distinct_seasons": len({
+                    row["provider_season_id"] for row in rows
+                    if row["provider_competition_id"] == competition_id
+                    and row["provider_season_id"]
+                }),
+            }
+            for competition_id in sorted(COMPETITIONS)
+        },
+        "distinct_competition_seasons": sum(
+            len({
+                row["provider_season_id"] for row in rows
+                if row["provider_competition_id"] == competition_id
+                and row["provider_season_id"]
+            })
+            for competition_id in COMPETITIONS
+        ),
+        "multi_season_competition_count": sum(
+            1 for competition_id in COMPETITIONS
+            if len({
+                row["provider_season_id"] for row in rows
+                if row["provider_competition_id"] == competition_id
+                and row["provider_season_id"]
+            }) > 1
+        ),
+        "multi_calendar_year_coverage": len({row["calendar_year"] for row in rows}) > 1,
+        "source_evidence": [
+            {
+                "fixture_id": f"{row['provider_competition_id']}:{row['provider_fixture_id']}",
+                "provider_competition_id": row["provider_competition_id"],
+                "provider_fixture_id": row["provider_fixture_id"],
+                "provider_season_id": row["provider_season_id"],
+                "home_team_provider_id": row["home_team_provider_id"],
+                "away_team_provider_id": row["away_team_provider_id"],
+                "kickoff_at": row["kickoff_at"].isoformat(),
+                "source_observation_id": str(row["source_observation_id"]),
+                "source_sighting_id": str(row["source_sighting_id"]),
+                "provider_response_id": str(row["provider_response_id"]),
+                "retrieved_at": row["retrieved_at"].isoformat(),
+                "response_fetched_at": row["response_fetched_at"].isoformat(),
+                "response_system_observed_at": (
+                    row["response_system_observed_at"].isoformat()
+                    if row["response_system_observed_at"] is not None else None
+                ),
+                "system_observed_at": (
+                    row["system_observed_at"].isoformat()
+                    if row["system_observed_at"] is not None else None
+                ),
+                "availability_basis": row["availability_basis"],
+                "payload_sha256": str(row["payload_sha256"]).strip(),
+                "raw_response_sha256": str(row["raw_response_sha256"]).strip(),
+            }
+            for row in rows
+        ],
         "finished_labeled_rows": len(finished),
         "unknown_unlabeled_rows_excluded": len(unknown),
         "unknown_fixture_ids": sorted(
@@ -147,7 +297,13 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         "all_observations_retrieved_after_historical_fixtures": all(
             row["retrieved_at"] > row["kickoff_at"] for row in rows
         ),
-        "availability_basis": ["RETRIEVED_AT_ONLY"],
+        "availability_basis_counts": {
+            basis: sum(1 for row in rows if row["availability_basis"] == basis)
+            for basis in sorted({row["availability_basis"] for row in rows})
+        },
+        "database_timestamped_capture_rows": sum(
+            1 for row in rows if row["system_observed_at"] is not None
+        ),
         "pit_certifiable_rows": 0,
         "canonical_identity_policy": "PROVIDER_LOCAL_IDS_ONLY_NO_ALIAS_MERGES",
         "feature_policy": "NO_POST_MATCH_RETRIEVED_FEATURES_USED",
@@ -245,6 +401,10 @@ def main() -> int:
     model_rows: list[dict] = []
     baseline_rows: list[dict] = []
     paired: list[ProbabilityForecast] = []
+    model_btts: list[BinaryForecast] = []
+    baseline_btts: list[BinaryForecast] = []
+    model_over25: list[BinaryForecast] = []
+    baseline_over25: list[BinaryForecast] = []
     for target in holdout:
         forecast = forecast_hierarchical_fixture(
             model, target.home_team_id, target.away_team_id, target.competition_id,
@@ -275,14 +435,53 @@ def main() -> int:
             "fixture_id": target.fixture_id, "outcome": outcome(target.home_goals,target.away_goals),
             "probabilities": baseline_probs, "scoreline_probability": baseline_score_prob,
         })
+        actual_btts = target.home_goals > 0 and target.away_goals > 0
+        actual_over25 = target.home_goals + target.away_goals > 2
+        model_btts.append(BinaryForecast(
+            target.fixture_id, target.competition_id, actual_btts, model_dist.btts_yes
+        ))
+        baseline_btts.append(BinaryForecast(
+            target.fixture_id, target.competition_id, actual_btts, baseline_dist.btts_yes
+        ))
+        model_over25.append(BinaryForecast(
+            target.fixture_id, target.competition_id, actual_over25, model_dist.over(2.5)
+        ))
+        baseline_over25.append(BinaryForecast(
+            target.fixture_id, target.competition_id, actual_over25, baseline_dist.over(2.5)
+        ))
         paired.extend((
-            ProbabilityForecast(target.fixture_id, "HIERARCHICAL_POISSON_DIXON_COLES", model_probs, outcome(target.home_goals,target.away_goals)),
-            ProbabilityForecast(target.fixture_id, "COMPETITION_ONLY_POISSON", baseline_probs, outcome(target.home_goals,target.away_goals)),
+            ProbabilityForecast(
+                target.fixture_id,
+                "HIERARCHICAL_POISSON_DIXON_COLES",
+                model_probs,
+                outcome(target.home_goals, target.away_goals),
+                target.competition_id,
+            ),
+            ProbabilityForecast(
+                target.fixture_id,
+                "COMPETITION_ONLY_POISSON",
+                baseline_probs,
+                outcome(target.home_goals, target.away_goals),
+                target.competition_id,
+            ),
         ))
 
     paired_comparison = compare_paired_baselines(tuple(paired))
+    paired_1x2_confidence = evaluate_paired_multiclass(
+        tuple(paired),
+        model_name="HIERARCHICAL_POISSON_DIXON_COLES",
+        baseline_name="COMPETITION_ONLY_POISSON",
+        bootstrap_replicates=2000,
+        seed=20261118,
+    )
+    btts_evaluation = evaluate_paired_binary_market(
+        model_btts, baseline_btts, bootstrap_replicates=2000, seed=20261119
+    )
+    over25_evaluation = evaluate_paired_binary_market(
+        model_over25, baseline_over25, bootstrap_replicates=2000, seed=20261120
+    )
     report = {
-        "report_type": "SIX_COMPETITION_RETROSPECTIVE_DEVELOPMENT_EVALUATION",
+        "report_type": "SEVEN_COMPETITION_RETROSPECTIVE_DEVELOPMENT_EVALUATION",
         "status": "RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL",
         "created_at": datetime.now(UTC).isoformat(),
         "provenance": provenance,
@@ -344,6 +543,12 @@ def main() -> int:
                     for score in paired_comparison.scores
                 ],
             },
+            "one_x_two_confidence_and_competition_breakdown": paired_1x2_confidence,
+            "independent_binary_markets": {
+                "evaluation_basis": "RETROSPECTIVE_NON_PIT_RESEARCH_ONLY",
+                "BTTS": btts_evaluation,
+                "OVER_UNDER_2_5": over25_evaluation,
+            },
         },
         "release_decision": {
             "production_promotion": False,
@@ -357,7 +562,7 @@ def main() -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
     print(json.dumps({
-        "status": "SIX_COMPETITION_RETROSPECTIVE_EVALUATION_COMPLETE",
+        "status": "SEVEN_COMPETITION_RETROSPECTIVE_EVALUATION_COMPLETE",
         "report_path": str(output),
         "report_sha256": report["report_sha256"],
         "development_fixtures": len(development),

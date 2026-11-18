@@ -1,0 +1,117 @@
+name: VELTRIX prospective 5Dollar evidence capture
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-prospective-5dollar-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      VELTRIX_AI_ANALYST_DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY: ${{ secrets.FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY || secrets.FIVEDOLLARFOOTBALL_API_KEY || secrets.FIVE_DOLLAR_FOOTBALL_API_KEY }}
+      VELTRIX_ENABLE_HISTORICAL_COLLECTION: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        working-directory: backend
+        run: python -m pip install -e .
+      - name: Verify PIT schema before any provider request
+        run: |
+          test -n "$DATABASE_URL"
+          test -n "$FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY"
+          python - <<'PY'
+          import os
+          import psycopg
+          from urllib.parse import urlsplit
+
+          expected = "veltrix_ai_analyst"
+          assert os.environ["EXPECTED_DATABASE_NAME"] == expected
+          assert urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/").split("?")[0] == expected
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              assert connection.info.dbname == expected
+              required = {
+                  ("provider_responses", "system_observed_at"),
+                  ("source_observations", "system_observed_at"),
+                  ("source_observation_sightings", "system_observed_at"),
+              }
+              present = set(connection.execute("""
+                  SELECT table_name, column_name
+                  FROM information_schema.columns
+                  WHERE table_schema='veltrix_ai_analyst'
+                    AND column_name='system_observed_at'
+              """).fetchall())
+              if not required.issubset(present):
+                  raise SystemExit("MIGRATION_012_REQUIRED_BEFORE_PROSPECTIVE_CAPTURE")
+              scope_column = connection.execute("""
+                  SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='veltrix_ai_analyst'
+                      AND table_name='import_runs' AND column_name='scope_value'
+                  )
+              """).fetchone()[0]
+              if not scope_column:
+                  raise SystemExit("MIGRATION_011_REQUIRED_BEFORE_PROSPECTIVE_CAPTURE")
+              applied = connection.execute("""
+                  SELECT EXISTS (
+                    SELECT 1 FROM public.schema_migrations
+                    WHERE version='012_database_observed_timestamps.sql'
+                  )
+              """).fetchone()[0]
+              if not applied:
+                  raise SystemExit("MIGRATION_012_NOT_REGISTERED")
+              target_fixture_column = connection.execute("""
+                  SELECT is_nullable
+                  FROM information_schema.columns
+                  WHERE table_schema='veltrix_ai_analyst'
+                    AND table_name='pre_match_feature_observations'
+                    AND column_name='target_fixture_id'
+              """).fetchone()
+              if target_fixture_column != ("NO",):
+                  raise SystemExit("MIGRATION_013_REQUIRED_BEFORE_CAPTURE")
+              target_gate_applied = connection.execute("""
+                  SELECT EXISTS (
+                    SELECT 1 FROM public.schema_migrations
+                    WHERE version='013_target_fixture_pre_match_gate.sql'
+                  )
+              """).fetchone()[0]
+              if not target_gate_applied:
+                  raise SystemExit("MIGRATION_013_NOT_REGISTERED")
+          PY
+      - name: Define bounded rolling capture window
+        id: window
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          from datetime import UTC, datetime, timedelta
+          now = datetime.now(UTC)
+          day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+          # Capture yesterday's settlements and a rolling seven-day forward schedule.
+          # The provider adapter splits this into at most two seven-day windows.
+          print(f"start_at={(day - timedelta(days=1)).isoformat()}")
+          print(f"end_at={(day + timedelta(days=8)).isoformat()}")
+          PY
+      - name: Capture recent results and upcoming fixtures sequentially
+        run: |
+          python scripts/collect_5dollar_all_approved_competitions.py \
+            --start-at "${{ steps.window.outputs.start_at }}" \
+            --end-at "${{ steps.window.outputs.end_at }}" \
+            --request-budget 4 \
+            --import-type prospective_capture \
+            --execute

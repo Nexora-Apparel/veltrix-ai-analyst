@@ -17,7 +17,7 @@ from app.providers.historical_import import (
     SOURCE_ID,
 )
 
-PAGE_SIZE = 100
+PAGE_SIZE = 50
 
 
 class HistoricalValidationError(RuntimeError):
@@ -169,6 +169,7 @@ def validate_competition_import(
             "per_page": PAGE_SIZE,
             "start_time": int(window_start.timestamp()),
             "status": "all",
+            "include": "stats,events",
         }
         canonical = json.dumps(params, sort_keys=True, separators=(",", ":")).encode()
         if hashlib.sha256(canonical).hexdigest() != str(params_hash).strip():
@@ -260,13 +261,21 @@ def validate_competition_import(
             FROM veltrix_ai_analyst.source_observation_sightings s
             JOIN veltrix_ai_analyst.source_observations o
               ON o.id = s.source_observation_id
+            JOIN veltrix_ai_analyst.provider_responses r
+              ON r.id = s.provider_response_id
             WHERE s.provider_response_id = ANY(%s)
               AND o.data_type = 'fixtures_and_results'
               AND o.entity_type = 'fixture'
               AND (
-                s.point_in_time_certifiable IS TRUE
-                OR s.availability_basis <> 'RETRIEVED_AT_ONLY'
+                s.point_in_time_certifiable IS NOT TRUE
+                OR s.availability_basis <> 'SYSTEM_OBSERVED_AT'
                 OR s.source_published_at IS NOT NULL
+                OR s.system_observed_at IS NULL
+                OR s.available_at IS DISTINCT FROM s.system_observed_at
+                OR s.payload_sha256 IS DISTINCT FROM o.payload_sha256
+                OR r.system_observed_at IS DISTINCT FROM s.system_observed_at
+                OR r.fetched_at IS DISTINCT FROM s.retrieved_at
+                OR s.system_observed_at < s.retrieved_at
               )
             """,
             (response_ids,),
@@ -278,7 +287,7 @@ def validate_competition_import(
     if int(fixture_rows) != int(records_inserted):
         failures.append("PROVIDER_FIXTURE_ROW_COUNT_MISMATCH")
     if int(non_pit_observations) != 0:
-        failures.append("UNVERIFIED_POINT_IN_TIME_FEATURES_PRESENT")
+        failures.append("INVALID_SYSTEM_OBSERVED_TIMESTAMP_PROVENANCE")
 
     bad_fixtures = connection.execute(
         """

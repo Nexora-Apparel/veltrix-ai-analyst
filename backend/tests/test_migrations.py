@@ -129,6 +129,9 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "008_model_artifacts.sql",
             "009_canonical_identity_review_cases.sql",
             "010_system_observed_pit.sql",
+            "011_import_run_competition_scope.sql",
+            "012_database_observed_timestamps.sql",
+            "013_target_fixture_pre_match_gate.sql",
         }
     )
 
@@ -167,7 +170,37 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "008_model_artifacts.sql",
             "009_canonical_identity_review_cases.sql",
             "010_system_observed_pit.sql",
+            "011_import_run_competition_scope.sql",
+            "012_database_observed_timestamps.sql",
+            "013_target_fixture_pre_match_gate.sql",
         }.issubset(migration_versions)
+
+        timestamp_columns = {
+            (row[0], row[1])
+            for row in connection.execute(
+                """
+                SELECT table_name, column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'veltrix_ai_analyst'
+                  AND column_name = 'system_observed_at'
+                """
+            ).fetchall()
+        }
+        assert timestamp_columns == {
+            ("provider_responses", "system_observed_at"),
+            ("source_observations", "system_observed_at"),
+            ("source_observation_sightings", "system_observed_at"),
+        }
+        target_fixture_column = connection.execute(
+            """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema='veltrix_ai_analyst'
+              AND table_name='pre_match_feature_observations'
+              AND column_name='target_fixture_id'
+            """
+        ).fetchone()
+        assert target_fixture_column == ("NO",)
 
         assert {
             "source_approvals",

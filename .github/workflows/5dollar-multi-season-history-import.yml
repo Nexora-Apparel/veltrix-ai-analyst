@@ -1,0 +1,123 @@
+name: 5Dollar multi-season historical corpus expansion
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_at:
+        description: Inclusive UTC kickoff boundary for the additional season history
+        required: true
+        type: string
+        default: "2025-01-01T00:00:00+00:00"
+      end_at:
+        description: Exclusive UTC kickoff boundary
+        required: true
+        type: string
+        default: "2026-01-01T00:00:00+00:00"
+      request_budget:
+        description: Maximum provider requests reserved per competition
+        required: true
+        type: choice
+        default: "8"
+        options: ["5", "8"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-5dollar-multi-season-history
+  cancel-in-progress: false
+
+jobs:
+  import-season-history:
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY: ${{ secrets.FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY || secrets.FIVEDOLLARFOOTBALL_API_KEY || secrets.FIVE_DOLLAR_FOOTBALL_API_KEY }}
+      VELTRIX_ENABLE_HISTORICAL_COLLECTION: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        working-directory: backend
+        run: python -m pip install -e .
+      - name: Verify approved scope and timestamped capture schema before provider requests
+        run: |
+          test -n "$DATABASE_URL"
+          test -n "$FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY"
+          python - <<'PY'
+          import os
+          import psycopg
+          from urllib.parse import urlsplit
+
+          expected = "veltrix_ai_analyst"
+          if urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/").split("?")[0] != expected:
+              raise SystemExit("DATABASE_URL_TARGET_MISMATCH")
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != expected:
+                  raise SystemExit("DATABASE_TARGET_MISMATCH")
+              columns = set(connection.execute("""
+                  SELECT table_name, column_name
+                  FROM information_schema.columns
+                  WHERE table_schema='veltrix_ai_analyst'
+                    AND column_name='system_observed_at'
+              """).fetchall())
+              required = {
+                  ("provider_responses", "system_observed_at"),
+                  ("source_observations", "system_observed_at"),
+                  ("source_observation_sightings", "system_observed_at"),
+              }
+              if not required.issubset(columns):
+                  raise SystemExit("MIGRATION_012_REQUIRED_BEFORE_SEASON_IMPORT")
+              applied = connection.execute("""
+                  SELECT EXISTS (
+                    SELECT 1 FROM public.schema_migrations
+                    WHERE version='012_database_observed_timestamps.sql'
+                  )
+              """).fetchone()[0]
+              if not applied:
+                  raise SystemExit("MIGRATION_012_NOT_REGISTERED")
+          PY
+      - name: Probe provider entitlement and quota without exposing credentials
+        working-directory: backend
+        run: python ../scripts/probe_5dollar_entitlement.py
+      - name: Import one additional season range per approved competition
+        working-directory: backend
+        run: |
+          python ../scripts/collect_5dollar_all_approved_competitions.py \
+            --start-at "${{ inputs.start_at }}" \
+            --end-at "${{ inputs.end_at }}" \
+            --request-budget "${{ inputs.request_budget }}" \
+            --window-days 365 \
+            --import-type historical_backfill \
+            --execute
+      - name: Reconcile season coverage from the database without provider calls
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              rows = connection.execute("""
+                  SELECT provider_competition_id,
+                         payload->>'season_id' AS season_id,
+                         COUNT(*) AS fixtures
+                  FROM veltrix_ai_analyst.provider_fixtures f
+                  JOIN veltrix_ai_analyst.source_observations o
+                    ON o.id=f.source_observation_id
+                  WHERE f.provider='5DollarFootballAPI'
+                    AND f.source_id='5dollarfootballapi'
+                    AND f.provider_competition_id IN (
+                      '3118717965','522514093','4160026622','3614399544',
+                      '686337048','3405541143','4212821298'
+                    )
+                  GROUP BY provider_competition_id, payload->>'season_id'
+                  ORDER BY provider_competition_id, season_id
+              """).fetchall()
+              print("PROVIDER_SEASON_COVERAGE:", rows)
+          PY

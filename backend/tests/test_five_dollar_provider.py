@@ -29,6 +29,15 @@ def fixture_row(fixture_id: int, kickoff: str) -> dict[str, object]:
             "home": {"yellow": 2, "red": 0},
             "away": {"yellow": 1, "red": 1},
         },
+        "statistics": {
+            "shots_on_target": {"home": 3, "away": 2},
+            "shots_off_target": {"home": 4, "away": 5},
+            "possession": {"home": 58, "away": 42},
+        },
+        "events": [
+            {"type": "goal", "minute": 21, "team": "home"},
+            {"type": "yellow_card", "minute": 44, "team": "away"},
+        ],
     }
 
 
@@ -36,7 +45,7 @@ def response_payload(rows: list[dict[str, object]], has_more: bool = False) -> d
     return {
         "success": 1,
         "data": rows,
-        "pagination": {"page": 1, "per_page": 100, "count": len(rows), "has_more": has_more},
+        "pagination": {"page": 1, "per_page": 50, "count": len(rows), "has_more": has_more},
     }
 
 
@@ -96,6 +105,10 @@ def test_fetch_fixtures_normalizes_scores_stats_and_pagination() -> None:
     assert results[0].away_goals == 1
     assert results[0].home_corners == 6
     assert results[0].away_red_cards == 1
+    assert results[0].statistics["shots_on_target"]["home"] == 3
+    assert results[0].events[0]["type"] == "goal"
+    assert requests[0].url.params["include"] == "stats,events"
+    assert requests[0].url.params["per_page"] == "50"
     assert results[0].status == "finished"
 
 
@@ -406,7 +419,8 @@ def test_historical_fetch_reserves_each_page_before_http_request() -> None:
         assert window_start == datetime(2026, 11, 16, tzinfo=UTC)
         assert window_end == datetime(2026, 11, 17, tzinfo=UTC)
         assert endpoint == "/leagues/522514093/fixtures"
-        assert request_params["per_page"] == 100
+        assert request_params["per_page"] == 50
+        assert request_params["include"] == "stats,events"
         return True
 
     provider = FiveDollarFootballProvider(

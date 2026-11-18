@@ -160,6 +160,10 @@ def _normalize_fixture(item: dict[str, Any], retrieved_at: datetime) -> Provider
     goals = goals if isinstance(goals, dict) else {}
     corners = corners if isinstance(corners, dict) else {}
     cards = cards if isinstance(cards, dict) else {}
+    statistics = item.get("statistics")
+    statistics = statistics if isinstance(statistics, dict) else None
+    raw_events = item.get("events")
+    events = [event for event in raw_events if isinstance(event, dict)] if isinstance(raw_events, list) else []
     home_cards = cards.get("home") if isinstance(cards.get("home"), dict) else {}
     away_cards = cards.get("away") if isinstance(cards.get("away"), dict) else {}
 
@@ -195,6 +199,8 @@ def _normalize_fixture(item: dict[str, Any], retrieved_at: datetime) -> Provider
         away_yellow_cards=_optional_int(away_cards.get("yellow")),
         home_red_cards=_optional_int(home_cards.get("red")),
         away_red_cards=_optional_int(away_cards.get("red")),
+        statistics=statistics,
+        events=events,
     )
 
 
@@ -464,7 +470,8 @@ class FiveDollarFootballProvider:
                             "end_time": int(window_end.timestamp()),
                             "status": "all",
                             "page": page,
-                            "per_page": 100,
+                            "include": "stats,events",
+                            "per_page": 50,
                         }
                         path = (
                             f"leagues/{competition_id}/fixtures"

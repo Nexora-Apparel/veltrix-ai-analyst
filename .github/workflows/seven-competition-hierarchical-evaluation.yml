@@ -1,0 +1,72 @@
+name: Seven-competition hierarchical retrospective evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_evaluation:
+        description: Type RUN_SEVEN_COMPETITION_RETROSPECTIVE_EVALUATION to run read-only tuning and holdout comparison
+        required: true
+        type: choice
+        options:
+          - NO
+          - RUN_SEVEN_COMPETITION_RETROSPECTIVE_EVALUATION
+        default: NO
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-seven-competition-hierarchical-evaluation
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    if: inputs.confirm_evaluation == 'RUN_SEVEN_COMPETITION_RETROSPECTIVE_EVALUATION'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: veltrix-historical-import
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      TRAINING_REPORT_PATH: artifacts/seven-competition-hierarchical-report.json
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        run: python -m pip install -e .
+      - name: Verify database capture schema
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != "veltrix_ai_analyst":
+                  raise SystemExit("DATABASE_TARGET_MISMATCH")
+              present = connection.execute("""
+                  SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='veltrix_ai_analyst'
+                      AND table_name='source_observations'
+                      AND column_name='system_observed_at'
+                  )
+              """).fetchone()[0]
+              if not present:
+                  raise SystemExit("MIGRATION_012_REQUIRED")
+      - name: Run read-only chronological hierarchical evaluation
+        run: python scripts/evaluate_seven_competition_hierarchical.py
+      - name: Upload immutable research report
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-seven-competition-hierarchical-report
+          path: backend/artifacts/seven-competition-hierarchical-report.json
+          if-no-files-found: error
+          retention-days: 90

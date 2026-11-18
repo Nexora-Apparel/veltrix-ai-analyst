@@ -88,7 +88,7 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
                 "data": [_fixture(fixture_id, kickoff)],
                 "pagination": {
                     "page": int(request.url.params["page"]),
-                    "per_page": 100,
+                    "per_page": 50,
                     "count": 1,
                     "has_more": False,
                 },
@@ -112,7 +112,7 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
 
     assert len(requests) == 34
     assert all(request.url.path == "/v1/leagues/522514093/fixtures" for request in requests)
-    assert all(request.url.params["per_page"] == "100" for request in requests)
+    assert all(request.url.params["per_page"] == "50" for request in requests)
 
     with psycopg.connect(database_url) as connection:
         run = connection.execute(
@@ -160,6 +160,11 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
                 COUNT(*) FILTER (WHERE s.available_at IS NOT NULL),
                 COUNT(*) FILTER (WHERE s.source_published_at IS NULL),
                 COUNT(*) FILTER (
+                    WHERE s.availability_basis = 'SYSTEM_OBSERVED_AT'
+                      AND s.system_observed_at IS NOT NULL
+                      AND s.available_at = s.system_observed_at
+                ),
+                COUNT(*) FILTER (
                     WHERE s.availability_basis = 'RETRIEVED_AT_ONLY'
                       AND s.point_in_time_certifiable IS FALSE
                 ),
@@ -189,8 +194,9 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
     assert sighting_times[0] > 0
     assert sighting_times[1] == sighting_times[0]  # exact system-observed availability
     assert sighting_times[2] == sighting_times[0]  # provider exposes no verified publication time
-    assert sighting_times[3] == sighting_times[0]  # retrieval-only evidence is not PIT
-    assert sighting_times[4] == 0
+    assert sighting_times[3] == sighting_times[0]  # DB capture time is the availability basis
+    assert sighting_times[4] == 0  # no capture is downgraded to retrieval-only
+    assert sighting_times[5] == sighting_times[0]  # every captured snapshot is PIT-eligible at/after capture
     with psycopg.connect(database_url) as connection:
         report = historical_validation.validate_brazil_serie_b_import(connection, run_id)
     assert report["passed"] is True
@@ -259,7 +265,7 @@ def test_competition_import_persists_under_selected_provider_scope(
                         competition_name="Brazil Serie A",
                     )
                 ],
-                "pagination": {"page": 1, "per_page": 100, "count": 1, "has_more": False},
+                "pagination": {"page": 1, "per_page": 50, "count": 1, "has_more": False},
             },
             headers={"X-Request-Id": "mock-serie-a-request"},
         )
@@ -417,7 +423,8 @@ def test_resume_replays_reserved_response_without_repeating_provider_http(
         "end_time": int(window.end_at.timestamp()),
         "status": "all",
         "page": 1,
-        "per_page": 100,
+        "per_page": 50,
+        "include": "stats,events",
     }
     endpoint = "/leagues/522514093/fixtures"
     request_key = (
@@ -468,7 +475,7 @@ def test_resume_replays_reserved_response_without_repeating_provider_http(
                 "data": [_fixture(99887766, "2026-08-30T12:00:00+00:00")],
                 "pagination": {
                     "page": 1,
-                    "per_page": 100,
+                    "per_page": 50,
                     "count": 1,
                     "has_more": False,
                 },
@@ -562,7 +569,7 @@ def test_incremental_import_uses_requested_window_and_small_request_budget(
                 "data": [_fixture(fixture_id, kickoff)],
                 "pagination": {
                     "page": int(request.url.params["page"]),
-                    "per_page": 100,
+                    "per_page": 50,
                     "count": 1,
                     "has_more": False,
                 },
@@ -594,7 +601,7 @@ def test_incremental_import_uses_requested_window_and_small_request_budget(
         str(int(start.timestamp())),
         str(int(datetime(2026, 11, 16, tzinfo=UTC).timestamp())),
     ]
-    assert all(request.url.params["per_page"] == "100" for request in requests)
+    assert all(request.url.params["per_page"] == "50" for request in requests)
 
     with psycopg.connect(database_url) as connection:
         run = connection.execute(
@@ -667,7 +674,7 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
                 "data": [fixture],
                 "pagination": {
                     "page": int(request.url.params["page"]),
-                    "per_page": 100,
+                    "per_page": 50,
                     "count": 1,
                     "has_more": False,
                 },
@@ -698,11 +705,13 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
             SELECT
                 f.kickoff_at,
                 o.retrieved_at,
+                o.system_observed_at,
                 o.source_published_at,
                 o.available_at,
                 o.availability_basis,
                 o.point_in_time_certifiable,
                 s.retrieved_at,
+                s.system_observed_at,
                 s.available_at,
                 s.availability_basis,
                 s.point_in_time_certifiable,
@@ -728,7 +737,7 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
             SELECT o.entity_type, COUNT(*),
                    BOOL_AND(s.point_in_time_certifiable IS TRUE),
                    BOOL_AND(s.availability_basis = 'SYSTEM_OBSERVED_AT'),
-                   BOOL_AND(s.available_at = s.retrieved_at)
+                   BOOL_AND(s.available_at = s.system_observed_at)
             FROM veltrix_ai_analyst.source_observation_sightings s
             JOIN veltrix_ai_analyst.source_observations o
               ON o.id = s.source_observation_id
@@ -736,20 +745,24 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
               AND o.entity_type IN ('competition', 'team', 'fixture')
             GROUP BY o.entity_type
             """,
-            (row[10],),
+            (row[12],),
         ).fetchall() if row is not None else []
 
     assert run_status == "COMPLETED"
     assert row is not None
     assert row[0] > row[1]  # fixture kickoff is still in the future at capture
-    assert row[2] is None
-    assert row[3] == row[1]
-    assert row[4] == "SYSTEM_OBSERVED_AT"
-    assert row[5] is True
-    assert row[6] == row[7]
-    assert row[8] == "SYSTEM_OBSERVED_AT"
-    assert row[9] is True
-    assert row[10] is not None
+    assert row[2] is not None
+    assert row[2] == row[4]  # database-observed instant is the availability time
+    assert row[2] > row[1]  # DB capture follows the app's retrieval timestamp
+    assert row[3] is None
+    assert row[5] == "SYSTEM_OBSERVED_AT"
+    assert row[6] is True
+    assert row[7] == row[1]
+    assert row[8] == row[2]
+    assert row[9] == row[8]
+    assert row[10] == "SYSTEM_OBSERVED_AT"
+    assert row[11] is True
+    assert row[12] is not None
     assert {item[0]: item[1:] for item in related_entity_evidence} == {
         "competition": (1, True, True, True),
         "team": (2, True, True, True),

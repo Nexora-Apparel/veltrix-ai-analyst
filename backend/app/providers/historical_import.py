@@ -35,9 +35,9 @@ PROVIDER_NAME = "5DollarFootballAPI"
 BOUNDARY_START = datetime(2026, 3, 21, tzinfo=UTC)
 BOUNDARY_END = datetime(2026, 11, 9, tzinfo=UTC)
 REQUEST_BUDGET = 40
-IMPORTER_VERSION = "5dollar-competition-resumable-v3"
+IMPORTER_VERSION = "5dollar-competition-resumable-v4"
 IMPORT_APPROVAL = FIVEDOLLAR_COMMUNITY_APPROVAL
-SCHEMA_VERSION = "5dollar-fixture-v1"
+SCHEMA_VERSION = "5dollar-fixture-v2"
 
 
 class HistoricalImportError(RuntimeError):
@@ -101,7 +101,7 @@ class FixturePagePersister:
         if not team_name:
             raise HistoricalImportError("TEAM_NAME_MISSING; refusing incomplete entity write")
         now = fixture.provenance.retrieved_at
-        system_observed_pit = fixture.kickoff_at > now
+        system_observed_pit = True
         payload = {"team_id": team_id, "team_name": team_name}
         observation_id = self.store.record_source_observation(
             self.approval,
@@ -111,7 +111,6 @@ class FixturePagePersister:
             provider_entity_id=team_id,
             schema_version="5dollar-team-v1",
             retrieved_at=now,
-            available_at=now,
             availability_basis=(
                 "SYSTEM_OBSERVED_AT" if system_observed_pit else "RETRIEVED_AT_ONLY"
             ),
@@ -136,7 +135,7 @@ class FixturePagePersister:
         if not self.window.start_at <= fixture.kickoff_at < self.window.end_at:
             raise HistoricalImportError("FIXTURE_OUTSIDE_REQUEST_WINDOW")
         now = fixture.provenance.retrieved_at
-        system_observed_pit = fixture.kickoff_at > now
+        system_observed_pit = True
         competition = ProviderCompetition(
             provenance=SourceProvenance(
                 provider=PROVIDER_NAME,
@@ -155,7 +154,6 @@ class FixturePagePersister:
             provider_entity_id=self.competition_id,
             schema_version="5dollar-competition-v1",
             retrieved_at=now,
-            available_at=now,
             availability_basis=(
                 "SYSTEM_OBSERVED_AT" if system_observed_pit else "RETRIEVED_AT_ONLY"
             ),
@@ -181,10 +179,10 @@ class FixturePagePersister:
             team_name=fixture.away_team_name,
             response_id=response_id,
         )
-        # A future fixture captured in this exact response can be used only
-        # from this system-observed timestamp onward. Past fixtures remain
-        # retrieval-only and are never promoted into historical pre-match data.
-        system_observed_pit = fixture.status == "scheduled" and fixture.kickoff_at > now
+        # The response timestamp records when VELTRIX first observed this
+        # source snapshot. A target-specific feature gate later decides whether
+        # that snapshot predates the target fixture's kickoff and prediction cutoff.
+        system_observed_pit = True
         observation_id = self.store.record_source_observation(
             self.approval,
             scope_value=self.competition_id,
@@ -194,7 +192,6 @@ class FixturePagePersister:
             schema_version=SCHEMA_VERSION,
             retrieved_at=now,
             source_event_time=fixture.kickoff_at,
-            available_at=now,
             availability_basis=(
                 "SYSTEM_OBSERVED_AT" if system_observed_pit else "RETRIEVED_AT_ONLY"
             ),
@@ -491,7 +488,8 @@ def _replay_captured_page(
         "end_time": end,
         "status": "all",
         "page": page_number,
-        "per_page": 100,
+        "per_page": 50,
+        "include": "stats,events",
     }
     endpoint = f"/leagues/{competition_id}/fixtures"
     request_key = (
@@ -685,6 +683,8 @@ async def run_competition_historical_import(
     boundary_end: datetime = BOUNDARY_END,
     request_budget: int = REQUEST_BUDGET,
     competition_id: str = COMPETITION_ID,
+    import_type: str = "historical_backfill",
+    window_days: int = 7,
 ) -> int:
     """Run or resume a bounded, non-commercial competition historical import.
 
@@ -695,6 +695,8 @@ async def run_competition_historical_import(
         raise HistoricalImportError("LIVE_COLLECTION_NOT_EXPLICITLY_ENABLED")
     if not isinstance(competition_id, str) or not competition_id.strip():
         raise HistoricalImportError("COMPETITION_ID_REQUIRED")
+    if import_type not in {"historical_backfill", "prospective_capture"}:
+        raise HistoricalImportError("UNSUPPORTED_IMPORT_TYPE")
     competition_id = competition_id.strip()
     if not api_key.strip():
         raise HistoricalImportError("FIVEDOLLAR_COMMUNITY_API_KEY_REQUIRED")
@@ -720,7 +722,10 @@ async def run_competition_historical_import(
         or request_budget > REQUEST_BUDGET
     ):
         raise HistoricalImportError("REQUEST_BUDGET_OUTSIDE_HARD_CAP")
-    windows = build_date_windows(boundary_start, boundary_end, window_days=7)
+    if isinstance(window_days, bool) or not isinstance(window_days, int) or not 1 <= window_days <= 365:
+        raise HistoricalImportError("WINDOW_DAYS_OUTSIDE_SAFE_RANGE")
+    windows = build_date_windows(boundary_start, boundary_end, window_days=window_days)
+    importer_version = f"{IMPORTER_VERSION}-window-{window_days}d"
     if request_budget < len(windows):
         raise HistoricalImportError("REQUEST_BUDGET_BELOW_MINIMUM_WINDOW_COUNT")
     with psycopg.connect(database_url) as connection:
@@ -733,11 +738,11 @@ async def run_competition_historical_import(
                 approval,
                 scope_value=competition_id,
                 data_type="fixtures_and_results",
-                import_type="historical_backfill",
+                import_type=import_type,
                 boundary_start=boundary_start,
                 boundary_end=boundary_end,
                 request_budget=request_budget,
-                importer_version=IMPORTER_VERSION,
+                importer_version=importer_version,
                 started_at=datetime.now(UTC),
             )
         else:
@@ -745,7 +750,7 @@ async def run_competition_historical_import(
                 """
                 SELECT status, request_budget, requests_used, boundary_start, boundary_end,
                        provider, source_id, rights_approval_id, scope_value,
-                       import_type
+                       import_type, importer_version
                 FROM veltrix_ai_analyst.import_runs
                 WHERE id = %s
                 """,
@@ -764,7 +769,8 @@ async def run_competition_historical_import(
                 or int(row[2]) > request_budget
                 or tuple(row[3:8]) != expected
                 or row[8] != competition_id
-                or row[9] != "historical_backfill"
+                or row[9] != import_type
+                or row[10] != importer_version
             ):
                 raise HistoricalImportError("IMPORT_RUN_IDENTITY_OR_ENVELOPE_MISMATCH")
             if row[0] not in {"PAUSED", "RUNNING"}:
@@ -795,7 +801,7 @@ async def run_competition_historical_import(
 
     active_provider = provider or FiveDollarFootballProvider(
         api_key=api_key,
-        min_request_interval_seconds=12.0,
+        min_request_interval_seconds=60.0,
     )
     current_persister: FixturePagePersister | None = None
     try:

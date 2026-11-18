@@ -11,7 +11,9 @@ from urllib.parse import urlsplit
 import psycopg
 
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
+from app.providers.five_dollar import FiveDollarFootballProvider
 from app.providers.historical_import import (
+    IMPORTER_VERSION,
     REQUEST_BUDGET,
     run_competition_historical_import,
 )
@@ -19,6 +21,7 @@ from app.providers.historical_validation import validate_competition_import
 
 COMPETITIONS = (
     ("3118717965", "Brazil Serie A"),
+    ("522514093", "Brazil Serie B"),
     ("4160026622", "England Premier League"),
     ("3614399544", "France Ligue 1"),
     ("686337048", "Germany Bundesliga I"),
@@ -27,16 +30,22 @@ COMPETITIONS = (
 )
 
 
-def completed_run(database_url: str, competition_id: str, start_at: datetime, end_at: datetime):
+def completed_run(
+    database_url: str,
+    competition_id: str,
+    start_at: datetime,
+    end_at: datetime,
+    import_type: str,
+):
     with psycopg.connect(database_url) as connection:
         rows = connection.execute(
             """
             SELECT id FROM veltrix_ai_analyst.import_runs
             WHERE scope_value = %s AND boundary_start = %s AND boundary_end = %s
-              AND import_type = 'historical_backfill' AND status = 'COMPLETED'
+              AND import_type = %s AND status = 'COMPLETED'
             ORDER BY finished_at DESC NULLS LAST, id DESC
             """,
-            (competition_id, start_at, end_at),
+            (competition_id, start_at, end_at, import_type),
         ).fetchall()
         for (run_id,) in rows:
             try:
@@ -52,19 +61,26 @@ def completed_run(database_url: str, competition_id: str, start_at: datetime, en
     return None
 
 
-def resumable_run(database_url: str, competition_id: str, start_at: datetime, end_at: datetime):
+def resumable_run(
+    database_url: str,
+    competition_id: str,
+    start_at: datetime,
+    end_at: datetime,
+    import_type: str,
+    window_days: int,
+):
     """Return the single matching open run and its original request budget."""
     with psycopg.connect(database_url) as connection:
         rows = connection.execute(
             """
-            SELECT id, request_budget, requests_used, status
+            SELECT id, request_budget, requests_used, status, importer_version
             FROM veltrix_ai_analyst.import_runs
             WHERE scope_value = %s AND boundary_start = %s AND boundary_end = %s
-              AND import_type = 'historical_backfill'
+              AND import_type = %s
               AND status IN ('PAUSED', 'RUNNING')
             ORDER BY id DESC
             """,
-            (competition_id, start_at, end_at),
+            (competition_id, start_at, end_at, import_type),
         ).fetchall()
     if len(rows) > 1:
         raise RuntimeError(
@@ -72,7 +88,10 @@ def resumable_run(database_url: str, competition_id: str, start_at: datetime, en
         )
     if not rows:
         return None
-    run_id, request_budget, requests_used, status = rows[0]
+    run_id, request_budget, requests_used, status, importer_version = rows[0]
+    expected_importer_version = f"{IMPORTER_VERSION}-window-{window_days}d"
+    if importer_version != expected_importer_version:
+        raise RuntimeError(f"OPEN_IMPORT_RUN_WINDOW_PROTOCOL_MISMATCH:{run_id}")
     if int(requests_used) > int(request_budget):
         raise RuntimeError(f"OPEN_IMPORT_RUN_BUDGET_INTEGRITY_FAILURE:{run_id}")
     return int(run_id), int(request_budget), int(requests_used), str(status)
@@ -83,6 +102,12 @@ def main() -> int:
     parser.add_argument("--start-at", required=True)
     parser.add_argument("--end-at", required=True)
     parser.add_argument("--request-budget", type=int, default=20)
+    parser.add_argument("--window-days", type=int, default=7)
+    parser.add_argument(
+        "--import-type",
+        choices=("historical_backfill", "prospective_capture"),
+        default="historical_backfill",
+    )
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
 
@@ -95,6 +120,8 @@ def main() -> int:
         parser.error("end-at must be later than start-at")
     if not 1 <= args.request_budget <= REQUEST_BUDGET:
         parser.error(f"request budget must be between 1 and {REQUEST_BUDGET}")
+    if not 1 <= args.window_days <= 365:
+        parser.error("window-days must be between 1 and 365")
     if not args.execute:
         parser.error("--execute is required")
     if os.getenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION") != "true":
@@ -112,9 +139,15 @@ def main() -> int:
 
     results = []
     failures = []
+    shared_provider = FiveDollarFootballProvider(
+        api_key=api_key,
+        min_request_interval_seconds=60.0,
+    )
     for competition_id, name in COMPETITIONS:
         print(f"BATCH_START {name} ({competition_id})", flush=True)
-        existing = completed_run(database_url, competition_id, start_at, end_at)
+        existing = completed_run(
+            database_url, competition_id, start_at, end_at, args.import_type
+        )
         if existing:
             run_id, report = existing
             results.append({"competition": name, "competition_id": competition_id,
@@ -124,7 +157,10 @@ def main() -> int:
             print(json.dumps(results[-1], sort_keys=True), flush=True)
             continue
         try:
-            resume = resumable_run(database_url, competition_id, start_at, end_at)
+            resume = resumable_run(
+                database_url, competition_id, start_at, end_at, args.import_type,
+                args.window_days,
+            )
             if resume:
                 resume_id, original_budget, requests_used, prior_status = resume
                 print(
@@ -138,6 +174,8 @@ def main() -> int:
                     approval=FIVEDOLLAR_COMMUNITY_APPROVAL,
                     boundary_start=start_at, boundary_end=end_at,
                     request_budget=original_budget, competition_id=competition_id,
+                    import_type=args.import_type, window_days=args.window_days,
+                    provider=shared_provider,
                 ))
             else:
                 run_id = asyncio.run(run_competition_historical_import(
@@ -145,6 +183,8 @@ def main() -> int:
                     approval=FIVEDOLLAR_COMMUNITY_APPROVAL,
                     boundary_start=start_at, boundary_end=end_at,
                     request_budget=args.request_budget, competition_id=competition_id,
+                    import_type=args.import_type, window_days=args.window_days,
+                    provider=shared_provider,
                 ))
             with psycopg.connect(database_url) as connection:
                 report = validate_competition_import(connection, run_id, competition_id)
