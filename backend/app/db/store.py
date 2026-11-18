@@ -428,6 +428,7 @@ class PostgresIngestionStore:
         available_at: datetime | None = None,
         point_in_time_certifiable: bool = False,
         provider_response_id: int | None = None,
+        target_kickoff_at: datetime | None = None,
         purpose: DataUsePurpose = DataUsePurpose.STORAGE,
     ) -> int:
         """Persist immutable evidence using database-observed response time.
