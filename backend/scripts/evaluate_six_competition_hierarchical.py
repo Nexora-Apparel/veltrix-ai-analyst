@@ -11,6 +11,7 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
+from math import exp, log
 
 import psycopg
 from psycopg.rows import dict_row
@@ -24,7 +25,6 @@ from app.models.scoreline import build_scoreline_distribution
 from app.validation.dixon_coles import estimate_rho_from_development_folds
 from app.validation.hierarchical_tuning import (
     ChronologicalFold,
-    HierarchicalCandidate,
     select_hierarchical_hyperparameters,
 )
 from app.validation.paired_baselines import (
@@ -114,9 +114,6 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
     ]
     if len(finished) != 610 or len(unknown) != 4 or len(finished) + len(unknown) != len(rows):
         raise RuntimeError("SOURCE_STATUS_SCORE_AUDIT_MISMATCH")
-    if any(row["kickoff_at"] > HOLDOUT_START for row in finished):
-        # Later rows belong to the final holdout; this condition only guards impossible future data.
-        pass
 
     results = [
         HierarchicalGoalResult(
@@ -164,6 +161,8 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         "feature_policy": "NO_POST_MATCH_RETRIEVED_FEATURES_USED",
         "dataset_fingerprint_sha256": fingerprint,
     }
+    if not provenance["all_observations_retrieved_after_historical_fixtures"]:
+        raise RuntimeError("HISTORICAL_RETRIEVAL_CHRONOLOGY_AUDIT_FAILED")
     return results, provenance
 
 
@@ -185,8 +184,8 @@ def multiclass_metrics(rows: list[dict]) -> dict:
         probs = row["probabilities"]
         actual = row["outcome"]
         brier += sum((p - (1.0 if label == actual else 0.0)) ** 2 for label, p in probs.items())
-        log_loss -= __import__("math").log(max(1e-15, probs[actual]))
-        scoreline_loss -= __import__("math").log(max(1e-15, row["scoreline_probability"]))
+        log_loss -= log(max(1e-15, probs[actual]))
+        scoreline_loss -= log(max(1e-15, row["scoreline_probability"]))
     n = len(rows)
     return {
         "fixtures": n,
@@ -235,7 +234,6 @@ def main() -> int:
         raise RuntimeError("HIERARCHICAL_OPTIMIZER_NOT_CONVERGED")
 
     # Independent comparator: recency-weighted competition-only home/away scoring rates.
-    from math import exp
     half_life = candidate.half_life_days
     by_comp: dict[str, list] = {}
     for row in development:
@@ -251,7 +249,6 @@ def main() -> int:
             max(0.05, sum(w*r.home_goals for w, r in zip(weights, rows))/total),
             max(0.05, sum(w*r.away_goals for w, r in zip(weights, rows))/total),
         )
-    global_rates = weighted_rates(global_rows)
 
     model_rows: list[dict] = []
     baseline_rows: list[dict] = []
