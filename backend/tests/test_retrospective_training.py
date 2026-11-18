@@ -5,7 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from app.models.chronology_adjudication import apply_kickoff_adjudications, load_kickoff_adjudications
+from app.models.chronology_adjudication import (
+    apply_kickoff_adjudications,
+    load_kickoff_adjudications,
+)
 from app.models.elo import EloSystem, HistoricalResult
 from app.models.retrospective import (
     HistoricalRateModel,
