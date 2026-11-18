@@ -131,6 +131,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "010_system_observed_pit.sql",
             "011_import_run_competition_scope.sql",
             "012_database_observed_timestamps.sql",
+            "013_target_fixture_pre_match_gate.sql",
         }
     )
 
@@ -189,6 +190,16 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             ("source_observations", "system_observed_at"),
             ("source_observation_sightings", "system_observed_at"),
         }
+        target_fixture_column = connection.execute(
+            """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema='veltrix_ai_analyst'
+              AND table_name='pre_match_feature_observations'
+              AND column_name='target_fixture_id'
+            """
+        ).fetchone()
+        assert target_fixture_column == ("NO",)
 
         assert {
             "source_approvals",
