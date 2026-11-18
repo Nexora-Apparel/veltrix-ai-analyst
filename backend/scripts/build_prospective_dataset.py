@@ -67,6 +67,7 @@ def build_report(
             """
             SELECT o.id, s.id, s.provider_response_id,
                    o.provider, o.source_id, o.provider_entity_id,
+                   o.payload->>'competition_id' AS competition_id,
                    s.retrieved_at, s.system_observed_at,
                    s.availability_basis, s.point_in_time_certifiable,
                    s.payload_sha256, r.response_sha256, o.payload
@@ -92,7 +93,7 @@ def build_report(
 
     fixtures = [
         FixtureIdentity(
-            fixture_id=str(row[2]),
+            fixture_id=f"{row[3]}:{row[2]}",
             provider=str(row[0]),
             source_id=str(row[1]),
             competition_id=str(row[3]),
@@ -110,13 +111,13 @@ def build_report(
             provider=str(row[3]),
             source_id=str(row[4]),
             fixture_id=str(row[5]),
-            retrieved_at=row[6],
-            observed_at=row[7],
-            availability_basis=str(row[8]),
-            point_in_time_certifiable=bool(row[9]),
-            payload_sha256=str(row[10]).strip(),
-            raw_response_sha256=str(row[11]).strip(),
-            payload=dict(row[12]),
+            retrieved_at=row[7],
+            observed_at=row[8],
+            availability_basis=str(row[9]),
+            point_in_time_certifiable=bool(row[10]),
+            payload_sha256=str(row[11]).strip(),
+            raw_response_sha256=str(row[12]).strip(),
+            payload=dict(row[13]),
         )
         for row in observation_rows
     ]
