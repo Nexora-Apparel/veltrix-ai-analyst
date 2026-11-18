@@ -92,6 +92,26 @@ def test_rejects_duplicate_ids_missing_pagination_and_naive_timestamps():
         )
 
 
+def test_supports_provider_unix_kickoff_timestamp_fallback():
+    row = fixture()
+    row.pop("kickoff_utc")
+    row["kickoff_ts"] = 1795201200
+    fixtures, _, _ = normalize_scheduled_fixture_catalogue(
+        payload([row]), competition_id="4160026622", as_of=AS_OF
+    )
+    assert len(fixtures) == 1
+    assert fixtures[0]["kickoff_at"].endswith("+00:00")
+
+
+def test_rejects_boolean_fixture_ids():
+    with pytest.raises(FixtureCatalogueError, match="FIXTURE_ID_REQUIRED"):
+        normalize_scheduled_fixture_catalogue(
+            payload([fixture(id=True)]),
+            competition_id="4160026622",
+            as_of=AS_OF,
+        )
+
+
 def test_rejects_naive_as_of_and_unsuccessful_payload():
     with pytest.raises(FixtureCatalogueError, match="AS_OF"):
         normalize_scheduled_fixture_catalogue(
