@@ -293,7 +293,7 @@ def test_competition_import_persists_under_selected_provider_scope(
         ).fetchone()
         fixture = connection.execute(
             """
-            SELECT competition_id, provider_fixture_id
+            SELECT provider_competition_id, provider_fixture_id
             FROM veltrix_ai_analyst.provider_fixtures
             WHERE provider_fixture_id = '880001'
             """
