@@ -8,8 +8,8 @@ from hashlib import sha256
 from typing import Any
 
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_ODDS_APPROVAL
-from app.providers.rights import DataUsePurpose, evaluate_record_scope, evaluate_source_use
 from app.providers.odds_contracts import OddsObservation
+from app.providers.rights import DataUsePurpose, evaluate_record_scope, evaluate_source_use
 
 
 class OddsPayloadError(ValueError):
