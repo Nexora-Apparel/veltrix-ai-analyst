@@ -1,4 +1,4 @@
-"""Leakage-safe expanding-window evaluation of prospective 1X2, BTTS and totals."""
+"""Leakage-safe expanding-window evaluation of all prospective V1 markets."""
 
 from __future__ import annotations
 
@@ -224,8 +224,16 @@ def evaluate_prospective_model(
     multiclass: list[ProbabilityForecast] = []
     model_btts: list[BinaryForecast] = []
     baseline_btts: list[BinaryForecast] = []
-    model_totals: list[BinaryForecast] = []
-    baseline_totals: list[BinaryForecast] = []
+    model_totals: dict[str, list[BinaryForecast]] = {
+        "OVER_UNDER_1_5": [],
+        "OVER_UNDER_2_5": [],
+        "OVER_UNDER_3_5": [],
+    }
+    baseline_totals: dict[str, list[BinaryForecast]] = {
+        "OVER_UNDER_1_5": [],
+        "OVER_UNDER_2_5": [],
+        "OVER_UNDER_3_5": [],
+    }
     fold_reports = []
     total_rho_clipped = 0
     evaluation_time = datetime.now(UTC)
@@ -311,14 +319,26 @@ def evaluate_prospective_model(
                 row.fixture_id, row.competition_id, bool(row.label["btts"]),
                 baseline_markets["BTTS"]["YES"],
             ))
-            model_totals.append(BinaryForecast(
-                row.fixture_id, row.competition_id, bool(row.label["over_25"]),
-                model_markets["TOTALS_2_5"]["OVER"],
-            ))
-            baseline_totals.append(BinaryForecast(
-                row.fixture_id, row.competition_id, bool(row.label["over_25"]),
-                baseline_markets["TOTALS_2_5"]["OVER"],
-            ))
+            total_goals = int(row.label["home_goals"]) + int(row.label["away_goals"])
+            for market_name, line in (
+                ("OVER_UNDER_1_5", 1.5),
+                ("OVER_UNDER_2_5", 2.5),
+                ("OVER_UNDER_3_5", 3.5),
+            ):
+                actual_over = total_goals > line
+                totals_key = f"TOTALS_{str(line).replace('.', '_')}"
+                model_totals[market_name].append(BinaryForecast(
+                    row.fixture_id,
+                    row.competition_id,
+                    actual_over,
+                    model_markets[totals_key]["OVER"],
+                ))
+                baseline_totals[market_name].append(BinaryForecast(
+                    row.fixture_id,
+                    row.competition_id,
+                    actual_over,
+                    baseline_markets[totals_key]["OVER"],
+                ))
 
         total_rho_clipped += clipped
         fold_reports.append({
@@ -364,11 +384,17 @@ def evaluate_prospective_model(
         bootstrap_replicates=bootstrap_replicates,
         seed=seed + 1,
     )
-    totals_report = evaluate_paired_binary_market(
-        model_totals, baseline_totals,
-        bootstrap_replicates=bootstrap_replicates,
-        seed=seed + 2,
-    )
+    totals_reports = {
+        market_name: evaluate_paired_binary_market(
+            model_totals[market_name],
+            baseline_totals[market_name],
+            bootstrap_replicates=bootstrap_replicates,
+            seed=seed + index + 2,
+        )
+        for index, market_name in enumerate(
+            ("OVER_UNDER_1_5", "OVER_UNDER_2_5", "OVER_UNDER_3_5")
+        )
+    }
     return {
         "evaluation_type": "PROSPECTIVE_EXPANDING_WINDOW_MARKET_EVALUATION",
         "status": "RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL",
@@ -378,7 +404,7 @@ def evaluate_prospective_model(
         "markets": {
             "1X2": multiclass_report,
             "BTTS": btts_report,
-            "OVER_UNDER_2_5": totals_report,
+            **totals_reports,
         },
         "scoreline_grid": {
             "minimum_tail_mass": SCORELINE_MASS_TARGET,
