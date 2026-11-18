@@ -17,8 +17,8 @@ on:
         description: Maximum provider requests reserved per competition
         required: true
         type: choice
-        default: "10"
-        options: ["5", "10", "20", "40"]
+        default: "8"
+        options: ["5", "8"]
 
 permissions:
   contents: read
@@ -84,6 +84,9 @@ jobs:
               if not applied:
                   raise SystemExit("MIGRATION_012_NOT_REGISTERED")
           PY
+      - name: Probe provider entitlement and quota without exposing credentials
+        working-directory: backend
+        run: python ../scripts/probe_5dollar_entitlement.py
       - name: Import one additional season range per approved competition
         working-directory: backend
         run: |
