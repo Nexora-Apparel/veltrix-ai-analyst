@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from math import isfinite, log
 
-
 TIERS = ("STRONG", "MEDIUM", "LOW")
 
 
