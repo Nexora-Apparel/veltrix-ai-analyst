@@ -129,6 +129,8 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "008_model_artifacts.sql",
             "009_canonical_identity_review_cases.sql",
             "010_system_observed_pit.sql",
+            "011_import_run_competition_scope.sql",
+            "012_database_observed_timestamps.sql",
         }
     )
 
@@ -167,6 +169,8 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "008_model_artifacts.sql",
             "009_canonical_identity_review_cases.sql",
             "010_system_observed_pit.sql",
+            "011_import_run_competition_scope.sql",
+            "012_database_observed_timestamps.sql",
         }.issubset(migration_versions)
 
         assert {
