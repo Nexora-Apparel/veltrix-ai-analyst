@@ -154,15 +154,20 @@ def test_overall_team_attack_informs_predictions_at_the_other_venue() -> None:
 def test_official_kickoff_adjudication_changes_research_time_and_preserves_raw_evidence():
     registry = Path(__file__).resolve().parents[1] / "data/research/official_kickoff_adjudications.json"
     adjudications = load_kickoff_adjudications(registry)
-    raw = datetime.fromisoformat("2026-09-10T23:49:59+00:00")
-    fixture = ResearchFixture("2179333578", raw, "SB", "LON", 1, 2)
+    raw_262 = datetime.fromisoformat("2026-09-10T23:49:59+00:00")
+    raw_6 = datetime.fromisoformat("2026-03-22T20:58:35+00:00")
+    fixtures = [
+        ResearchFixture("2179333578", raw_262, "SB", "LON", 1, 2),
+        ResearchFixture("3116209225", raw_6, "GOI", "AME", 3, 1),
+    ]
 
-    corrected, audit = apply_kickoff_adjudications([fixture], adjudications)
+    corrected, audit = apply_kickoff_adjudications(fixtures, adjudications)
 
     assert corrected[0].kickoff_at == datetime.fromisoformat("2026-09-10T22:30:00+00:00")
-    assert fixture.kickoff_at == raw  # immutable original object / provider timestamp
-    assert audit[0]["raw_provider_kickoff_at"] == raw.isoformat()
-    assert audit[0]["cbf_match_reference"] == "262"
+    assert corrected[1].kickoff_at == datetime.fromisoformat("2026-03-22T21:00:00+00:00")
+    assert fixtures[0].kickoff_at == raw_262  # immutable provider timestamp
+    assert fixtures[1].kickoff_at == raw_6  # immutable provider timestamp
+    assert {row["cbf_match_reference"] for row in audit} == {"262", "6"}
 
 
 def test_official_kickoff_adjudication_fails_closed_on_raw_timestamp_mismatch():
@@ -184,9 +189,14 @@ def test_official_kickoff_adjudication_fails_closed_on_raw_timestamp_mismatch():
 def test_official_kickoff_adjudication_restores_simultaneous_cbf_batch():
     registry = Path(__file__).resolve().parents[1] / "data/research/official_kickoff_adjudications.json"
     adjudications = load_kickoff_adjudications(registry)
-    official = datetime.fromisoformat("2026-09-10T22:30:00+00:00")
+    official_6 = datetime.fromisoformat("2026-03-22T21:00:00+00:00")
+    official_262 = datetime.fromisoformat("2026-09-10T22:30:00+00:00")
     fixtures = [
-        ResearchFixture("3196722470", official, "VIL", "GOI", 2, 0),
+        ResearchFixture(
+            "3116209225", datetime.fromisoformat("2026-03-22T20:58:35+00:00"), "GOI", "AME", 3, 1
+        ),
+        ResearchFixture("simultaneous-ref-6", official_6, "ATH", "PON", 0, 0),
+        ResearchFixture("3196722470", official_262, "VIL", "GOI", 2, 0),
         ResearchFixture(
             "2179333578", datetime.fromisoformat("2026-09-10T23:49:59+00:00"), "SB", "LON", 1, 2
         ),
@@ -194,6 +204,9 @@ def test_official_kickoff_adjudication_restores_simultaneous_cbf_batch():
     corrected, audit = apply_kickoff_adjudications(fixtures, adjudications)
     report = chronological_research_run(corrected)
 
-    assert len(audit) == 1
-    assert {row["kickoff_at"] for row in report["predictions"]} == {official.isoformat()}
-    assert len(report["predictions"]) == 2
+    assert len(audit) == 2
+    batch_sizes = {}
+    for row in report["predictions"]:
+        batch_sizes[row["kickoff_at"]] = batch_sizes.get(row["kickoff_at"], 0) + 1
+    assert batch_sizes == {official_6.isoformat(): 2, official_262.isoformat(): 2}
+    assert len(report["predictions"]) == 4
