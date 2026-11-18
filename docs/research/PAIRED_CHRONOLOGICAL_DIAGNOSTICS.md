@@ -70,3 +70,5 @@ The retrospective training script now applies an explicit, evidence-backed adjud
 The training report records each applied correction, raw timestamp, official timestamp, CBF match reference and source URL. The correction fails closed if the registry's raw timestamp does not exactly match the provider row, if an adjudication references no source row, or if the registry is malformed. This is a research chronology adjustment only; it does not establish historical feature availability or PIT eligibility.
 
 After this change, the retrospective training workflow must be rerun from the unchanged provider corpus. Only the newly generated report, followed by the paired diagnostics generated from that report, can be used for further retrospective discussion. Prior report hashes and scorecards remain preserved as historical artifacts but are superseded for chronological analysis.
+
+The paired diagnostics evaluator also fails closed unless the input report carries the expected chronology basis and a complete adjudication audit whose declared count matches its entries. Older retrospective artifacts without this metadata are rejected rather than silently re-scored.
