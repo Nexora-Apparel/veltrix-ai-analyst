@@ -4,7 +4,7 @@ A personal-use, cloud-backed football analysis and prediction platform with a na
 
 ## Project status
 
-**Stage 1 and Stage 2 are complete. Stage 3 — prediction-engine architecture and implementation — is underway.** The dedicated production database and historical ingestion/provenance foundation are operational. Formal prediction contracts and strict PIT admission are under review in [PR #23](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/23). No trained or certified prediction model or production prediction service is claimed.
+**Stage 1 and Stage 2 are complete. Stage 3 — prediction-engine architecture and implementation — is underway.** The dedicated production database and historical ingestion/provenance foundation are operational. Retrospective research candidates (Elo, Poisson and an ensemble) have been fitted and evaluated on the available CBF corpus. They are exploratory, retrospective and non-PIT-certified; no model is approved for production prediction or value betting. The production prediction service and genuine Android prediction integration are not yet ready.
 
 ## Project records
 
@@ -13,7 +13,7 @@ A personal-use, cloud-backed football analysis and prediction platform with a na
 - [ML Model Architecture](docs/ML_MODEL_ARCHITECTURE.md) — candidate statistical/ML portfolio, ensemble, calibration, evaluation and model-admission specification.
 - [Project Ledger Entries](docs/ledger/) — dated, append-only records of material decisions and implementation progress.
 - [Stage 2 Data Model](docs/DATA_MODEL.md) — provenance-first PostgreSQL schema and ingestion invariants.
-- [Provider Qualification](docs/providers/PROVIDER_QUALIFICATION.md) — approved sources, entitlements, limitations and data-rights decisions.
+- [Provider Qualification](docs/providers/PROVIDER_QUALIFICATION.md) — approved sources, entitlements, limitations and data-use decisions.
 - [5DollarFootballAPI Terms Review](docs/providers/5DOLLAR_TERMS_REVIEW.md) — Community attribution, scope and retention restrictions.
 
 ## Core principles
@@ -24,7 +24,7 @@ A personal-use, cloud-backed football analysis and prediction platform with a na
 - Selective reuse of reviewed data-provider and infrastructure utilities only.
 - Provenance, point-in-time correctness, chronological validation, and market-specific publication gates.
 - Cost-conscious infrastructure and incremental data ingestion.
-- Public source repository; never commit secrets, API keys, passwords, raw restricted data, private records, or production credentials.
+- Never commit secrets, API keys, passwords, raw restricted data, private records, or production credentials.
 
 ## Development status
 
