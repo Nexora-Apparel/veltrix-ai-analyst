@@ -92,6 +92,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: veltrix-prospective-hierarchical-evaluation
-          path: backend/artifacts/prospective-hierarchical-evaluation.json
+          path: |
+            backend/artifacts/prospective-hierarchical-evaluation.json
+            backend/artifacts/prospective-dataset.json
           if-no-files-found: error
           retention-days: 90
