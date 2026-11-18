@@ -174,6 +174,19 @@ def _finished_result(row: FixtureObservation) -> tuple[int, int] | None:
     return home_goals, away_goals
 
 
+def _optional_number(value: Any) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
 def _team_form(
     target_team_id: str,
     matches: list[tuple[FixtureIdentity, FixtureObservation, int, int]],
@@ -190,14 +203,82 @@ def _team_form(
     points: list[float] = []
     goals_for: list[float] = []
     goals_against: list[float] = []
-    for fixture, _, home_goals, away_goals in selected:
-        if fixture.home_team_id == target_team_id:
+    statistic_values: dict[str, list[float]] = defaultdict(list)
+    late_goals_for: list[float] = []
+    late_goals_against: list[float] = []
+    substitutions: list[float] = []
+    stats_coverage = 0
+    events_coverage = 0
+    statistic_keys = (
+        "shots_on_target",
+        "shots_off_target",
+        "dangerous_attacks",
+        "attacks",
+        "possession",
+    )
+    for fixture, observation, home_goals, away_goals in selected:
+        side = "home" if fixture.home_team_id == target_team_id else "away"
+        opponent_side = "away" if side == "home" else "home"
+        if side == "home":
             scored, conceded = home_goals, away_goals
         else:
             scored, conceded = away_goals, home_goals
         goals_for.append(float(scored))
         goals_against.append(float(conceded))
         points.append(3.0 if scored > conceded else 1.0 if scored == conceded else 0.0)
+
+        payload = observation.payload
+        statistics = payload.get("statistics")
+        has_statistics = False
+        if isinstance(statistics, dict):
+            for key in statistic_keys:
+                pair = statistics.get(key)
+                value = _optional_number(pair.get(side)) if isinstance(pair, dict) else None
+                if value is not None:
+                    statistic_values[key].append(value)
+                    has_statistics = True
+            first_half = statistics.get("first_half")
+            if isinstance(first_half, dict):
+                for key in ("shots_on_target", "dangerous_attacks"):
+                    pair = first_half.get(key)
+                    value = _optional_number(pair.get(side)) if isinstance(pair, dict) else None
+                    if value is not None:
+                        statistic_values[f"first_half_{key}"].append(value)
+                        has_statistics = True
+        for key, payload_key in (
+            ("corners", f"{side}_corners"),
+            ("yellow_cards", f"{side}_yellow_cards"),
+            ("red_cards", f"{side}_red_cards"),
+        ):
+            value = _optional_number(payload.get(payload_key))
+            if value is not None:
+                statistic_values[key].append(value)
+                has_statistics = True
+        if has_statistics:
+            stats_coverage += 1
+
+        raw_events = payload.get("events")
+        if isinstance(raw_events, list):
+            events_coverage += 1
+            late_for = 0.0
+            late_against = 0.0
+            substitution_count = 0.0
+            for event in raw_events:
+                if not isinstance(event, dict):
+                    continue
+                event_type = str(event.get("type") or "").casefold()
+                event_team = str(event.get("team") or "").casefold()
+                minute = _optional_number(event.get("minute"))
+                if event_type == "goal" and minute is not None and minute >= 76:
+                    if event_team == side:
+                        late_for += 1.0
+                    elif event_team == opponent_side:
+                        late_against += 1.0
+                elif event_type == "substitution" and event_team == side:
+                    substitution_count += 1.0
+            late_goals_for.append(late_for)
+            late_goals_against.append(late_against)
+            substitutions.append(substitution_count)
     latest_kickoff = selected[0][0].kickoff_at if selected else None
     rest_days = (
         max(0.0, (target_kickoff - latest_kickoff).total_seconds() / 86400.0)
@@ -212,7 +293,16 @@ def _team_form(
             mean(goals_for) - mean(goals_against) if selected else 0.0
         ),
         f"{prefix}_rest_days": rest_days,
+        f"{prefix}_stats_coverage_last5": float(stats_coverage),
+        f"{prefix}_events_coverage_last5": float(events_coverage),
     }
+    for key, metric_values in statistic_values.items():
+        if metric_values:
+            values[f"{prefix}_{key}_avg_last5"] = mean(metric_values)
+    if late_goals_for:
+        values[f"{prefix}_late_goals_for_avg_last5"] = mean(late_goals_for)
+        values[f"{prefix}_late_goals_against_avg_last5"] = mean(late_goals_against)
+        values[f"{prefix}_substitutions_avg_last5"] = mean(substitutions)
     return values, [item[1] for item in selected]
 
 
