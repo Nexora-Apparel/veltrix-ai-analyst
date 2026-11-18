@@ -1,8 +1,8 @@
 """Evidence-tier calibration diagnostics for held-out market forecasts."""
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import Mapping
+from collections import defaultdict
 from dataclasses import dataclass
 from math import isfinite, log
 
