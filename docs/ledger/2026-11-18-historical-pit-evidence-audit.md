@@ -35,6 +35,8 @@ A prospective capture path is now implemented in code. It uses the separate `SYS
 
 **Production status:** migration `010_system_observed_pit.sql` is committed and covered by CI, but is not yet applied to the production Neon database. The production `schema_migrations` ledger currently ends at migration 009. Until migration 010 is applied and verified through the checksum-gated migration workflow, the new basis is not active in production.
 
+**Activation blocker:** the repository's `Apply checksum-verified database migrations` workflow is manual by design. It requires the explicit input `APPLY_CHECKSUM_VERIFIED_MIGRATIONS`. The workflow has been updated to verify migration 010's checksum, PIT constraints and trigger; it has not been dispatched from this session.
+
 ## What this audit does not establish
 
 A historical observation collected after kickoff cannot be made point-in-time safe by backfilling its retrieval time or by obtaining the final CBF schedule. The old corpus remains non-PIT.
