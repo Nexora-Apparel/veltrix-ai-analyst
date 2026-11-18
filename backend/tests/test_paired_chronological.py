@@ -32,6 +32,11 @@ def make_report(count: int = 80) -> dict:
     unsigned = {
         "dataset_type": "RETROSPECTIVE_RESEARCH_NOT_PIT_CERTIFIED",
         "fixture_count": count,
+        "source": {
+            "chronology_basis": "PROVIDER_KICKOFF_WITH_EVIDENCE_BACKED_OFFICIAL_CBF_ADJUDICATIONS",
+            "kickoff_adjudications_applied": [],
+            "kickoff_adjudication_count": 0,
+        },
         "predictions": predictions,
     }
     canonical = json.dumps(unsigned, sort_keys=True, separators=(",", ":"), allow_nan=False)
@@ -119,3 +124,10 @@ def test_cli_writes_valid_json_with_one_trailing_newline(tmp_path, monkeypatch):
     assert output.endswith("\n")
     assert not output.endswith("\n\n")
     assert json.loads(output)["fixture_count"] == 12
+
+
+def test_rejects_report_without_official_kickoff_chronology_audit():
+    report = make_report()
+    report["source"].pop("chronology_basis")
+    with pytest.raises(ValueError, match="official kickoff adjudication"):
+        evaluate_paired_chronological_report(report, resamples=100)
