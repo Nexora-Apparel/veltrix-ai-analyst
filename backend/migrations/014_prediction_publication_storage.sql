@@ -1,5 +1,5 @@
 -- Immutable prediction storage and explicit publication gate.
--- Public prediction views intentionally expose only fixture details and market probabilities.
+-- Public prediction views intentionally expose only fixture details and probabilities.
 
 CREATE TABLE veltrix_ai_analyst.prediction_feature_snapshots (
     feature_snapshot_id TEXT PRIMARY KEY
@@ -10,6 +10,8 @@ CREATE TABLE veltrix_ai_analyst.prediction_feature_snapshots (
     feature_schema_version TEXT NOT NULL CHECK (length(btrim(feature_schema_version)) > 0),
     snapshot_sha256 CHAR(64) NOT NULL CHECK (snapshot_sha256 ~ '^[0-9a-f]{64}$'),
     features JSONB NOT NULL CHECK (jsonb_typeof(features) = 'object'),
+    source_evidence JSONB NOT NULL DEFAULT '[]'::jsonb
+        CHECK (jsonb_typeof(source_evidence) = 'array'),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (feature_snapshot_id, canonical_fixture_id)
 );
@@ -79,6 +81,79 @@ CREATE INDEX prediction_publication_events_latest_idx
         prediction_id, effective_at DESC, id DESC
     );
 
+CREATE OR REPLACE FUNCTION veltrix_ai_analyst.enforce_prediction_feature_snapshot_pit()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    fixture_kickoff TIMESTAMPTZ;
+    evidence_item JSONB;
+    feature_name TEXT;
+    observation_id BIGINT;
+    sighting_id BIGINT;
+BEGIN
+    SELECT kickoff_at INTO fixture_kickoff
+    FROM veltrix_ai_analyst.canonical_fixtures
+    WHERE id = NEW.canonical_fixture_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'PREDICTION_SNAPSHOT_FIXTURE_NOT_FOUND';
+    END IF;
+    IF NEW.prediction_cutoff_at >= fixture_kickoff THEN
+        RAISE EXCEPTION 'PREDICTION_SNAPSHOT_CUTOFF_NOT_BEFORE_KICKOFF';
+    END IF;
+
+    IF jsonb_object_length(NEW.features) > 0
+       AND jsonb_array_length(NEW.source_evidence) = 0 THEN
+        RAISE EXCEPTION 'PREDICTION_SNAPSHOT_FEATURE_EVIDENCE_REQUIRED';
+    END IF;
+
+    FOR evidence_item IN SELECT value FROM jsonb_array_elements(NEW.source_evidence)
+    LOOP
+        BEGIN
+            observation_id := (evidence_item->>'source_observation_id')::BIGINT;
+            sighting_id := (evidence_item->>'source_sighting_id')::BIGINT;
+            feature_name := evidence_item->>'feature_key';
+        EXCEPTION WHEN OTHERS THEN
+            RAISE EXCEPTION 'PREDICTION_SNAPSHOT_EVIDENCE_SHAPE_INVALID';
+        END;
+
+        IF observation_id IS NULL OR sighting_id IS NULL
+           OR feature_name IS NULL OR length(btrim(feature_name)) = 0
+           OR NOT EXISTS (
+               SELECT 1
+               FROM veltrix_ai_analyst.canonical_fixture_sources source_link
+               JOIN veltrix_ai_analyst.pre_match_feature_observations feature
+                 ON feature.target_fixture_id = source_link.provider_fixture_row_id
+               WHERE source_link.canonical_fixture_id = NEW.canonical_fixture_id
+                 AND feature.source_observation_id = observation_id
+                 AND feature.source_sighting_id = sighting_id
+                 AND feature.feature_key = feature_name
+                 AND feature.prediction_cutoff_at = NEW.prediction_cutoff_at
+           ) THEN
+            RAISE EXCEPTION 'PREDICTION_SNAPSHOT_EVIDENCE_NOT_PIT_ADMITTED';
+        END IF;
+    END LOOP;
+
+    FOR feature_name IN SELECT jsonb_object_keys(NEW.features)
+    LOOP
+        IF NOT EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(NEW.source_evidence) evidence
+            WHERE evidence->>'feature_key' = feature_name
+        ) THEN
+            RAISE EXCEPTION 'PREDICTION_SNAPSHOT_FEATURE_WITHOUT_LINEAGE';
+        END IF;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER prediction_feature_snapshot_pit_gate
+    BEFORE INSERT ON veltrix_ai_analyst.prediction_feature_snapshots
+    FOR EACH ROW EXECUTE FUNCTION veltrix_ai_analyst.enforce_prediction_feature_snapshot_pit();
+
 CREATE OR REPLACE FUNCTION veltrix_ai_analyst.enforce_prediction_publish_gate()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -86,10 +161,13 @@ AS $$
 DECLARE
     prediction RECORD;
     fixture RECORD;
-    artifact RECORD;
+    artifact_row RECORD;
     market_count INTEGER;
+    latest_decision TEXT;
 BEGIN
-    SELECT p.*, snapshot.snapshot_sha256 AS stored_snapshot_sha256
+    SELECT p.*, snapshot.snapshot_sha256 AS stored_snapshot_sha256,
+           snapshot.prediction_cutoff_at AS stored_snapshot_cutoff,
+           snapshot.feature_schema_version AS stored_feature_schema_version
     INTO prediction
     FROM veltrix_ai_analyst.predictions p
     JOIN veltrix_ai_analyst.prediction_feature_snapshots snapshot
@@ -101,31 +179,46 @@ BEGIN
         RAISE EXCEPTION 'PREDICTION_NOT_FOUND';
     END IF;
 
+    SELECT decision INTO latest_decision
+    FROM veltrix_ai_analyst.prediction_publication_events
+    WHERE prediction_id = NEW.prediction_id
+    ORDER BY effective_at DESC, id DESC
+    LIMIT 1;
+
     IF NEW.decision = 'PUBLISHED' THEN
+        IF latest_decision = 'PUBLISHED' THEN
+            RAISE EXCEPTION 'PREDICTION_ALREADY_PUBLISHED';
+        END IF;
+
         SELECT id, kickoff_at, identity_status, completeness_status
         INTO fixture
         FROM veltrix_ai_analyst.canonical_fixtures
         WHERE id = prediction.canonical_fixture_id;
 
-        IF NOT FOUND
-           OR fixture.identity_status <> 'VERIFIED'
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'PREDICTION_FIXTURE_NOT_FOUND';
+        END IF;
+        IF fixture.identity_status <> 'VERIFIED'
            OR fixture.completeness_status <> 'RECONCILED' THEN
             RAISE EXCEPTION 'PREDICTION_FIXTURE_IDENTITY_NOT_VERIFIED';
         END IF;
 
         SELECT training_cutoff_at, point_in_time_certified, artifact
-        INTO artifact
+        INTO artifact_row
         FROM veltrix_ai_analyst.model_artifacts
         WHERE model_artifact_id = prediction.model_artifact_id;
 
-        IF NOT FOUND
-           OR artifact.point_in_time_certified IS NOT TRUE
-           OR artifact.artifact->>'deployment_status' <> 'PRODUCTION_APPROVED'
-           OR artifact.training_cutoff_at <> prediction.training_cutoff_at THEN
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'PREDICTION_MODEL_ARTIFACT_NOT_FOUND';
+        END IF;
+        IF artifact_row.point_in_time_certified IS NOT TRUE
+           OR artifact_row.artifact->>'deployment_status' <> 'PRODUCTION_APPROVED'
+           OR artifact_row.training_cutoff_at <> prediction.training_cutoff_at THEN
             RAISE EXCEPTION 'PREDICTION_MODEL_NOT_PRODUCTION_APPROVED_AND_PIT_CERTIFIED';
         END IF;
 
         IF prediction.feature_snapshot_sha256 <> prediction.stored_snapshot_sha256
+           OR prediction.prediction_cutoff_at <> prediction.stored_snapshot_cutoff
            OR prediction.training_cutoff_at >= prediction.prediction_cutoff_at
            OR prediction.prediction_cutoff_at >= fixture.kickoff_at
            OR prediction.generated_at < prediction.prediction_cutoff_at
@@ -164,29 +257,8 @@ BEGIN
            ) THEN
             RAISE EXCEPTION 'PREDICTION_MARKET_DISTRIBUTIONS_INCOMPLETE_OR_UNBALANCED';
         END IF;
-
-        IF EXISTS (
-            SELECT 1
-            FROM veltrix_ai_analyst.prediction_publication_events
-            WHERE prediction_id = NEW.prediction_id
-            ORDER BY effective_at DESC, id DESC
-            LIMIT 1
-        ) AND (
-            SELECT decision
-            FROM veltrix_ai_analyst.prediction_publication_events
-            WHERE prediction_id = NEW.prediction_id
-            ORDER BY effective_at DESC, id DESC
-            LIMIT 1
-        ) = 'PUBLISHED' THEN
-            RAISE EXCEPTION 'PREDICTION_ALREADY_PUBLISHED';
-        END IF;
     ELSE
-        IF NOT EXISTS (
-            SELECT 1
-            FROM veltrix_ai_analyst.prediction_publication_events
-            WHERE prediction_id = NEW.prediction_id
-              AND decision = 'PUBLISHED'
-        ) THEN
+        IF latest_decision IS DISTINCT FROM 'PUBLISHED' THEN
             RAISE EXCEPTION 'PREDICTION_NOT_CURRENTLY_PUBLISHED';
         END IF;
     END IF;
