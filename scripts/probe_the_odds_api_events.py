@@ -9,7 +9,7 @@ import hashlib
 import json
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -81,7 +81,8 @@ def main() -> int:
     manifest["request_started_at"] = started.isoformat()
     manifest["request_count"] = 1
     url = f"{BASE_URL}/{sport_key}/events?" + urlencode({
-        "apiKey": key, "dateFormat": "iso", "commenceTimeFrom": started.isoformat()
+        "apiKey": key, "dateFormat": "iso", "commenceTimeFrom": started.isoformat(),
+        "commenceTimeTo": (started + timedelta(days=30)).isoformat()
     })
     request = Request(
         url, headers={"Accept": "application/json", "User-Agent": "VeltrixAIAnalyst/1.0"},
