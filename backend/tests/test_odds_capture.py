@@ -178,3 +178,12 @@ def test_history_normalizer_maps_fixed_goal_line_groups():
     assert len(rows) == 2
     assert {row.market for row in rows} == {"TOTALS"}
     assert {row.line for row in rows} == {2.5}
+
+
+def test_history_normalizer_skips_withdrawn_all_null_price_tick():
+    response = odds_history_response()
+    response["data"]["ticks"] = [{
+        "minute": None, "home": None, "draw": None, "away": None,
+        "score": {"home": None, "away": None}, "recorded_at": TICK.isoformat(),
+    }]
+    assert normalize_5dollar_odds_history(response, **base_args()) == ()
