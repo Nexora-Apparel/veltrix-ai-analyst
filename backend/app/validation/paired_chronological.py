@@ -30,6 +30,8 @@ def _probability_vector(row: dict[str, Any], model: str) -> tuple[float, float, 
     elo = row["elo_1x2"]
     poisson = row["poisson_1x2"]
     weight = float(row["ensemble_elo_weight"])
+    if not 0.0 <= weight <= 1.0:
+        raise ValueError("invalid model probability: ensemble weight outside [0, 1]")
     values = tuple(weight * float(elo[i]) + (1.0 - weight) * float(poisson[i]) for i in range(3))
     total = sum(values)
     return tuple(value / total for value in values)  # type: ignore[return-value]
@@ -168,7 +170,7 @@ def _cold_start(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
         phase_rows[phase].extend(batch)
         history_count += len(batch)
     output = []
-    for name, (low, high) in COLD_START_PHASES:
+    for name, low, high in COLD_START_PHASES:
         group = phase_rows.get(name, [])
         output.append({
             "phase": name,
