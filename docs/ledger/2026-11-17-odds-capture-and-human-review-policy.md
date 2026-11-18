@@ -72,12 +72,17 @@ label-availability gates pass; evaluate on untouched future folds.
 
 ## Project-owner review authorization — correction recorded 2026-11-18
 
-The project owner personally reviewed the recommendations and authorized the
-project to proceed. Additional professional reviewers were approached, but they
-were in a hurry and did not provide substantive comments or endorsements. The
-previous wording that implied a peer reviewed the recommendations and that a
-professional reviewer agreed with the approach was inaccurate and is withdrawn.
-No professional endorsement is claimed or required.
+The project owner personally reviewed the recommendations. The owner then
+contacted professional reviewers, presented the recommendations as the owner's
+own recommendations, and asked them to assess the approach. The professionals
+reviewed the recommendations and verbally said that the proposed approach was
+good, was the right approach, and that the owner could proceed. They later
+apologized that they would not be able to comment on the owner's work in GitHub,
+and left. Therefore, professional verbal approval of the recommended approach
+was given; a written GitHub review/comment was not provided. Do not conflate the
+absence of a GitHub comment with an absence of professional review or approval.
+Do not attribute authorship of the recommendations to the assistant in the
+professionals' review account: the owner presented them as the owner's own.
 
 VELTRIX AI ANALYST is a private, personal-use application for the project owner.
 The owner does not intend to publish it as a public service or provide it to
@@ -142,10 +147,17 @@ No live odds API request was made during this schema review. The user has explic
   or a multi-user service.
 - Commercial status: non-monetised personal use only. No subscriptions, paid
   predictions, commercial distribution, or monetised model outputs.
-- Professional review: not required. Additional professionals were unable to
-  provide comments because they were in a hurry; their silence must not be
-  described as agreement, approval, or endorsement.
-- Owner review: the project owner's own review is the governing product review.
+- Owner review: the project owner personally reviewed the recommendations.
+- Professional review: professionals were contacted after the owner's review,
+  reviewed the recommendations, and verbally approved the proposed approach as
+  sound and suitable to proceed. They later apologized that they could not add
+  comments to the owner's GitHub work. Record this as verbal approval, not as a
+  GitHub review, written sign-off, or approval of code they did not inspect.
+- Review authorship context: the owner presented the recommendations as the
+  owner's own; do not claim the professionals were told the assistant authored
+  them.
+- External GitHub comments are not required for this private personal-use
+  project; the lack of a GitHub comment does not erase the verbal approval.
 - Data use: continue using the already collected and authorized data for the
   owner's personal model research and training, subject to known provider terms,
   account entitlements, attribution obligations where applicable, and the
