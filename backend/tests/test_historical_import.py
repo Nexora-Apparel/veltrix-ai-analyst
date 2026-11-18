@@ -698,11 +698,13 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
             SELECT
                 f.kickoff_at,
                 o.retrieved_at,
+                o.system_observed_at,
                 o.source_published_at,
                 o.available_at,
                 o.availability_basis,
                 o.point_in_time_certifiable,
                 s.retrieved_at,
+                s.system_observed_at,
                 s.available_at,
                 s.availability_basis,
                 s.point_in_time_certifiable,
@@ -728,7 +730,7 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
             SELECT o.entity_type, COUNT(*),
                    BOOL_AND(s.point_in_time_certifiable IS TRUE),
                    BOOL_AND(s.availability_basis = 'SYSTEM_OBSERVED_AT'),
-                   BOOL_AND(s.available_at = s.retrieved_at)
+                   BOOL_AND(s.available_at = s.system_observed_at)
             FROM veltrix_ai_analyst.source_observation_sightings s
             JOIN veltrix_ai_analyst.source_observations o
               ON o.id = s.source_observation_id
@@ -742,14 +744,18 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
     assert run_status == "COMPLETED"
     assert row is not None
     assert row[0] > row[1]  # fixture kickoff is still in the future at capture
-    assert row[2] is None
-    assert row[3] == row[1]
-    assert row[4] == "SYSTEM_OBSERVED_AT"
-    assert row[5] is True
-    assert row[6] == row[7]
-    assert row[8] == "SYSTEM_OBSERVED_AT"
-    assert row[9] is True
-    assert row[10] is not None
+    assert row[2] is not None
+    assert row[2] == row[4]  # database-observed instant is the availability time
+    assert row[2] > row[1]  # DB capture follows the app's retrieval timestamp
+    assert row[3] is None
+    assert row[5] == "SYSTEM_OBSERVED_AT"
+    assert row[6] is True
+    assert row[7] == row[1]
+    assert row[8] == row[2]
+    assert row[9] == row[8]
+    assert row[10] == "SYSTEM_OBSERVED_AT"
+    assert row[11] is True
+    assert row[12] is not None
     assert {item[0]: item[1:] for item in related_entity_evidence} == {
         "competition": (1, True, True, True),
         "team": (2, True, True, True),
