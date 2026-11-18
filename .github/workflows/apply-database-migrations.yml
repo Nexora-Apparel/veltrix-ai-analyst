@@ -485,7 +485,7 @@ jobs:
                      WHERE system_observed_at IS NOT NULL)
                   """
               ).fetchone()
-              if historical_counts[:3] < (1243, 2884, 115):
+              if any(actual < expected for actual, expected in zip(historical_counts[:3], (1243, 2884, 115))):
                   raise SystemExit(f"HISTORICAL_EVIDENCE_COUNT_REGRESSION:{historical_counts[:3]}")
               if historical_counts[3:] != (0, 0, 0):
                   raise SystemExit(
