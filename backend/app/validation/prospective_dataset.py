@@ -187,10 +187,13 @@ def _rights_valid(
             if effective_at.utcoffset() is None:
                 return False
             if effective_at <= cutoff:
-                effective_events.append((effective_at, str(status)))
+                event_id = event.get("id", 0)
+                if isinstance(event_id, bool) or not isinstance(event_id, int):
+                    return False
+                effective_events.append((effective_at, event_id, str(status)))
     if effective_events:
-        latest = max(effective_events, key=lambda item: item[0])
-        if latest[1] != "APPROVED":
+        latest = max(effective_events, key=lambda item: (item[0], item[1]))
+        if latest[2] != "APPROVED":
             return False
     return True
 
@@ -216,6 +219,7 @@ def _lineage(row: FixtureObservation) -> dict[str, Any]:
         "rights_permitted_uses": list(row.rights_permitted_uses),
         "rights_status_events": [
             {
+                "id": event.get("id"),
                 "status": event.get("status"),
                 "effective_at": (
                     event["effective_at"].isoformat()
