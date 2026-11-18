@@ -607,3 +607,13 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 
 - [x] PR #52 merged as `30f4036b819c901ce4404b5ff65336fec992344c`: the one-event probe now parses the actual `x-requests-last` header, records `actual_quota_cost`, and flags missing/invalid or over-cap values. Zero-cost empty responses and one-credit responses are both within the allowed cap.
 - [x] PR #52 CI run [#44224762047](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44224762047) passed: 214 backend tests, Ruff, Android debug build.
+
+
+## 2026-11-18 — Prediction and value-betting architecture clarified; ledger reconciled
+
+- [x] User-confirmed governing rule recorded in [prediction/value-betting separation ledger](ledger/2026-11-18-prediction-and-value-betting-separation-reconciliation.md): bookmaker odds are primarily for the secondary value-betting subsystem, not required inputs to the core prediction engine.
+- [x] Core predictions must be generated independently from eligible football data and the statistical/ML ensemble. Bookmaker prices must not act as hidden priors, overrides or required dependencies.
+- [x] Value betting consumes independent model probabilities plus eligible bookmaker prices. Missing, stale, invalid or insufficient odds suppress only the value-bet recommendation, never an otherwise eligible prediction. No forced bets when no qualifying edge exists.
+- [x] Reconciled prior foundation, Neon/migration and bounded-import controls, Brazil Serie B retrospective data audit, model artifacts/evaluations, PRs #47–#54, Odds API/5Dollar qualification run #44228137046, quota accounting and remaining blockers in the dated ledger entry.
+- [ ] Outstanding same-fixture provider comparison: one 5Dollar Bet365 snapshot for fixture `4042864659`; no second Odds API request is needed for this comparison.
+- Restrictions unchanged: no production prediction publication, odds persistence/recurring collection, model promotion, value-bet activation or Android/backend prediction integration until their separate gates pass.
