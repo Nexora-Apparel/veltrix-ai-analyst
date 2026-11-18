@@ -100,7 +100,10 @@ def normalize_5dollar_fixture_odds(
     for bookmaker_row in bookmakers:
         if not isinstance(bookmaker_row, Mapping):
             raise OddsPayloadError("malformed bookmaker row")
-        bookmaker = str(bookmaker_row.get("slug") or bookmaker_row.get("name") or "").strip()
+        bookmaker_slug = str(bookmaker_row.get("slug") or "").strip().casefold()
+        if bookmaker_slug != "bet365":
+            continue
+        bookmaker = str(bookmaker_row.get("name") or bookmaker_slug).strip()
         odds = bookmaker_row.get("odds")
         if not isinstance(odds, Mapping):
             raise OddsPayloadError("bookmaker row has no odds object")
@@ -240,7 +243,7 @@ def normalize_5dollar_odds(
             rights_approval_id=rights_approval_id,
             rights_allow_model_training=rights_allow_model_training,
         )
-    if "bookmaker" in data and "ticks" in data:
+    if "bookmaker" in data and ("ticks" in data or "lines" in data):
         return normalize_5dollar_odds_history(
             response, provider_fixture_id=provider_fixture_id, kickoff_at=kickoff_at,
             retrieved_at=retrieved_at, prediction_cutoff_at=prediction_cutoff_at,
