@@ -586,3 +586,7 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [ ] Inspect the three catalogue/match/market manifests. Confirm actual quota cost from response headers and whether the Odds API adds meaningful bookmaker/market/timestamp coverage beyond 5Dollar Bet365.
 - [ ] After the single market probe, audit rights, source timestamp quality and PIT availability before any persistence or model feature work.
 - Restrictions unchanged: no database writes, recurring collection, historical odds calls, feature activation, CLV claims, value betting, production prediction endpoint, public forecast publication, model promotion or Android/backend prediction integration. Existing v1/v2 models remain retrospective and non-PIT-certified.
+
+
+- [x] PR #52 merged as `30f4036b819c901ce4404b5ff65336fec992344c`: the one-event probe now parses the actual `x-requests-last` header, records `actual_quota_cost`, and flags missing/invalid or over-cap values. Zero-cost empty responses and one-credit responses are both within the allowed cap.
+- [x] PR #52 CI run [#44224762047](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44224762047) passed: 214 backend tests, Ruff, Android debug build.
