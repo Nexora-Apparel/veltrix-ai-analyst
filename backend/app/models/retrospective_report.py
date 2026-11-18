@@ -14,7 +14,7 @@ def _finite_number(value: Any) -> bool:
 
 def _aware_timestamp(value: Any) -> datetime:
     if not isinstance(value, str):
-        raise ValueError("PREDICTION_TIMESTAMP_INVALID")
+        raise TypeError("PREDICTION_TIMESTAMP_INVALID")
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
@@ -27,7 +27,7 @@ def _aware_timestamp(value: Any) -> datetime:
 def validate_retrospective_report(report: dict[str, Any]) -> None:
     """Validate report integrity, source accounting, chronology and scorecard shape."""
     if not isinstance(report, dict):
-        raise ValueError("REPORT_ROOT_MUST_BE_OBJECT")
+        raise TypeError("REPORT_ROOT_MUST_BE_OBJECT")
     supplied_hash = report.get("report_sha256")
     if not isinstance(supplied_hash, str) or len(supplied_hash) != 64:
         raise ValueError("REPORT_SHA256_MISSING_OR_INVALID")
@@ -51,7 +51,7 @@ def validate_retrospective_report(report: dict[str, Any]) -> None:
 
     source = report.get("source")
     if not isinstance(source, dict):
-        raise ValueError("REPORT_SOURCE_ACCOUNTING_MISSING")
+        raise TypeError("REPORT_SOURCE_ACCOUNTING_MISSING")
     source_rows = source.get("source_rows")
     finished = source.get("finished_labeled_rows")
     unknown = source.get("unknown_unlabeled_rows_excluded")
@@ -74,7 +74,7 @@ def validate_retrospective_report(report: dict[str, Any]) -> None:
     previous_key: tuple[datetime, str] | None = None
     for prediction in predictions:
         if not isinstance(prediction, dict):
-            raise ValueError("REPORT_PREDICTION_INVALID")
+            raise TypeError("REPORT_PREDICTION_INVALID")
         fixture_id = prediction.get("fixture_id")
         if not isinstance(fixture_id, str) or not fixture_id or fixture_id in fixture_ids:
             raise ValueError("REPORT_DUPLICATE_OR_INVALID_FIXTURE_ID")
@@ -110,9 +110,9 @@ def validate_retrospective_report(report: dict[str, Any]) -> None:
     for model_name in ("elo", "poisson", "ensemble"):
         scorecard = report.get(model_name)
         if not isinstance(scorecard, dict):
-            raise ValueError("REPORT_SCORECARD_MISSING:" + model_name)
+            raise TypeError("REPORT_SCORECARD_MISSING:" + model_name)
         if scorecard.get("matches") != float(fixture_count):
-            raise ValueError("REPORT_SCORECARD_MATCH_COUNT_MISMATCH:" + model_name)
+            raise TypeError("REPORT_SCORECARD_MATCH_COUNT_MISMATCH:" + model_name)
         brier = scorecard.get("brier")
         log_loss = scorecard.get("log_loss")
         if not _finite_number(brier) or not 0.0 <= brier <= 2.0:
