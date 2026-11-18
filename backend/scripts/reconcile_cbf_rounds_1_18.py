@@ -17,7 +17,7 @@ import unicodedata
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
-import fitz
+import pymupdf as fitz
 import psycopg
 
 PROVIDER = "5DollarFootballAPI"
@@ -67,6 +67,86 @@ CBF_LABEL_TO_PROVIDER_TEAM_ID = {
     "fortaleza": "744720326",
     "sao bernardo fc": "844813267",
 }
+
+
+# Rounds 1–5 PDF is image-only. These 50 rows were transcribed from its
+# official two-page CBF table (07/03/2026); no kickoff values were inferred.
+ROUNDS_1_5_ROWS = (
+    ("005", 1, "21/03", "16:00", "Ceará", "São Bernardo FC"),
+    ("010", 1, "21/03", "17:00", "Vila Nova", "CRB"),
+    ("004", 1, "21/03", "18:15", "Operário", "Atlético"),
+    ("001", 1, "21/03", "19:15", "Botafogo", "Fortaleza"),
+    ("009", 1, "21/03", "20:30", "Cuiabá", "Sport"),
+    ("007", 1, "22/03", "16:00", "Avaí", "Juventude"),
+    ("008", 1, "22/03", "16:00", "Náutico", "Criciúma"),
+    ("003", 1, "22/03", "18:00", "Athletic", "Ponte Preta"),
+    ("006", 1, "22/03", "18:00", "Goiás", "América"),
+    ("002", 1, "22/03", "20:00", "Novorizontino", "Londrina"),
+    ("015", 2, "31/03", "19:00", "Fortaleza", "Cuiabá"),
+    ("020", 2, "31/03", "19:00", "Juventude", "Novorizontino"),
+    ("014", 2, "01/04", "19:00", "Londrina", "Goiás"),
+    ("016", 2, "01/04", "19:00", "Atlético", "Náutico"),
+    ("018", 2, "01/04", "19:00", "Sport", "Vila Nova"),
+    ("011", 2, "01/04", "21:00", "Ponte Preta", "Ceará"),
+    ("017", 2, "01/04", "21:30", "Criciúma", "Athletic"),
+    ("019", 2, "01/04", "21:30", "CRB", "Avaí"),
+    ("012", 2, "02/04", "17:30", "São Bernardo FC", "Operário"),
+    ("013", 2, "02/04", "21:00", "América", "Botafogo"),
+    ("025", 3, "04/04", "16:00", "Fortaleza", "Juventude"),
+    ("028", 3, "04/04", "18:00", "Náutico", "Ponte Preta"),
+    ("029", 3, "04/04", "18:00", "Cuiabá", "Ceará"),
+    ("030", 3, "04/04", "20:00", "Vila Nova", "Atlético"),
+    ("024", 3, "04/04", "20:30", "Londrina", "Sport"),
+    ("027", 3, "05/04", "16:00", "Avaí", "Operário"),
+    ("022", 3, "05/04", "18:00", "Novorizontino", "CRB"),
+    ("023", 3, "05/04", "20:00", "Athletic", "América"),
+    ("021", 3, "05/04", "20:30", "Botafogo", "São Bernardo FC"),
+    ("026", 3, "06/04", "21:00", "Goiás", "Criciúma"),
+    ("037", 4, "10/04", "20:30", "Criciúma", "Botafogo"),
+    ("038", 4, "11/04", "16:00", "Sport", "Avaí"),
+    ("031", 4, "11/04", "18:00", "Ponte Preta", "Vila Nova"),
+    ("035", 4, "11/04", "20:30", "Ceará", "Náutico"),
+    ("032", 4, "12/04", "16:00", "São Bernardo FC", "Fortaleza"),
+    ("040", 4, "12/04", "16:00", "Juventude", "Goiás"),
+    ("033", 4, "12/04", "18:00", "América", "Novorizontino"),
+    ("034", 4, "12/04", "18:00", "Operário", "Cuiabá"),
+    ("039", 4, "12/04", "20:00", "CRB", "Athletic"),
+    ("036", 4, "12/04", "20:30", "Atlético", "Londrina"),
+    ("043", 5, "18/04", "16:00", "América", "Sport"),
+    ("048", 5, "18/04", "18:00", "Náutico", "São Bernardo FC"),
+    ("047", 5, "18/04", "18:30", "Avaí", "Ponte Preta"),
+    ("050", 5, "18/04", "18:30", "Vila Nova", "Operário"),
+    ("049", 5, "18/04", "20:45", "CRB", "Juventude"),
+    ("044", 5, "19/04", "16:00", "Londrina", "Ceará"),
+    ("046", 5, "19/04", "18:00", "Goiás", "Cuiabá"),
+    ("042", 5, "19/04", "20:00", "Novorizontino", "Athletic"),
+    ("045", 5, "19/04", "20:00", "Fortaleza", "Criciúma"),
+    ("041", 5, "20/04", "19:00", "Botafogo", "Atlético"),
+)
+
+
+def rounds_1_5_from_transcription(source: dict[str, object]) -> list[dict[str, object]]:
+    fixtures = []
+    for reference, round_number, day_month, time, home, away in ROUNDS_1_5_ROWS:
+        home_id = CBF_LABEL_TO_PROVIDER_TEAM_ID.get(norm(home))
+        away_id = CBF_LABEL_TO_PROVIDER_TEAM_ID.get(norm(away))
+        local_dt = datetime.strptime(
+            f"{day_month}/2026 {time}", "%d/%m/%Y %H:%M"
+        ).replace(tzinfo=LOCAL_TZ)
+        fixtures.append({
+            "cbf_reference": reference.lstrip("0") or "0",
+            "round": round_number,
+            "home_label": home,
+            "away_label": away,
+            "home_team_provider_id": home_id,
+            "away_team_provider_id": away_id,
+            "official_local_kickoff": local_dt.isoformat(),
+            "official_utc_kickoff": local_dt.astimezone(ZoneInfo("UTC")).isoformat(),
+            "schedule_published": source["published"],
+            "schedule_pdf_url": source["url"],
+        })
+    return fixtures
+
 FIXTURE_QUERY = """
 SELECT provider_fixture_id, kickoff_at, home_team_provider_id,
        away_team_provider_id, home_team_name, away_team_name,
@@ -169,13 +249,19 @@ def main() -> int:
     pdf_audit = []
     for source in PDFS:
         content = download_pdf(str(source["url"]))
-        parsed = parse_pdf(content, source)
+        if source["rounds"] == [1, 2, 3, 4, 5]:
+            parsed = rounds_1_5_from_transcription(source)
+            extraction_method = "MANUAL_TRANSCRIPTION_FROM_IMAGE_ONLY_OFFICIAL_CBF_PDF"
+        else:
+            parsed = parse_pdf(content, source)
+            extraction_method = "PymuPDF_TEXT_TABLE_EXTRACTION"
         schedule.extend(parsed)
         pdf_audit.append({
             "url": source["url"],
             "published": source["published"],
             "sha256": hashlib.sha256(content).hexdigest(),
             "parsed_fixture_rows": len(parsed),
+            "extraction_method": extraction_method,
         })
 
     with psycopg.connect(database_url) as connection:
