@@ -207,7 +207,7 @@ def build_prospective_dataset(
     for fixture in fixtures:
         for observation in grouped.get(fixture.fixture_id, []):
             result = _finished_result(observation)
-            if result is not None:
+            if result is not None and observation.observed_at > fixture.kickoff_at:
                 finished_matches_by_competition[
                     (fixture.provider, fixture.source_id, fixture.competition_id)
                 ].append((fixture, observation, result[0], result[1]))
