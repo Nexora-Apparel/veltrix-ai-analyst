@@ -2,13 +2,13 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.providers.odds_contracts import OddsCaptureEnvelope
 from app.providers.odds_capture import (
     OddsPayloadError,
     normalize_5dollar_fixture_odds,
     normalize_5dollar_odds,
     normalize_5dollar_odds_history,
 )
+from app.providers.odds_contracts import OddsCaptureEnvelope
 
 CUTOFF = datetime(2026, 11, 18, 12, tzinfo=UTC)
 KICKOFF = CUTOFF + timedelta(hours=2)
