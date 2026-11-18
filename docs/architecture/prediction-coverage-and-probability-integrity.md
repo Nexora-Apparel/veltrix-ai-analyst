@@ -15,6 +15,36 @@ VELTRIX AI ANALYST is a private, personal-use football analysis application. It 
 7. Persist model version, calibration version, feature snapshot/version, input cutoff, and prediction provenance for reproducibility.
 8. Do not tune thresholds, calibrators, or model weights on the final evaluation period.
 
+## Match evidence labels — app presentation
+
+The match list must use only these three short evidence labels:
+
+- **STRONG** — broad, sufficiently complete and reliable fixture-specific evidence is available.
+- **MEDIUM** — useful evidence exists, but some important history or supporting features are missing or incomplete.
+- **LOW** — very limited or no fixture-specific evidence is available; use the best validated fallback path where possible and reflect the resulting uncertainty.
+
+The label is an evidence-coverage indicator, not a prediction-confidence rating, probability, expected result, or guarantee. A STRONG match can still be difficult to predict; a LOW match can still have a valid model estimate.
+
+### Classification contract
+
+- Calculate the tier from a versioned evidence-quality assessment, not from a single team-match-count cutoff.
+- The assessment should account for source reliability and freshness, team-history coverage, competition context, and availability of relevant supporting features. Missing optional features reduce the assessment; they do not automatically reject the fixture.
+- Use measured feature coverage and evidence quality. Do not invent missing values or award coverage for unavailable data.
+- Define and version the tier boundaries using development/validation data, then freeze them for each evaluation or release. Do not tune boundaries against the final test period or to make the app display a preferred distribution of labels.
+- The same evidence snapshot and assessment version must produce the same label. Persist the tier, assessment version, and underlying coverage metadata for audit.
+- If a fixture has no usable fixture-specific evidence, label it LOW. Still retain and process it through a validated competition-level fallback when possible. If a particular market cannot be estimated defensibly, show that market as unavailable rather than inventing a probability or hiding the whole fixture.
+- The match card should display the label only. Do not put technical notes, missing-feature lists, evidence percentages, or long explanations on the main match card. Detailed evidence metadata may remain available in internal diagnostics/audit views.
+
+### Sparse-history modelling and fallback hierarchy
+
+- Use the normal statistical calculation path with the evidence actually available. For goal-based markets, this includes Dixon–Coles/Poisson score modelling where its required inputs can be estimated.
+- Estimate team attack/defence strength from available team history. When team-specific samples are sparse, use learned hierarchical shrinkage toward competition-level and, where justified, broader population estimates. The amount of shrinkage must be learned/validated from data and reflect sample size; it must not be a hardcoded probability.
+- With one or a few prior matches, use those observations as evidence while accounting for their high variance. Do not treat a small sample as conclusive, and do not discard it merely because it is below an arbitrary count.
+- If one team has history and the other has little or none, retain the available team's evidence and estimate the other through the hierarchical model. Do not force a home win, draw, away win, or generic fixed distribution.
+- If team-specific history is absent, use the best validated competition-level model path available, with appropriately wider uncertainty and a LOW evidence marker. If even that path cannot support a defensible estimate, retain the fixture but mark the affected market unavailable.
+- Model fallback means switching to a validated calculation path using available evidence, not copying a canned probability vector or inventing missing statistics.
+- Do not fabricate xG, lineups, injuries, or team history. Missing features remain missing and are represented in the feature-coverage record.
+
 ## Broad fixture coverage and evidence-tiered prioritisation
 
 ### Coverage policy
@@ -28,17 +58,7 @@ VELTRIX AI ANALYST is a private, personal-use football analysis application. It 
 - Missing optional statistics (for example xG, lineups, PPDA, or detailed shot data) must reduce feature coverage, not automatically reject the fixture.
 - A fixture can remain in the dataset and be displayed as scheduled/research-only even when one or more prediction markets are unavailable.
 
-### Sparse-history modelling and fallback hierarchy
-
-- Use the normal statistical calculation path with the evidence actually available. For goal-based markets, this includes Dixon–Coles/Poisson score modelling where its required inputs can be estimated.
-- Estimate team attack/defence strength from available team history. When team-specific samples are sparse, use learned hierarchical shrinkage toward competition-level and, where justified, broader population estimates. The amount of shrinkage must be learned/validated from data and reflect sample size; it must not be a hardcoded probability.
-- With one or a few prior matches, use those observations as evidence while accounting for their high variance. Do not treat a small sample as conclusive, and do not discard it merely because it is below an arbitrary count.
-- If one team has history and the other has little or none, retain the available team's evidence and estimate the other through the hierarchical model. Do not force a home win, draw, away win, or generic fixed distribution.
-- If team-specific history is absent, use the best validated competition-level model path available, with appropriately wider uncertainty and an explicit low-evidence marker. If even that path cannot support a defensible estimate, retain the fixture but mark the affected market unavailable.
-- Model fallback means switching to a validated calculation path using available evidence, not copying a canned probability vector or inventing missing statistics.
-- Do not fabricate xG, lineups, injuries, or team history. Missing features remain missing and are represented in the feature-coverage record.
-
-### Admission and withholding
+## Admission and withholding
 
 - Use model variants or feature-aware inference paths that can operate on the evidence actually available.
 - Reject or quarantine only for concrete integrity reasons: invalid or contradictory fixture identity, malformed essential fields, impossible chronology, unresolved duplicate identity, unsupported status, or inability to produce a valid market distribution.
@@ -61,6 +81,8 @@ VELTRIX AI ANALYST is a private, personal-use football analysis application. It 
 - Distinct input fixtures produce probability outputs from the model path, not copied constants.
 - Probability distributions are finite, bounded, and normalized.
 - Calibration is fitted only on prior out-of-sample data and is versioned.
+- Evidence tiers are deterministic for the same evidence snapshot and assessment version; tier boundaries are versioned and frozen for final evaluation.
+- Tier labels reflect measured source quality, freshness, history and feature coverage, not a fixed minimum team-match count.
 - Fixtures with zero, one, two, four, and five-plus prior team matches remain eligible for the appropriate validated model path; no arbitrary five-match cutoff.
 - Sparse-history fixtures use learned hierarchical estimates and show wider uncertainty where supported by evaluation.
 - One-sided history (one team with history, the other without) uses available evidence without a forced generic probability.
