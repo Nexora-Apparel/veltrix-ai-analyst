@@ -17,6 +17,8 @@ def captured_observation():
         "source_published_at": None,
         "available_at": retrieved,
         "system_observed_at": None,
+        "payload_sha256": "a" * 64,
+        "raw_response_sha256": "b" * 64,
         "provider_response_id": "response-1",
         "http_status": 200,
     }
@@ -43,6 +45,8 @@ def test_missing_available_at_is_allowed_when_basis_is_retrieval_only(captured_o
         ("available_at", datetime(2026, 11, 18, 14, 9, 35, tzinfo=UTC)),
         ("retrieved_at", None),
         ("provider_response_id", None),
+        ("payload_sha256", "invalid"),
+        ("raw_response_sha256", None),
         ("http_status", 503),
         ("http_status", None),
     ],
