@@ -1,7 +1,9 @@
 """Fail-closed point-in-time eligibility for pre-match feature inputs.
 
-This is a policy boundary, not a timestamp estimator. Retrieval time, kickoff
-time, event time, and post-event proxies never substitute for source publication.
+A payload is eligible only when its exact source publication time is verified,
+or its exact immutable provider response was captured by the system before the
+prediction cutoff. Kickoff, event time and post-event proxies never establish
+system availability.
 """
 from __future__ import annotations
 
