@@ -49,10 +49,20 @@ def test_rejects_future_results_and_duplicate_ids():
         fit_attack_defence([repeated, repeated])
 
 
-def test_unknown_team_is_not_silently_given_a_prior():
+def test_unseen_teams_use_neutral_effects_without_fabricated_team_strength():
+    from math import exp
+
     model = fit_attack_defence([row("x", 1, "A", "B", 1, 0)])
-    with pytest.raises(KeyError):
-        model.predict("A", "C")
+
+    one_unseen = model.predict("A", "C")
+    both_unseen = model.predict("C", "D")
+
+    assert one_unseen.home_lambda > 0
+    assert one_unseen.away_lambda > 0
+    assert both_unseen.home_lambda == pytest.approx(
+        exp(model.intercept + model.home_advantage)
+    )
+    assert both_unseen.away_lambda == pytest.approx(exp(model.intercept))
 
 
 def test_stronger_ridge_penalty_shrinks_team_effects():
