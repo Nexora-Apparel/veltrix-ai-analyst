@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-18 (The Odds API catalogue authenticated; zero-credit event discovery implementation prepared; no production release)
+**Last updated:** 2026-11-18 (The Odds API catalogue authenticated; zero-credit event discovery implementation merged; awaiting one manual event-catalogue dispatch; no production release)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -16,7 +16,8 @@
 - [x] Probe made exactly one request, zero retries, and reported `x-requests-last=0`, `x-requests-remaining=271`, `x-requests-used=229`. No odds credits were consumed; 271 remains the last verified balance.
 - [x] Added a manual, one-sport, one-request event-discovery dry-run workflow on research branch `research/the-odds-api-zero-credit-event-discovery`. It calls only `/v4/sports/{sport}/events`, which The Odds API v4 documentation identifies as quota-free; it does not request markets, write to Neon, or activate model features.
 - [x] Added strict event catalogue normalization and unit tests for future-event filtering, exact sport-key matching, duplicate IDs, required fields, timezone awareness and team identity sanity.
-- [ ] Run CI and review the event-discovery PR before merge.
+- [x] Event-discovery PR [#45](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/45) merged as `d483d4cd6286849c59f1601e1cdb534cacbdb023`; pre-merge CI run [#44221421575](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44221421575) passed 196 backend tests, Ruff and Android debug build.
+- [x] The Odds API terms review is committed at `docs/providers/THE_ODDS_API_TERMS_REVIEW.md`; internal rights approval is exact-scoped to seven sport keys, non-commercial, and prohibits raw redistribution.
 - [ ] Manually dispatch event discovery for one competition, then compare event IDs/team identities/kickoff against canonical 5Dollar fixtures. This requires one user-side workflow dispatch; it is expected to consume zero odds credits, and returned quota headers must verify this.
 - **Provider qualification remains research-only.** No market requests, DB writes, recurring collection, model feature activation, CLV, value betting, production predictions or Android integration.
 
