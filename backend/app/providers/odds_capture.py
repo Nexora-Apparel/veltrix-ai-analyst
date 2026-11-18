@@ -147,9 +147,11 @@ def normalize_5dollar_fixture_odds(
 
 def normalize_5dollar_odds_history(
     response: Mapping[str, Any], *, provider_fixture_id: str, kickoff_at: datetime,
-    retrieved_at: datetime, prediction_cutoff_at: datetime,
+    request_started_at: datetime, retrieved_at: datetime,
+    provider_response_date: datetime | None = None,
+    prediction_cutoff_at: datetime,
     source_observation_id: str, rights_approval_id: str,
-    rights_allow_model_training: bool,
+    rights_allow_value_betting: bool,
 ) -> tuple[OddsObservation, ...]:
     """Normalize pre-match ticks from /fixtures/{id}/odds/history.
 
@@ -226,7 +228,8 @@ def normalize_5dollar_odds_history(
             output.append(_observation(
                 provider_fixture_id=provider_fixture_id, bookmaker=bookmaker,
                 market=normalized_market, selection=selection, line=line,
-                price=price, tick_at=tick_at, retrieved_at=retrieved_at,
+                price=price, tick_at=tick_at, request_started_at=request_started_at,
+                retrieved_at=retrieved_at, provider_response_date=provider_response_date,
                 kickoff_at=kickoff_at, prediction_cutoff_at=prediction_cutoff_at,
                 source_observation_id=source_observation_id, digest=digest,
                 rights_approval_id=rights_approval_id,
@@ -237,19 +240,23 @@ def normalize_5dollar_odds_history(
 
 def normalize_5dollar_odds(
     response: Mapping[str, Any], *, provider_fixture_id: str, kickoff_at: datetime,
-    retrieved_at: datetime, prediction_cutoff_at: datetime,
+    request_started_at: datetime, retrieved_at: datetime,
+    provider_response_date: datetime | None = None,
+    prediction_cutoff_at: datetime,
     source_observation_id: str, rights_approval_id: str,
-    rights_allow_model_training: bool,
+    rights_allow_value_betting: bool,
 ) -> tuple[OddsObservation, ...]:
     """Dispatch documented fixture-odds and odds-history response envelopes."""
     data = _response_data(response)
     if "bookmakers" in data:
         return normalize_5dollar_fixture_odds(
             response, provider_fixture_id=provider_fixture_id, kickoff_at=kickoff_at,
-            retrieved_at=retrieved_at, prediction_cutoff_at=prediction_cutoff_at,
+            request_started_at=request_started_at, retrieved_at=retrieved_at,
+            provider_response_date=provider_response_date,
+            prediction_cutoff_at=prediction_cutoff_at,
             source_observation_id=source_observation_id,
             rights_approval_id=rights_approval_id,
-            rights_allow_model_training=rights_allow_model_training,
+            rights_allow_value_betting=rights_allow_value_betting,
         )
     if "bookmaker" in data and ("ticks" in data or "lines" in data):
         return normalize_5dollar_odds_history(
