@@ -93,9 +93,17 @@ Future ingestion must capture immutable source payloads and exact observation/av
 
 The API import windows reconcile internally, but the provider catalogue does not independently prove complete season coverage or all competition metadata. The 1 season-coverage review case and 1 competition-identity case remain open for human evidence review.
 
-### 5. Commercial source rights
+### 5. Commercial source rights — not applicable to current deployment
 
-The current 5DollarFootballAPI and The Odds API approvals are noncommercial. Internal research and the specifically approved uses remain bounded by each provider's scope and permitted-use list. Commercial distribution, paid predictions or monetized model outputs must not be enabled until separate written commercial rights are recorded and approved. See `docs/providers/5DOLLAR_TERMS_REVIEW.md` and `docs/providers/THE_ODDS_API_TERMS_REVIEW.md`.
+VELTRIX AI ANALYST is a private, personal-use application for the project owner
+only. The owner has explicitly chosen not to monetise it or distribute paid
+predictions. The existing non-commercial/personal-use permissions are therefore
+sufficient for the intended project use, within each provider's specific scope,
+account entitlements, attribution requirements, and other terms. Commercial
+rights are not a current release blocker because commercial use is not planned.
+If the intended use changes in the future, commercial permissions must be
+reassessed before that change. See `docs/providers/5DOLLAR_TERMS_REVIEW.md`
+and `docs/providers/THE_ODDS_API_TERMS_REVIEW.md`.
 
 ## Controls retained
 
