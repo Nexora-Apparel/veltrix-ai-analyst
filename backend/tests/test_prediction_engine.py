@@ -153,3 +153,24 @@ def test_inference_expands_score_grid_for_high_goal_rates() -> None:
         result.uncertainty["scoreline_probability_mass_before_renormalization"]
         > 0.99999
     )
+
+
+def test_generation_time_must_remain_inside_pre_match_window() -> None:
+    home_mapping, away_mapping = make_mappings()
+    with pytest.raises(ValueError, match="GENERATION_TIME_OUTSIDE_PREMATCH_WINDOW"):
+        predict_fixture(
+            make_artifact(),
+            make_request(),
+            home_team_mapping=home_mapping,
+            away_team_mapping=away_mapping,
+            generated_at=CUTOFF - timedelta(seconds=1),
+        )
+
+
+def test_invalid_optimizer_configuration_in_artifact_is_rejected() -> None:
+    artifact = make_artifact()
+    primary = artifact["primary_model"]
+    assert isinstance(primary, dict)
+    primary["half_life_days"] = 0
+    with pytest.raises(ModelArtifactNotPromoted, match="MODEL_TEAM_PARAMETERS_INCOMPLETE"):
+        predict(artifact)
