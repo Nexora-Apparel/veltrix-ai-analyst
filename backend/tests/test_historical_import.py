@@ -239,6 +239,7 @@ def test_competition_import_persists_under_selected_provider_scope(
 ) -> None:
     monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
     monkeypatch.setattr(historical_import, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    monkeypatch.setattr(historical_validation, "EXPECTED_DATABASE_NAME", "veltrix_test")
     competition_id = "3118717965"
     start_at = datetime(2026, 11, 1, tzinfo=UTC)
     end_at = datetime(2026, 11, 8, tzinfo=UTC)
@@ -252,7 +253,7 @@ def test_competition_import_persists_under_selected_provider_scope(
                 "success": 1,
                 "data": [
                     _fixture(
-                        880001,
+                        881001,
                         "2026-11-02T12:00:00+00:00",
                         competition_id=int(competition_id),
                         competition_name="Brazil Serie A",
@@ -295,11 +296,11 @@ def test_competition_import_persists_under_selected_provider_scope(
             """
             SELECT provider_competition_id, provider_fixture_id
             FROM veltrix_ai_analyst.provider_fixtures
-            WHERE provider_fixture_id = '880001'
+            WHERE provider_fixture_id = '881001'
             """
         ).fetchone()
     assert run == ("COMPLETED", competition_id, 1)
-    assert fixture == (competition_id, "880001")
+    assert fixture == (competition_id, "881001")
     with psycopg.connect(database_url) as connection:
         report = validate_competition_import(connection, run_id, competition_id)
     assert report["passed"] is True
