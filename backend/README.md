@@ -15,11 +15,12 @@ uvicorn app.main:app --reload
 ```
 
 - Liveness: `GET /health`
+- Readiness: `GET /ready` (requires the production database and V1 migrations 012-014)
 - API docs: `GET /docs`
 - Tests: `pytest`
 - Lint: `ruff check app tests`
 
-The health endpoint reports process liveness only. Database/provider readiness checks will be added when those dependencies are implemented.
+The health endpoint reports process liveness only. The readiness endpoint separately verifies the configured database identity, required migration ledger entries, and public prediction storage objects. It returns only coarse readiness states and never exposes connection strings or raw database errors.
 
 ## Provider qualification
 
@@ -73,10 +74,7 @@ export ALLOW_REMOTE_MIGRATIONS="true"
 python scripts/apply_migrations.py
 ```
 
-The runner verifies each SQL file's SHA-256, refuses database-name mismatches, blocks legacy database names, and refuses remote hosts unless `ALLOW_REMOTE_MIGRATIONS=true` is explicitly set.
-It explicitly blocks the legacy `veltrix-football` database names. CI validates
-the migration against an ephemeral PostgreSQL 16 service. No production database
-has been provisioned or connected by this commit.
+The runner verifies each SQL file's SHA-256, refuses database-name mismatches, blocks legacy database names, and refuses remote hosts unless `ALLOW_REMOTE_MIGRATIONS=true` is explicitly set. It explicitly blocks the legacy `veltrix-football` database names. CI validates the migration against an ephemeral PostgreSQL 16 service.
 
 ## Runtime ingestion store
 
