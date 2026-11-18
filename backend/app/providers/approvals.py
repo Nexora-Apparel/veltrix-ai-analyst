@@ -173,7 +173,7 @@ THE_ODDS_API_SOCCER_APPROVAL = SourceApproval(
     terms_url="https://the-odds-api.com/terms-and-conditions.html",
     terms_version="2026-08-31",
     evidence_uri="docs/providers/THE_ODDS_API_TERMS_REVIEW.md",
-    evidence_sha256="31488183c74343d9e52a17d58d2927e9bb9f5553c425aea094b80c63257b6181",
+    evidence_sha256="b1a4862960bf478118091706f13b09b6b97606b77819ef21f858592c424d8742",
     rights_basis="TERMS",
     reviewed_at_utc=datetime(2026, 11, 18, tzinfo=UTC),
     reviewer_id="project-owner",
