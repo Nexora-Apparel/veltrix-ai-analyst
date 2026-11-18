@@ -35,7 +35,7 @@ def _aware_tick(value: Any) -> datetime:
     if not isinstance(value, str) or not value:
         raise OddsPayloadError("odds tick timestamp is missing")
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         raise OddsPayloadError("invalid odds tick timestamp") from None
     if parsed.tzinfo is None or parsed.utcoffset() is None:
