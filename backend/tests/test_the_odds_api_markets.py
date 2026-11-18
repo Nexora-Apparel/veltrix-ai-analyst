@@ -8,6 +8,7 @@ from app.providers.the_odds_api_markets import (
 )
 
 
+# Fixed retrieval instant for deterministic parser tests.
 RETRIEVED = datetime(2026, 11, 18, 2, 30, tzinfo=UTC)
 EVENT = {
     "event_id": "event-1",
