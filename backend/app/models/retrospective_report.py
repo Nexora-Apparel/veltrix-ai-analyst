@@ -16,7 +16,7 @@ def _aware_timestamp(value: Any) -> datetime:
     if not isinstance(value, str):
         raise TypeError("PREDICTION_TIMESTAMP_INVALID")
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         raise ValueError("PREDICTION_TIMESTAMP_INVALID") from None
     if parsed.tzinfo is None or parsed.utcoffset() is None:
