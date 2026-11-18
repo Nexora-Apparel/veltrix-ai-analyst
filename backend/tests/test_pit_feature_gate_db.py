@@ -191,6 +191,31 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 """,
                 (observation_id,),
             ).fetchone()[0]
+            payload_hash = connection.execute(
+                """
+                SELECT payload_sha256
+                FROM veltrix_ai_analyst.source_observations
+                WHERE id = %s
+                """,
+                (observation_id,),
+            ).fetchone()[0]
+            mismatched_sighting_id = connection.execute(
+                """
+                INSERT INTO veltrix_ai_analyst.source_observation_sightings (
+                    source_observation_id, provider_response_id, retrieved_at,
+                    available_at, availability_basis, point_in_time_certifiable,
+                    payload_sha256
+                ) VALUES (%s, %s, %s, %s, 'SYSTEM_OBSERVED_AT', TRUE, %s)
+                RETURNING id
+                """,
+                (
+                    observation_id,
+                    response_id,
+                    now + timedelta(seconds=1),
+                    now + timedelta(seconds=1),
+                    payload_hash,
+                ),
+            ).fetchone()[0]
 
             connection.execute(
                 """
@@ -207,6 +232,29 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                     now + timedelta(minutes=5),
                 ),
             )
+
+            with (
+                pytest.raises(
+                    psycopg.errors.RaiseException,
+                    match="PRE_MATCH_RESPONSE_PROVENANCE_INVALID",
+                ),
+                connection.transaction(),
+            ):
+                connection.execute(
+                    """
+                    INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
+                        source_observation_id, source_sighting_id, feature_key,
+                        feature_value, prediction_cutoff_at
+                    ) VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (
+                        observation_id,
+                        mismatched_sighting_id,
+                        "system_observed.response_time_mismatch",
+                        Jsonb({"value": 3}),
+                        now + timedelta(minutes=5),
+                    ),
+                )
 
             with (
                 pytest.raises(
