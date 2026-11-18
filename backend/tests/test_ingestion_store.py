@@ -227,7 +227,6 @@ def test_store_records_provider_response_and_normalized_observation(connection) 
         point_in_time_certifiable=True,
         payload=observed_payload,
         provider_response_id=response_id,
-        target_kickoff_at=now + timedelta(hours=1),
     )
     observed = connection.execute(
         """
