@@ -108,6 +108,7 @@ class FixturePagePersister:
             provider_entity_id=team_id,
             schema_version="5dollar-team-v1",
             retrieved_at=now,
+            available_at=now,
             payload=payload,
             provider_response_id=response_id,
         )
@@ -146,6 +147,7 @@ class FixturePagePersister:
             provider_entity_id=COMPETITION_ID,
             schema_version="5dollar-competition-v1",
             retrieved_at=now,
+            available_at=now,
             payload=competition.model_dump(mode="json"),
             provider_response_id=response_id,
         )
@@ -176,6 +178,7 @@ class FixturePagePersister:
             schema_version=SCHEMA_VERSION,
             retrieved_at=now,
             source_event_time=fixture.kickoff_at,
+            available_at=now,
             availability_basis="RETRIEVED_AT_ONLY",
             point_in_time_certifiable=False,
             payload=fixture.model_dump(mode="json"),
