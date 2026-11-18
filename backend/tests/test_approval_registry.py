@@ -113,7 +113,7 @@ def test_5dollar_account_approval_is_limited_to_account_metadata() -> None:
 def test_the_odds_api_approval_is_exact_scope_and_noncommercial() -> None:
     approval = THE_ODDS_API_SOCCER_APPROVAL
 
-    assert len(approval.scope_values) == 8
+    assert len(approval.scope_values) == 7
     assert approval.scope_type == "sport_key"
     assert approval.data_types == frozenset(
         {"sports_catalogue", "event_catalogue", "bookmaker_odds"}
