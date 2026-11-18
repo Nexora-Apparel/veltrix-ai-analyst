@@ -16,7 +16,7 @@ from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from app.providers.fixture_catalogue import (  # noqa: E402
+from app.providers.fixture_catalogue import (
     FixtureCatalogueError,
     normalize_scheduled_fixture_catalogue,
 )
