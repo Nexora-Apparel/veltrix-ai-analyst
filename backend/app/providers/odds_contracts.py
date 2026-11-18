@@ -32,8 +32,8 @@ class OddsObservation(StrictModel):
 
     @field_validator("source_tick_at", "request_started_at", "retrieved_at", "provider_response_date", "kickoff_at", "prediction_cutoff_at")
     @classmethod
-    def require_aware(cls, value: datetime) -> datetime:
-        if value.tzinfo is None or value.utcoffset() is None:
+    def require_aware(cls, value: datetime | None) -> datetime | None:
+        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
             raise ValueError("all odds timestamps must be timezone-aware")
         return value
 
