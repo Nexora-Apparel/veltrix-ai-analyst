@@ -84,7 +84,30 @@ def build_report(
                 OR s.source_published_at IS NOT NULL
                 OR s.provider_response_id IS NULL
                 OR s.payload_sha256 IS DISTINCT FROM o.payload_sha256
-                OR s.payload_sha256 !~ '^[0-9a-f]{64}            """
+                OR length(s.payload_sha256) <> 64
+                OR o.payload->>'competition_id' IS NULL
+                OR o.payload->>'home_team_id' IS NULL
+                OR o.payload->>'away_team_id' IS NULL
+                OR o.payload->>'kickoff_at' IS NULL
+                OR o.payload #>> '{provenance,provider_record_id}'
+                    IS DISTINCT FROM o.provider_entity_id
+                OR r.id IS NULL
+                OR r.provider IS DISTINCT FROM o.provider
+                OR r.source_id IS DISTINCT FROM o.source_id
+                OR r.http_status NOT BETWEEN 200 AND 299
+                OR r.fetched_at IS DISTINCT FROM s.retrieved_at
+                OR r.system_observed_at IS DISTINCT FROM s.system_observed_at
+                OR r.response_sha256 IS NULL
+                OR length(r.response_sha256) <> 64
+              )
+            """
+        ).fetchone()[0]
+        if invalid_system_observed:
+            raise RuntimeError(
+                f"PROSPECTIVE_SOURCE_PROVENANCE_AUDIT_FAILED:{invalid_system_observed}"
+            )
+        observation_rows = connection.execute(
+            """
             SELECT o.id, s.id, s.provider_response_id,
                    o.provider, o.source_id, o.provider_entity_id,
                    o.payload->>'competition_id' AS competition_id,
@@ -99,14 +122,19 @@ def build_report(
              AND r.provider = o.provider
              AND r.source_id = o.source_id
              AND r.http_status BETWEEN 200 AND 299
+             AND r.fetched_at = s.retrieved_at
+             AND r.system_observed_at = s.system_observed_at
             WHERE o.provider = '5DollarFootballAPI'
               AND o.source_id = '5dollarfootballapi'
               AND o.data_type = 'fixtures_and_results'
               AND o.entity_type = 'fixture'
               AND s.provider_response_id IS NOT NULL
               AND s.system_observed_at IS NOT NULL
+              AND s.available_at = s.system_observed_at
+              AND s.system_observed_at >= s.retrieved_at
               AND s.availability_basis = 'SYSTEM_OBSERVED_AT'
               AND s.point_in_time_certifiable IS TRUE
+              AND s.payload_sha256 = o.payload_sha256
               AND o.payload->>'competition_id' IS NOT NULL
             ORDER BY s.system_observed_at, o.id, s.id
             """
