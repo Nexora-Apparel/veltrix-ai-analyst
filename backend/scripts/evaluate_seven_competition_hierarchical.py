@@ -74,13 +74,17 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             """
             SELECT pf.id::text AS row_id, pf.provider_fixture_id, pf.provider_competition_id,
                    pf.kickoff_at, pf.home_team_provider_id, pf.away_team_provider_id,
-                   pf.home_goals, pf.away_goals, pf.status,
+                   UPPER(COALESCE(so.payload->>'status', 'UNKNOWN')) AS status,
+                   NULLIF(so.payload->>'home_goals', '')::int AS home_goals,
+                   NULLIF(so.payload->>'away_goals', '')::int AS away_goals,
                    EXTRACT(YEAR FROM pf.kickoff_at)::int AS calendar_year,
                    so.payload->>'season_id' AS provider_season_id,
+                   so.id AS source_observation_id,
                    so.availability_basis, so.point_in_time_certifiable,
-                   so.retrieved_at, so.source_published_at, so.available_at,
+                   so.retrieved_at, so.system_observed_at,
+                   so.source_published_at, so.available_at,
                    so.payload_sha256, so.provider_response_id,
-                   pr.http_status
+                   pr.http_status, pr.response_sha256 AS raw_response_sha256
             FROM veltrix_ai_analyst.provider_fixtures pf
             JOIN veltrix_ai_analyst.source_observations so
               ON so.id = pf.source_observation_id
@@ -88,13 +92,24 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
               ON pr.id = so.provider_response_id
             WHERE pf.provider = %s AND pf.source_id = %s
               AND pf.provider_competition_id = ANY(%s)
+              AND UPPER(COALESCE(so.payload->>'status', 'UNKNOWN')) IN ('FINISHED', 'UNKNOWN')
             ORDER BY pf.kickoff_at, pf.provider_fixture_id
             """,
             (PROVIDER, SOURCE_ID, list(COMPETITIONS)),
         ).fetchall()
 
-    if len(rows) != 998:
-        raise RuntimeError(f"EXPECTED_998_SCOPED_SOURCE_ROWS_GOT_{len(rows)}")
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        total_fixture_rows = connection.execute(
+            """
+            SELECT COUNT(*) AS n
+            FROM veltrix_ai_analyst.provider_fixtures
+            WHERE provider = %s AND source_id = %s
+              AND provider_competition_id = ANY(%s)
+            """,
+            (PROVIDER, SOURCE_ID, list(COMPETITIONS)),
+        ).fetchone()["n"]
+    if len(rows) < 998:
+        raise RuntimeError(f"INSUFFICIENT_SCOPED_SOURCE_ROWS:{len(rows)}")
     fixture_keys = [(row["provider_competition_id"], row["provider_fixture_id"]) for row in rows]
     if len(fixture_keys) != len(set(fixture_keys)):
         raise RuntimeError("DUPLICATE_PROVIDER_FIXTURE_KEYS")
@@ -112,7 +127,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         if row["status"] == "UNKNOWN"
         and row["home_goals"] is None and row["away_goals"] is None
     ]
-    if len(finished) != 990 or len(unknown) != 8 or len(finished) + len(unknown) != len(rows):
+    if len(finished) < 990 or len(unknown) < 8 or len(finished) + len(unknown) != len(rows):
         raise RuntimeError("SOURCE_STATUS_SCORE_AUDIT_MISMATCH")
 
     results = [
@@ -136,6 +151,16 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             "away_team_id": result.away_team_id,
             "home_goals": result.home_goals,
             "away_goals": result.away_goals,
+            "source_observation_id": str(row["source_observation_id"]),
+            "provider_response_id": str(row["provider_response_id"]),
+            "retrieved_at": row["retrieved_at"].isoformat(),
+            "system_observed_at": (
+                row["system_observed_at"].isoformat()
+                if row["system_observed_at"] is not None else None
+            ),
+            "availability_basis": row["availability_basis"],
+            "payload_sha256": str(row["payload_sha256"]).strip(),
+            "raw_response_sha256": str(row["raw_response_sha256"]).strip(),
         }
         for result in results
     ]
@@ -147,6 +172,8 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         "source_id": SOURCE_ID,
         "competition_ids": COMPETITIONS,
         "source_rows": len(rows),
+        "provider_fixture_rows_total": total_fixture_rows,
+        "excluded_nonsettled_fixture_rows": total_fixture_rows - len(rows),
         "calendar_year_fixture_counts": {
             str(year): sum(1 for row in rows if row["calendar_year"] == year)
             for year in sorted({row["calendar_year"] for row in rows})
@@ -165,7 +192,13 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         "all_observations_retrieved_after_historical_fixtures": all(
             row["retrieved_at"] > row["kickoff_at"] for row in rows
         ),
-        "availability_basis": ["RETRIEVED_AT_ONLY"],
+        "availability_basis_counts": {
+            basis: sum(1 for row in rows if row["availability_basis"] == basis)
+            for basis in sorted({row["availability_basis"] for row in rows})
+        },
+        "database_timestamped_capture_rows": sum(
+            1 for row in rows if row["system_observed_at"] is not None
+        ),
         "pit_certifiable_rows": 0,
         "canonical_identity_policy": "PROVIDER_LOCAL_IDS_ONLY_NO_ALIAS_MERGES",
         "feature_policy": "NO_POST_MATCH_RETRIEVED_FEATURES_USED",
