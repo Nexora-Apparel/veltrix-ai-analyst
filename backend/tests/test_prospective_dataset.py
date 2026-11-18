@@ -137,3 +137,39 @@ def test_expanding_folds_keep_simultaneous_kickoffs_together():
         )
         if "f-3" in fold.validation_fixture_ids or "f-same-time" in fold.validation_fixture_ids:
             assert {"f-3", "f-same-time"}.issubset(fold.validation_fixture_ids)
+
+
+def test_stale_fixture_identity_observation_is_rejected():
+    target = fixture("league:target", "A", "B", 2)
+    stale = observation(
+        "league:target", 1, 1, BASE, "scheduled"
+    )
+    stale_payload = {
+        **stale.payload,
+        "competition_id": "league",
+        "home_team_id": "A",
+        "away_team_id": "B",
+        "kickoff_at": (BASE + timedelta(days=3)).isoformat(),
+        "provenance": {"provider_record_id": "target"},
+    }
+    stale = FixtureObservation(
+        observation_id=stale.observation_id,
+        sighting_id=stale.sighting_id,
+        provider_response_id=stale.provider_response_id,
+        fixture_id=stale.fixture_id,
+        provider=stale.provider,
+        source_id=stale.source_id,
+        retrieved_at=stale.retrieved_at,
+        observed_at=stale.observed_at,
+        availability_basis=stale.availability_basis,
+        point_in_time_certifiable=stale.point_in_time_certifiable,
+        payload_sha256=stale.payload_sha256,
+        raw_response_sha256=stale.raw_response_sha256,
+        payload=stale_payload,
+    )
+    try:
+        build_prospective_dataset([target], [stale])
+    except ValueError as exc:
+        assert "kickoff_at" in str(exc)
+    else:
+        raise AssertionError("stale fixture identity must fail closed")
