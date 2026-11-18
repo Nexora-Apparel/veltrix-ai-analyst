@@ -54,3 +54,14 @@ def test_migration_008_scopes_fixture_only_trigger_fields() -> None:
     assert "enforce_canonical_link_provenance()" in (
         ROOT / ".github/workflows/apply-database-migrations.yml"
     ).read_text()
+
+def test_manual_migration_workflow_verifies_system_observed_pit_migration() -> None:
+    workflow = (ROOT / ".github/workflows/apply-database-migrations.yml").read_text()
+    migration = (ROOT / "backend/migrations/010_system_observed_pit.sql").read_text()
+    assert "010_system_observed_pit.sql" in workflow
+    assert "source_observations_pit_evidence_check" in workflow
+    assert "source_observation_sightings_pit_evidence_check" in workflow
+    assert "SYSTEM_OBSERVED_AT" in migration
+    assert "available_at = retrieved_at" in migration
+    assert "sighting.retrieved_at > NEW.prediction_cutoff_at" in migration
+    assert "source_published_at IS NULL" in migration
