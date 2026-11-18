@@ -179,9 +179,9 @@ class FixturePagePersister:
             team_name=fixture.away_team_name,
             response_id=response_id,
         )
-        # A future fixture captured in this exact response can be used only
-        # from this system-observed timestamp onward. Past fixtures remain
-        # retrieval-only and are never promoted into historical pre-match data.
+        # The response timestamp records when VELTRIX first observed this
+        # source snapshot. A target-specific feature gate later decides whether
+        # that snapshot predates the target fixture's kickoff and prediction cutoff.
         system_observed_pit = True
         observation_id = self.store.record_source_observation(
             self.approval,
