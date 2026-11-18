@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-18 (cross-provider qualification implementation merged; bounded market workflow prepared; manual dispatch pending)
+**Last updated:** 2026-11-18 (bookmaker odds isolation merged; PR #55 CI passed)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -617,3 +617,16 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [x] Reconciled prior foundation, Neon/migration and bounded-import controls, Brazil Serie B retrospective data audit, model artifacts/evaluations, PRs #47–#54, Odds API/5Dollar qualification run #44228137046, quota accounting and remaining blockers in the dated ledger entry.
 - [ ] Outstanding same-fixture provider comparison: one 5Dollar Bet365 snapshot for fixture `4042864659`; no second Odds API request is needed for this comparison.
 - Restrictions unchanged: no production prediction publication, odds persistence/recurring collection, model promotion, value-bet activation or Android/backend prediction integration until their separate gates pass.
+
+
+## 2026-11-18 — Bookmaker odds isolation and value-betting capture contract corrected
+
+- [x] PR [#55](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/55) merged as `8acdb7083180c87420d6e1371b8fad5e985aa5c6`.
+- [x] Bookmaker odds observation contracts are explicitly restricted to `VALUE_BETTING_ONLY`; the incorrect model-training rights flag was removed.
+- [x] Capture contracts preserve request-start, local-retrieval, provider-response Date, source-tick, kickoff and prediction-cutoff timestamps independently.
+- [x] Core prediction feature admission now rejects `BOOKMAKER_ODDS` and unknown data domains; regression tests cover both fail-closed paths.
+- [x] CI run [#44236392864](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44236392864) passed backend tests, Ruff lint and Android debug build.
+- [x] Detailed evidence: [bookmaker odds isolation PR #55 ledger](ledger/2026-11-18-bookmaker-odds-isolation-pr55.md).
+- [ ] Provider-specific bookmaker-odds rights must be reviewed and approved for the exact data type, provider scope and value-betting purpose. The contract's rights gate does not itself grant permission.
+- [ ] Next: implement a registry-backed rights decision adapter, then a dry-run one-fixture capture envelope with idempotency tests. No database writer, recurring schedule, odds-derived model features or value-bet activation until those gates pass.
+- **Architecture invariant:** bookmaker odds remain excluded from core prediction generation. An odds failure may suppress a value-bet recommendation only; it must not suppress an otherwise eligible independent football prediction. Value betting remains locked pending separate certification.
