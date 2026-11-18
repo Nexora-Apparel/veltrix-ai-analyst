@@ -6,13 +6,13 @@ carrying a score in that source; it never infers missing scores.
 """
 from __future__ import annotations
 
-from collections import defaultdict
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import unicodedata
+from collections import defaultdict
+from pathlib import Path
 from urllib.request import Request, urlopen
 
 import psycopg
