@@ -40,6 +40,7 @@ concurrency:
 
 jobs:
   import-one-competition:
+    environment: veltrix-historical-import
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
