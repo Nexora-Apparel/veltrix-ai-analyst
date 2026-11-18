@@ -159,7 +159,7 @@ CREATE TRIGGER prediction_feature_snapshot_pit_gate
 CREATE OR REPLACE FUNCTION veltrix_ai_analyst.enforce_prediction_inference_prematch()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $
+AS $fn$
 DECLARE
     fixture_kickoff TIMESTAMPTZ;
     snapshot RECORD;
@@ -211,7 +211,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$;
+$fn$;
 
 CREATE TRIGGER prediction_inference_prematch_gate
     BEFORE INSERT ON veltrix_ai_analyst.predictions
@@ -220,7 +220,7 @@ CREATE TRIGGER prediction_inference_prematch_gate
 CREATE OR REPLACE FUNCTION veltrix_ai_analyst.prevent_market_changes_after_publication()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $
+AS $fn$
 BEGIN
     IF EXISTS (
         SELECT 1
@@ -239,7 +239,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$;
+$fn$;
 
 CREATE TRIGGER prediction_market_publication_guard
     BEFORE INSERT ON veltrix_ai_analyst.prediction_market_probabilities
