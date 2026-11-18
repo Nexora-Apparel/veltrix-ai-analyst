@@ -1,10 +1,11 @@
 """Competition-aware, partially pooled Poisson goal-rate model.
 
 Parameters are fitted by minimizing recency-weighted Poisson negative
-log-likelihood plus ridge penalties. Weighted-zero-sum competition effects and
-separately centered team attack/defence effects remove additive parameter
-non-identifiability. Unseen teams receive zero team effects while retaining
-learned competition/global context.
+log-likelihood plus ridge penalties. Positive ridge penalties identify team
+and competition effects without post-step recentering; retaining the optimizer
+in the unconstrained parameterization keeps the gradient consistent with the
+objective. Unseen teams receive zero team effects while retaining learned
+competition/global context.
 """
 from __future__ import annotations
 
@@ -240,19 +241,9 @@ def fit_hierarchical_poisson(
             next_attack = [v - step * g for v, g in zip(attack, ga)]
             next_defence = [v - step * g for v, g in zip(defence, gd)]
 
-            comp_weights = [
-                sum(w for row, w in zip(rows, weights) if row.competition_id == name)
-                for name in competitions
-            ]
-            comp_mean = sum(v * w for v, w in zip(next_comp, comp_weights)) / total_weight
-            next_comp = [v - comp_mean for v in next_comp]
-            next_intercept += comp_mean
-            attack_mean = sum(next_attack) / team_count
-            defence_mean = sum(next_defence) / team_count
-            next_attack = [v - attack_mean for v in next_attack]
-            next_defence = [v - defence_mean for v in next_defence]
-            # Preserve both goal-rate predictors under separate attack/defence centering.
-            next_intercept += attack_mean - defence_mean
+            # Do not recenter parameters after taking a gradient step: ridge
+            # penalties already identify the effects, and post-step projection
+            # would make the search direction inconsistent with this objective.
 
             next_loss = _objective(
                 rows, weights, total_weight, team_index, competition_index,
