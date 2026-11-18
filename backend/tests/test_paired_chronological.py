@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from app.validation.paired_chronological import evaluate_paired_chronological_report
+from scripts.evaluate_paired_chronological import main as evaluate_cli_main
 
 BASE = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -98,3 +100,22 @@ def test_rejects_invalid_ensemble_weight():
     report["predictions"][0]["ensemble_elo_weight"] = 1.5
     with pytest.raises(ValueError, match="invalid model probability"):
         evaluate_paired_chronological_report(report, resamples=100)
+
+
+def test_cli_writes_valid_json_with_one_trailing_newline(tmp_path, monkeypatch):
+    report_path = tmp_path / "input.json"
+    output_path = tmp_path / "diagnostics.json"
+    report_path.write_text(json.dumps(make_report(12)), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", [
+        "evaluate_paired_chronological.py",
+        "--input", str(report_path),
+        "--output", str(output_path),
+        "--resamples", "100",
+        "--block-size", "4",
+    ])
+
+    assert evaluate_cli_main() == 0
+    output = output_path.read_text(encoding="utf-8")
+    assert output.endswith("\\n")
+    assert not output.endswith("\\n\\n")
+    assert json.loads(output)["fixture_count"] == 12
