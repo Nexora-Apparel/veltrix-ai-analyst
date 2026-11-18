@@ -17,7 +17,7 @@ from app.providers.historical_import import (
     SOURCE_ID,
 )
 
-PAGE_SIZE = 100
+PAGE_SIZE = 50
 
 
 class HistoricalValidationError(RuntimeError):
@@ -169,6 +169,7 @@ def validate_competition_import(
             "per_page": PAGE_SIZE,
             "start_time": int(window_start.timestamp()),
             "status": "all",
+            "include": "stats,events",
         }
         canonical = json.dumps(params, sort_keys=True, separators=(",", ":")).encode()
         if hashlib.sha256(canonical).hexdigest() != str(params_hash).strip():
