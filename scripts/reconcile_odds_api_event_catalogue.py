@@ -61,7 +61,7 @@ def main() -> int:
         "market_probe_candidate": bool(complete and exact_matches == 1),
         "market_probe_authorized": bool(complete and exact_matches == 1),
         "outcome": (
-            "ONE_EXACT_MATCH_CANDIDATE_REQUIRES_REVIEW"
+            "ONE_EXACT_MATCH_AUTHORIZED_FOR_SINGLE_H2H_PROBE"
             if complete and exact_matches == 1
             else "CATALOGUE_TRUNCATED"
             if not complete
