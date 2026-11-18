@@ -525,3 +525,98 @@ def test_incremental_import_rejects_naive_or_oversized_boundaries(
                 request_budget=41,
             )
         )
+
+
+
+def test_future_fixture_capture_records_system_observed_pit_evidence(
+    database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
+    monkeypatch.setattr(historical_import, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    monkeypatch.setattr(historical_validation, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    start = datetime.now(UTC).replace(microsecond=0) + timedelta(days=1)
+    end = start + timedelta(days=1)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        kickoff = datetime.fromtimestamp(
+            int(request.url.params["start_time"]) + 3600,
+            tz=UTC,
+        ).isoformat()
+        fixture = _fixture(990001, kickoff)
+        fixture["status"] = "scheduled"
+        fixture["goals"] = {"home": None, "away": None}
+        return httpx.Response(
+            200,
+            json={
+                "success": 1,
+                "data": [fixture],
+                "pagination": {
+                    "page": int(request.url.params["page"]),
+                    "per_page": 100,
+                    "count": 1,
+                    "has_more": False,
+                },
+            },
+            headers={"X-Request-Id": "future-system-observed-capture"},
+        )
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-only-key",
+        transport=httpx.MockTransport(handler),
+    )
+    run_id = asyncio.run(
+        run_brazil_serie_b_historical_import(
+            database_url,
+            api_key="test-only-key",
+            execute=True,
+            approval=IMPORT_APPROVAL,
+            provider=provider,
+            boundary_start=start,
+            boundary_end=end,
+            request_budget=4,
+        )
+    )
+
+    with psycopg.connect(database_url) as connection:
+        row = connection.execute(
+            """
+            SELECT
+                f.kickoff_at,
+                o.retrieved_at,
+                o.source_published_at,
+                o.available_at,
+                o.availability_basis,
+                o.point_in_time_certifiable,
+                s.retrieved_at,
+                s.available_at,
+                s.availability_basis,
+                s.point_in_time_certifiable,
+                s.provider_response_id
+            FROM veltrix_ai_analyst.provider_fixtures f
+            JOIN veltrix_ai_analyst.source_observations o
+              ON o.id = f.source_observation_id
+            JOIN veltrix_ai_analyst.source_observation_sightings s
+              ON s.source_observation_id = o.id
+            WHERE f.provider = '5DollarFootballAPI'
+              AND f.source_id = '5dollarfootballapi'
+              AND f.provider_fixture_id = '990001'
+            ORDER BY s.id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        run_status = connection.execute(
+            "SELECT status FROM veltrix_ai_analyst.import_runs WHERE id = %s",
+            (run_id,),
+        ).fetchone()[0]
+
+    assert run_status == "COMPLETED"
+    assert row is not None
+    assert row[0] > row[1]  # fixture kickoff is still in the future at capture
+    assert row[2] is None
+    assert row[3] == row[1]
+    assert row[4] == "SYSTEM_OBSERVED_AT"
+    assert row[5] is True
+    assert row[6] == row[7]
+    assert row[8] == "SYSTEM_OBSERVED_AT"
+    assert row[9] is True
+    assert row[10] is not None
