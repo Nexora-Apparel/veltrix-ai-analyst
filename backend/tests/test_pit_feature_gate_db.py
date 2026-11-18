@@ -146,3 +146,99 @@ def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
 
     assert stored == 1
     assert rejected == 0
+
+
+
+def test_database_gate_accepts_system_observed_payload_only_after_capture(
+    database_url: str,
+) -> None:
+    now = datetime.now(UTC).replace(microsecond=0)
+    marker = uuid4().hex
+    with psycopg.connect(database_url) as connection:
+        store = PostgresIngestionStore(connection)
+        with connection.transaction():
+            response_id = store.record_provider_response(
+                FIVEDOLLAR_COMMUNITY_APPROVAL,
+                scope_value="522514093",
+                data_type="fixtures_and_results",
+                endpoint="/v1/test/system-observed-pit",
+                request_id=f"system-observed-pit-{marker}",
+                request_params={"test": marker},
+                http_status=200,
+                raw_body=f'{{"test":"{marker}"}}'.encode(),
+                response_headers={"content-type": "application/json"},
+                fetched_at=now,
+            )
+            observation_id = store.record_source_observation(
+                FIVEDOLLAR_COMMUNITY_APPROVAL,
+                scope_value="522514093",
+                data_type="fixtures_and_results",
+                entity_type="fixture",
+                provider_entity_id=f"system-observed-{marker}",
+                schema_version="system-observed-pit-v1",
+                retrieved_at=now,
+                available_at=now,
+                availability_basis="SYSTEM_OBSERVED_AT",
+                point_in_time_certifiable=True,
+                payload={"test": marker, "case": "system-observed"},
+                provider_response_id=response_id,
+            )
+            sighting_id = connection.execute(
+                """
+                SELECT id FROM veltrix_ai_analyst.source_observation_sightings
+                WHERE source_observation_id = %s
+                """,
+                (observation_id,),
+            ).fetchone()[0]
+
+            connection.execute(
+                """
+                INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
+                    source_observation_id, source_sighting_id, feature_key,
+                    feature_value, prediction_cutoff_at
+                ) VALUES (%s, %s, %s, %s, %s)
+                """,
+                (
+                    observation_id,
+                    sighting_id,
+                    "system_observed.allowed",
+                    Jsonb({"value": 1}),
+                    now + timedelta(minutes=5),
+                ),
+            )
+
+            with (
+                pytest.raises(
+                    psycopg.errors.RaiseException,
+                    match="PRE_MATCH_SYSTEM_OBSERVATION_NOT_AVAILABLE_AT_CUTOFF",
+                ),
+                connection.transaction(),
+            ):
+                connection.execute(
+                    """
+                    INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
+                        source_observation_id, source_sighting_id, feature_key,
+                        feature_value, prediction_cutoff_at
+                    ) VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (
+                        observation_id,
+                        sighting_id,
+                        "system_observed.must_be_rejected",
+                        Jsonb({"value": 2}),
+                        now - timedelta(seconds=1),
+                    ),
+                )
+
+            counts = connection.execute(
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE feature_key = 'system_observed.allowed'),
+                    COUNT(*) FILTER (WHERE feature_key = 'system_observed.must_be_rejected')
+                FROM veltrix_ai_analyst.pre_match_feature_observations
+                WHERE source_observation_id = %s
+                """,
+                (observation_id,),
+            ).fetchone()
+
+    assert counts == (1, 0)
