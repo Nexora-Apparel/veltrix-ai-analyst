@@ -81,16 +81,17 @@ def main() -> int:
         "invalid_rows": 0,
         "scoreline_evidence": {
             "finished_labels_in_research_corpus": len(finished),
-            "officially_cross_checked_labels": 353,
-            "not_independently_cross_checked_labels": 27,
-            "cross_check_coverage": 353 / 380,
-            "pending_cbf_rounds": {"31": 10, "32": 10, "37": 7},
+            "officially_cross_checked_labels": 380,
+            "not_independently_cross_checked_labels": 0,
+            "cross_check_coverage": 1.0,
+            "pending_cbf_rounds": {},
             "evidence_ledger": "docs/ledger/2026-11-18-cbf-consolidated-data-qualification.md",
+            "detailed_evidence_ledger": "docs/ledger/2026-11-18-cbf-rounds-31-32-37-score-verification.md",
             "interpretation": (
-                "The retrospective report scores all provider FINISHED labels. "
-                "353/380 have independent official CBF score cross-checks; 27 remain "
-                "unverified against official CBF score evidence. Treat metrics as "
-                "provisional research diagnostics, not production model-selection evidence."
+                "All 380 FINISHED provider labels have independent official CBF score "
+                "cross-checks. This establishes scoreline agreement only; it does not "
+                "establish historical PIT availability, source rights, canonical identity "
+                "approval, or production model-selection eligibility."
             ),
         },
     }
