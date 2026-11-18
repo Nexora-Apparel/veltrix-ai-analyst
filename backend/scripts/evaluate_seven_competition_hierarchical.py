@@ -183,12 +183,52 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             for season in sorted({row["provider_season_id"] for row in rows if row["provider_season_id"]})
         },
         "provider_season_id_coverage": sum(1 for row in rows if row["provider_season_id"]),
+        "per_competition_season_coverage": {
+            competition_id: {
+                "fixture_rows": sum(1 for row in rows if row["provider_competition_id"] == competition_id),
+                "season_ids": {
+                    str(season): sum(
+                        1 for row in rows
+                        if row["provider_competition_id"] == competition_id
+                        and row["provider_season_id"] == season
+                    )
+                    for season in sorted({
+                        row["provider_season_id"] for row in rows
+                        if row["provider_competition_id"] == competition_id
+                        and row["provider_season_id"]
+                    })
+                },
+                "distinct_seasons": len({
+                    row["provider_season_id"] for row in rows
+                    if row["provider_competition_id"] == competition_id
+                    and row["provider_season_id"]
+                }),
+            }
+            for competition_id in sorted(COMPETITIONS)
+        },
+        "distinct_competition_seasons": sum(
+            len({
+                row["provider_season_id"] for row in rows
+                if row["provider_competition_id"] == competition_id
+                and row["provider_season_id"]
+            })
+            for competition_id in COMPETITIONS
+        ),
+        "multi_season_competition_count": sum(
+            1 for competition_id in COMPETITIONS
+            if len({
+                row["provider_season_id"] for row in rows
+                if row["provider_competition_id"] == competition_id
+                and row["provider_season_id"]
+            }) > 1
+        ),
         "multi_calendar_year_coverage": len({row["calendar_year"] for row in rows}) > 1,
         "source_evidence": [
             {
                 "fixture_id": f"{row['provider_competition_id']}:{row['provider_fixture_id']}",
                 "provider_competition_id": row["provider_competition_id"],
                 "provider_fixture_id": row["provider_fixture_id"],
+                "provider_season_id": row["provider_season_id"],
                 "home_team_provider_id": row["home_team_provider_id"],
                 "away_team_provider_id": row["away_team_provider_id"],
                 "kickoff_at": row["kickoff_at"].isoformat(),
