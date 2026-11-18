@@ -107,6 +107,7 @@ def build_report(
               AND s.system_observed_at IS NOT NULL
               AND s.availability_basis = 'SYSTEM_OBSERVED_AT'
               AND s.point_in_time_certifiable IS TRUE
+              AND o.payload->>'competition_id' IS NOT NULL
             ORDER BY s.system_observed_at, o.id, s.id
             """
         ).fetchall()
