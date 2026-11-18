@@ -27,11 +27,11 @@ from app.validation.hierarchical_tuning import (
     ChronologicalFold,
     select_hierarchical_hyperparameters,
 )
-from app.validation.source_provenance import is_valid_retrospective_observation
 from app.validation.paired_baselines import (
     ProbabilityForecast,
     compare_paired_baselines,
 )
+from app.validation.source_provenance import is_valid_retrospective_observation
 
 DATABASE_NAME = "veltrix_ai_analyst"
 PROVIDER = "5DollarFootballAPI"
