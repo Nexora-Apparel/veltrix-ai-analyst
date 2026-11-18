@@ -682,6 +682,7 @@ async def run_competition_historical_import(
     boundary_end: datetime = BOUNDARY_END,
     request_budget: int = REQUEST_BUDGET,
     competition_id: str = COMPETITION_ID,
+    import_type: str = "historical_backfill",
 ) -> int:
     """Run or resume a bounded, non-commercial competition historical import.
 
@@ -692,6 +693,8 @@ async def run_competition_historical_import(
         raise HistoricalImportError("LIVE_COLLECTION_NOT_EXPLICITLY_ENABLED")
     if not isinstance(competition_id, str) or not competition_id.strip():
         raise HistoricalImportError("COMPETITION_ID_REQUIRED")
+    if import_type not in {"historical_backfill", "prospective_capture"}:
+        raise HistoricalImportError("UNSUPPORTED_IMPORT_TYPE")
     competition_id = competition_id.strip()
     if not api_key.strip():
         raise HistoricalImportError("FIVEDOLLAR_COMMUNITY_API_KEY_REQUIRED")
@@ -730,7 +733,7 @@ async def run_competition_historical_import(
                 approval,
                 scope_value=competition_id,
                 data_type="fixtures_and_results",
-                import_type="historical_backfill",
+                import_type=import_type,
                 boundary_start=boundary_start,
                 boundary_end=boundary_end,
                 request_budget=request_budget,
@@ -761,7 +764,7 @@ async def run_competition_historical_import(
                 or int(row[2]) > request_budget
                 or tuple(row[3:8]) != expected
                 or row[8] != competition_id
-                or row[9] != "historical_backfill"
+                or row[9] != import_type
             ):
                 raise HistoricalImportError("IMPORT_RUN_IDENTITY_OR_ENVELOPE_MISMATCH")
             if row[0] not in {"PAUSED", "RUNNING"}:
