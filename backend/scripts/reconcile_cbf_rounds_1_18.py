@@ -189,6 +189,40 @@ def split_club_and_state(tokens: list[str], *, away: bool) -> list[str]:
     raise ValueError(f"home team state suffix not found: {tokens}")
 
 
+
+# Current official CBF match-page kickoff for every row that differs from the
+# initial detailed schedule. Values are local America/Sao_Paulo times.
+CBF_FINAL_KICKOFFS = {
+    "5": ("2026-03-21T18:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/ceara-x-sao-bernardo/832842?view=alteracoes"),
+    "6": ("2026-03-22T18:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-america/832843"),
+    "12": ("2026-04-02T19:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sao-bernardo-x-operario/832849"),
+    "13": ("2026-04-01T18:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/america-x-botafogo/832850?view=alteracoes"),
+    "20": ("2026-03-31T18:30:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/juventude-x-gremio-novorizontino-saf/832857"),
+    "32": ("2026-04-12T18:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sao-bernardo-saf-x-fortaleza-saf/832869"),
+    "38": ("2026-04-11T18:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sport-recife-x-avai/832875?view=alteracoes"),
+    "40": ("2026-04-11T16:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/juventude-x-goias/832877"),
+    "41": ("2026-04-19T16:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/botafogo-x-atletico-goianiense-saf/832922?view=alteracoes"),
+    "43": ("2026-04-18T18:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/america-x-sport-recife/832924"),
+    "47": ("2026-04-18T20:30:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/avai-x-ponte-preta/832928?view=alteracoes"),
+    "53": ("2026-04-27T19:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/athletic-club-x-nautico/832934"),
+    "72": ("2026-05-10T19:30:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/gremio-novorizontino-saf-x-botafogo/832953"),
+    "74": ("2026-05-12T19:30:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/londrina-saf-x-sao-bernardo-saf/832955?view=alteracoes"),
+    "78": ("2026-05-10T16:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/nautico-x-america/832959"),
+    "85": ("2026-05-17T18:30:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/ceara-x-fortaleza-saf/832966?view=alteracoes"),
+    "97": ("2026-05-24T19:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/avai-x-goias/832978?view=alteracoes"),
+    "102": ("2026-05-31T11:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sao-bernardo-x-gremio-novorizontino-saf/832983"),
+    "106": ("2026-05-30T16:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/atletico-goianiense-saf-x-goias/832987?view=alteracoes"),
+    "129": ("2026-06-14T17:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/cuiaba-x-vila-nova/833010?view=alteracoes"),
+    "132": ("2026-06-21T17:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sao-bernardo-x-juventude/833013?view=alteracoes"),
+    "136": ("2026-06-21T18:30:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-operario/833017?view=alteracoes"),
+    "150": ("2026-06-28T16:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/juventude-x-ceara/833031?view=alteracoes"),
+    "158": ("2026-07-05T20:30:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/nautico-x-juventude/833039?view=alteracoes"),
+    "174": ("2026-07-17T21:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/londrina-saf-x-botafogo/833055"),
+    "176": ("2026-07-18T18:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/atletico-goianiense-saf-x-athletic-saf/833057"),
+    "177": ("2026-07-18T16:00:00-03:00", "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/criciuma-x-vila-nova/833058?view=alteracoes"),
+}
+CBF_RESCHEDULED_REFERENCES = set(CBF_FINAL_KICKOFFS) - {"6"}
+
 def parse_pdf(pdf_bytes: bytes, source: dict[str, object]) -> list[dict[str, object]]:
     document = fitz.open(stream=pdf_bytes, filetype="pdf")
     fixtures: list[dict[str, object]] = []
@@ -309,6 +343,24 @@ def main() -> int:
         candidate = candidates[0]
         provider_local = candidate["kickoff_at"].astimezone(LOCAL_TZ)
         expected_local = datetime.fromisoformat(str(expected["official_local_kickoff"]))
+        ref = str(expected["cbf_reference"])
+        initial_schedule_match = provider_local.strftime("%Y-%m-%d %H:%M") == expected_local.strftime("%Y-%m-%d %H:%M")
+        final_entry = CBF_FINAL_KICKOFFS.get(ref)
+        final_local = datetime.fromisoformat(final_entry[0]) if final_entry else None
+        final_match = (
+            provider_local.strftime("%Y-%m-%d %H:%M") == final_local.strftime("%Y-%m-%d %H:%M")
+            if final_local else None
+        )
+        if final_entry and final_match and ref in CBF_RESCHEDULED_REFERENCES:
+            result = "PROVIDER_MATCHES_CBF_CONFIRMED_RESCHEDULED_KICKOFF"
+        elif final_entry and final_match:
+            result = "PROVIDER_MATCHES_FINAL_CBF_KICKOFF"
+        elif final_entry:
+            result = "PROVIDER_KICKOFF_DIFFERS_FROM_FINAL_CBF_KICKOFF"
+        elif not initial_schedule_match:
+            result = "UNADJUDICATED_INITIAL_SCHEDULE_DIFFERENCE"
+        else:
+            result = "PROVIDER_MATCHES_INITIAL_CBF_SCHEDULE"
         results.append({
             **expected,
             "provider_fixture_id": candidate["provider_fixture_id"],
@@ -317,11 +369,12 @@ def main() -> int:
             "provider_kickoff_at": candidate["kickoff_at"].isoformat(),
             "provider_local_kickoff": provider_local.isoformat(),
             "provider_score": [candidate["home_goals"], candidate["away_goals"]],
-            "result": (
-                "PAIRING_AND_KICKOFF_MATCH"
-                if provider_local.strftime("%Y-%m-%d %H:%M") == expected_local.strftime("%Y-%m-%d %H:%M")
-                else "PAIRING_MATCH_KICKOFF_DIFFERS_FROM_INITIAL_CBF_SCHEDULE"
-            ),
+            "initial_schedule_match": initial_schedule_match,
+            "cbf_final_kickoff": final_entry[0] if final_entry else None,
+            "cbf_final_match_page_url": final_entry[1] if final_entry else None,
+            "cbf_official_reschedule": ref in CBF_RESCHEDULED_REFERENCES,
+            "final_schedule_match": final_match,
+            "result": result,
         })
 
     per_round = {}
@@ -329,15 +382,17 @@ def main() -> int:
         group = [row for row in results if row["round"] == round_number]
         per_round[str(round_number)] = {
             "expected": len(group),
-            "pairing_and_kickoff_match": sum(r["result"] == "PAIRING_AND_KICKOFF_MATCH" for r in group),
-            "kickoff_differs_from_initial_schedule": sum(r["result"] == "PAIRING_MATCH_KICKOFF_DIFFERS_FROM_INITIAL_CBF_SCHEDULE" for r in group),
+            "provider_matches_final_cbf": sum(r["final_schedule_match"] is True for r in group),
+            "confirmed_official_reschedules": sum(r["result"] == "PROVIDER_MATCHES_CBF_CONFIRMED_RESCHEDULED_KICKOFF" for r in group),
+            "final_kickoff_mismatches": sum(r["result"] == "PROVIDER_KICKOFF_DIFFERS_FROM_FINAL_CBF_KICKOFF" for r in group),
+            "unadjudicated_initial_schedule_differences": sum(r["result"] == "UNADJUDICATED_INITIAL_SCHEDULE_DIFFERENCE" for r in group),
             "pairing_missing": sum(r["result"] == "PROVIDER_PAIRING_NOT_FOUND" for r in group),
             "multiple_candidates": sum(r["result"] == "MULTIPLE_PROVIDER_PAIRING_CANDIDATES" for r in group),
             "unmapped_labels": sum(r["result"] == "UNMAPPED_CBF_TEAM_LABEL" for r in group),
         }
 
     output = {
-        "audit_type": "READ_ONLY_INITIAL_CBF_SCHEDULE_RECONCILIATION_NOT_FINAL_SCHEDULE_OR_SCORE_CERTIFICATION",
+        "audit_type": "READ_ONLY_CBF_INITIAL_AND_FINAL_KICKOFF_RECONCILIATION_NOT_SCORE_OR_PIT_CERTIFICATION",
         "database": DATABASE,
         "provider": PROVIDER,
         "source_id": SOURCE_ID,
@@ -348,11 +403,15 @@ def main() -> int:
         "provider_finished_rows_available": len(rows),
         "team_mapping_semantics": "CANDIDATE_PROVIDER_LOCAL_LABEL_MATCH_ONLY; NO_CANONICAL_IDENTITY_APPROVAL",
         "score_verification": "NOT_PERFORMED; PDF SCHEDULES DO NOT VERIFY FINAL SCORES",
-        "kickoff_mismatch_semantics": "MAY_REFLECT_SUBSEQUENT_OFFICIAL_CBF_SCHEDULE_CHANGES; CHECK_CURRENT_CBF_MATCH_RECORD_BEFORE_ADJUDICATION",
+        "kickoff_mismatch_semantics": "INITIAL_SCHEDULE_DIFFERENCES_RESOLVED_AGAINST_CURRENT_OFFICIAL_CBF_MATCH_PAGES_WHERE_LISTED; RAW_PROVIDER_TIMESTAMPS_UNCHANGED",
+        "cbf_rescheduled_references": sorted(CBF_RESCHEDULED_REFERENCES, key=int),
         "per_round": per_round,
         "counts": {
-            "pairing_and_kickoff_match": sum(r["result"] == "PAIRING_AND_KICKOFF_MATCH" for r in results),
-            "kickoff_differs_from_initial_schedule": sum(r["result"] == "PAIRING_MATCH_KICKOFF_DIFFERS_FROM_INITIAL_CBF_SCHEDULE" for r in results),
+            "pairing_rows": sum(r["result"] not in {"PROVIDER_PAIRING_NOT_FOUND", "MULTIPLE_PROVIDER_PAIRING_CANDIDATES", "UNMAPPED_CBF_TEAM_LABEL"} for r in results),
+            "provider_matches_final_cbf": sum(r["final_schedule_match"] is True for r in results),
+            "confirmed_official_reschedules": sum(r["result"] == "PROVIDER_MATCHES_CBF_CONFIRMED_RESCHEDULED_KICKOFF" for r in results),
+            "final_kickoff_mismatches": sum(r["result"] == "PROVIDER_KICKOFF_DIFFERS_FROM_FINAL_CBF_KICKOFF" for r in results),
+            "unadjudicated_initial_schedule_differences": sum(r["result"] == "UNADJUDICATED_INITIAL_SCHEDULE_DIFFERENCE" for r in results),
             "pairing_missing": sum(r["result"] == "PROVIDER_PAIRING_NOT_FOUND" for r in results),
             "multiple_candidates": sum(r["result"] == "MULTIPLE_PROVIDER_PAIRING_CANDIDATES" for r in results),
             "unmapped_labels": sum(r["result"] == "UNMAPPED_CBF_TEAM_LABEL" for r in results),
