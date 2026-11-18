@@ -50,11 +50,23 @@ class AttackDefenceModel:
     ridge: float
 
     def predict(self, home_team: str, away_team: str) -> GoalRates:
-        if home_team not in self.attack or away_team not in self.attack:
-            raise KeyError("both teams must be present in the fitted training set")
-        home_eta = self.intercept + self.home_advantage + self.attack[home_team] - self.defence[away_team]
-        away_eta = self.intercept + self.attack[away_team] - self.defence[home_team]
-        return GoalRates(exp(max(-4.0, min(4.0, home_eta))), exp(max(-4.0, min(4.0, away_eta))))
+        if not home_team or not away_team or home_team == away_team:
+            raise ValueError("distinct home and away team identifiers are required")
+        # An unseen team contributes a neutral, zero-centered effect. This
+        # retains the fitted scoring environment and home advantage without
+        # fabricating a team-strength estimate or rejecting sparse fixtures.
+        home_eta = (
+            self.intercept + self.home_advantage
+            + self.attack.get(home_team, 0.0) - self.defence.get(away_team, 0.0)
+        )
+        away_eta = (
+            self.intercept
+            + self.attack.get(away_team, 0.0) - self.defence.get(home_team, 0.0)
+        )
+        return GoalRates(
+            exp(max(-4.0, min(4.0, home_eta))),
+            exp(max(-4.0, min(4.0, away_eta))),
+        )
 
 
 def _weight(age_days: float, half_life_days: float) -> float:
@@ -108,8 +120,10 @@ def fit_attack_defence(
     home_advantage = 0.12
 
     for _ in range(max_iterations):
-        grad_a = [ridge * value for value in attack]
-        grad_d = [ridge * value for value in defence]
+        # The normalized likelihood gradient is scaled below; apply each
+        # ridge derivative exactly once when assembling the final gradient.
+        grad_a = [0.0] * n
+        grad_d = [0.0] * n
         grad_mu = 0.0
         grad_home = 0.0
         for row in rows:
