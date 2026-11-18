@@ -99,7 +99,7 @@ def parse_scored_row(tokens: list[str]) -> dict[str, object] | None:
     metadata_tokens = {"seg", "ter", "qua", "qui", "sex", "sab", "sáb", "dom"}
     home_raw = [
         token for token in tokens[1 : separator - 1]
-        if not re.fullmatch(r"(?:\\d{1,2}ª?|\\d{2}/\\d{2}|\\d{2}:\\d{2})", token)
+        if not re.fullmatch(r"(?:[0-9]{1,2}ª?|[0-9]{2}/[0-9]{2}|[0-9]{2}:[0-9]{2})", token)
         and token.casefold() not in metadata_tokens
     ]
     home_tokens = split_club_and_state(home_raw, away=False)
@@ -317,4 +317,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
