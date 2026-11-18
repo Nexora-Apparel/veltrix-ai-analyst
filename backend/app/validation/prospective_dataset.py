@@ -38,6 +38,7 @@ class FixtureObservation:
     fixture_id: str
     provider: str
     source_id: str
+    retrieved_at: datetime
     observed_at: datetime
     availability_basis: str
     point_in_time_certifiable: bool
@@ -49,7 +50,10 @@ class FixtureObservation:
             raise ValueError("source observation, sighting and response IDs must be positive")
         if not self.fixture_id.strip() or not self.provider.strip() or not self.source_id.strip():
             raise ValueError("fixture and provider identity are required")
+        _require_aware(self.retrieved_at, "retrieved_at")
         _require_aware(self.observed_at, "observed_at")
+        if self.observed_at < self.retrieved_at:
+            raise ValueError("system observation cannot precede retrieval")
         if len(self.payload_sha256) != 64:
             raise ValueError("payload_sha256 must be a SHA-256 digest")
 
@@ -67,6 +71,7 @@ class ProspectiveDatasetRow:
     label: dict[str, Any] | None
     label_observed_at: datetime | None
     label_observation_id: int | None
+    label_lineage: dict[str, Any] | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +108,7 @@ def _lineage(row: FixtureObservation) -> dict[str, Any]:
         "source_sighting_id": row.sighting_id,
         "provider_response_id": row.provider_response_id,
         "payload_sha256": row.payload_sha256,
+        "retrieved_at": row.retrieved_at.isoformat(),
         "system_observed_at": row.observed_at.isoformat(),
     }
 
@@ -263,6 +269,7 @@ def build_prospective_dataset(
         label = None
         label_observed_at = None
         label_observation_id = None
+        label_lineage = None
         if label_observation is not None:
             home_goals, away_goals = _finished_result(label_observation) or (0, 0)
             label = {
@@ -276,6 +283,7 @@ def build_prospective_dataset(
             }
             label_observed_at = label_observation.observed_at
             label_observation_id = label_observation.observation_id
+            label_lineage = _lineage(label_observation)
         rows.append(
             ProspectiveDatasetRow(
                 fixture_id=fixture.fixture_id,
@@ -289,6 +297,7 @@ def build_prospective_dataset(
                 label=label,
                 label_observed_at=label_observed_at,
                 label_observation_id=label_observation_id,
+                label_lineage=label_lineage,
             )
         )
     return tuple(rows)
