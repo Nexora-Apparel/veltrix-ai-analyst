@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import json
+import sys
 from collections import Counter
 from pathlib import Path
-import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from app.providers.event_matching import match_event_to_fixture  # noqa: E402
+from app.providers.event_matching import match_event_to_fixture
 
 ODDS_MANIFEST = Path("odds-api-events-manifest.json")
 FIXTURE_MANIFEST = Path("5dollar-scheduled-fixtures-manifest.json")
