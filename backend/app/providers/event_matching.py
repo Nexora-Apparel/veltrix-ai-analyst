@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Literal, Mapping
+from typing import Literal
 
 
 MatchStatus = Literal[
@@ -46,7 +47,7 @@ def _parse_aware_datetime(value: object, field_name: str) -> datetime:
         except ValueError:
             raise ValueError(f"{field_name}_INVALID") from None
     else:
-        raise ValueError(f"{field_name}_REQUIRED")
+        raise TypeError(f"{field_name}_REQUIRED")
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError(f"{field_name}_MUST_BE_TIMEZONE_AWARE")
     return parsed.astimezone(UTC)
