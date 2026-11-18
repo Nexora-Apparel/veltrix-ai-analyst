@@ -24,6 +24,7 @@ RETRIEVED = CUTOFF - timedelta(hours=1)
 def make_evidence(**changes: object) -> EligibleObservationEvidence:
     values: dict[str, object] = {
         "source_id": "qualified-source",
+        "data_domain": "FOOTBALL_MATCH_DATA",
         "provider": "provider-x",
         "provider_record_id": "fixture-123",
         "source_observation_id": 12,
@@ -128,3 +129,15 @@ def test_prediction_request_rejects_same_team_on_both_sides() -> None:
             requested_markets=("1X2",),
             data_quality_tier="PIT_VERIFIED",
         )
+
+
+def test_bookmaker_odds_are_rejected_from_core_prediction_features() -> None:
+    evidence = make_evidence(data_domain="BOOKMAKER_ODDS")
+    with pytest.raises(FeatureAdmissionError, match="BOOKMAKER_ODDS_FORBIDDEN_IN_CORE_PREDICTION_FEATURES"):
+        require_feature_admission(make_request(evidence=evidence))
+
+
+def test_unknown_prediction_feature_data_domain_fails_closed() -> None:
+    evidence = make_evidence(data_domain="UNCLASSIFIED")
+    with pytest.raises(FeatureAdmissionError, match="UNSUPPORTED_PREDICTION_FEATURE_DATA_DOMAIN"):
+        require_feature_admission(make_request(evidence=evidence))
