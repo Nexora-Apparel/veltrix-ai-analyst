@@ -114,6 +114,10 @@ def normalize_5dollar_fixture_odds(
             continue
         if not isinstance(opening, Mapping):
             raise OddsPayloadError("1x2 opening must be an object")
+        # The public contract documents opened_at for Bet365 1X2 only.
+        # Other bookmakers without an explicit timestamp are not PIT-admissible.
+        if not opening.get("opened_at"):
+            continue
         tick_at = _aware_tick(opening.get("opened_at"))
         for selection in ("home", "draw", "away"):
             if opening.get(selection) is None:
@@ -152,16 +156,36 @@ def normalize_5dollar_odds_history(
     market_name = str(data.get("market") or "").lower()
     market_map = {"1x2": ("1X2", ("home", "draw", "away")),
                   "goalline": ("TOTALS", ("over", "under")),
+                  "goalline_fixed": ("TOTALS", ("over", "under")),
                   "btts": ("BTTS", ("yes", "no"))}
     if market_name not in market_map:
         return ()
     normalized_market, selections = market_map[market_name]
-    ticks = data.get("ticks")
-    if not isinstance(ticks, list):
-        raise OddsPayloadError("odds history has no ticks array")
+    if market_name == "goalline_fixed":
+        lines = data.get("lines")
+        if not isinstance(lines, list):
+            raise OddsPayloadError("fixed goal-line history has no lines array")
+        tick_rows: list[tuple[Mapping[str, Any], float | None]] = []
+        for line_group in lines:
+            if not isinstance(line_group, Mapping) or not isinstance(line_group.get("ticks"), list):
+                raise OddsPayloadError("malformed fixed goal-line group")
+            try:
+                fixed_line = float(line_group.get("line"))
+            except (TypeError, ValueError):
+                raise OddsPayloadError("fixed goal-line group has invalid line") from None
+            tick_rows.extend((tick, fixed_line) for tick in line_group["ticks"] if isinstance(tick, Mapping))
+            if any(not isinstance(tick, Mapping) for tick in line_group["ticks"]):
+                raise OddsPayloadError("malformed fixed goal-line tick")
+    else:
+        ticks = data.get("ticks")
+        if not isinstance(ticks, list):
+            raise OddsPayloadError("odds history has no ticks array")
+        tick_rows = [(tick, None) for tick in ticks if isinstance(tick, Mapping)]
+        if any(not isinstance(tick, Mapping) for tick in ticks):
+            raise OddsPayloadError("malformed odds history tick")
     digest = _response_hash(response)
     output: list[OddsObservation] = []
-    for tick in ticks:
+    for tick, fixed_line in tick_rows:
         if not isinstance(tick, Mapping):
             raise OddsPayloadError("malformed odds history tick")
         if tick.get("suspended") is True:
@@ -176,7 +200,7 @@ def normalize_5dollar_odds_history(
         if minute is not None or any(value is not None for value in score_values) or tick.get("half_time") is True:
             continue
         tick_at = _aware_tick(tick.get("recorded_at"))
-        raw_line = tick.get("line")
+        raw_line = fixed_line if fixed_line is not None else tick.get("line")
         try:
             line = float(raw_line) if raw_line is not None else None
         except (TypeError, ValueError):
