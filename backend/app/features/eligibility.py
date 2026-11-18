@@ -58,6 +58,8 @@ def require_pre_match_eligibility(
             raise FeatureEligibilityError("SOURCE_PUBLICATION_AFTER_RETRIEVAL")
         if evidence.available_at < evidence.source_published_at:
             raise FeatureEligibilityError("AVAILABILITY_PRECEDES_SOURCE_PUBLICATION")
+        if evidence.available_at > evidence.retrieved_at:
+            raise FeatureEligibilityError("AVAILABILITY_AFTER_RETRIEVAL")
         if evidence.source_published_at > prediction_cutoff_at:
             raise FeatureEligibilityError("SOURCE_PUBLISHED_AFTER_PREDICTION_CUTOFF")
         if evidence.available_at > prediction_cutoff_at:
