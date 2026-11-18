@@ -1,0 +1,731 @@
+{
+  "schema_version": 1,
+  "competition": "Brazilian Serie B 2026",
+  "rounds": [
+    33,
+    34,
+    35,
+    36
+  ],
+  "source_type": "OFFICIAL_CBF_ROUND_RESULTS_ARTICLES",
+  "sources": [
+    {
+      "round": 33,
+      "url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca",
+      "published_at": "2026-10-13"
+    },
+    {
+      "round": 33,
+      "url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/athletic-e-londrina-empatam-em-2-a-2-pela-serie-b",
+      "published_at": "2026-10-14"
+    },
+    {
+      "round": 34,
+      "url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova",
+      "published_at": "2026-10-19"
+    },
+    {
+      "round": 34,
+      "url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/goias-e-nautico-nao-movimentam-placar-em-jogo-pela-34a-rodada-da-serie-b",
+      "published_at": "2026-10-20"
+    },
+    {
+      "round": 34,
+      "url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-londrina-vence-cuiaba-mas-permanece-na-zona-de-rebaixamento",
+      "published_at": "2026-10-21"
+    },
+    {
+      "round": 35,
+      "url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b",
+      "published_at": "2026-10-28"
+    },
+    {
+      "round": 36,
+      "url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase",
+      "published_at": "2026-11-03"
+    }
+  ],
+  "note": "The official CBF articles collectively report all 40 results across rounds 33-36. Source URLs are attached per fixture.",
+  "fixtures": [
+    {
+      "ref": "321",
+      "round": 33,
+      "fixture_id": "3227490773",
+      "provider_home_name": "Juventude",
+      "provider_away_name": "Sao Bernardo",
+      "home": "Juventude",
+      "away": "São Bernardo",
+      "score": [
+        2,
+        2
+      ],
+      "official_source_result": "Juventude 2 x 2 São Bernardo",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
+      ]
+    },
+    {
+      "ref": "322",
+      "round": 33,
+      "fixture_id": "2785611698",
+      "provider_home_name": "Atletico GO",
+      "provider_away_name": "Sport Recife",
+      "home": "Atlético-GO",
+      "away": "Sport",
+      "score": [
+        1,
+        1
+      ],
+      "official_source_result": "Atlético-GO 1 x 1 Sport",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
+      ]
+    },
+    {
+      "ref": "323",
+      "round": 33,
+      "fixture_id": "4096110032",
+      "provider_home_name": "Nautico",
+      "provider_away_name": "Vila Nova",
+      "home": "Náutico",
+      "away": "Vila Nova",
+      "score": [
+        0,
+        2
+      ],
+      "official_source_result": "Náutico 0 x 2 Vila Nova",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
+      ]
+    },
+    {
+      "ref": "324",
+      "round": 33,
+      "fixture_id": "1549928728",
+      "provider_home_name": "Cuiaba",
+      "provider_away_name": "Avai",
+      "home": "Cuiabá",
+      "away": "Avaí",
+      "score": [
+        0,
+        1
+      ],
+      "official_source_result": "Cuiabá 0 x 1 Avaí",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
+      ]
+    },
+    {
+      "ref": "325",
+      "round": 33,
+      "fixture_id": "792529849",
+      "provider_home_name": "Fortaleza",
+      "provider_away_name": "CRB",
+      "home": "Fortaleza",
+      "away": "CRB",
+      "score": [
+        2,
+        2
+      ],
+      "official_source_result": "Fortaleza 2 x 2 CRB",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
+      ]
+    },
+    {
+      "ref": "326",
+      "round": 33,
+      "fixture_id": "1049274939",
+      "provider_home_name": "Operario PR",
+      "provider_away_name": "Goias",
+      "home": "Operário-PR",
+      "away": "Goiás",
+      "score": [
+        0,
+        2
+      ],
+      "official_source_result": "Operário-PR 0 x 2 Goiás",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
+      ]
+    },
+    {
+      "ref": "327",
+      "round": 33,
+      "fixture_id": "2834006230",
+      "provider_home_name": "Novorizontino",
+      "provider_away_name": "Ponte Preta",
+      "home": "Novorizontino",
+      "away": "Ponte Preta",
+      "score": [
+        5,
+        1
+      ],
+      "official_source_result": "Novorizontino 5 x 1 Ponte Preta",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
+      ]
+    },
+    {
+      "ref": "328",
+      "round": 33,
+      "fixture_id": "1638486152",
+      "provider_home_name": "Criciuma",
+      "provider_away_name": "America MG",
+      "home": "Criciúma",
+      "away": "América-MG",
+      "score": [
+        1,
+        0
+      ],
+      "official_source_result": "Criciúma 1 x 0 América-MG",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
+      ]
+    },
+    {
+      "ref": "329",
+      "round": 33,
+      "fixture_id": "3338387735",
+      "provider_home_name": "Botafogo SP",
+      "provider_away_name": "Ceara",
+      "home": "Botafogo-SP",
+      "away": "Ceará",
+      "score": [
+        1,
+        0
+      ],
+      "official_source_result": "Botafogo-SP 1 x 0 Ceará",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/novorizontino-chega-a-terceira-vitoria-seguida-na-serie-b-e-assume-vice-lideranca"
+      ]
+    },
+    {
+      "ref": "330",
+      "round": 33,
+      "fixture_id": "1356925902",
+      "provider_home_name": "Athletic Club MG",
+      "provider_away_name": "Londrina",
+      "home": "Athletic-MG",
+      "away": "Londrina",
+      "score": [
+        2,
+        2
+      ],
+      "official_source_result": "Athletic-MG 2 x 2 Londrina",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro-serie-b/a/athletic-e-londrina-empatam-em-2-a-2-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "331",
+      "round": 34,
+      "fixture_id": "3934035060",
+      "provider_home_name": "Ponte Preta",
+      "provider_away_name": "Atletico GO",
+      "home": "Ponte Preta",
+      "away": "Atlético-GO",
+      "score": [
+        1,
+        1
+      ],
+      "official_source_result": "Ponte Preta 1 x 1 Atlético-GO",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
+      ]
+    },
+    {
+      "ref": "332",
+      "round": 34,
+      "fixture_id": "3469268672",
+      "provider_home_name": "Sport Recife",
+      "provider_away_name": "Fortaleza",
+      "home": "Sport",
+      "away": "Fortaleza",
+      "score": [
+        0,
+        2
+      ],
+      "official_source_result": "Fortaleza 2 x 0 Sport",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
+      ]
+    },
+    {
+      "ref": "333",
+      "round": 34,
+      "fixture_id": "2504535096",
+      "provider_home_name": "Ceara",
+      "provider_away_name": "Juventude",
+      "home": "Ceará",
+      "away": "Juventude",
+      "score": [
+        2,
+        2
+      ],
+      "official_source_result": "Ceará 2 x 2 Juventude",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
+      ]
+    },
+    {
+      "ref": "334",
+      "round": 34,
+      "fixture_id": "3196243708",
+      "provider_home_name": "America MG",
+      "provider_away_name": "Operario PR",
+      "home": "América-MG",
+      "away": "Operário-PR",
+      "score": [
+        1,
+        0
+      ],
+      "official_source_result": "América-MG 1 x 0 Operário-PR",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
+      ]
+    },
+    {
+      "ref": "335",
+      "round": 34,
+      "fixture_id": "1134270680",
+      "provider_home_name": "Avai",
+      "provider_away_name": "Athletic Club MG",
+      "home": "Avaí",
+      "away": "Athletic-MG",
+      "score": [
+        0,
+        0
+      ],
+      "official_source_result": "Avaí 0 x 0 Athletic",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
+      ]
+    },
+    {
+      "ref": "336",
+      "round": 34,
+      "fixture_id": "4584212",
+      "provider_home_name": "CRB",
+      "provider_away_name": "Botafogo SP",
+      "home": "CRB",
+      "away": "Botafogo-SP",
+      "score": [
+        0,
+        1
+      ],
+      "official_source_result": "Botafogo-SP 1 x 0 CRB",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
+      ]
+    },
+    {
+      "ref": "337",
+      "round": 34,
+      "fixture_id": "691679677",
+      "provider_home_name": "Sao Bernardo",
+      "provider_away_name": "Criciuma",
+      "home": "São Bernardo",
+      "away": "Criciúma",
+      "score": [
+        0,
+        1
+      ],
+      "official_source_result": "Criciúma 1 x 0 São Bernardo",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
+      ]
+    },
+    {
+      "ref": "338",
+      "round": 34,
+      "fixture_id": "701735551",
+      "provider_home_name": "Vila Nova",
+      "provider_away_name": "Novorizontino",
+      "home": "Vila Nova",
+      "away": "Novorizontino",
+      "score": [
+        2,
+        2
+      ],
+      "official_source_result": "Vila Nova 2 x 2 Novorizontino",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/segundo-colocado-novorizontino-empate-no-ultimo-lance-com-lider-vila-nova"
+      ]
+    },
+    {
+      "ref": "339",
+      "round": 34,
+      "fixture_id": "86271742",
+      "provider_home_name": "Goias",
+      "provider_away_name": "Nautico",
+      "home": "Goiás",
+      "away": "Náutico",
+      "score": [
+        0,
+        0
+      ],
+      "official_source_result": "Goiás 0 x 0 Náutico",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/goias-e-nautico-nao-movimentam-placar-em-jogo-pela-34a-rodada-da-serie-b"
+      ]
+    },
+    {
+      "ref": "340",
+      "round": 34,
+      "fixture_id": "338507885",
+      "provider_home_name": "Londrina",
+      "provider_away_name": "Cuiaba",
+      "home": "Londrina",
+      "away": "Cuiabá",
+      "score": [
+        1,
+        0
+      ],
+      "official_source_result": "Londrina 1 x 0 Cuiabá",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-londrina-vence-cuiaba-mas-permanece-na-zona-de-rebaixamento"
+      ]
+    },
+    {
+      "ref": "341",
+      "round": 35,
+      "fixture_id": "367743329",
+      "provider_home_name": "Operario PR",
+      "provider_away_name": "Athletic Club MG",
+      "home": "Operário-PR",
+      "away": "Athletic-MG",
+      "score": [
+        1,
+        0
+      ],
+      "official_source_result": "Operário-PR 1 x 0 Athletic-MG",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "342",
+      "round": 35,
+      "fixture_id": "249567777",
+      "provider_home_name": "Sport Recife",
+      "provider_away_name": "Criciuma",
+      "home": "Sport",
+      "away": "Criciúma",
+      "score": [
+        2,
+        1
+      ],
+      "official_source_result": "Sport 2 x 1 Criciúma",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "343",
+      "round": 35,
+      "fixture_id": "2222169669",
+      "provider_home_name": "Avai",
+      "provider_away_name": "Botafogo SP",
+      "home": "Avaí",
+      "away": "Botafogo-SP",
+      "score": [
+        0,
+        2
+      ],
+      "official_source_result": "Avaí 0 x 2 Botafogo-SP",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "344",
+      "round": 35,
+      "fixture_id": "1260050714",
+      "provider_home_name": "Atletico GO",
+      "provider_away_name": "Novorizontino",
+      "home": "Atlético-GO",
+      "away": "Novorizontino",
+      "score": [
+        0,
+        1
+      ],
+      "official_source_result": "Atlético-GO 0 x 1 Novorizontino",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "345",
+      "round": 35,
+      "fixture_id": "3388030247",
+      "provider_home_name": "Sao Bernardo",
+      "provider_away_name": "Vila Nova",
+      "home": "São Bernardo",
+      "away": "Vila Nova",
+      "score": [
+        3,
+        2
+      ],
+      "official_source_result": "São Bernardo 3 x 2 Vila Nova",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "346",
+      "round": 35,
+      "fixture_id": "960826287",
+      "provider_home_name": "CRB",
+      "provider_away_name": "Londrina",
+      "home": "CRB",
+      "away": "Londrina",
+      "score": [
+        2,
+        1
+      ],
+      "official_source_result": "CRB 2 x 1 Londrina",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "347",
+      "round": 35,
+      "fixture_id": "2355845875",
+      "provider_home_name": "Ponte Preta",
+      "provider_away_name": "Fortaleza",
+      "home": "Ponte Preta",
+      "away": "Fortaleza",
+      "score": [
+        2,
+        2
+      ],
+      "official_source_result": "Ponte Preta 2 x 2 Fortaleza",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "348",
+      "round": 35,
+      "fixture_id": "934211818",
+      "provider_home_name": "America MG",
+      "provider_away_name": "Cuiaba",
+      "home": "América-MG",
+      "away": "Cuiabá",
+      "score": [
+        1,
+        0
+      ],
+      "official_source_result": "América-MG 1 x 0 Cuiabá",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "349",
+      "round": 35,
+      "fixture_id": "2969218817",
+      "provider_home_name": "Juventude",
+      "provider_away_name": "Nautico",
+      "home": "Juventude",
+      "away": "Náutico",
+      "score": [
+        4,
+        0
+      ],
+      "official_source_result": "Juventude 4 x 0 Náutico",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "350",
+      "round": 35,
+      "fixture_id": "3708866250",
+      "provider_home_name": "Ceara",
+      "provider_away_name": "Goias",
+      "home": "Ceará",
+      "away": "Goiás",
+      "score": [
+        0,
+        2
+      ],
+      "official_source_result": "Goiás 2 x 0 Ceará",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/com-dois-golacos-nos-acrescimos-goias-bate-ceara-pela-serie-b"
+      ]
+    },
+    {
+      "ref": "351",
+      "round": 36,
+      "fixture_id": "2214353628",
+      "provider_home_name": "Criciuma",
+      "provider_away_name": "Ponte Preta",
+      "home": "Criciúma",
+      "away": "Ponte Preta",
+      "score": [
+        2,
+        0
+      ],
+      "official_source_result": "Criciúma 2 x 0 Ponte Preta",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
+      ]
+    },
+    {
+      "ref": "352",
+      "round": 36,
+      "fixture_id": "2275287118",
+      "provider_home_name": "Botafogo SP",
+      "provider_away_name": "Sport Recife",
+      "home": "Botafogo-SP",
+      "away": "Sport",
+      "score": [
+        1,
+        1
+      ],
+      "official_source_result": "Botafogo-SP 1 x 1 Sport",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
+      ]
+    },
+    {
+      "ref": "353",
+      "round": 36,
+      "fixture_id": "3457017936",
+      "provider_home_name": "Vila Nova",
+      "provider_away_name": "Juventude",
+      "home": "Vila Nova",
+      "away": "Juventude",
+      "score": [
+        2,
+        2
+      ],
+      "official_source_result": "Vila Nova 2 x 2 Juventude",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
+      ]
+    },
+    {
+      "ref": "354",
+      "round": 36,
+      "fixture_id": "3682950123",
+      "provider_home_name": "Nautico",
+      "provider_away_name": "Avai",
+      "home": "Náutico",
+      "away": "Avaí",
+      "score": [
+        1,
+        0
+      ],
+      "official_source_result": "Náutico 1 x 0 Avaí",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
+      ]
+    },
+    {
+      "ref": "355",
+      "round": 36,
+      "fixture_id": "539609003",
+      "provider_home_name": "Londrina",
+      "provider_away_name": "America MG",
+      "home": "Londrina",
+      "away": "América-MG",
+      "score": [
+        1,
+        3
+      ],
+      "official_source_result": "Londrina 1 x 3 América-MG",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
+      ]
+    },
+    {
+      "ref": "356",
+      "round": 36,
+      "fixture_id": "2756757203",
+      "provider_home_name": "Cuiaba",
+      "provider_away_name": "Sao Bernardo",
+      "home": "Cuiabá",
+      "away": "São Bernardo",
+      "score": [
+        1,
+        2
+      ],
+      "official_source_result": "Cuiabá 1 x 2 São Bernardo",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
+      ]
+    },
+    {
+      "ref": "357",
+      "round": 36,
+      "fixture_id": "1636858309",
+      "provider_home_name": "Novorizontino",
+      "provider_away_name": "Operario PR",
+      "home": "Novorizontino",
+      "away": "Operário-PR",
+      "score": [
+        2,
+        1
+      ],
+      "official_source_result": "Novorizontino 2 x 1 Operário-PR",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
+      ]
+    },
+    {
+      "ref": "358",
+      "round": 36,
+      "fixture_id": "629069243",
+      "provider_home_name": "Fortaleza",
+      "provider_away_name": "Atletico GO",
+      "home": "Fortaleza",
+      "away": "Atlético-GO",
+      "score": [
+        0,
+        0
+      ],
+      "official_source_result": "Fortaleza 0 x 0 Atlético-GO",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
+      ]
+    },
+    {
+      "ref": "359",
+      "round": 36,
+      "fixture_id": "1305702950",
+      "provider_home_name": "Athletic Club MG",
+      "provider_away_name": "Ceara",
+      "home": "Athletic-MG",
+      "away": "Ceará",
+      "score": [
+        2,
+        1
+      ],
+      "official_source_result": "Athletic-MG 2 x 1 Ceará",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
+      ]
+    },
+    {
+      "ref": "360",
+      "round": 36,
+      "fixture_id": "3635753199",
+      "provider_home_name": "Goias",
+      "provider_away_name": "CRB",
+      "home": "Goiás",
+      "away": "CRB",
+      "score": [
+        2,
+        1
+      ],
+      "official_source_result": "Goiás 2 x 1 CRB",
+      "source_urls": [
+        "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/serie-b-10-equipes-brigam-pelo-acesso-na-reta-final-da-primeira-fase"
+      ]
+    }
+  ]
+}
