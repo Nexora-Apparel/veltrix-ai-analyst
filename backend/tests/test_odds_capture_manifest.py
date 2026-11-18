@@ -140,3 +140,9 @@ def test_rejected_provider_failure_does_not_require_quote_timestamps():
 def test_eligible_capture_requires_source_quote_timestamp_bounds():
     with pytest.raises(ValueError, match="requires source quote timestamp bounds"):
         manifest(source_tick_min_at=None, source_tick_max_at=None)
+
+
+
+def test_manifest_rejects_capture_identity_not_bound_to_request_fields():
+    with pytest.raises(ValueError, match="does not match manifest request identity"):
+        manifest(capture_identity="b" * 64)
