@@ -15,7 +15,6 @@ import re
 import unicodedata
 from urllib.request import Request, urlopen
 
-import pymupdf as fitz
 import psycopg
 
 PROVIDER = "5DollarFootballAPI"
@@ -118,6 +117,8 @@ def parse_scored_row(tokens: list[str]) -> dict[str, object] | None:
 
 
 def parse_cbf_pdf(pdf_bytes: bytes) -> list[dict[str, object]]:
+    import pymupdf as fitz
+
     document = fitz.open(stream=pdf_bytes, filetype="pdf")
     fixtures: list[dict[str, object]] = []
     for page in document:
