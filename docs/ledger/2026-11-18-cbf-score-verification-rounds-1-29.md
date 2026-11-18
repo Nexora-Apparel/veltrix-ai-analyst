@@ -15,7 +15,7 @@
 
 ## Result
 
-<badge>290 / 290 reconciled</badge>
+**290 / 290 reconciled**
 
 | Check | Result |
 |---|---:|
