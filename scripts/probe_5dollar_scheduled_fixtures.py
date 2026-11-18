@@ -8,7 +8,7 @@ import hashlib
 import json
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -89,10 +89,11 @@ def main() -> int:
     manifest["request_count"] = 1
     url = f"{BASE_URL}/{competition_id}/fixtures?" + urlencode(
         {
+            "start_time": int(started.timestamp()),
+            "end_time": int((started + timedelta(days=30)).timestamp()),
             "status": "scheduled",
-            "order": "asc",
-            "per_page": 100,
             "page": 1,
+            "per_page": 100,
         }
     )
     request = Request(
