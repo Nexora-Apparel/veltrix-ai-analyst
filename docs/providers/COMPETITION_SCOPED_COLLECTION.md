@@ -33,7 +33,8 @@ Brazil Serie B (`522514093`) remains the original historical scope and is delibe
 
 ## Execution
 
-Open **Actions → 5Dollar competition-scoped historical import → Run workflow** on the validated feature branch.
+1. First apply migration `011_import_run_competition_scope.sql` through **Actions → Apply checksum-verified database migrations** using the explicit `APPLY_CHECKSUM_VERIFIED_MIGRATIONS` confirmation. This adds the immutable competition scope field to new import-run records. Legacy rows remain NULL and are not silently backfilled.
+2. Then open **Actions → 5Dollar competition-scoped historical import → Run workflow** on the validated feature branch.
 
 Select exactly one competition ID. Keep the default 90-day boundaries and request budget of 20 for the first acquisition. The workflow uses the protected `veltrix-historical-import` environment, existing `VELTRIX_AI_ANALYST_DATABASE_URL` and existing 5Dollar community API secret. It does not print credentials.
 
