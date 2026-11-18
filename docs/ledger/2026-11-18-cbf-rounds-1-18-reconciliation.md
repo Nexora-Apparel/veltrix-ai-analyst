@@ -25,9 +25,9 @@
 | Official CBF schedule changes confirmed | 26 |
 | Provider kickoff matches final CBF time for those changes | 26/26 |
 | Unadjudicated initial-schedule differences | 0 |
-| Scorelines independently verified in this pass | 0/180 |
+| Scorelines reconciled against the later official CBF score table (rounds 1–29) | 180/180 |
 
-The 26 apparent kickoff discrepancies against the initial PDFs were all explained by official CBF schedule changes. The provider timestamps match the final CBF match-page kickoff times for all 26.
+The 26 apparent kickoff discrepancies against the initial PDFs were all explained by official CBF schedule changes. A later official CBF score-table audit, updated 23 September 2026, independently reconciles all 180 scores in rounds 1–18; see [score verification rounds 1–29](2026-11-18-cbf-score-verification-rounds-1-29.md). The provider timestamps match the final CBF match-page kickoff times for all 26.
 
 One additional precision issue was found on CBF ref 6 (Goiás x América): the provider timestamp was 17:58:35 BRT while the official CBF kickoff is 18:00 BRT. It is not an official reschedule. The research-only chronology registry now normalizes this fixture to 18:00 so it remains in the same simultaneous-kickoff batch. The raw provider row remains unchanged. See the [corrected retrospective report](../research/2026-11-18-corrected-retrospective-report.md).
 
