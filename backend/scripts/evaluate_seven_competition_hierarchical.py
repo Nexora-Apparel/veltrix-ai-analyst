@@ -82,6 +82,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
                    evidence.source_observation_id, evidence.source_sighting_id,
                    evidence.availability_basis, evidence.point_in_time_certifiable,
                    evidence.retrieved_at, evidence.system_observed_at,
+                   evidence.response_fetched_at, evidence.response_system_observed_at,
                    evidence.source_published_at, evidence.available_at,
                    evidence.payload_sha256, evidence.provider_response_id,
                    evidence.http_status, evidence.raw_response_sha256
@@ -90,7 +91,9 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
                 SELECT o.id AS source_observation_id, o.payload,
                        s.id AS source_sighting_id, s.availability_basis,
                        s.point_in_time_certifiable, s.retrieved_at,
-                       s.system_observed_at, s.source_published_at, s.available_at,
+                       s.system_observed_at, r.fetched_at AS response_fetched_at,
+                       r.system_observed_at AS response_system_observed_at,
+                       s.source_published_at, s.available_at,
                        s.payload_sha256, s.provider_response_id,
                        r.http_status, r.response_sha256 AS raw_response_sha256
                 FROM veltrix_ai_analyst.source_observations o
@@ -103,6 +106,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
                   AND o.data_type = 'fixtures_and_results'
                   AND o.entity_type = 'fixture'
                   AND o.provider_entity_id = pf.provider_fixture_id
+                  AND s.payload_sha256 = o.payload_sha256
                   AND UPPER(COALESCE(o.payload->>'status', 'UNKNOWN'))
                       = UPPER(pf.status)
                   AND UPPER(COALESCE(o.payload->>'status', 'UNKNOWN'))
@@ -187,6 +191,11 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
                 row["system_observed_at"].isoformat()
                 if row["system_observed_at"] is not None else None
             ),
+            "response_fetched_at": row["response_fetched_at"].isoformat(),
+            "response_system_observed_at": (
+                row["response_system_observed_at"].isoformat()
+                if row["response_system_observed_at"] is not None else None
+            ),
             "availability_basis": row["availability_basis"],
             "payload_sha256": str(row["payload_sha256"]).strip(),
             "raw_response_sha256": str(row["raw_response_sha256"]).strip(),
@@ -265,6 +274,11 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
                 "source_sighting_id": str(row["source_sighting_id"]),
                 "provider_response_id": str(row["provider_response_id"]),
                 "retrieved_at": row["retrieved_at"].isoformat(),
+                "response_fetched_at": row["response_fetched_at"].isoformat(),
+                "response_system_observed_at": (
+                    row["response_system_observed_at"].isoformat()
+                    if row["response_system_observed_at"] is not None else None
+                ),
                 "system_observed_at": (
                     row["system_observed_at"].isoformat()
                     if row["system_observed_at"] is not None else None
