@@ -44,13 +44,13 @@ class OddsObservation(StrictModel):
         if self.source_tick_at > self.retrieved_at:
             raise ValueError("source tick cannot be later than retrieval")
         if self.retrieved_at > self.value_bet_decision_cutoff_at:
-            raise ValueError("odds were retrieved after the prediction cutoff")
+            raise ValueError("odds were retrieved after the value-bet decision cutoff")
         if self.source_tick_at > self.value_bet_decision_cutoff_at:
-            raise ValueError("source odds tick is after the prediction cutoff")
+            raise ValueError("source odds tick is after the value-bet decision cutoff")
         if self.value_bet_decision_cutoff_at >= self.kickoff_at:
-            raise ValueError("prediction cutoff must be strictly before kickoff")
+            raise ValueError("value-bet decision cutoff must be strictly before kickoff")
         if self.in_play:
-            raise ValueError("in-play odds cannot enter pre-match features")
+            raise ValueError("in-play odds cannot enter pre-match value-betting decisions")
         if not self.rights_allow_value_betting:
             raise ValueError("odds source rights do not permit value betting")
         return self
