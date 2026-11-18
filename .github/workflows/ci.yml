@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - "backend/**"
+      - "backend/tests/test_the_odds_api_markets.py"
       - "android/**"
       - "scripts/verify_5dollar_access.py"
       - "scripts/collect_aimidas_brazil_serie_b_snapshot.py"
@@ -22,6 +23,7 @@ on:
       - "scripts/probe_the_odds_api_events.py"
       - "scripts/probe_5dollar_scheduled_fixtures.py"
       - "scripts/reconcile_odds_api_event_catalogue.py"
+      - "scripts/probe_the_odds_api_event_h2h.py"
       - ".github/workflows/the-odds-api-catalogue-probe.yml"
       - ".github/workflows/the-odds-api-5dollar-fixture-qualification.yml"
       - ".github/workflows/the-odds-api-event-discovery.yml"
@@ -40,6 +42,7 @@ on:
       - "scripts/probe_the_odds_api_events.py"
       - "scripts/probe_5dollar_scheduled_fixtures.py"
       - "scripts/reconcile_odds_api_event_catalogue.py"
+      - "scripts/probe_the_odds_api_event_h2h.py"
       - ".github/workflows/the-odds-api-event-discovery.yml"
       - ".github/workflows/the-odds-api-5dollar-fixture-qualification.yml"
       - ".github/workflows/5dollar-odds-snapshot-probe.yml"
@@ -87,7 +90,7 @@ jobs:
       - name: Run tests
         run: pytest
       - name: Run lint
-        run: ruff check app tests ../scripts/verify_5dollar_access.py ../scripts/collect_aimidas_brazil_serie_b_snapshot.py ../scripts/apply_migrations.py ../scripts/collect_brazil_serie_b_history.py ../scripts/validate_brazil_serie_b_import.py ../scripts/probe_5dollar_odds_snapshot.py ../scripts/probe_the_odds_api_catalogue.py ../scripts/probe_the_odds_api_events.py ../scripts/probe_5dollar_scheduled_fixtures.py ../scripts/reconcile_odds_api_event_catalogue.py scripts/preview_canonical_materialization.py scripts/materialize_canonical_entities.py scripts/materialize_round38_incremental.py
+        run: ruff check app tests ../scripts/verify_5dollar_access.py ../scripts/collect_aimidas_brazil_serie_b_snapshot.py ../scripts/apply_migrations.py ../scripts/collect_brazil_serie_b_history.py ../scripts/validate_brazil_serie_b_import.py ../scripts/probe_5dollar_odds_snapshot.py ../scripts/probe_the_odds_api_catalogue.py ../scripts/probe_the_odds_api_events.py ../scripts/probe_5dollar_scheduled_fixtures.py ../scripts/reconcile_odds_api_event_catalogue.py ../scripts/probe_the_odds_api_event_h2h.py scripts/preview_canonical_materialization.py scripts/materialize_canonical_entities.py scripts/materialize_round38_incremental.py
 
   android:
     name: Android debug build
