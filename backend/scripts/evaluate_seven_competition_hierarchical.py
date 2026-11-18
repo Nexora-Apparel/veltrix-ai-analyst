@@ -162,7 +162,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             "payload_sha256": str(row["payload_sha256"]).strip(),
             "raw_response_sha256": str(row["raw_response_sha256"]).strip(),
         }
-        for result in results
+        for result, row in zip(results, finished, strict=True)
     ]
     fingerprint = hashlib.sha256(
         json.dumps(stable, sort_keys=True, separators=(",", ":")).encode()
@@ -184,6 +184,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         },
         "provider_season_id_coverage": sum(1 for row in rows if row["provider_season_id"]),
         "multi_calendar_year_coverage": len({row["calendar_year"] for row in rows}) > 1,
+        "source_evidence": stable,
         "finished_labeled_rows": len(finished),
         "unknown_unlabeled_rows_excluded": len(unknown),
         "unknown_fixture_ids": sorted(
