@@ -254,3 +254,48 @@ def test_dataset_derives_rolling_stats_and_events_only_from_prior_matches():
     assert target_row.features["home_late_goals_for_avg_last5"] == 1.0
     assert target_row.features["home_substitutions_avg_last5"] == 1.0
     assert target_row.features["away_stats_coverage_last5"] == 0.0
+
+
+def test_no_history_records_counts_but_does_not_invent_zero_rate_features():
+    target = fixture("target", "A", "B", 2)
+    scheduled = observation("target", 1, 1, BASE, "scheduled")
+
+    rows = build_prospective_dataset([target], [scheduled])
+
+    assert len(rows) == 1
+    features = rows[0].features
+    assert features["home_matches_last5"] == 0.0
+    assert features["away_matches_last5"] == 0.0
+    assert features["competition_matches_last20"] == 0.0
+    assert "home_goals_for_per_match_last5" not in features
+    assert "home_goals_against_per_match_last5" not in features
+    assert "home_points_per_match_last5" not in features
+    assert "home_rest_days" not in features
+    assert "away_goals_for_per_match_last5" not in features
+    assert "competition_goals_per_match_last20" not in features
+    assert "competition_btts_rate_last20" not in features
+
+
+def test_one_sided_sparse_history_does_not_fill_missing_team_with_zero_rates():
+    past = fixture("past", "A", "C", 1)
+    target = fixture("target", "A", "B", 5)
+    past_result = observation(
+        "past", 10, 10, BASE + timedelta(days=2), "finished", 2, 1
+    )
+    target_schedule = observation(
+        "target", 11, 11, BASE + timedelta(days=4), "scheduled"
+    )
+
+    rows = build_prospective_dataset(
+        [past, target],
+        [past_result, target_schedule],
+    )
+    target_row = next(row for row in rows if row.fixture_id == "target")
+    features = target_row.features
+
+    assert features["home_matches_last5"] == 1.0
+    assert features["home_goals_for_per_match_last5"] == 2.0
+    assert features["home_goals_against_per_match_last5"] == 1.0
+    assert features["away_matches_last5"] == 0.0
+    assert "away_goals_for_per_match_last5" not in features
+    assert "away_goals_against_per_match_last5" not in features

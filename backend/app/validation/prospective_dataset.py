@@ -362,16 +362,19 @@ def _team_form(
     )
     values = {
         f"{prefix}_matches_last5": float(len(selected)),
-        f"{prefix}_points_per_match_last5": mean(points) if points else 0.0,
-        f"{prefix}_goals_for_per_match_last5": mean(goals_for) if goals_for else 0.0,
-        f"{prefix}_goals_against_per_match_last5": mean(goals_against) if goals_against else 0.0,
-        f"{prefix}_goal_difference_per_match_last5": (
-            mean(goals_for) - mean(goals_against) if selected else 0.0
-        ),
-        f"{prefix}_rest_days": rest_days,
         f"{prefix}_stats_coverage_last5": float(stats_coverage),
         f"{prefix}_events_coverage_last5": float(events_coverage),
     }
+    if selected:
+        values.update({
+            f"{prefix}_points_per_match_last5": mean(points),
+            f"{prefix}_goals_for_per_match_last5": mean(goals_for),
+            f"{prefix}_goals_against_per_match_last5": mean(goals_against),
+            f"{prefix}_goal_difference_per_match_last5": (
+                mean(goals_for) - mean(goals_against)
+            ),
+            f"{prefix}_rest_days": rest_days,
+        })
     for key, metric_values in statistic_values.items():
         if metric_values:
             values[f"{prefix}_{key}_avg_last5"] = mean(metric_values)
@@ -467,10 +470,13 @@ def build_prospective_dataset(
             **home_features,
             **away_features,
             "competition_matches_last20": float(len(recent_competition)),
-            "competition_goals_per_match_last20": mean(totals) if totals else 0.0,
-            "competition_btts_rate_last20": mean(btts_values) if btts_values else 0.0,
-            "competition_over25_rate_last20": mean(over_values) if over_values else 0.0,
         }
+        if recent_competition:
+            features.update({
+                "competition_goals_per_match_last20": mean(totals),
+                "competition_btts_rate_last20": mean(btts_values),
+                "competition_over25_rate_last20": mean(over_values),
+            })
         lineage_by_id = {
             (item.observation_id, item.sighting_id): item
             for item in [snapshot, *home_lineage, *away_lineage, *(match[1] for match in recent_competition)]
