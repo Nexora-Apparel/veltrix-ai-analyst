@@ -5,11 +5,12 @@ uses bookmaker prices and does not claim point-in-time (PIT) certification.
 """
 from __future__ import annotations
 
+import random
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import datetime
 from math import log
-import random
-from typing import Any, Sequence
+from typing import Any
 
 
 MODEL_NAMES = ("elo", "poisson", "ensemble")
