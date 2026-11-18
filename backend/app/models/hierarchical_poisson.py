@@ -251,6 +251,8 @@ def fit_hierarchical_poisson(
             defence_mean = sum(next_defence) / team_count
             next_attack = [v - attack_mean for v in next_attack]
             next_defence = [v - defence_mean for v in next_defence]
+            # Preserve both goal-rate predictors under separate attack/defence centering.
+            next_intercept += attack_mean - defence_mean
 
             next_loss = _objective(
                 rows, weights, total_weight, team_index, competition_index,
