@@ -202,7 +202,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         "competition_ids": COMPETITIONS,
         "source_rows": len(rows),
         "provider_fixture_rows_total": total_fixture_rows,
-        "excluded_nonsettled_fixture_rows": total_fixture_rows - len(rows),
+        "excluded_fixture_rows_without_matching_settled_sighting": total_fixture_rows - len(rows),
         "calendar_year_fixture_counts": {
             str(year): sum(1 for row in rows if row["calendar_year"] == year)
             for year in sorted({row["calendar_year"] for row in rows})
