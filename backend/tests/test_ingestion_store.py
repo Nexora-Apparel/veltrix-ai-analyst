@@ -163,7 +163,7 @@ def test_store_records_provider_response_and_normalized_observation(connection) 
             point_in_time_certifiable=True,
         )
 
-    with pytest.raises(IngestionStoreError, match="PIT_CERTIFICATION_REQUIRES_VERIFIED_PUBLICATION_TIME"):
+    with pytest.raises(IngestionStoreError, match="PIT_CERTIFICATION_REQUIRES_CAPTURED_RESPONSE_AND_AVAILABILITY"):
         store.record_source_observation(
             approval,
             scope_value=competition_id,
@@ -174,6 +174,25 @@ def test_store_records_provider_response_and_normalized_observation(connection) 
             retrieved_at=now,
             payload={"fixture_id": "fixture-pit-invalid"},
             point_in_time_certifiable=True,
+        )
+
+    with pytest.raises(
+        IngestionStoreError,
+        match="SYSTEM_OBSERVED_PIT_RESPONSE_TIMESTAMP_MISMATCH",
+    ):
+        store.record_source_observation(
+            approval,
+            scope_value=competition_id,
+            data_type="fixtures_and_results",
+            entity_type="fixture",
+            provider_entity_id="fixture-system-observed-time-mismatch",
+            schema_version="provider-fixture-v1",
+            retrieved_at=now + timedelta(seconds=1),
+            available_at=now + timedelta(seconds=1),
+            availability_basis="SYSTEM_OBSERVED_AT",
+            point_in_time_certifiable=True,
+            payload={"fixture_id": "fixture-system-observed-time-mismatch"},
+            provider_response_id=response_id,
         )
 
     with pytest.raises(IngestionStoreError, match="SENSITIVE_REQUEST_PARAMETER_REJECTED"):
