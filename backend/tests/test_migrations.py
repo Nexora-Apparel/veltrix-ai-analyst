@@ -127,6 +127,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "007_canonical_entity_layer.sql",
             "008_canonical_identity_link_uniqueness.sql",
             "009_canonical_identity_review_cases.sql",
+            "010_system_observed_pit.sql",
         }
     )
 
@@ -163,6 +164,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "007_canonical_entity_layer.sql",
             "008_canonical_identity_link_uniqueness.sql",
             "009_canonical_identity_review_cases.sql",
+            "010_system_observed_pit.sql",
         }.issubset(migration_versions)
 
         assert {
