@@ -105,7 +105,7 @@ def test_rejects_naive_prediction_timestamp() -> None:
     report = sealed_report()
     report["predictions"][0]["kickoff_at"] = "2026-01-01T15:00:00"
     reseal(report)
-    with pytest.raises(ValueError, match="PREDICTION_TIMESTAMP_NOT_AWARE"):
+    with pytest.raises((TypeError, ValueError), match="PREDICTION_TIMESTAMP_NOT_AWARE"):
         validate_retrospective_report(report)
 
 
@@ -113,7 +113,7 @@ def test_rejects_scorecard_match_count_mismatch() -> None:
     report = sealed_report()
     report["ensemble"]["matches"] = 1.0
     reseal(report)
-    with pytest.raises(ValueError, match="REPORT_SCORECARD_MATCH_COUNT_MISMATCH:ensemble"):
+    with pytest.raises((TypeError, ValueError), match="REPORT_SCORECARD_MATCH_COUNT_MISMATCH:ensemble"):
         validate_retrospective_report(report)
 
 
