@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
-
 MatchStatus = Literal[
     "MATCHED",
     "NO_TEAM_MATCH",
