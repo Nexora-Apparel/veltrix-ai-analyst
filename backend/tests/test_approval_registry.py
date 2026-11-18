@@ -156,7 +156,7 @@ def test_the_odds_api_approval_is_exact_scope_and_noncommercial() -> None:
 
 def test_the_odds_api_approval_evidence_hash_matches_review() -> None:
     repository_root = Path(__file__).resolve().parents[2]
-    evidence = repository_root / "docs" / "providers" / "THE_ODDS_API_TERMS_REVIEW.md"
+    evidence = repository_root / "docs" / "providers" / "BOOKMAKER_ODDS_USE_BOUNDARY.md"
 
     assert sha256(evidence.read_bytes()).hexdigest() == THE_ODDS_API_SOCCER_APPROVAL.evidence_sha256
 
@@ -168,3 +168,10 @@ def test_5dollar_odds_approval_is_value_betting_only() -> None:
     assert DataUsePurpose.MODEL_TRAINING not in approval.permitted_uses
     assert DataUsePurpose.FEATURE_ENGINEERING not in approval.permitted_uses
     assert approval.scope_values == FIVEDOLLAR_COMMUNITY_APPROVAL.scope_values
+
+
+def test_odds_api_approval_excludes_core_prediction_training() -> None:
+    approval = THE_ODDS_API_SOCCER_APPROVAL
+    assert DataUsePurpose.VALUE_BETTING in approval.permitted_uses
+    assert DataUsePurpose.MODEL_TRAINING not in approval.permitted_uses
+    assert DataUsePurpose.FEATURE_ENGINEERING not in approval.permitted_uses
