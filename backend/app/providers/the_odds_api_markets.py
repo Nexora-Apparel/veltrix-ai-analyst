@@ -85,6 +85,7 @@ def normalize_event_h2h_odds_response(
     quotes: list[dict[str, Any]] = []
     rejected_missing_timestamp = 0
     rejected_invalid_quote = 0
+    rejected_incomplete_bookmaker_count = 0
     seen: set[tuple[str, str]] = set()
     for bookmaker in bookmakers:
         if not isinstance(bookmaker, dict):
@@ -93,15 +94,6 @@ def normalize_event_h2h_odds_response(
         bookmaker_key = bookmaker.get("key")
         bookmaker_title = bookmaker.get("title")
         if not isinstance(bookmaker_key, str) or not bookmaker_key.strip():
-            rejected_invalid_quote += 1
-            continue
-        last_update = bookmaker.get("last_update")
-        try:
-            source_tick = _aware(last_update, "BOOKMAKER_LAST_UPDATE")
-        except OddsApiMarketPayloadError:
-            rejected_missing_timestamp += 1
-            continue
-        if source_tick > retrieved:
             rejected_invalid_quote += 1
             continue
         markets = bookmaker.get("markets")
@@ -115,10 +107,21 @@ def normalize_event_h2h_odds_response(
         if len(h2h_markets) != 1:
             rejected_invalid_quote += 1
             continue
-        outcomes = h2h_markets[0].get("outcomes")
+        market = h2h_markets[0]
+        try:
+            source_tick = _aware(market.get("last_update"), "MARKET_LAST_UPDATE")
+        except OddsApiMarketPayloadError:
+            rejected_missing_timestamp += 1
+            continue
+        if source_tick > retrieved:
+            rejected_invalid_quote += 1
+            continue
+        outcomes = market.get("outcomes")
         if not isinstance(outcomes, list):
             rejected_invalid_quote += 1
             continue
+        bookmaker_quotes: list[dict[str, Any]] = []
+        bookmaker_selections: set[str] = set()
         for outcome in outcomes:
             if not isinstance(outcome, dict):
                 rejected_invalid_quote += 1
@@ -146,11 +149,10 @@ def normalize_event_h2h_odds_response(
             else:
                 rejected_invalid_quote += 1
                 continue
-            key = (bookmaker_key, selection)
-            if key in seen:
+            if selection in bookmaker_selections:
                 raise OddsApiMarketPayloadError("DUPLICATE_BOOKMAKER_SELECTION")
-            seen.add(key)
-            quotes.append({
+            bookmaker_selections.add(selection)
+            bookmaker_quotes.append({
                 "bookmaker_key": bookmaker_key,
                 "bookmaker_title": bookmaker_title if isinstance(bookmaker_title, str) else bookmaker_key,
                 "market": "h2h",
@@ -158,6 +160,15 @@ def normalize_event_h2h_odds_response(
                 "decimal_price": decimal_price,
                 "source_tick_at": source_tick.isoformat(),
             })
+        if bookmaker_selections != {"HOME", "DRAW", "AWAY"}:
+            rejected_incomplete_bookmaker_count += 1
+            continue
+        for quote in bookmaker_quotes:
+            key = (bookmaker_key, quote["selection"])
+            if key in seen:
+                raise OddsApiMarketPayloadError("DUPLICATE_BOOKMAKER_SELECTION")
+            seen.add(key)
+            quotes.append(quote)
 
     quotes.sort(key=lambda item: (item["bookmaker_key"], item["selection"]))
     return {
@@ -170,6 +181,8 @@ def normalize_event_h2h_odds_response(
         "quote_count": len(quotes),
         "bookmaker_count": len({quote["bookmaker_key"] for quote in quotes}),
         "timestamped_quotes": quotes,
+        "complete_market": bool(quotes),
         "rejected_missing_timestamp_count": rejected_missing_timestamp,
         "rejected_invalid_quote_count": rejected_invalid_quote,
+        "rejected_incomplete_bookmaker_count": rejected_incomplete_bookmaker_count,
     }
