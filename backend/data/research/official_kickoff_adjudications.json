@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "scope": "RETROSPECTIVE_RESEARCH_CHRONOLOGY_ONLY",
+  "adjudications": [
+    {
+      "provider_fixture_id": "2179333578",
+      "raw_provider_kickoff_at": "2026-09-10T23:49:59+00:00",
+      "official_kickoff_at": "2026-09-10T22:30:00+00:00",
+      "competition": "CBF Serie B 2026",
+      "cbf_match_reference": 262,
+      "fixture": "Sao Bernardo x Londrina",
+      "source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sao-bernardo-saf-x-londrina-saf/833143",
+      "reason": "Official CBF match page records kickoff at 19:30 America/Sao_Paulo (22:30 UTC); provider row stores 23:49:59 UTC. Score independently matches 1-2.",
+      "reviewed_at": "2026-11-18"
+    }
+  ]
+}

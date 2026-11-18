@@ -9,6 +9,7 @@ import sys
 
 import psycopg
 
+from app.models.chronology_adjudication import apply_kickoff_adjudications, load_kickoff_adjudications
 from app.models.retrospective import ResearchFixture, chronological_research_run
 from app.models.retrospective_report import validate_retrospective_report
 
@@ -23,6 +24,7 @@ ORDER BY kickoff_at, provider_fixture_id
 PROVIDER = "5DollarFootballAPI"
 SOURCE_ID = "5dollarfootballapi"
 COMPETITION_ID = "522514093"
+ADJUDICATION_PATH = Path(__file__).resolve().parents[1] / "data/research/official_kickoff_adjudications.json"
 
 
 def main() -> int:
@@ -59,6 +61,8 @@ def main() -> int:
     if not finished:
         raise SystemExit("NO_FINISHED_FIXTURES")
 
+    adjudications = load_kickoff_adjudications(ADJUDICATION_PATH)
+    finished, chronology_audit = apply_kickoff_adjudications(finished, adjudications)
     report = chronological_research_run(finished)
     report["source"] = {
         "provider": PROVIDER,
@@ -66,6 +70,9 @@ def main() -> int:
         "competition_id": COMPETITION_ID,
         "training_permission": "PROJECT_OWNER_CONFIRMED_PERSONAL_USE",
         "identity_namespace": "PROVIDER_LOCAL_TEAM_IDS",
+        "chronology_basis": "PROVIDER_KICKOFF_WITH_EVIDENCE_BACKED_OFFICIAL_CBF_ADJUDICATIONS",
+        "kickoff_adjudications_applied": chronology_audit,
+        "kickoff_adjudication_count": len(chronology_audit),
         "feature_semantics": "RETROSPECTIVE_LAGGED_RESULTS_NOT_HISTORICAL_PIT_REPLAY",
         "source_rows": len(rows),
         "finished_labeled_rows": len(finished),
