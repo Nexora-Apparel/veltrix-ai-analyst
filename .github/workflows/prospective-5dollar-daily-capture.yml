@@ -1,4 +1,4 @@
-name: VELTRIX prospective 5Dollar capture and dataset build
+name: VELTRIX prospective 5Dollar evidence capture
 
 on:
   schedule:
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  capture-and-build:
+  capture:
     environment: veltrix-historical-import
     runs-on: ubuntu-latest
     timeout-minutes: 180
