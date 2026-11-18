@@ -424,6 +424,7 @@ def test_resume_replays_reserved_response_without_repeating_provider_http(
         "status": "all",
         "page": 1,
         "per_page": 50,
+        "include": "stats,events",
     }
     endpoint = "/leagues/522514093/fixtures"
     request_key = (
