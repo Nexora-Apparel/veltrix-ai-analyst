@@ -25,7 +25,6 @@ def base_args():
         "prediction_cutoff_at": CUTOFF,
         "source_observation_id": "obs-1",
         "rights_approval_id": "rights-1",
-        "use_purpose": "VALUE_BETTING_ONLY",
         "rights_allow_value_betting": True,
     }
 
