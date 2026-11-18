@@ -47,13 +47,19 @@ The four non-finished rows are UNKNOWN and have no scores:
 - La Liga: Rayo Vallecano–Athletic Club, 319329118, 2026-10-10 12:00 UTC.
 - Premier League: Man City–Brighton, 475377468, 2026-10-31 15:01 UTC.
 
-### Unresolved fixture duplicate candidate
+### Unresolved fixture duplicate/stale-row candidates
 
-Premier League contains two provider IDs for the same ordered team pair on the same date:
+Two suspicious fixture pairs were found by comparing exact provider team IDs, kickoff proximity (within three minutes), and both home/away orientations:
+
+**Ligue 1 — PSG/Rennes, same kickoff and reversed home/away orientation**
+- 3279799888: Rennes–PSG, 18:45 UTC, FINISHED 2–2.
+- 4285540581: PSG–Rennes, 18:45 UTC, UNKNOWN, no score.
+
+**Premier League — Man City/Brighton, one-minute kickoff difference**
 - 1990703256: Man City–Brighton, 15:00 UTC, FINISHED 0–1.
 - 475377468: Man City–Brighton, 15:01 UTC, UNKNOWN, no score.
 
-The 60-second kickoff difference and identical team IDs make this a duplicate/stale-record candidate, not a proven duplicate. Preserve both provider records. Exclude the UNKNOWN row from labeled training because it has no result; do not merge or delete either record without independent fixture evidence and human review.
+These are duplicate/stale-row candidates, not proven duplicates. Preserve all four source records. The two UNKNOWN rows are excluded from labeled training because they have no result. Do not merge, delete, or relabel any row without independent fixture evidence and human review.
 
 ## Team identity audit
 
@@ -89,7 +95,7 @@ A retrospective event-time development dataset may use only the 610 FINISHED row
 - Unknown/non-finished rows: excluded from supervised score training but retained in source records and audit.
 - PIT features: none from this corpus. Do not replay post-match retrieved observations as pre-match features.
 
-This permits a retrospective outcome-only development experiment. It does not permit a PIT-certified evaluation or production promotion. The four unknown rows and the one duplicate candidate remain visible audit exclusions/risks.
+This permits a retrospective outcome-only development experiment. It does not permit a PIT-certified evaluation or production promotion. The four unknown rows and both duplicate/stale-row candidates remain visible audit exclusions/risks.
 
 ## Existing identity-review queue
 
@@ -97,7 +103,7 @@ The existing 28 open review cases in the database concern the earlier Brazil Ser
 
 ## Next actions
 
-1. Preserve the source-local identity namespace and create evidence-backed review cases for the Man City–Brighton duplicate candidate and Deportivo label variation if the review-case workflow supports these case types without implying an alias.
+1. Preserve the source-local identity namespace and create evidence-backed review cases for both the PSG–Rennes and Man City–Brighton duplicate candidates, plus the Deportivo label variation if the review-case workflow supports these case types without implying an alias.
 2. Build an isolated, read-only six-competition retrospective dataset from the 610 finished rows.
 3. Run chronological hierarchical Poisson hyperparameter tuning and estimate Dixon–Coles rho only from out-of-fold development forecasts.
 4. Compare held-out forecasts against an independent competition-only baseline on exactly the same fixtures using Brier score, log loss and scoreline likelihood.
