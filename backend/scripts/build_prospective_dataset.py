@@ -68,10 +68,15 @@ def build_report(
                    o.provider, o.source_id, o.provider_entity_id,
                    s.retrieved_at, s.system_observed_at,
                    s.availability_basis, s.point_in_time_certifiable,
-                   s.payload_sha256, o.payload
+                   s.payload_sha256, r.response_sha256, o.payload
             FROM veltrix_ai_analyst.source_observations o
             JOIN veltrix_ai_analyst.source_observation_sightings s
               ON s.source_observation_id = o.id
+            JOIN veltrix_ai_analyst.provider_responses r
+              ON r.id = s.provider_response_id
+             AND r.provider = o.provider
+             AND r.source_id = o.source_id
+             AND r.http_status BETWEEN 200 AND 299
             WHERE o.provider = '5DollarFootballAPI'
               AND o.source_id = '5dollarfootballapi'
               AND o.data_type = 'fixtures_and_results'
@@ -109,7 +114,8 @@ def build_report(
             availability_basis=str(row[8]),
             point_in_time_certifiable=bool(row[9]),
             payload_sha256=str(row[10]).strip(),
-            payload=dict(row[11]),
+            raw_response_sha256=str(row[11]).strip(),
+            payload=dict(row[12]),
         )
         for row in observation_rows
     ]
