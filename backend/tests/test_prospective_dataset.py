@@ -1,0 +1,128 @@
+from datetime import UTC, datetime, timedelta
+
+from app.validation.prospective_dataset import (
+    FixtureIdentity,
+    FixtureObservation,
+    build_expanding_window_folds,
+    build_prospective_dataset,
+)
+
+
+BASE = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def fixture(fid, home, away, day, competition="league"):
+    return FixtureIdentity(
+        fixture_id=fid,
+        provider="5DollarFootballAPI",
+        source_id="5dollarfootballapi",
+        competition_id=competition,
+        home_team_id=home,
+        away_team_id=away,
+        kickoff_at=BASE + timedelta(days=day),
+    )
+
+
+def observation(fid, oid, sid, when, status, home_goals=None, away_goals=None):
+    payload = {"status": status}
+    if home_goals is not None:
+        payload["home_goals"] = home_goals
+    if away_goals is not None:
+        payload["away_goals"] = away_goals
+    return FixtureObservation(
+        observation_id=oid,
+        sighting_id=sid,
+        provider_response_id=1000 + oid,
+        fixture_id=fid,
+        provider="5DollarFootballAPI",
+        source_id="5dollarfootballapi",
+        observed_at=when,
+        availability_basis="SYSTEM_OBSERVED_AT",
+        point_in_time_certifiable=True,
+        payload_sha256=f"{oid:064x}",
+        payload=payload,
+    )
+
+
+def test_dataset_uses_only_results_observed_before_target_cutoff():
+    fixtures = [
+        fixture("past-1", "A", "B", 1),
+        fixture("past-2", "C", "A", 2),
+        fixture("target", "A", "C", 5),
+    ]
+    observations = [
+        observation("past-1", 1, 1, BASE + timedelta(days=2), "finished", 2, 0),
+        observation("past-2", 2, 2, BASE + timedelta(days=3), "finished", 1, 1),
+        observation("target", 3, 3, BASE + timedelta(days=4), "scheduled"),
+        # A result captured after the target cutoff must not enter its features.
+        observation("past-2", 4, 4, BASE + timedelta(days=4, hours=1), "finished", 4, 0),
+        observation("target", 5, 5, BASE + timedelta(days=6), "finished", 2, 1),
+    ]
+    rows = build_prospective_dataset(fixtures, observations)
+    target = next(row for row in rows if row.fixture_id == "target")
+    assert target.prediction_cutoff_at == BASE + timedelta(days=4)
+    assert target.features["home_matches_last5"] == 2
+    assert target.features["home_goals_for_per_match_last5"] == 1.5
+    assert target.features["away_matches_last5"] == 1
+    assert target.label == {
+        "home_goals": 2,
+        "away_goals": 1,
+        "home_win": True,
+        "draw": False,
+        "away_win": False,
+        "btts": True,
+        "over_25": True,
+    }
+    assert target.label_observation_id == 5
+    assert all(item["system_observed_at"] <= target.prediction_cutoff_at.isoformat()
+               for item in target.feature_lineage)
+
+
+def test_post_kickoff_schedule_snapshot_is_not_a_target_row():
+    target = fixture("target", "A", "B", 1)
+    late = observation("target", 1, 1, BASE + timedelta(days=1), "scheduled")
+    assert build_prospective_dataset([target], [late]) == ()
+
+
+def test_retrieval_only_observations_are_excluded():
+    target = fixture("target", "A", "B", 2)
+    late = observation("target", 1, 1, BASE, "scheduled")
+    late = FixtureObservation(
+        observation_id=late.observation_id,
+        sighting_id=late.sighting_id,
+        provider_response_id=late.provider_response_id,
+        fixture_id=late.fixture_id,
+        provider=late.provider,
+        source_id=late.source_id,
+        observed_at=late.observed_at,
+        availability_basis="RETRIEVED_AT_ONLY",
+        point_in_time_certifiable=False,
+        payload_sha256=late.payload_sha256,
+        payload=late.payload,
+    )
+    assert build_prospective_dataset([target], [late]) == ()
+
+
+def test_expanding_folds_keep_simultaneous_kickoffs_together():
+    fixtures = [fixture(f"f-{i}", f"h-{i}", f"a-{i}", i + 1) for i in range(8)]
+    observations = []
+    for i, f in enumerate(fixtures):
+        observations.append(observation(f.fixture_id, i + 1, i + 1, f.kickoff_at - timedelta(hours=2), "scheduled"))
+        observations.append(observation(f.fixture_id, i + 101, i + 101, f.kickoff_at + timedelta(hours=2), "finished", 1, 0))
+    # Add a simultaneous fixture at day 4.
+    simultaneous = fixture("f-same-time", "hx", "ax", 4)
+    fixtures.append(simultaneous)
+    observations.extend([
+        observation("f-same-time", 20, 20, simultaneous.kickoff_at - timedelta(hours=1), "scheduled"),
+        observation("f-same-time", 120, 120, simultaneous.kickoff_at + timedelta(hours=2), "finished", 0, 0),
+    ])
+    rows = build_prospective_dataset(fixtures, observations)
+    folds = build_expanding_window_folds(rows, minimum_training_fixtures=3, validation_block_fixtures=2)
+    assert folds
+    for fold in folds:
+        assert set(fold.train_fixture_ids).isdisjoint(fold.validation_fixture_ids)
+        assert all(
+            next(row for row in rows if row.fixture_id == fid).kickoff_at < fold.validation_start_at
+            for fid in fold.train_fixture_ids
+        )
+        assert "f-3" in fold.validation_fixture_ids or "f-same-time" not in fold.validation_fixture_ids
