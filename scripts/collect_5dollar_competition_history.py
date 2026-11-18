@@ -5,19 +5,19 @@ import argparse
 import asyncio
 import json
 import os
-
-import psycopg
 from datetime import UTC, datetime
 from urllib.parse import urlsplit
 
+import psycopg
+
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
-from app.providers.historical_validation import validate_competition_import
 from app.providers.historical_import import (
     BOUNDARY_END,
     BOUNDARY_START,
     REQUEST_BUDGET,
     run_competition_historical_import,
 )
+from app.providers.historical_validation import validate_competition_import
 
 
 def main() -> int:
