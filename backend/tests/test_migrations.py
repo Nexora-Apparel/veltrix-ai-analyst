@@ -173,6 +173,23 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "012_database_observed_timestamps.sql",
         }.issubset(migration_versions)
 
+        timestamp_columns = {
+            (row[0], row[1])
+            for row in connection.execute(
+                """
+                SELECT table_name, column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'veltrix_ai_analyst'
+                  AND column_name = 'system_observed_at'
+                """
+            ).fetchall()
+        }
+        assert timestamp_columns == {
+            ("provider_responses", "system_observed_at"),
+            ("source_observations", "system_observed_at"),
+            ("source_observation_sightings", "system_observed_at"),
+        }
+
         assert {
             "source_approvals",
             "source_approval_status_events",
