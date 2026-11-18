@@ -175,3 +175,24 @@ def test_stale_fixture_identity_observation_is_rejected():
         assert "kickoff_at" in str(exc)
     else:
         raise AssertionError("stale fixture identity must fail closed")
+
+
+def test_same_provider_fixture_id_isolated_by_competition_scope():
+    fixtures = [
+        fixture("league-a:shared-id", "A", "B", 2, "league-a"),
+        fixture("league-b:shared-id", "C", "D", 2, "league-b"),
+    ]
+    observations = [
+        observation(
+            "league-a:shared-id", 91, 91, BASE + timedelta(days=1), "scheduled"
+        ),
+        observation(
+            "league-b:shared-id", 92, 92, BASE + timedelta(days=1), "scheduled"
+        ),
+    ]
+    rows = build_prospective_dataset(fixtures, observations)
+    assert {row.fixture_id for row in rows} == {
+        "league-a:shared-id",
+        "league-b:shared-id",
+    }
+    assert {row.competition_id for row in rows} == {"league-a", "league-b"}
