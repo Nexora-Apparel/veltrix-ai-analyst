@@ -9,6 +9,12 @@ Official source used as participation/name evidence:
 
 The source establishes the official competition's listed club names and fixture pairings. It does not itself establish the identity of a 5Dollar provider ID. Each row therefore remains a candidate requiring reviewer confirmation.
 
+## New schedule-consistency evidence — 2026-11-18
+
+The CBF rounds 1–18 audit and the existing rounds 19–38 ledgers now reconcile all 380 FINISHED fixture pairings to the official 2026 Série B schedule. The finished corpus contains 20 provider-local team IDs; the additional 21st provider ID appears only in an UNKNOWN duplicate candidate. No pairing is missing, multiply matched or unmapped.
+
+This strengthens the candidate fixture-graph evidence but is not independent proof of canonical identity: the provider-ID-to-CBF-label map below is the candidate map used for the join. All 21 identity/alias cases therefore remain HUMAN_REVIEW_REQUIRED. No canonical links or source rows were changed.
+
 ## Candidate review matrix
 
 | Provider team ID | Provider label | CBF schedule label candidate | Canonical team ID | Current disposition |
