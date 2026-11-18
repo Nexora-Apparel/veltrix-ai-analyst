@@ -10,6 +10,7 @@ import sys
 import psycopg
 
 from app.models.retrospective import ResearchFixture, chronological_research_run
+from app.models.retrospective_report import validate_retrospective_report
 
 QUERY = """
 SELECT provider_fixture_id, kickoff_at, home_team_provider_id,
@@ -74,6 +75,7 @@ def main() -> int:
     }
     canonical = json.dumps(report, sort_keys=True, separators=(",", ":"), allow_nan=False)
     report["report_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    validate_retrospective_report(report)
     output = Path(os.environ.get("TRAINING_REPORT_PATH", "artifacts/retrospective-training-report.json"))
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
