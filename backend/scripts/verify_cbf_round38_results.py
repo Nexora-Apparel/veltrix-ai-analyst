@@ -18,8 +18,8 @@ def load_registry() -> dict[str, object]:
     path = Path(__file__).resolve().parents[1] / "data/research/cbf_round38_official_results.json"
     registry = json.loads(path.read_text(encoding="utf-8"))
     fixtures = registry.get("fixtures", [])
-    refs = [str(row["cbf_reference"]) for row in fixtures]
-    ids = [str(row["provider_fixture_id"]) for row in fixtures]
+    refs = [str(row["ref"]) for row in fixtures]
+    ids = [str(row["fixture_id"]) for row in fixtures]
     if len(refs) != 10 or len(set(refs)) != 10 or len(set(ids)) != 10:
         raise RuntimeError("ROUND38_REGISTRY_MUST_HAVE_10_UNIQUE_FIXTURES")
     if not str(registry.get("official_cbf_source_url", "")).startswith("https://www.cbf.com.br/"):
@@ -52,7 +52,7 @@ def main() -> int:
                     WHERE provider = %s AND source_id = %s
                       AND provider_competition_id = %s AND provider_fixture_id = %s
                     """,
-                    (PROVIDER, SOURCE_ID, COMPETITION_ID, str(expected["provider_fixture_id"])),
+                    (PROVIDER, SOURCE_ID, COMPETITION_ID, str(expected["fixture_id"])),
                 ).fetchone()
                 if row is None:
                     missing.append(expected)
