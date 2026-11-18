@@ -1,6 +1,6 @@
 """Resumable, quota-bounded historical fixture ingestion.
 
-This module deliberately supports one reviewed competition scope only. Every
+This module supports only competition IDs covered by the exact reviewed source approval. Every
 provider page is reserved before HTTP, persisted with raw response provenance,
 and checkpointed before the adapter advances to the next page.
 """
