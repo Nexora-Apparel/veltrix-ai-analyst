@@ -1,0 +1,38 @@
+name: The Odds API zero-credit soccer catalogue probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: the-odds-api-catalogue-probe
+  cancel-in-progress: false
+
+jobs:
+  catalogue-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Probe soccer catalogue (no odds-market request)
+        env:
+          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+        run: python scripts/probe_the_odds_api_catalogue.py
+
+      - name: Upload compact manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-odds-api-catalogue-probe
+          path: odds-api-catalogue-manifest.json
+          if-no-files-found: ignore
+          retention-days: 7
