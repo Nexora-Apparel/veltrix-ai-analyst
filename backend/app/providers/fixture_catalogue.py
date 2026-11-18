@@ -9,18 +9,6 @@ class FixtureCatalogueError(ValueError):
     """The 5Dollar fixture catalogue response is malformed or inconsistent."""
 
 
-def _parse_aware(value: object, field_name: str) -> datetime:
-    if not isinstance(value, str) or not value.strip():
-        raise FixtureCatalogueError(f"{field_name}_REQUIRED")
-    try:
-        parsed = datetime.fromisoformat(value)
-    except ValueError:
-        raise FixtureCatalogueError(f"{field_name}_INVALID") from None
-    if parsed.tzinfo is None or parsed.utcoffset() is None:
-        raise FixtureCatalogueError(f"{field_name}_MUST_BE_TIMEZONE_AWARE")
-    return parsed.astimezone(UTC)
-
-
 def _fixture_kickoff(row: dict[str, Any]) -> datetime:
     raw = row.get("kickoff_utc")
     if isinstance(raw, str) and raw.strip():
