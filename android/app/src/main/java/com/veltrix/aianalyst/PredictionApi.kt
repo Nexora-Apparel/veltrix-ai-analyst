@@ -1,6 +1,7 @@
 package com.veltrix.aianalyst
 
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -59,6 +60,8 @@ object PredictionApi {
                     ?: throw IOException("Prediction API returned an empty response")
                 parsePredictions(body)
             }
+        } catch (exception: CancellationException) {
+            throw exception
         } catch (exception: Exception) {
             Log.e(TAG, "Unable to load published predictions", exception)
             emptyList()
