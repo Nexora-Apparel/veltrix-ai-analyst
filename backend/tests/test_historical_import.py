@@ -608,6 +608,19 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
             "SELECT status FROM veltrix_ai_analyst.import_runs WHERE id = %s",
             (run_id,),
         ).fetchone()[0]
+        related_entity_evidence = connection.execute(
+            """
+            SELECT entity_type, COUNT(*),
+                   BOOL_AND(point_in_time_certifiable IS TRUE),
+                   BOOL_AND(availability_basis = 'SYSTEM_OBSERVED_AT'),
+                   BOOL_AND(available_at = retrieved_at)
+            FROM veltrix_ai_analyst.source_observations
+            WHERE provider_response_id = %s
+              AND entity_type IN ('competition', 'team', 'fixture')
+            GROUP BY entity_type
+            """,
+            (row[10],),
+        ).fetchall() if row is not None else []
 
     assert run_status == "COMPLETED"
     assert row is not None
@@ -620,3 +633,8 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
     assert row[8] == "SYSTEM_OBSERVED_AT"
     assert row[9] is True
     assert row[10] is not None
+    assert {item[0]: item[1:] for item in related_entity_evidence} == {
+        "competition": (1, True, True, True),
+        "team": (2, True, True, True),
+        "fixture": (1, True, True, True),
+    }
