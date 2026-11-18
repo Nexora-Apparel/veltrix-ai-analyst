@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from app.providers.odds_contracts import OddsCaptureEnvelope
 from app.providers.odds_capture import (
     OddsPayloadError,
     normalize_5dollar_fixture_odds,
@@ -210,3 +211,11 @@ def test_history_normalizer_skips_withdrawn_all_null_price_tick():
         "score": {"home": None, "away": None}, "recorded_at": TICK.isoformat(),
     }]
     assert normalize_5dollar_odds_history(response, **base_args()) == ()
+
+
+def test_capture_envelope_rejects_duplicate_observation_identity():
+    rows = normalize_5dollar_fixture_odds(fixture_odds_response(), **base_args())
+    envelope = OddsCaptureEnvelope(captured_at=RETRIEVED, request_id="capture-1", observations=rows)
+    assert len(envelope.observations) == 3
+    with pytest.raises(ValueError, match="duplicate odds observation identity"):
+        OddsCaptureEnvelope(captured_at=RETRIEVED, request_id="capture-2", observations=(rows[0], rows[0]))
