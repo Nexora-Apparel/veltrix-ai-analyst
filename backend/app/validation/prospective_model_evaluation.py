@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from app.models.hierarchical_poisson import (
     HierarchicalGoalResult,
@@ -39,6 +40,51 @@ MIN_RHO_OOF_FIXTURES = 20
 MINIMUM_TRAINING_FIXTURES = 30
 INNER_VALIDATION_BLOCK = 25
 SCORELINE_MASS_TARGET = 0.99999
+
+
+def _lineage_rights_valid(
+    lineage: dict | None,
+    cutoff: datetime,
+    required_uses: tuple[str, ...],
+) -> bool:
+    if not isinstance(lineage, dict):
+        return False
+    if lineage.get("rights_status") != "APPROVED":
+        return False
+    valid_from = lineage.get("rights_valid_from")
+    valid_until = lineage.get("rights_valid_until")
+    if not isinstance(valid_from, str):
+        return False
+    try:
+        valid_from_at = datetime.fromisoformat(valid_from)
+        valid_until_at = datetime.fromisoformat(valid_until) if valid_until else None
+    except ValueError:
+        return False
+    if (
+        valid_from_at.utcoffset() is None
+        or valid_from_at > cutoff
+        or (valid_until_at is not None and (
+            valid_until_at.utcoffset() is None or valid_until_at <= cutoff
+        ))
+    ):
+        return False
+    if not set(required_uses).issubset(set(lineage.get("rights_permitted_uses") or [])):
+        return False
+    effective_events = []
+    for event in lineage.get("rights_status_events") or []:
+        if not isinstance(event, dict) or not isinstance(event.get("effective_at"), str):
+            return False
+        try:
+            effective_at = datetime.fromisoformat(event["effective_at"])
+        except ValueError:
+            return False
+        if effective_at.utcoffset() is None:
+            return False
+        if effective_at <= cutoff:
+            effective_events.append((effective_at, event.get("status")))
+    if effective_events and max(effective_events, key=lambda item: item[0])[1] != "APPROVED":
+        return False
+    return True
 
 
 def _goal_result(row: ProspectiveDatasetRow) -> HierarchicalGoalResult:
@@ -177,6 +223,7 @@ def evaluate_prospective_model(
     baseline_totals: list[BinaryForecast] = []
     fold_reports = []
     total_rho_clipped = 0
+    evaluation_time = datetime.now(UTC)
 
     for fold in folds:
         training = [row_by_id[key] for key in fold.train_fixture_ids]
@@ -188,15 +235,21 @@ def evaluate_prospective_model(
             or row.label_observed_at is None
             or row.label_observed_at >= fold.validation_start_at
             or row.kickoff_at >= fold.validation_start_at
+            or not _lineage_rights_valid(
+                row.label_lineage, fold.validation_start_at, ("MODEL_TRAINING",)
+            )
             for row in training
         ):
-            raise ValueError("training labels are not strictly available before validation")
+            raise ValueError("training labels are not available or rights-valid before validation")
         if any(
             row.label is None
             or row.prediction_cutoff_at >= row.kickoff_at
+            or not _lineage_rights_valid(
+                row.label_lineage, evaluation_time, ("MODEL_VALIDATION",)
+            )
             for row in validation
         ):
-            raise ValueError("validation row lacks a strict pre-match cutoff or settled label")
+            raise ValueError("validation row lacks a strict pre-match cutoff, settled label or valid rights")
         if len(training) < MINIMUM_TRAINING_FIXTURES:
             raise ValueError("prospective fold is below minimum training sample size")
 
@@ -314,6 +367,7 @@ def evaluate_prospective_model(
     return {
         "evaluation_type": "PROSPECTIVE_EXPANDING_WINDOW_MARKET_EVALUATION",
         "status": "RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL",
+        "evaluation_time": evaluation_time.isoformat(),
         "fixtures": len(model_btts),
         "folds": fold_reports,
         "markets": {
