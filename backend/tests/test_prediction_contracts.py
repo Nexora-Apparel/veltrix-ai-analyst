@@ -70,7 +70,7 @@ def test_complete_verified_evidence_is_admitted() -> None:
         ({"point_in_time_certifiable": False}, "SOURCE_NOT_POINT_IN_TIME_CERTIFIABLE"),
         ({"availability_basis": AvailabilityBasis.RETRIEVED_AT_ONLY}, "VERIFIED_SOURCE_AVAILABILITY_BASIS_REQUIRED"),
         ({"source_published_at": None}, "SOURCE_PUBLICATION_TIME_REQUIRED"),
-        ({"available_at": CUTOFF + timedelta(seconds=1)}, "SOURCE_NOT_AVAILABLE_AT_PREDICTION_CUTOFF"),
+        ({"available_at": CUTOFF + timedelta(seconds=1)}, "AVAILABILITY_AFTER_RETRIEVAL"),
         ({"rights_status_at_cutoff": RightsStatus.REVOKED}, "SOURCE_RIGHTS_NOT_APPROVED_AT_CUTOFF"),
         ({"permitted_uses": frozenset({"FEATURE_ENGINEERING"})}, "SOURCE_RIGHTS_DO_NOT_PERMIT_MODEL_FEATURES"),
         ({"canonical_identity_status": IdentityStatus.CONFLICT}, "CANONICAL_IDENTITY_NOT_VERIFIED"),
@@ -180,5 +180,18 @@ def test_system_observed_evidence_requires_exact_retrieval_timestamp() -> None:
     with pytest.raises(
         FeatureAdmissionError,
         match="SYSTEM_OBSERVED_AVAILABILITY_TIMESTAMP_REQUIRED",
+    ):
+        require_feature_admission(make_request(evidence=evidence))
+
+
+
+def test_published_evidence_available_after_cutoff_is_rejected() -> None:
+    evidence = make_evidence(
+        available_at=CUTOFF + timedelta(seconds=1),
+        retrieved_at=CUTOFF + timedelta(minutes=1),
+    )
+    with pytest.raises(
+        FeatureAdmissionError,
+        match="SOURCE_NOT_AVAILABLE_AT_PREDICTION_CUTOFF",
     ):
         require_feature_admission(make_request(evidence=evidence))
