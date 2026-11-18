@@ -143,6 +143,7 @@ def build_report(
                 SELECT COALESCE(
                     jsonb_agg(
                         jsonb_build_object(
+                            'id', e.id,
                             'status', e.status,
                             'effective_at', e.effective_at
                         ) ORDER BY e.effective_at, e.id
