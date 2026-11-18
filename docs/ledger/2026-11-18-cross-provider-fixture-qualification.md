@@ -1,12 +1,12 @@
 # Cross-Provider Fixture Catalogue Qualification
 
 **Date:** 2026-11-18  
-**Status:** IMPLEMENTED AS MANUAL DRY-RUN; NOT DISPATCHED  
+**Status:** IMPLEMENTED AND MERGED; MANUAL DISPATCH PENDING  
 **Providers:** The Odds API v4 (event metadata) + 5DollarFootballAPI Community (scheduled fixture metadata)
 
 ## Purpose
 
-Prepare one exact fixture identity comparison before any The Odds API odds-market request. The comparison uses The Odds API's quota-free event endpoint and one 5Dollar league-fixture request. It does not retrieve bookmaker prices.
+Compare one exact upcoming fixture across providers, then conditionally retrieve one event-specific h2h market snapshot if the catalogues are complete and exactly one fixture matches. The event catalogue endpoint is quota-free; the bounded h2h request is capped at one credit.
 
 ## Request budget
 
@@ -15,7 +15,7 @@ For one selected competition over a bounded 30-day upcoming window:
 - 5DollarFootballAPI: exactly one `GET /v1/leagues/{id}/fixtures?start_time=now&end_time=now+30d&status=scheduled&per_page=100&page=1` request.
 - Retries: zero.
 - Pagination: zero. If the 5Dollar response says `has_more=true`, the catalogue is marked incomplete and cannot qualify a market probe.
-- Odds markets: zero.
+- Conditional market request: exactly one event-specific h2h market in one UK region, only after a complete, unique exact match; maximum expected cost one credit.
 - Database writes: zero.
 
 The 5Dollar request uses only the exact seven competition IDs already approved in `FIVEDOLLAR_COMMUNITY_APPROVAL`. The event request uses the corresponding seven sport keys covered by `THE_ODDS_API_SOCCER_APPROVAL`.
@@ -37,7 +37,7 @@ Each provider manifest records request start, local retrieval time, HTTP status,
 
 ## Explicit non-goals
 
-No odds markets, historical odds, retries, pagination, bulk collection, database writes, recurring schedule, model features, CLV, value betting, production prediction endpoint, public odds display or Android integration are enabled.
+No historical odds, retries, pagination, bulk collection, database writes, recurring schedule, model features, CLV, value betting, production prediction endpoint, public odds display or Android integration are enabled.
 
 
 ## Verification update — 2026-11-18
@@ -47,8 +47,10 @@ No odds markets, historical odds, retries, pagination, bulk collection, database
 - The same run recorded `quota_last_cost=0`, `quota_used=229`, and `quota_remaining=271`. The existing account is authenticated; no key was exposed and no odds credits were spent.
 - User confirmed authorization to use the existing Odds API account as needed for this project. This does not override provider terms, the current account balance, source timestamp requirements, or the no-commercial-use restriction recorded in the source approval.
 - PR #48 CI run [#44222974563](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44222974563) passed: 209 backend tests, Ruff, and Android debug build.
-- The cross-provider workflow is merged but has not yet been dispatched. It is limited to one selected competition, the next 30 days, one Odds API event-catalogue request (zero odds credits), and one 5Dollar scheduled-fixture request. It performs no pagination, retries, odds-market request, or database write.
-- No market probe is authorized by the workflow itself: `market_probe_authorized=false`. A single exact unique match only creates a candidate for the next bounded market-probe step.
+- PR #49 merged strict event-specific h2h parsing as `69bd04666996c3d0901105ebdb3d1a45dd3e4522`; CI [#44224263834](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44224263834) passed 214 backend tests, Ruff and Android debug build.
+- PR #51 merged the conditional one-credit h2h probe gate as `b1db56bda8bcaa9e82ac0619f1b0dc8227bf6392`; CI [#44224521063](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44224521063) passed 214 backend tests, Ruff and Android debug build.
+- The merged manual workflow now uses one selected competition over the next 30 days, one quota-free Odds API event-catalogue request and one 5Dollar scheduled-fixture request. Only if both catalogues are complete and exactly one unique exact fixture match exists does it make one h2h market request in one region. It performs no pagination, retries, history request or database write.
+- The workflow has not yet been dispatched. The current observed Odds API balance is 271 credits from run #44220418309; a successful one-market/one-region request is expected to cost at most one credit.
 
 
 ## Bounded h2h market probe
