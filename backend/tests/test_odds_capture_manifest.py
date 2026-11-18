@@ -40,6 +40,8 @@ def manifest(**overrides):
         "request_started_at": START,
         "retrieved_at": RETRIEVED,
         "provider_response_date": RETRIEVED,
+        "source_tick_min_at": START + timedelta(seconds=1),
+        "source_tick_max_at": START + timedelta(seconds=1),
         "value_bet_decision_cutoff_at": CUTOFF,
         "fixture_kickoff_at": KICKOFF,
         "http_status": 200,
@@ -107,3 +109,14 @@ def test_rejected_manifest_can_record_provider_failure_without_observations():
 def test_manifest_rejects_naive_timestamps():
     with pytest.raises(ValueError, match="timezone-aware"):
         manifest(request_started_at=datetime(2026, 11, 18, 12))
+
+
+
+def test_manifest_rejects_source_tick_after_local_retrieval():
+    with pytest.raises(ValueError, match="later than local retrieval"):
+        manifest(source_tick_max_at=RETRIEVED + timedelta(seconds=1))
+
+
+def test_manifest_rejects_source_tick_after_decision_cutoff():
+    with pytest.raises(ValueError, match="after the decision cutoff"):
+        manifest(source_tick_max_at=CUTOFF + timedelta(seconds=1))
