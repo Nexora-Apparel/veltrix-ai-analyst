@@ -102,11 +102,10 @@ jobs:
           from datetime import UTC, datetime, timedelta
           now = datetime.now(UTC)
           day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-          # Two UTC days only: yesterday's settlements and today's schedule.
-          # The provider adapter splits these into at most two daily requests
-          # per competition, keeping the seven-league daily budget bounded.
+          # Capture yesterday's settlements and a rolling seven-day forward schedule.
+          # The provider adapter splits this into at most two seven-day windows.
           print(f"start_at={(day - timedelta(days=1)).isoformat()}")
-          print(f"end_at={(day + timedelta(days=1)).isoformat()}")
+          print(f"end_at={(day + timedelta(days=8)).isoformat()}")
           PY
       - name: Capture recent results and upcoming fixtures sequentially
         run: |
@@ -116,17 +115,3 @@ jobs:
             --request-budget 4 \
             --import-type prospective_capture \
             --execute
-      - name: Build leakage-safe expanding dataset
-        working-directory: backend
-        run: |
-          python scripts/build_prospective_dataset.py \
-            --output /tmp/veltrix-prospective-dataset.json \
-            --minimum-training-fixtures 30 \
-            --validation-block-fixtures 25
-      - name: Upload prospective dataset manifest
-        uses: actions/upload-artifact@v4
-        with:
-          name: veltrix-prospective-expanding-dataset
-          path: /tmp/veltrix-prospective-dataset.json
-          if-no-files-found: error
-          retention-days: 30
