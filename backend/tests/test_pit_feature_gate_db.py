@@ -109,21 +109,13 @@ def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
                 (ineligible_observation_id,),
             ).fetchone()[0]
 
-            connection.execute(
-                """
-                INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
-                    target_fixture_id, source_observation_id, source_sighting_id,
-                    feature_key, feature_value, prediction_cutoff_at
-                ) VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    target_fixture_id,
-                    eligible_observation_id,
-                    eligible_sighting_id,
-                    "test.feature",
-                    Jsonb({"value": 1}),
-                    cutoff_at,
-                ),
+            store.record_pre_match_feature_observation(
+                target_fixture_id=target_fixture_id,
+                source_observation_id=eligible_observation_id,
+                source_sighting_id=eligible_sighting_id,
+                feature_key="test.feature",
+                feature_value={"value": 1},
+                prediction_cutoff_at=cutoff_at,
             )
 
             with (
@@ -263,21 +255,13 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 ),
             ).fetchone()[0]
 
-            connection.execute(
-                """
-                INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
-                    target_fixture_id, source_observation_id, source_sighting_id,
-                    feature_key, feature_value, prediction_cutoff_at
-                ) VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    target_fixture_id,
-                    observation_id,
-                    sighting_id,
-                    "system_observed.allowed",
-                    Jsonb({"value": 1}),
-                    now + timedelta(minutes=5),
-                ),
+            store.record_pre_match_feature_observation(
+                target_fixture_id=target_fixture_id,
+                source_observation_id=observation_id,
+                source_sighting_id=sighting_id,
+                feature_key="system_observed.allowed",
+                feature_value={"value": 1},
+                prediction_cutoff_at=now + timedelta(minutes=5),
             )
 
             with (
