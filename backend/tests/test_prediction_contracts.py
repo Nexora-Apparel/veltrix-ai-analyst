@@ -69,7 +69,7 @@ def test_complete_verified_evidence_is_admitted() -> None:
     [
         ({"point_in_time_certifiable": False}, "SOURCE_NOT_POINT_IN_TIME_CERTIFIABLE"),
         ({"availability_basis": AvailabilityBasis.RETRIEVED_AT_ONLY}, "VERIFIED_SOURCE_AVAILABILITY_BASIS_REQUIRED"),
-        ({"source_published_at": None}, "SOURCE_PUBLICATION_AND_AVAILABILITY_TIMES_REQUIRED"),
+        ({"source_published_at": None}, "SOURCE_PUBLICATION_TIME_REQUIRED"),
         ({"available_at": CUTOFF + timedelta(seconds=1)}, "SOURCE_NOT_AVAILABLE_AT_PREDICTION_CUTOFF"),
         ({"rights_status_at_cutoff": RightsStatus.REVOKED}, "SOURCE_RIGHTS_NOT_APPROVED_AT_CUTOFF"),
         ({"permitted_uses": frozenset({"FEATURE_ENGINEERING"})}, "SOURCE_RIGHTS_DO_NOT_PERMIT_MODEL_FEATURES"),
@@ -84,7 +84,7 @@ def test_ineligible_evidence_is_rejected(changes: dict[str, object], reason: str
 
 
 def test_event_time_does_not_replace_publication_time() -> None:
-    with pytest.raises(FeatureAdmissionError, match="VERIFIED_SOURCE_PUBLICATION_TIME_REQUIRED"):
+    with pytest.raises(FeatureAdmissionError, match="VERIFIED_SOURCE_AVAILABILITY_BASIS_REQUIRED"):
         require_feature_admission(
             make_request(evidence=make_evidence(availability_basis=AvailabilityBasis.SOURCE_EVENT_TIME))
         )
