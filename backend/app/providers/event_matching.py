@@ -106,7 +106,7 @@ def match_event_to_fixture(
             None,
         )
 
-    nearest_id, nearest_delta = min(team_candidates, key=lambda item: item[1])
+    _, nearest_delta = min(team_candidates, key=lambda item: item[1])
     return EventMatchResult(
         "KICKOFF_OUTSIDE_TOLERANCE",
         event_id,
