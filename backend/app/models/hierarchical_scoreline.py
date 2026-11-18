@@ -26,7 +26,7 @@ def forecast_hierarchical_fixture(
     away_team_id: str,
     competition_id: str,
     *,
-    rho: float = 0.0,
+    rho: float,
     max_goals: int = 12,
 ) -> HierarchicalFixtureForecast:
     """Generate market probabilities only from fitted expected-goal rates.
