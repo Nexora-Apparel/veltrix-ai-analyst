@@ -64,6 +64,9 @@ def test_bootstrap_is_deterministic_and_paired():
     first = evaluate_paired_chronological_report(report, resamples=100, block_size=6, seed=7)
     second = evaluate_paired_chronological_report(report, resamples=100, block_size=6, seed=7)
     assert first["paired_block_bootstrap"] == second["paired_block_bootstrap"]
+    bootstrap = first["paired_block_bootstrap"]
+    assert bootstrap["resample_size_min"] >= 40
+    assert bootstrap["resample_size_min"] % 2 == 0
     comparisons = first["paired_block_bootstrap"]["comparisons"]
     assert set(comparisons) == {"elo_minus_poisson", "elo_minus_ensemble", "poisson_minus_ensemble"}
     for comparison in comparisons.values():
