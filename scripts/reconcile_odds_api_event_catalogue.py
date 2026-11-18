@@ -60,11 +60,6 @@ def main() -> int:
         "matches": matches,
         "market_probe_candidate": bool(complete and exact_matches == 1),
         "market_probe_authorized": bool(complete and exact_matches == 1),
-        "market_probe_authorization_basis": (
-            "USER_AUTHORIZATION_2026-11-18_ONE_H2H_MARKET_ONE_REGION"
-            if complete and exact_matches == 1
-            else None
-        ),
         "outcome": (
             "ONE_EXACT_MATCH_CANDIDATE_REQUIRES_REVIEW"
             if complete and exact_matches == 1
