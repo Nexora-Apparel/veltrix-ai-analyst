@@ -1,0 +1,48 @@
+name: Verify remaining CBF Série B results
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cbf-remaining-score-verification.yml"
+      - "backend/scripts/verify_cbf_remaining_results.py"
+      - "backend/data/research/cbf_rounds31_32_37_official_results.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-ai-analyst-cbf-score-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: veltrix-historical-import
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      CBF_REMAINING_SCORE_VERIFICATION_PATH: artifacts/cbf-remaining-score-verification.json
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install read-only audit dependencies
+        run: python -m pip install -e .
+      - name: Compare remaining official CBF match pages with immutable provider fixtures
+        run: python scripts/verify_cbf_remaining_results.py
+      - name: Upload remaining score verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbf-remaining-score-verification
+          path: backend/artifacts/cbf-remaining-score-verification.json
+          if-no-files-found: error
+          retention-days: 30
