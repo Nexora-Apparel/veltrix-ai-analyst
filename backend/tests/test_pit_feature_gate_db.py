@@ -109,7 +109,7 @@ def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
             with (
                 pytest.raises(
                     psycopg.errors.RaiseException,
-                    match="PRE_MATCH_SOURCE_PUBLICATION_EVIDENCE_REQUIRED",
+                    match="PRE_MATCH_SOURCE_AVAILABILITY_EVIDENCE_REQUIRED",
                 ),
                 connection.transaction(),
             ):
