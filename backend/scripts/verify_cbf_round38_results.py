@@ -68,7 +68,13 @@ def main() -> int:
                     "provider_score": list(actual_score),
                     "provider_status": status,
                 }
-                if status == "FINISHED" and actual_score == expected_score:
+                teams_match = (
+                    home_name == expected["provider_home_name"]
+                    and away_name == expected["provider_away_name"]
+                )
+                audit["provider_team_labels_match"] = teams_match
+                audit["official_source_result"] = expected["official_source_result"]
+                if status == "FINISHED" and actual_score == expected_score and teams_match:
                     verified.append(audit)
                 else:
                     mismatches.append(audit)
