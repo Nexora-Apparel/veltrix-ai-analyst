@@ -22,7 +22,7 @@ def base_args():
         "request_started_at": RETRIEVED - timedelta(seconds=1),
         "retrieved_at": RETRIEVED,
         "provider_response_date": RETRIEVED,
-        "prediction_cutoff_at": CUTOFF,
+        "value_bet_decision_cutoff_at": CUTOFF,
         "source_observation_id": "obs-1",
         "rights_approval_id": "rights-1",
         "rights_allow_value_betting": True,
@@ -136,7 +136,7 @@ def test_history_retrieval_after_cutoff_is_rejected():
     args = {
         **base_args(),
         "retrieved_at": CUTOFF + timedelta(minutes=2),
-        "prediction_cutoff_at": CUTOFF,
+        "value_bet_decision_cutoff_at": CUTOFF,
     }
     with pytest.raises(OddsPayloadError, match="retrieved after"):
         normalize_5dollar_odds_history(odds_history_response(), **args)
