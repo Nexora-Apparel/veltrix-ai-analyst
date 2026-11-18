@@ -52,6 +52,7 @@ def build_report(
     with psycopg.connect(database_url, autocommit=True) as connection:
         if connection.info.dbname != expected_database:
             raise RuntimeError("DATABASE_NAME_MISMATCH")
+        connection.execute("SET default_transaction_read_only = on")
         fixture_rows = connection.execute(
             """
             SELECT provider, source_id, provider_fixture_id,
