@@ -32,7 +32,7 @@ Detailed evidence:
 
 ## Corrected retrospective research
 
-Latest report: [workflow 44281629472](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44281629472)
+Latest corrected report: [workflow 44286437268](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286437268); [corrected report artifact](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286437268/artifacts/14419186651); [paired diagnostics artifact](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286437268/artifacts/14418483224).
 
 - Source observations: 384
 - FINISHED labeled fixtures: 380
@@ -40,7 +40,10 @@ Latest report: [workflow 44281629472](https://github.com/Nexora-Apparel/veltrix-
 - Provider-local teams in finished corpus: 20
 - Invalid rows: 0
 - Kickoff adjudications applied: 2
-- Report SHA-256: `1eb2ff33999df3d9c83af5d89a9006fca6b3e096ef8b4b83285fc05aa69d8ca3`
+- Independently cross-checked official CBF scores: 353/380; 27 pending
+- Corrected report SHA-256: `2a411e223508db929c63e26185798c9c94f36dc1ddc2c81a8a9b76d97388fd80`
+- Paired diagnostics: 2,000 moving-block bootstrap resamples, block size 20; every pairwise 95% interval crosses zero.
+- Detailed report: [corrected retrospective research report ledger](2026-11-18-corrected-retrospective-research-report.md)
 
 | Model | Brier | Log loss |
 |---|---:|---:|
