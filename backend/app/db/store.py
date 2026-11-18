@@ -1287,6 +1287,75 @@ class PostgresIngestionStore:
             raise WatermarkConflict("WATERMARK_VERSION_CONFLICT")
         return int(row[0])
 
+    def record_pre_match_feature_observation(
+        self,
+        *,
+        target_fixture_id: int,
+        source_observation_id: int,
+        source_sighting_id: int,
+        feature_key: str,
+        feature_value: Mapping[str, Any],
+        prediction_cutoff_at: datetime,
+    ) -> int:
+        """Persist one target-bound feature snapshot.
+
+        The database trigger verifies provider/source identity, source rights,
+        evidence availability and the strict target-fixture kickoff cutoff.
+        """
+        self._require_aware(prediction_cutoff_at, "PREDICTION_CUTOFF_AT")
+        if min(target_fixture_id, source_observation_id, source_sighting_id) < 1:
+            raise IngestionStoreError("PRE_MATCH_FEATURE_IDENTITY_REQUIRED")
+        if not feature_key.strip() or len(feature_key.strip()) > 160:
+            raise IngestionStoreError("PRE_MATCH_FEATURE_KEY_INVALID")
+        feature_json, _ = self._canonical_json(feature_value)
+        value = json.loads(feature_json)
+        row = self.connection.execute(
+            """
+            INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
+                target_fixture_id, source_observation_id, source_sighting_id,
+                feature_key, feature_value, prediction_cutoff_at
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (
+                target_fixture_id, source_observation_id, source_sighting_id,
+                feature_key, prediction_cutoff_at
+            ) DO NOTHING
+            RETURNING id
+            """,
+            (
+                target_fixture_id,
+                source_observation_id,
+                source_sighting_id,
+                feature_key.strip(),
+                Jsonb(value),
+                prediction_cutoff_at,
+            ),
+        ).fetchone()
+        if row is not None:
+            return int(row[0])
+        existing = self.connection.execute(
+            """
+            SELECT id, feature_value
+            FROM veltrix_ai_analyst.pre_match_feature_observations
+            WHERE target_fixture_id = %s
+              AND source_observation_id = %s
+              AND source_sighting_id = %s
+              AND feature_key = %s
+              AND prediction_cutoff_at = %s
+            """,
+            (
+                target_fixture_id,
+                source_observation_id,
+                source_sighting_id,
+                feature_key.strip(),
+                prediction_cutoff_at,
+            ),
+        ).fetchone()
+        if existing is None:
+            raise IngestionStoreError("PRE_MATCH_FEATURE_IDEMPOTENCY_LOOKUP_FAILED")
+        if existing[1] != value:
+            raise EvidenceConflict("PRE_MATCH_FEATURE_SNAPSHOT_CONFLICT")
+        return int(existing[0])
+
     def quarantine_record(
         self,
         *,
