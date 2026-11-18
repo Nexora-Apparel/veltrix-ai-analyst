@@ -302,9 +302,36 @@ class FixturePagePersister:
         with self.connection.transaction():
             fixtures = tuple(page["fixtures"])
             for fixture in fixtures:
+                existing = self.connection.execute(
+                    """
+                    SELECT provider_competition_id, home_team_provider_id,
+                           away_team_provider_id, kickoff_at
+                    FROM veltrix_ai_analyst.provider_fixtures
+                    WHERE provider = %s AND source_id = %s
+                      AND provider_fixture_id = %s
+                    """,
+                    (
+                        PROVIDER_NAME,
+                        SOURCE_ID,
+                        fixture.provenance.provider_record_id,
+                    ),
+                ).fetchone()
+                if existing is not None:
+                    expected_identity = (
+                        fixture.competition_id,
+                        fixture.home_team_id,
+                        fixture.away_team_id,
+                        fixture.kickoff_at,
+                    )
+                    if tuple(existing) != expected_identity:
+                        raise HistoricalImportError(
+                            "PROVIDER_FIXTURE_IDENTITY_CONFLICT"
+                        )
+                    self.records_duplicate += 1
+                else:
+                    self.records_inserted += 1
                 self._persist_fixture(fixture, int(response_id))
             self.records_seen += len(fixtures)
-            self.records_inserted += len(fixtures)
             self.requests_used += 1
             has_more = bool(page["has_more"])
             self.store.save_checkpoint(
