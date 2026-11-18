@@ -1,0 +1,395 @@
+{
+  "schema_version": 1,
+  "competition": "Brazilian Serie B 2026",
+  "rounds": [
+    31,
+    32,
+    37
+  ],
+  "source_type": "OFFICIAL_CBF_INDIVIDUAL_MATCH_PAGES",
+  "schedule_source_urls": [
+    "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_31_a_34_rodada_Brasileiro_Serie_B_2026_0d7da23918.pdf",
+    "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_35_a_38_rodada_Brasileiro_Serie_B_2026_1_f9990e396e.pdf"
+  ],
+  "note": "Individual official CBF match pages provide the scorelines; official detailed schedule PDFs establish the CBF match references. The 27 fixtures are the outstanding scorelines after the previously recorded 353/380 unique verifications.",
+  "fixtures": [
+    {
+      "ref": "301",
+      "round": 31,
+      "fixture_id": "1091678025",
+      "provider_home_name": "Botafogo SP",
+      "provider_away_name": "Vila Nova",
+      "home": "Botafogo",
+      "away": "Vila Nova",
+      "score": [
+        0,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/botafogo-x-vila-nova/833192"
+    },
+    {
+      "ref": "302",
+      "round": 31,
+      "fixture_id": "2805830360",
+      "provider_home_name": "Sao Bernardo",
+      "provider_away_name": "CRB",
+      "home": "São Bernardo SAF",
+      "away": "CRB",
+      "score": [
+        3,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sao-bernardo-saf-x-crb/833193"
+    },
+    {
+      "ref": "303",
+      "round": 31,
+      "fixture_id": "679654652",
+      "provider_home_name": "Athletic Club MG",
+      "provider_away_name": "Sport Recife",
+      "home": "Athletic SAF",
+      "away": "Sport Recife",
+      "score": [
+        1,
+        2
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/athletic-x-sport/833194"
+    },
+    {
+      "ref": "304",
+      "round": 31,
+      "fixture_id": "1566836191",
+      "provider_home_name": "Londrina",
+      "provider_away_name": "Criciuma",
+      "home": "Londrina SAF",
+      "away": "Criciúma",
+      "score": [
+        0,
+        2
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/londrina-saf-x-criciuma/833195"
+    },
+    {
+      "ref": "305",
+      "round": 31,
+      "fixture_id": "157772905",
+      "provider_home_name": "Fortaleza",
+      "provider_away_name": "Nautico",
+      "home": "Fortaleza SAF",
+      "away": "Náutico",
+      "score": [
+        1,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/fortaleza-saf-x-nautico/833196"
+    },
+    {
+      "ref": "306",
+      "round": 31,
+      "fixture_id": "2385956390",
+      "provider_home_name": "Atletico GO",
+      "provider_away_name": "America MG",
+      "home": "Atlético Goianiense Saf",
+      "away": "América",
+      "score": [
+        2,
+        0
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/atletico-goianiense-saf-x-america/833197"
+    },
+    {
+      "ref": "307",
+      "round": 31,
+      "fixture_id": "4118537950",
+      "provider_home_name": "Avai",
+      "provider_away_name": "Ceara",
+      "home": "Avaí",
+      "away": "Ceará",
+      "score": [
+        0,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/avai-x-ceara/833198"
+    },
+    {
+      "ref": "308",
+      "round": 31,
+      "fixture_id": "3774242963",
+      "provider_home_name": "Novorizontino",
+      "provider_away_name": "Goias",
+      "home": "Gremio Novorizontino - Saf",
+      "away": "Goiás",
+      "score": [
+        3,
+        0
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/gremio-novorizontino-saf-x-goias/833199"
+    },
+    {
+      "ref": "309",
+      "round": 31,
+      "fixture_id": "957301731",
+      "provider_home_name": "Cuiaba",
+      "provider_away_name": "Ponte Preta",
+      "home": "Cuiabá",
+      "away": "Ponte Preta",
+      "score": [
+        2,
+        0
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/cuiaba-x-ponte-preta/833200"
+    },
+    {
+      "ref": "310",
+      "round": 31,
+      "fixture_id": "2907742700",
+      "provider_home_name": "Juventude",
+      "provider_away_name": "Operario PR",
+      "home": "Juventude",
+      "away": "Operário",
+      "score": [
+        3,
+        0
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/juventude-x-operario/833201"
+    },
+    {
+      "ref": "311",
+      "round": 32,
+      "fixture_id": "3566581788",
+      "provider_home_name": "Ponte Preta",
+      "provider_away_name": "Juventude",
+      "home": "Ponte Preta",
+      "away": "Juventude",
+      "score": [
+        0,
+        2
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/ponte-preta-x-juventude/833202"
+    },
+    {
+      "ref": "312",
+      "round": 32,
+      "fixture_id": "780158030",
+      "provider_home_name": "Sport Recife",
+      "provider_away_name": "Sao Bernardo",
+      "home": "Sport Recife",
+      "away": "São Bernardo SAF",
+      "score": [
+        2,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sport-recife-x-sao-bernardo-saf/833203"
+    },
+    {
+      "ref": "313",
+      "round": 32,
+      "fixture_id": "2127073988",
+      "provider_home_name": "America MG",
+      "provider_away_name": "Fortaleza",
+      "home": "América",
+      "away": "Fortaleza SAF",
+      "score": [
+        0,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/america-x-fortaleza-saf/833204"
+    },
+    {
+      "ref": "314",
+      "round": 32,
+      "fixture_id": "1523389359",
+      "provider_home_name": "Operario PR",
+      "provider_away_name": "Botafogo SP",
+      "home": "Operário",
+      "away": "Botafogo",
+      "score": [
+        1,
+        2
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/operario-x-botafogo/833205"
+    },
+    {
+      "ref": "315",
+      "round": 32,
+      "fixture_id": "1896319805",
+      "provider_home_name": "Ceara",
+      "provider_away_name": "Criciuma",
+      "home": "Ceará",
+      "away": "Criciúma",
+      "score": [
+        1,
+        0
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/ceara-x-criciuma/833206"
+    },
+    {
+      "ref": "316",
+      "round": 32,
+      "fixture_id": "118503256",
+      "provider_home_name": "Goias",
+      "provider_away_name": "Athletic Club MG",
+      "home": "Goiás",
+      "away": "Athletic SAF",
+      "score": [
+        2,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-athletic-saf/833207"
+    },
+    {
+      "ref": "317",
+      "round": 32,
+      "fixture_id": "1615301508",
+      "provider_home_name": "Avai",
+      "provider_away_name": "Londrina",
+      "home": "Avaí",
+      "away": "Londrina SAF",
+      "score": [
+        2,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/avai-x-londrina-saf/833208"
+    },
+    {
+      "ref": "318",
+      "round": 32,
+      "fixture_id": "2218351212",
+      "provider_home_name": "Nautico",
+      "provider_away_name": "Novorizontino",
+      "home": "Náutico",
+      "away": "Gremio Novorizontino - Saf",
+      "score": [
+        0,
+        2
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/nautico-x-gremio-novorizontino-saf/833209"
+    },
+    {
+      "ref": "319",
+      "round": 32,
+      "fixture_id": "2953261326",
+      "provider_home_name": "CRB",
+      "provider_away_name": "Atletico GO",
+      "home": "CRB",
+      "away": "Atlético Goianiense Saf",
+      "score": [
+        3,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/crb-x-atletico-goianiense-saf/833210"
+    },
+    {
+      "ref": "320",
+      "round": 32,
+      "fixture_id": "2558236640",
+      "provider_home_name": "Vila Nova",
+      "provider_away_name": "Cuiaba",
+      "home": "Vila Nova",
+      "away": "Cuiabá",
+      "score": [
+        0,
+        0
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/vila-nova-x-cuiaba/833211"
+    },
+    {
+      "ref": "362",
+      "round": 37,
+      "fixture_id": "1350157273",
+      "provider_home_name": "Novorizontino",
+      "provider_away_name": "Fortaleza",
+      "home": "Gremio Novorizontino - Saf",
+      "away": "Fortaleza SAF",
+      "score": [
+        2,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/gremio-novorizontino-saf-x-fortaleza-saf/833273"
+    },
+    {
+      "ref": "363",
+      "round": 37,
+      "fixture_id": "672570090",
+      "provider_home_name": "Athletic Club MG",
+      "provider_away_name": "Atletico GO",
+      "home": "Athletic SAF",
+      "away": "Atlético Goianiense Saf",
+      "score": [
+        2,
+        3
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/athletic-saf-x-atletico-goianiense-saf/833274"
+    },
+    {
+      "ref": "364",
+      "round": 37,
+      "fixture_id": "3418633874",
+      "provider_home_name": "Operario PR",
+      "provider_away_name": "Sport Recife",
+      "home": "Operário",
+      "away": "Sport Recife",
+      "score": [
+        3,
+        2
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/operario-x-sport-recife/833275"
+    },
+    {
+      "ref": "365",
+      "round": 37,
+      "fixture_id": "3749693447",
+      "provider_home_name": "Ceara",
+      "provider_away_name": "America MG",
+      "home": "Ceará",
+      "away": "América",
+      "score": [
+        0,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/ceara-x-america/833276"
+    },
+    {
+      "ref": "366",
+      "round": 37,
+      "fixture_id": "3728617699",
+      "provider_home_name": "Goias",
+      "provider_away_name": "Ponte Preta",
+      "home": "Goiás",
+      "away": "Ponte Preta",
+      "score": [
+        1,
+        0
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-ponte-preta/833277"
+    },
+    {
+      "ref": "367",
+      "round": 37,
+      "fixture_id": "751482855",
+      "provider_home_name": "Avai",
+      "provider_away_name": "Sao Bernardo",
+      "home": "Avaí",
+      "away": "São Bernardo SAF",
+      "score": [
+        2,
+        1
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/avai-x-sao-bernardo-saf/833278"
+    },
+    {
+      "ref": "368",
+      "round": 37,
+      "fixture_id": "4070869087",
+      "provider_home_name": "Nautico",
+      "provider_away_name": "CRB",
+      "home": "Náutico",
+      "away": "CRB",
+      "score": [
+        0,
+        3
+      ],
+      "official_source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/nautico-x-crb/833279"
+    }
+  ]
+}
