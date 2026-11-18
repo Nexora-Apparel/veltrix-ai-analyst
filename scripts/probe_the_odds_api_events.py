@@ -17,7 +17,7 @@ from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from app.providers.the_odds_api_events import (  # noqa: E402
+from app.providers.the_odds_api_events import (
     OddsApiEventPayloadError,
     normalize_event_catalogue,
 )
