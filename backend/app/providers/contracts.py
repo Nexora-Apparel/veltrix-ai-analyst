@@ -69,6 +69,8 @@ class ProviderFixture(StrictModel):
     away_yellow_cards: int | None = Field(default=None, ge=0)
     home_red_cards: int | None = Field(default=None, ge=0)
     away_red_cards: int | None = Field(default=None, ge=0)
+    statistics: dict[str, Any] | None = None
+    events: list[dict[str, Any]] = Field(default_factory=list)
 
     @field_validator("kickoff_at")
     @classmethod
