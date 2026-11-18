@@ -11,7 +11,7 @@ A single request to `GET /v1/fixtures/1194891794/odds` returned HTTP 200 and one
 
 The probe request began at `2026-11-18T01:29:05.395447+00:00` and the response was retrieved at `2026-11-18T01:29:05.859374+00:00`. The provider's HTTP Date header was `Wed, 18 Nov 2026 01:29:05 GMT`. The response hash was `93c40815c5c587e253cafd2ecbdb55521787ecb9bf1c43611f4fff52b5cf0180`.
 
-This proves endpoint access and field presence. It does not prove that the opening price was available to this system at `opened_at`, nor does it make this late-retrieved historical snapshot eligible for a prior prediction cutoff.
+This proves endpoint access and field presence. It does not prove that the opening price was available to this system at `opened_at`, nor does it make this late-retrieved historical snapshot eligible for a prior value-bet decision cutoff.
 
 ## 2. Clock semantics — never conflate
 
@@ -22,15 +22,15 @@ Every captured observation must preserve distinct clocks:
 - `provider_response_date`: optional HTTP Date header; transport/server metadata only.
 - `source_tick_at`: provider `opened_at` or history `recorded_at`, retained as provider-reported event time only.
 - `fixture_kickoff_at`: fixture event time from the verified fixture record.
-- `prediction_cutoff_at`: immutable cutoff used by the forecast being evaluated.
+- `value_bet_decision_cutoff_at`: immutable cutoff used by the forecast being evaluated.
 
 Do not rename `source_tick_at` to `available_at`. Do not infer availability from `opened_at`, `recorded_at`, HTTP Date, kickoff, or a later database insertion timestamp.
 
 ## 3. PIT admission rule
 
-An odds observation may enter a prospective prediction's PIT feature set only when all conditions hold:
+An odds observation may enter a downstream value-betting decision only when all conditions hold:
 
-1. The exact response was received by this system before the prediction cutoff: `retrieved_at <= prediction_cutoff_at`.
+1. The exact response was received by this system before the value-bet decision cutoff: `retrieved_at <= value_bet_decision_cutoff_at`.
 2. Request and retrieval timestamps are timezone-aware UTC instants and ordered correctly.
 3. Fixture ID matches the requested fixture and the fixture's verified kickoff is later than the cutoff.
 4. Provider response is successful and schema-valid; bookmaker, market, selection, line and decimal price are explicit.
@@ -51,7 +51,7 @@ The future capture runner should emit a minimal, privacy-safe manifest and persi
 - HTTP status, response byte count, response SHA-256
 - schema version, bookmaker slug/name, market key
 - selection, optional line, decimal price, source_tick_at
-- fixture_kickoff_at, prediction_cutoff_at
+- fixture_kickoff_at, value_bet_decision_cutoff_at
 - source approval ID/version and permitted-use decision
 - admission result and explicit rejection reason
 
@@ -83,8 +83,13 @@ This design does not authorize:
 - retrospective backfill of availability timestamps;
 - full historical odds reconstruction;
 - production odds ingestion or automated recurring collection;
-- odds-derived model training before PIT and rights gates pass;
+- odds-derived core prediction training before PIT and rights gates pass;
 - value-bet selection, CLV claims, betting recommendations or public publication;
 - production prediction endpoints, model promotion or Android prediction integration.
 
 The existing retrospective model comparison is unchanged: fixed v1 remains the research benchmark candidate, v2 remains an immutable comparator, and neither is PIT- or production-certified.
+
+
+## 8. Governing odds-use boundary
+
+Bookmaker odds are exclusively for downstream value-betting evaluation and are excluded from core prediction feature engineering, training, validation and inference. See [BOOKMAKER_ODDS_USE_BOUNDARY.md](../providers/BOOKMAKER_ODDS_USE_BOUNDARY.md). The decision timestamp in this contract is the value-bet decision cutoff, not a prediction-model feature cutoff. No odds failure may suppress an otherwise eligible independent forecast.
