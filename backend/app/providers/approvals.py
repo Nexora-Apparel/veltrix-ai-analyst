@@ -134,3 +134,53 @@ AIMIDAS_BRAZIL_SERIE_B_APPROVAL = SourceApproval(
     attribution_url="https://github.com/aimidas1/aimidas1",
     raw_redistribution_allowed=False,
 )
+
+
+THE_ODDS_API_SOCCER_APPROVAL = SourceApproval(
+    approval_id="approval-the-odds-api-v4-soccer-2026-11-18",
+    provider="The Odds API",
+    source_id="the-odds-api-v4",
+    scope_type="sport_key",
+    scope_values=frozenset(
+        {
+            "soccer_argentina_primera_division",
+            "soccer_brazil_campeonato",
+            "soccer_brazil_serie_b",
+            "soccer_epl",
+            "soccer_france_ligue_one",
+            "soccer_germany_bundesliga",
+            "soccer_italy_serie_a",
+            "soccer_spain_la_liga",
+        }
+    ),
+    data_types=frozenset(
+        {"sports_catalogue", "event_catalogue", "bookmaker_odds"}
+    ),
+    status=ApprovalStatus.APPROVED,
+    permitted_uses=frozenset(
+        {
+            DataUsePurpose.COLLECTION,
+            DataUsePurpose.STORAGE,
+            DataUsePurpose.INTERNAL_ANALYSIS,
+            DataUsePurpose.FEATURE_ENGINEERING,
+            DataUsePurpose.MODEL_TRAINING,
+            DataUsePurpose.MODEL_VALIDATION,
+            DataUsePurpose.BENCHMARKING,
+            DataUsePurpose.CACHE,
+            DataUsePurpose.PUBLIC_DISPLAY,
+        }
+    ),
+    commercial_use_allowed=False,
+    terms_url="https://the-odds-api.com/terms-and-conditions.html",
+    terms_version="2026-08-31",
+    evidence_uri="docs/providers/THE_ODDS_API_TERMS_REVIEW.md",
+    evidence_sha256="cb9bea56a928fdf13a3cd6e079c3ccd0b61411aad39bd38f1467e803b69c9e87",
+    rights_basis="TERMS",
+    reviewed_at_utc=datetime(2026, 11, 18, tzinfo=UTC),
+    reviewer_id="project-owner",
+    valid_from_utc=datetime(2026, 11, 18, tzinfo=UTC),
+    attribution_required=False,
+    attribution_text="Odds data by The Odds API",
+    attribution_url="https://the-odds-api.com",
+    raw_redistribution_allowed=False,
+)
