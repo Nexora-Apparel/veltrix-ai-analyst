@@ -120,3 +120,23 @@ def test_manifest_rejects_source_tick_after_local_retrieval():
 def test_manifest_rejects_source_tick_after_decision_cutoff():
     with pytest.raises(ValueError, match="after the decision cutoff"):
         manifest(source_tick_max_at=CUTOFF + timedelta(seconds=1))
+
+
+
+def test_rejected_provider_failure_does_not_require_quote_timestamps():
+    result = manifest(
+        source_tick_min_at=None,
+        source_tick_max_at=None,
+        http_status=503,
+        response_bytes=0,
+        observation_count=0,
+        admission="REJECTED",
+        rejection_reason="UPSTREAM_UNAVAILABLE",
+    )
+    assert result.source_tick_min_at is None
+    assert result.admission == "REJECTED"
+
+
+def test_eligible_capture_requires_source_quote_timestamp_bounds():
+    with pytest.raises(ValueError, match="requires source quote timestamp bounds"):
+        manifest(source_tick_min_at=None, source_tick_max_at=None)
