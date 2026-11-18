@@ -38,3 +38,14 @@ Each provider manifest records request start, local retrieval time, HTTP status,
 ## Explicit non-goals
 
 No odds markets, historical odds, retries, pagination, bulk collection, database writes, recurring schedule, model features, CLV, value betting, production prediction endpoint, public odds display or Android integration are enabled.
+
+
+## Verification update — 2026-11-18
+
+- PR #47 merged the strict event-to-fixture matcher; PR #48 merged the cross-provider catalogue qualification workflow.
+- The Odds API catalogue workflow run [#44220418309](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44220418309) completed successfully on main. It returned HTTP 200, `AUTHENTICATED_SOCCER_CATALOGUE_AVAILABLE`, and 46 active soccer sport keys.
+- The same run recorded `quota_last_cost=0`, `quota_used=229`, and `quota_remaining=271`. The existing account is authenticated; no key was exposed and no odds credits were spent.
+- User confirmed authorization to use the existing Odds API account as needed for this project. This does not override provider terms, the current account balance, source timestamp requirements, or the no-commercial-use restriction recorded in the source approval.
+- PR #48 CI run [#44222974563](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44222974563) passed: 209 backend tests, Ruff, and Android debug build.
+- The cross-provider workflow is merged but has not yet been dispatched. It is limited to one selected competition, the next 30 days, one Odds API event-catalogue request (zero odds credits), and one 5Dollar scheduled-fixture request. It performs no pagination, retries, odds-market request, or database write.
+- No market probe is authorized by the workflow itself: `market_probe_authorized=false`. A single exact unique match only creates a candidate for the next bounded market-probe step.
