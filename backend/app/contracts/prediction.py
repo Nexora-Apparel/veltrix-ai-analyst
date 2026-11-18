@@ -41,6 +41,7 @@ class EligibleObservationEvidence(ContractModel):
     """Evidence for one exact source payload and one exact retrieval sighting."""
 
     source_id: str = Field(min_length=1)
+    data_domain: str = "FOOTBALL_MATCH_DATA"
     provider: str = Field(min_length=1)
     provider_record_id: str = Field(min_length=1)
     source_observation_id: int = Field(gt=0)
