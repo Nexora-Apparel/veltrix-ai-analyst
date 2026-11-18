@@ -60,6 +60,15 @@ jobs:
               """).fetchall())
               if not required.issubset(present):
                   raise SystemExit("MIGRATION_012_REQUIRED_BEFORE_PROSPECTIVE_CAPTURE")
+              scope_column = connection.execute("""
+                  SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='veltrix_ai_analyst'
+                      AND table_name='import_runs' AND column_name='scope_value'
+                  )
+              """).fetchone()[0]
+              if not scope_column:
+                  raise SystemExit("MIGRATION_011_REQUIRED_BEFORE_PROSPECTIVE_CAPTURE")
               applied = connection.execute("""
                   SELECT EXISTS (
                     SELECT 1 FROM public.schema_migrations
