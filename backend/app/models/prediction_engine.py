@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
-from math import isfinite
+from math import ceil, isfinite, sqrt
 from typing import Any
 
 from app.contracts.prediction import FixturePredictionRequest, ModelPredictionOutput
@@ -102,8 +102,12 @@ def predict_fixture(
     # Canonical UUIDs are never assumed to equal provider-local model IDs.
     # The caller must resolve and verify both identities before inference.
     rates = model.predict(home_model_team_id, away_model_team_id)
+    # Choose a fixture-specific grid large enough to avoid material tail loss.
+    # The fitted rate parameter is bounded, so this remains computationally small.
+    max_rate = max(rates.home_lambda, rates.away_lambda)
+    max_goals = min(250, max(15, ceil(max_rate + 12.0 * sqrt(max_rate) + 20.0)))
     distribution = build_scoreline_distribution(
-        rates.home_lambda, rates.away_lambda, rho=rho, max_goals=15
+        rates.home_lambda, rates.away_lambda, rho=rho, max_goals=max_goals
     )
     probabilities = distribution.market_probabilities()
 
@@ -151,7 +155,7 @@ def predict_fixture(
         expected_away_goals=rates.away_lambda,
         uncertainty={
             "status": "NOT_YET_CALIBRATED",
-            "scoreline_truncation_mass": distribution.normalization_mass_before,
+            "scoreline_probability_mass_before_renormalization": distribution.normalization_mass_before,
         },
         coverage={},
         eligibility_status="ELIGIBLE",
