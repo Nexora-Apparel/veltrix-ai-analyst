@@ -38,6 +38,8 @@ def require_feature_admission(request: FeatureAdmissionRequest) -> None:
             raise FeatureAdmissionError("SOURCE_PUBLICATION_AFTER_RETRIEVAL")
         if evidence.available_at < evidence.source_published_at:
             raise FeatureAdmissionError("AVAILABILITY_PRECEDES_SOURCE_PUBLICATION")
+        if evidence.available_at > evidence.retrieved_at:
+            raise FeatureAdmissionError("AVAILABILITY_AFTER_RETRIEVAL")
         if evidence.source_published_at > cutoff or evidence.available_at > cutoff:
             raise FeatureAdmissionError("SOURCE_NOT_AVAILABLE_AT_PREDICTION_CUTOFF")
     elif evidence.availability_basis is AvailabilityBasis.SYSTEM_OBSERVED_AT:
