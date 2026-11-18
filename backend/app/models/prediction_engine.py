@@ -85,14 +85,23 @@ def predict_fixture(
     artifact: dict[str, Any],
     request: FixturePredictionRequest,
     *,
+    home_model_team_id: str,
+    away_model_team_id: str,
+    team_identity_verified: bool,
     generated_at: datetime | None = None,
 ) -> ModelPredictionOutput:
     """Calculate every V1 market from one scoreline probability matrix."""
     model, rho, training_cutoff = _load_promoted_model(artifact)
+    if not team_identity_verified:
+        raise ValueError("CANONICAL_TEAM_IDENTITY_NOT_VERIFIED")
+    if not home_model_team_id or not away_model_team_id or home_model_team_id == away_model_team_id:
+        raise ValueError("RESOLVED_MODEL_TEAM_IDS_REQUIRED_AND_DISTINCT")
     if training_cutoff >= request.prediction_cutoff_at:
         raise ModelArtifactNotPromoted("MODEL_TRAINING_CUTOFF_NOT_BEFORE_PREDICTION")
 
-    rates = model.predict(str(request.home_team_id), str(request.away_team_id))
+    # Canonical UUIDs are never assumed to equal provider-local model IDs.
+    # The caller must resolve and verify both identities before inference.
+    rates = model.predict(home_model_team_id, away_model_team_id)
     distribution = build_scoreline_distribution(
         rates.home_lambda, rates.away_lambda, rho=rho, max_goals=15
     )
