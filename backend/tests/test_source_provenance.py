@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -75,7 +75,7 @@ def test_system_observed_capture_before_retrieval_is_rejected(captured_observati
     captured_observation.update(
         availability_basis="SYSTEM_OBSERVED_AT",
         point_in_time_certifiable=True,
-        system_observed_at=captured_observation["retrieved_at"].replace(microsecond=0),
-        available_at=captured_observation["retrieved_at"].replace(microsecond=0),
+        system_observed_at=captured_observation["retrieved_at"] - timedelta(microseconds=1),
+        available_at=captured_observation["retrieved_at"] - timedelta(microseconds=1),
     )
     assert not is_valid_retrospective_observation(captured_observation)
