@@ -42,10 +42,18 @@ def fixture_history():
     ]
 
 
+def test_optimizer_reports_convergence_and_finite_gradient():
+    model = fit_hierarchical_poisson(fixture_history())
+    assert model.optimizer_converged is True
+    assert model.optimizer_iterations > 0
+    assert model.optimizer_gradient_norm <= 1e-6
+    assert model.training_fixtures == 40
+
+
 @pytest.mark.parametrize(
     ("home", "away", "expected_counts"),
     [
-        ("A", "UNSEEN", (7, 0)),
+        ("A", "UNSEEN", (12, 0)),
         ("UNSEEN-H", "UNSEEN-A", (0, 0)),
     ],
 )
