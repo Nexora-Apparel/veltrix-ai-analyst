@@ -42,7 +42,7 @@ def completed_run(database_url: str, competition_id: str, start_at: datetime, en
             try:
                 report = validate_competition_import(connection, int(run_id), competition_id)
                 return int(run_id), report
-            except Exception:
+            except Exception:  # noqa: BLE001 - invalid historical runs are skipped so older valid runs can be checked
                 continue
     return None
 
@@ -148,7 +148,7 @@ def main() -> int:
                             "records_inserted": report["records_inserted"],
                             "requests_used": report["requests_used"]})
             print(json.dumps(results[-1], sort_keys=True), flush=True)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - isolate each competition so later imports still run
             item = {"competition": name, "competition_id": competition_id,
                     "status": "FAILED_OR_PAUSED", "error_code": type(exc).__name__,
                     "message": str(exc)[:500]}
