@@ -6,9 +6,9 @@ records the raw/adjudicated values for auditability.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from datetime import datetime
-import json
 from pathlib import Path
 from typing import Any
 
