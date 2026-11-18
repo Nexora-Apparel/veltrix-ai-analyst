@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import re
-from collections import Counter
 import unicodedata
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -200,4 +200,3 @@ def select_market_probe_candidate(
         "fixture_kickoff_at": kickoff.isoformat(),
         "selection_policy": "EARLIEST_FUTURE_EXACT_MATCH_THEN_EVENT_ID_FIXTURE_ID",
     }
-
