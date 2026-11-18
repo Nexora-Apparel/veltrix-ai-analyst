@@ -39,8 +39,8 @@ def test_verified_publication_before_cutoff_is_eligible() -> None:
     [
         ({"point_in_time_certifiable": False}, "SOURCE_NOT_POINT_IN_TIME_CERTIFIABLE"),
         ({"availability_basis": "RETRIEVED_AT_ONLY"}, "VERIFIED_AVAILABILITY_BASIS_REQUIRED"),
-        ({"source_published_at": None}, "SOURCE_PUBLICATION_AND_AVAILABILITY_TIMES_REQUIRED"),
-        ({"available_at": None}, "SOURCE_PUBLICATION_AND_AVAILABILITY_TIMES_REQUIRED"),
+        ({"source_published_at": None}, "SOURCE_PUBLICATION_TIME_REQUIRED"),
+        ({"available_at": None}, "SOURCE_AVAILABILITY_TIME_REQUIRED"),
         ({"provider_response_id": None}, "CAPTURED_PROVIDER_RESPONSE_REQUIRED"),
         ({"source_published_at": CUTOFF + timedelta(seconds=1)}, "SOURCE_PUBLICATION_AFTER_RETRIEVAL"),
         ({"available_at": CUTOFF + timedelta(seconds=1)}, "SOURCE_AVAILABLE_AFTER_PREDICTION_CUTOFF"),
@@ -63,7 +63,7 @@ def test_naive_cutoff_is_rejected() -> None:
 
 
 def test_event_time_or_kickoff_cannot_replace_publication_evidence() -> None:
-    with pytest.raises(FeatureEligibilityError, match="VERIFIED_SOURCE_PUBLICATION_TIME_REQUIRED"):
+    with pytest.raises(FeatureEligibilityError, match="VERIFIED_AVAILABILITY_BASIS_REQUIRED"):
         require_pre_match_eligibility(
             evidence(availability_basis="SOURCE_EVENT_TIME"),
             prediction_cutoff_at=CUTOFF,
