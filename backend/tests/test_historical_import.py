@@ -21,6 +21,7 @@ from app.providers.historical_import import (
     HistoricalImportError,
     _replay_captured_page,
     run_brazil_serie_b_historical_import,
+    run_competition_historical_import,
 )
 
 
@@ -190,6 +191,41 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
     assert report["checkpoints"] == 34
     assert report["request_events_with_raw_response"] == 34
     assert report["fixture_sightings"] == 34
+
+
+def test_competition_import_rejects_unapproved_scope_before_database_access(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
+    with pytest.raises(
+        HistoricalImportError,
+        match="COMPETITION_NOT_IN_APPROVED_SOURCE_SCOPE",
+    ):
+        asyncio.run(
+            run_competition_historical_import(
+                "postgresql://invalid",
+                api_key="test-only-key",
+                execute=True,
+                approval=IMPORT_APPROVAL,
+                competition_id="unapproved-competition",
+            )
+        )
+
+
+def test_competition_import_rejects_blank_competition_id_before_database_access(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
+    with pytest.raises(HistoricalImportError, match="COMPETITION_ID_REQUIRED"):
+        asyncio.run(
+            run_competition_historical_import(
+                "postgresql://invalid",
+                api_key="test-only-key",
+                execute=True,
+                approval=IMPORT_APPROVAL,
+                competition_id=" ",
+            )
+        )
 
 
 def test_live_import_requires_both_explicit_execution_gates(
