@@ -146,6 +146,27 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
             (IMPORT_APPROVAL.approval_id,),
         ).fetchone()[0]
 
+        sighting_times = connection.execute(
+            """
+            SELECT
+                COUNT(*),
+                COUNT(*) FILTER (WHERE s.available_at IS NOT NULL),
+                COUNT(*) FILTER (WHERE s.source_published_at IS NULL),
+                COUNT(*) FILTER (
+                    WHERE s.availability_basis = 'RETRIEVED_AT_ONLY'
+                      AND s.point_in_time_certifiable IS FALSE
+                ),
+                COUNT(*) FILTER (WHERE s.point_in_time_certifiable IS TRUE)
+            FROM veltrix_ai_analyst.source_observation_sightings s
+            WHERE s.provider_response_id IN (
+                SELECT provider_response_id
+                FROM veltrix_ai_analyst.import_request_reservations
+                WHERE import_run_id = %s AND provider_response_id IS NOT NULL
+            )
+            """,
+            (run_id,),
+        ).fetchone()
+
     assert run == (
         "COMPLETED",
         40,
@@ -158,6 +179,11 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
     assert response_count == 34
     assert fixture_count == 34
     assert linked_observations >= 34
+    assert sighting_times[0] > 0
+    assert sighting_times[1] == sighting_times[0]  # exact system-observed availability
+    assert sighting_times[2] == sighting_times[0]  # provider exposes no verified publication time
+    assert sighting_times[3] == sighting_times[0]  # retrieval-only evidence is not PIT
+    assert sighting_times[4] == 0
     with psycopg.connect(database_url) as connection:
         report = historical_validation.validate_brazil_serie_b_import(connection, run_id)
     assert report["passed"] is True
