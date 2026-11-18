@@ -162,6 +162,10 @@ BEGIN
           AND r.provider = observation.provider
           AND r.source_id = observation.source_id
           AND r.http_status BETWEEN 200 AND 299
+          AND (
+              sighting.availability_basis <> 'SYSTEM_OBSERVED_AT'
+              OR r.fetched_at = sighting.retrieved_at
+          )
     ) THEN
         RAISE EXCEPTION 'PRE_MATCH_RESPONSE_PROVENANCE_INVALID';
     END IF;
