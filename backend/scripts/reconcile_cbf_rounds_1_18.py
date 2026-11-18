@@ -106,12 +106,19 @@ def parse_pdf(pdf_bytes: bytes, source: dict[str, object]) -> list[dict[str, obj
     document = fitz.open(stream=pdf_bytes, filetype="pdf")
     fixtures: list[dict[str, object]] = []
     for page in document:
-        lines: dict[tuple[int, int], list[tuple[int, str]]] = defaultdict(list)
-        for word in page.get_text("words"):
-            # PyMuPDF word tuple: x0,y0,x1,y1,text,block_no,line_no,word_no
-            lines[(int(word[5]), int(word[6]))].append((int(word[7]), str(word[4])))
-        for line_words in lines.values():
-            tokens = [token for _, token in sorted(line_words)]
+        # PDF table cells are separate text blocks. Reconstruct visual rows by
+        # baseline (y-coordinate), then sort each row from left to right.
+        words = sorted(page.get_text("words"), key=lambda word: (float(word[1]), float(word[0])))
+        visual_rows: list[dict[str, object]] = []
+        for word in words:
+            y = float(word[1])
+            if not visual_rows or abs(y - float(visual_rows[-1]["baseline"])) > 2.0:
+                visual_rows.append({"baseline": y, "ys": [y], "words": []})
+            visual_rows[-1]["words"].append((float(word[0]), str(word[4])))
+            visual_rows[-1]["ys"].append(y)
+            visual_rows[-1]["baseline"] = sum(visual_rows[-1]["ys"]) / len(visual_rows[-1]["ys"])
+        for visual_row in visual_rows:
+            tokens = [token for _, token in sorted(visual_row["words"])]
             if len(tokens) < 9 or not re.fullmatch(r"\d{3}", tokens[0]):
                 continue
             round_match = re.fullmatch(r"(\d{1,2})ª?", tokens[1])
