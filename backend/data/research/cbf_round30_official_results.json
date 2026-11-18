@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "competition": "Brazilian Serie B 2026",
+  "round": 30,
+  "official_cbf_source_url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/vitorias-de-juventude-e-botafogo-sp-encerram-30-rodada-da-serie-b",
+  "corroborating_cbf_source_url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/fortaleza-empata-com-athletic-e-permanece-em-2-na-serie-b",
+  "source_published_at": "2026-09-30",
+  "source_type": "OFFICIAL_CBF_ROUND_RESULTS_ARTICLE",
+  "note": "CBF's 30th-round wrap-up reports the eight results in its results list and the two remaining fixtures (Juventude 1-0 América-MG; Botafogo-SP 2-0 Ponte Preta) in the article body.",
+  "fixtures": [
+    {
+      "ref": "291",
+      "fixture_id": "3266706807",
+      "home": "Botafogo-SP",
+      "away": "Ponte Preta",
+      "score": [
+        2,
+        0
+      ],
+      "provider_home_name": "Botafogo SP",
+      "provider_away_name": "Ponte Preta",
+      "official_source_result": "Botafogo-SP 2 x 0 Ponte Preta"
+    },
+    {
+      "ref": "292",
+      "fixture_id": "2013695471",
+      "home": "Novorizontino",
+      "away": "São Bernardo",
+      "score": [
+        0,
+        0
+      ],
+      "provider_home_name": "Novorizontino",
+      "provider_away_name": "Sao Bernardo",
+      "official_source_result": "Novorizontino 0 x 0 São Bernardo"
+    },
+    {
+      "ref": "293",
+      "fixture_id": "400939676",
+      "home": "América-MG",
+      "away": "Juventude",
+      "score": [
+        0,
+        1
+      ],
+      "provider_home_name": "America MG",
+      "provider_away_name": "Juventude",
+      "official_source_result": "Juventude 1 x 0 América-MG"
+    },
+    {
+      "ref": "294",
+      "fixture_id": "496665715",
+      "home": "Operário-PR",
+      "away": "Ceará",
+      "score": [
+        2,
+        2
+      ],
+      "provider_home_name": "Operario PR",
+      "provider_away_name": "Ceara",
+      "official_source_result": "Operário-PR 2 x 2 Ceará"
+    },
+    {
+      "ref": "295",
+      "fixture_id": "3011700618",
+      "home": "Fortaleza",
+      "away": "Athletic-MG",
+      "score": [
+        2,
+        2
+      ],
+      "provider_home_name": "Fortaleza",
+      "provider_away_name": "Athletic Club MG",
+      "official_source_result": "Fortaleza 2 x 2 Athletic"
+    },
+    {
+      "ref": "296",
+      "fixture_id": "3545396550",
+      "home": "Goiás",
+      "away": "Atlético-GO",
+      "score": [
+        0,
+        1
+      ],
+      "provider_home_name": "Goias",
+      "provider_away_name": "Atletico GO",
+      "official_source_result": "Goiás 0 x 1 Atlético-GO"
+    },
+    {
+      "ref": "297",
+      "fixture_id": "4029087001",
+      "home": "Criciúma",
+      "away": "Avaí",
+      "score": [
+        3,
+        0
+      ],
+      "provider_home_name": "Criciuma",
+      "provider_away_name": "Avai",
+      "official_source_result": "Criciúma 3 x 0 Avaí"
+    },
+    {
+      "ref": "298",
+      "fixture_id": "136318749",
+      "home": "Náutico",
+      "away": "Sport Recife",
+      "score": [
+        3,
+        1
+      ],
+      "provider_home_name": "Nautico",
+      "provider_away_name": "Sport Recife",
+      "official_source_result": "Náutico 3 x 1 Sport"
+    },
+    {
+      "ref": "299",
+      "fixture_id": "2572294410",
+      "home": "CRB",
+      "away": "Cuiabá",
+      "score": [
+        3,
+        0
+      ],
+      "provider_home_name": "CRB",
+      "provider_away_name": "Cuiaba",
+      "official_source_result": "CRB 3 x 0 Cuiabá"
+    },
+    {
+      "ref": "300",
+      "fixture_id": "3465954523",
+      "home": "Vila Nova",
+      "away": "Londrina",
+      "score": [
+        2,
+        0
+      ],
+      "provider_home_name": "Vila Nova",
+      "provider_away_name": "Londrina",
+      "official_source_result": "Vila Nova 2 x 0 Londrina"
+    }
+  ]
+}
