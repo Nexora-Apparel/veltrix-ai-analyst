@@ -33,15 +33,40 @@ ALLOWED_SPORT_KEYS = {
 }
 BASE_URL = "https://api.the-odds-api.com/v4/sports"
 TIMEOUT_SECONDS = 20
+MAX_ERROR_MESSAGE_LENGTH = 240
 
 
 def now_utc() -> datetime:
     return datetime.now(UTC)
 
 
+def provider_timestamp(value: datetime) -> str:
+    """Format timestamps exactly as the provider's documented UTC examples."""
+    return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def safe_provider_error(body: bytes, api_key: str) -> tuple[str | None, str | None]:
+    """Extract only structured error fields; never persist the raw error body."""
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None, None
+    if not isinstance(payload, dict):
+        return None, None
+    code = payload.get("error_code") or payload.get("code")
+    message = payload.get("message") or payload.get("error")
+    safe_code = code.strip()[:80] if isinstance(code, str) else None
+    safe_message = message.strip() if isinstance(message, str) else None
+    if safe_message and api_key:
+        safe_message = safe_message.replace(api_key, "[REDACTED]")
+    if safe_message:
+        safe_message = " ".join(safe_message.split())[:MAX_ERROR_MESSAGE_LENGTH]
+    return safe_code, safe_message
+
+
 def emit(manifest: dict[str, object]) -> None:
     Path("odds-api-events-manifest.json").write_text(
-        json.dumps(manifest, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+        json.dumps(manifest, sort_keys=True, indent=2) + "\\n", encoding="utf-8"
     )
     print(json.dumps(manifest, sort_keys=True, indent=2))
 
@@ -49,7 +74,6 @@ def emit(manifest: dict[str, object]) -> None:
 def main() -> int:
     sport_key = os.environ.get("ODDS_API_SPORT_KEY", "soccer_epl").strip()
     key = os.environ.get("THE_ODDS_API_KEY", "").strip()
-    started: datetime | None = None
     manifest: dict[str, object] = {
         "provider": "The Odds API",
         "endpoint": "/v4/sports/{sport}/events",
@@ -64,6 +88,8 @@ def main() -> int:
         "quota_remaining": None,
         "quota_used": None,
         "quota_last_cost": None,
+        "provider_error_code": None,
+        "provider_error_message": None,
         "future_event_count": 0,
         "events": [],
         "outcome": "NOT_RUN",
@@ -80,12 +106,15 @@ def main() -> int:
     started = now_utc()
     manifest["request_started_at"] = started.isoformat()
     manifest["request_count"] = 1
-    url = f"{BASE_URL}/{sport_key}/events?" + urlencode({
-        "apiKey": key, "dateFormat": "iso", "commenceTimeFrom": started.isoformat(),
-        "commenceTimeTo": (started + timedelta(days=30)).isoformat()
+    query = urlencode({
+        "apiKey": key,
+        "dateFormat": "iso",
+        "commenceTimeFrom": provider_timestamp(started),
+        "commenceTimeTo": provider_timestamp(started + timedelta(days=30)),
     })
     request = Request(
-        url, headers={"Accept": "application/json", "User-Agent": "VeltrixAIAnalyst/1.0"},
+        f"{BASE_URL}/{sport_key}/events?{query}",
+        headers={"Accept": "application/json", "User-Agent": "VeltrixAIAnalyst/1.0"},
         method="GET",
     )
     try:
@@ -110,6 +139,9 @@ def main() -> int:
     manifest["quota_used"] = headers.get("x-requests-used")
     manifest["quota_last_cost"] = headers.get("x-requests-last")
     if status != 200:
+        error_code, error_message = safe_provider_error(body, key)
+        manifest["provider_error_code"] = error_code
+        manifest["provider_error_message"] = error_message
         manifest["outcome"] = "HTTP_ERROR"
         emit(manifest)
         return 5
