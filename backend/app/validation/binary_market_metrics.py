@@ -1,10 +1,10 @@
 """Independent binary-market metrics and stratified paired bootstrap intervals."""
 from __future__ import annotations
 
+import random
 from collections import defaultdict
 from dataclasses import dataclass
 from math import log
-import random
 
 
 _EPSILON = 1e-15
