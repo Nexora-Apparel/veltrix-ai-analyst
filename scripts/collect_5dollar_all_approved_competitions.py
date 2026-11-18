@@ -33,7 +33,7 @@ def completed_run(database_url: str, competition_id: str, start_at: datetime, en
             """
             SELECT id FROM veltrix_ai_analyst.import_runs
             WHERE scope_value = %s AND boundary_start = %s AND boundary_end = %s
-              AND status = 'COMPLETED'
+              AND import_type = 'historical_backfill' AND status = 'COMPLETED'
             ORDER BY finished_at DESC NULLS LAST, id DESC
             """,
             (competition_id, start_at, end_at),
@@ -45,6 +45,32 @@ def completed_run(database_url: str, competition_id: str, start_at: datetime, en
             except Exception:
                 continue
     return None
+
+
+def resumable_run(database_url: str, competition_id: str, start_at: datetime, end_at: datetime):
+    """Return the single matching open run and its original request budget."""
+    with psycopg.connect(database_url) as connection:
+        rows = connection.execute(
+            """
+            SELECT id, request_budget, requests_used, status
+            FROM veltrix_ai_analyst.import_runs
+            WHERE scope_value = %s AND boundary_start = %s AND boundary_end = %s
+              AND import_type = 'historical_backfill'
+              AND status IN ('PAUSED', 'RUNNING')
+            ORDER BY id DESC
+            """,
+            (competition_id, start_at, end_at),
+        ).fetchall()
+    if len(rows) > 1:
+        raise RuntimeError(
+            f"MULTIPLE_OPEN_IMPORT_RUNS_FOR_COMPETITION:{competition_id}"
+        )
+    if not rows:
+        return None
+    run_id, request_budget, requests_used, status = rows[0]
+    if int(requests_used) > int(request_budget):
+        raise RuntimeError(f"OPEN_IMPORT_RUN_BUDGET_INTEGRITY_FAILURE:{run_id}")
+    return int(run_id), int(request_budget), int(requests_used), str(status)
 
 
 def main() -> int:
@@ -93,12 +119,28 @@ def main() -> int:
             print(json.dumps(results[-1], sort_keys=True), flush=True)
             continue
         try:
-            run_id = asyncio.run(run_competition_historical_import(
-                database_url, api_key=api_key, execute=True,
-                approval=FIVEDOLLAR_COMMUNITY_APPROVAL,
-                boundary_start=start_at, boundary_end=end_at,
-                request_budget=args.request_budget, competition_id=competition_id,
-            ))
+            resume = resumable_run(database_url, competition_id, start_at, end_at)
+            if resume:
+                resume_id, original_budget, requests_used, prior_status = resume
+                print(
+                    f"RESUMING import_run_id={resume_id} status={prior_status} "
+                    f"requests_used={requests_used}/{original_budget}",
+                    flush=True,
+                )
+                run_id = asyncio.run(run_competition_historical_import(
+                    database_url, api_key=api_key, execute=True,
+                    import_run_id=resume_id,
+                    approval=FIVEDOLLAR_COMMUNITY_APPROVAL,
+                    boundary_start=start_at, boundary_end=end_at,
+                    request_budget=original_budget, competition_id=competition_id,
+                ))
+            else:
+                run_id = asyncio.run(run_competition_historical_import(
+                    database_url, api_key=api_key, execute=True,
+                    approval=FIVEDOLLAR_COMMUNITY_APPROVAL,
+                    boundary_start=start_at, boundary_end=end_at,
+                    request_budget=args.request_budget, competition_id=competition_id,
+                ))
             with psycopg.connect(database_url) as connection:
                 report = validate_competition_import(connection, run_id, competition_id)
             results.append({"competition": name, "competition_id": competition_id,
