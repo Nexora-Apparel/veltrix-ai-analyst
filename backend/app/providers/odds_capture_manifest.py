@@ -50,8 +50,8 @@ class ProspectiveOddsCaptureManifest(StrictModel):
     request_started_at: datetime
     retrieved_at: datetime
     provider_response_date: datetime | None = None
-    source_tick_min_at: datetime
-    source_tick_max_at: datetime
+    source_tick_min_at: datetime | None = None
+    source_tick_max_at: datetime | None = None
     value_bet_decision_cutoff_at: datetime
     fixture_kickoff_at: datetime
     http_status: int = Field(ge=100, le=599)
@@ -76,15 +76,20 @@ class ProspectiveOddsCaptureManifest(StrictModel):
     def enforce_capture_and_admission_rules(self) -> ProspectiveOddsCaptureManifest:
         if self.request_started_at > self.retrieved_at:
             raise ValueError("request cannot start after retrieval")
-        if self.source_tick_min_at > self.source_tick_max_at:
-            raise ValueError("source tick range is inverted")
-        if self.source_tick_max_at > self.retrieved_at:
-            raise ValueError("source quote timestamp cannot be later than local retrieval")
+        if (self.source_tick_min_at is None) != (self.source_tick_max_at is None):
+            raise ValueError("source tick range must provide both bounds or neither")
+        if self.source_tick_min_at is not None and self.source_tick_max_at is not None:
+            if self.source_tick_min_at > self.source_tick_max_at:
+                raise ValueError("source tick range is inverted")
+            if self.source_tick_max_at > self.retrieved_at:
+                raise ValueError("source quote timestamp cannot be later than local retrieval")
         if self.admission == "ELIGIBLE":
             if self.http_status != 200:
                 raise ValueError("eligible capture requires HTTP 200")
             if self.response_bytes <= 0 or self.observation_count <= 0:
                 raise ValueError("eligible capture requires a non-empty response and observations")
+            if self.source_tick_min_at is None or self.source_tick_max_at is None:
+                raise ValueError("eligible capture requires source quote timestamp bounds")
             if self.source_tick_max_at > self.value_bet_decision_cutoff_at:
                 raise ValueError("source quote timestamp is after the decision cutoff")
             if self.retrieved_at > self.value_bet_decision_cutoff_at:
