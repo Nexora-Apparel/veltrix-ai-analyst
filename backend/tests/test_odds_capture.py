@@ -8,8 +8,9 @@ from app.providers.odds_capture import (
     normalize_5dollar_odds,
     normalize_5dollar_odds_history,
 )
+from app.providers.odds_contracts import OddsCaptureEnvelope
 
-CUTOFF = datetime(2026, 11, 17, 12, tzinfo=UTC)
+CUTOFF = datetime(2026, 11, 18, 12, tzinfo=UTC)
 KICKOFF = CUTOFF + timedelta(hours=2)
 TICK = CUTOFF - timedelta(minutes=5)
 RETRIEVED = CUTOFF - timedelta(minutes=4)
@@ -22,10 +23,9 @@ def base_args():
         "request_started_at": RETRIEVED - timedelta(seconds=1),
         "retrieved_at": RETRIEVED,
         "provider_response_date": RETRIEVED,
-        "prediction_cutoff_at": CUTOFF,
+        "value_bet_decision_cutoff_at": CUTOFF,
         "source_observation_id": "obs-1",
-        "rights_approval_id": "rights-1",
-        "rights_allow_value_betting": True,
+        "competition_id": "522514093",
     }
 
 
@@ -136,7 +136,7 @@ def test_history_retrieval_after_cutoff_is_rejected():
     args = {
         **base_args(),
         "retrieved_at": CUTOFF + timedelta(minutes=2),
-        "prediction_cutoff_at": CUTOFF,
+        "value_bet_decision_cutoff_at": CUTOFF,
     }
     with pytest.raises(OddsPayloadError, match="retrieved after"):
         normalize_5dollar_odds_history(odds_history_response(), **args)
@@ -176,7 +176,7 @@ def test_rejects_unapproved_value_betting_rights():
     with pytest.raises(OddsPayloadError, match="rights"):
         normalize_5dollar_fixture_odds(
             fixture_odds_response(),
-            **{**base_args(), "rights_allow_value_betting": False},
+            **{**base_args(), "competition_id": "unapproved-competition"},
         )
 
 
@@ -211,3 +211,18 @@ def test_history_normalizer_skips_withdrawn_all_null_price_tick():
         "score": {"home": None, "away": None}, "recorded_at": TICK.isoformat(),
     }]
     assert normalize_5dollar_odds_history(response, **base_args()) == ()
+
+
+def test_capture_envelope_rejects_duplicate_observation_identity():
+    rows = normalize_5dollar_fixture_odds(fixture_odds_response(), **base_args())
+    envelope = OddsCaptureEnvelope(captured_at=RETRIEVED, request_id="capture-1", observations=rows)
+    assert len(envelope.observations) == 3
+    with pytest.raises(ValueError, match="duplicate odds observation identity"):
+        OddsCaptureEnvelope(captured_at=RETRIEVED, request_id="capture-2", observations=(rows[0], rows[0]))
+
+
+def test_history_rejects_bookmaker_outside_community_scope():
+    response = odds_history_response()
+    response["data"]["bookmaker"]["slug"] = "other-book"
+    with pytest.raises(OddsPayloadError, match="only supports Bet365"):
+        normalize_5dollar_odds_history(response, **base_args())

@@ -22,15 +22,14 @@ class OddsObservation(StrictModel):
     retrieved_at: datetime
     provider_response_date: datetime | None = None
     kickoff_at: datetime
-    prediction_cutoff_at: datetime
+    value_bet_decision_cutoff_at: datetime
     in_play: bool
     source_observation_id: str = Field(min_length=1, max_length=200)
     source_response_sha256: str = Field(pattern=r"^[a-fA-F0-9]{64}$")
     rights_approval_id: str = Field(min_length=1, max_length=200)
     use_purpose: Literal["VALUE_BETTING_ONLY"]
-    rights_allow_value_betting: bool = False
 
-    @field_validator("source_tick_at", "request_started_at", "retrieved_at", "provider_response_date", "kickoff_at", "prediction_cutoff_at")
+    @field_validator("source_tick_at", "request_started_at", "retrieved_at", "provider_response_date", "kickoff_at", "value_bet_decision_cutoff_at")
     @classmethod
     def require_aware(cls, value: datetime | None) -> datetime | None:
         if value is not None and (value.tzinfo is None or value.utcoffset() is None):
@@ -43,16 +42,14 @@ class OddsObservation(StrictModel):
             raise ValueError("request cannot start after retrieval")
         if self.source_tick_at > self.retrieved_at:
             raise ValueError("source tick cannot be later than retrieval")
-        if self.retrieved_at > self.prediction_cutoff_at:
-            raise ValueError("odds were retrieved after the prediction cutoff")
-        if self.source_tick_at > self.prediction_cutoff_at:
-            raise ValueError("source odds tick is after the prediction cutoff")
-        if self.prediction_cutoff_at >= self.kickoff_at:
-            raise ValueError("prediction cutoff must be strictly before kickoff")
+        if self.retrieved_at > self.value_bet_decision_cutoff_at:
+            raise ValueError("odds were retrieved after the value-bet decision cutoff")
+        if self.source_tick_at > self.value_bet_decision_cutoff_at:
+            raise ValueError("source odds tick is after the value-bet decision cutoff")
+        if self.value_bet_decision_cutoff_at >= self.kickoff_at:
+            raise ValueError("value-bet decision cutoff must be strictly before kickoff")
         if self.in_play:
-            raise ValueError("in-play odds cannot enter pre-match features")
-        if not self.rights_allow_value_betting:
-            raise ValueError("odds source rights do not permit value betting")
+            raise ValueError("in-play odds cannot enter pre-match value-betting decisions")
         return self
 
 class OddsCaptureEnvelope(StrictModel):
@@ -71,4 +68,10 @@ class OddsCaptureEnvelope(StrictModel):
     def capture_not_before_retrieval(self) -> OddsCaptureEnvelope:
         if any(item.retrieved_at > self.captured_at for item in self.observations):
             raise ValueError("envelope capture cannot precede observation retrieval")
+        identities = {
+            (item.provider, item.source_observation_id, item.bookmaker, item.market, item.selection, item.line, item.source_tick_at)
+            for item in self.observations
+        }
+        if len(identities) != len(self.observations):
+            raise ValueError("duplicate odds observation identity in capture envelope")
         return self
