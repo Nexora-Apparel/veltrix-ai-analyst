@@ -11,6 +11,7 @@ from psycopg.types.json import Jsonb
 from app.db.migrations import apply_migrations
 from app.db.store import PostgresIngestionStore
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_APPROVAL
+from app.providers.contracts import ProviderFixture, SourceProvenance
 
 
 @pytest.fixture
@@ -75,6 +76,24 @@ def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
                 provider_response_id=response_id,
             )
 
+            target_fixture_id = store.upsert_provider_fixture(
+                ProviderFixture(
+                    provenance=SourceProvenance(
+                        provider="5DollarFootballAPI",
+                        provider_record_id=f"pit-eligible-{marker}",
+                        retrieved_at=now,
+                    ),
+                    competition_id="522514093",
+                    home_team_id=f"home-{marker}",
+                    away_team_id=f"away-{marker}",
+                    kickoff_at=now + timedelta(hours=1),
+                    status="scheduled",
+                ),
+                source_id="5dollarfootballapi",
+                source_observation_id=eligible_observation_id,
+                approval=FIVEDOLLAR_COMMUNITY_APPROVAL,
+            )
+
             eligible_sighting_id = connection.execute(
                 """
                 SELECT id FROM veltrix_ai_analyst.source_observation_sightings
@@ -93,11 +112,12 @@ def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
             connection.execute(
                 """
                 INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
-                    source_observation_id, source_sighting_id, feature_key,
-                    feature_value, prediction_cutoff_at
-                ) VALUES (%s, %s, %s, %s, %s)
+                    target_fixture_id, source_observation_id, source_sighting_id,
+                    feature_key, feature_value, prediction_cutoff_at
+                ) VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
+                    target_fixture_id,
                     eligible_observation_id,
                     eligible_sighting_id,
                     "test.feature",
@@ -116,11 +136,12 @@ def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
                 connection.execute(
                         """
                         INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
-                            source_observation_id, source_sighting_id, feature_key,
-                            feature_value, prediction_cutoff_at
-                        ) VALUES (%s, %s, %s, %s, %s)
+                            target_fixture_id, source_observation_id, source_sighting_id,
+                            feature_key, feature_value, prediction_cutoff_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s)
                         """,
                     (
+                        target_fixture_id,
                         ineligible_observation_id,
                         ineligible_sighting_id,
                         "test.must_be_rejected",
