@@ -19,6 +19,7 @@ from app.providers.historical_validation import validate_competition_import
 
 COMPETITIONS = (
     ("3118717965", "Brazil Serie A"),
+    ("522514093", "Brazil Serie B"),
     ("4160026622", "England Premier League"),
     ("3614399544", "France Ligue 1"),
     ("686337048", "Germany Bundesliga I"),
@@ -27,16 +28,22 @@ COMPETITIONS = (
 )
 
 
-def completed_run(database_url: str, competition_id: str, start_at: datetime, end_at: datetime):
+def completed_run(
+    database_url: str,
+    competition_id: str,
+    start_at: datetime,
+    end_at: datetime,
+    import_type: str,
+):
     with psycopg.connect(database_url) as connection:
         rows = connection.execute(
             """
             SELECT id FROM veltrix_ai_analyst.import_runs
             WHERE scope_value = %s AND boundary_start = %s AND boundary_end = %s
-              AND import_type = 'historical_backfill' AND status = 'COMPLETED'
+              AND import_type = %s AND status = 'COMPLETED'
             ORDER BY finished_at DESC NULLS LAST, id DESC
             """,
-            (competition_id, start_at, end_at),
+            (competition_id, start_at, end_at, import_type),
         ).fetchall()
         for (run_id,) in rows:
             try:
@@ -52,7 +59,13 @@ def completed_run(database_url: str, competition_id: str, start_at: datetime, en
     return None
 
 
-def resumable_run(database_url: str, competition_id: str, start_at: datetime, end_at: datetime):
+def resumable_run(
+    database_url: str,
+    competition_id: str,
+    start_at: datetime,
+    end_at: datetime,
+    import_type: str,
+):
     """Return the single matching open run and its original request budget."""
     with psycopg.connect(database_url) as connection:
         rows = connection.execute(
@@ -60,11 +73,11 @@ def resumable_run(database_url: str, competition_id: str, start_at: datetime, en
             SELECT id, request_budget, requests_used, status
             FROM veltrix_ai_analyst.import_runs
             WHERE scope_value = %s AND boundary_start = %s AND boundary_end = %s
-              AND import_type = 'historical_backfill'
+              AND import_type = %s
               AND status IN ('PAUSED', 'RUNNING')
             ORDER BY id DESC
             """,
-            (competition_id, start_at, end_at),
+            (competition_id, start_at, end_at, import_type),
         ).fetchall()
     if len(rows) > 1:
         raise RuntimeError(
@@ -83,6 +96,11 @@ def main() -> int:
     parser.add_argument("--start-at", required=True)
     parser.add_argument("--end-at", required=True)
     parser.add_argument("--request-budget", type=int, default=20)
+    parser.add_argument(
+        "--import-type",
+        choices=("historical_backfill", "prospective_capture"),
+        default="historical_backfill",
+    )
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
 
@@ -114,7 +132,9 @@ def main() -> int:
     failures = []
     for competition_id, name in COMPETITIONS:
         print(f"BATCH_START {name} ({competition_id})", flush=True)
-        existing = completed_run(database_url, competition_id, start_at, end_at)
+        existing = completed_run(
+            database_url, competition_id, start_at, end_at, args.import_type
+        )
         if existing:
             run_id, report = existing
             results.append({"competition": name, "competition_id": competition_id,
@@ -124,7 +144,9 @@ def main() -> int:
             print(json.dumps(results[-1], sort_keys=True), flush=True)
             continue
         try:
-            resume = resumable_run(database_url, competition_id, start_at, end_at)
+            resume = resumable_run(
+                database_url, competition_id, start_at, end_at, args.import_type
+            )
             if resume:
                 resume_id, original_budget, requests_used, prior_status = resume
                 print(
@@ -138,6 +160,7 @@ def main() -> int:
                     approval=FIVEDOLLAR_COMMUNITY_APPROVAL,
                     boundary_start=start_at, boundary_end=end_at,
                     request_budget=original_budget, competition_id=competition_id,
+                    import_type=args.import_type,
                 ))
             else:
                 run_id = asyncio.run(run_competition_historical_import(
@@ -145,6 +168,7 @@ def main() -> int:
                     approval=FIVEDOLLAR_COMMUNITY_APPROVAL,
                     boundary_start=start_at, boundary_end=end_at,
                     request_budget=args.request_budget, competition_id=competition_id,
+                    import_type=args.import_type,
                 ))
             with psycopg.connect(database_url) as connection:
                 report = validate_competition_import(connection, run_id, competition_id)
