@@ -1,4 +1,4 @@
-name: 5Dollar all-approved competitions historical batch
+name: 5Dollar all-approved competitions historical and prospective batch
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ on:
         type: string
         default: "2026-11-18T00:00:00+00:00"
       request_budget:
-        description: Maximum provider requests per competition (six competitions; maximum 240 total)
+        description: Maximum provider requests per competition (seven competitions; maximum 280 total)
         required: true
         type: choice
         default: "20"
