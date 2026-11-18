@@ -1,0 +1,47 @@
+name: Verify CBF Série B scores rounds 1–29
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cbf-score-verification-rounds-1-29.yml"
+      - "backend/scripts/verify_cbf_scores_rounds_1_29.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-ai-analyst-cbf-score-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: veltrix-historical-import
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      CBF_SCORE_VERIFICATION_PATH: artifacts/cbf-score-verification-rounds-1-29.json
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install read-only audit dependencies
+        run: python -m pip install -e . PyMuPDF
+      - name: Compare official CBF scores with immutable provider fixtures
+        run: python scripts/verify_cbf_scores_rounds_1_29.py
+      - name: Upload score verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbf-score-verification-rounds-1-29
+          path: backend/artifacts/cbf-score-verification-rounds-1-29.json
+          if-no-files-found: error
+          retention-days: 30
