@@ -72,13 +72,13 @@ def test_sparse_history_is_a_signal_not_a_fixture_rejection() -> None:
     ],
 )
 def test_invalid_signal_values_are_rejected(field: str, value: float) -> None:
-    values = dict(
-        source_reliability=1,
-        freshness=1,
-        team_history_coverage=1,
-        competition_context_coverage=1,
-        supporting_feature_coverage=1,
-    )
+    values = {
+        "source_reliability": 1,
+        "freshness": 1,
+        "team_history_coverage": 1,
+        "competition_context_coverage": 1,
+        "supporting_feature_coverage": 1,
+    }
     values[field] = value
     with pytest.raises(ValueError):
         EvidenceSignals(**values)
