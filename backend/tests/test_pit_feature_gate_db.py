@@ -266,7 +266,9 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
             connection.execute(
                 """
                 INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
-                    target_fixture_id, source_observation_id, source_sighting_id,\n                    feature_key, feature_value, prediction_cutoff_at\n                ) VALUES (%s, %s, %s, %s, %s, %s)
+                    target_fixture_id, source_observation_id, source_sighting_id,
+                    feature_key, feature_value, prediction_cutoff_at
+                ) VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
                     target_fixture_id,
@@ -288,7 +290,9 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 connection.execute(
                     """
                     INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
-                        target_fixture_id, source_observation_id, source_sighting_id,\n                    feature_key, feature_value, prediction_cutoff_at\n                ) VALUES (%s, %s, %s, %s, %s, %s)
+                        target_fixture_id, source_observation_id, source_sighting_id,
+                    feature_key, feature_value, prediction_cutoff_at
+                ) VALUES (%s, %s, %s, %s, %s, %s)
                     """,
                     (
                         target_fixture_id,
@@ -310,7 +314,9 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 connection.execute(
                     """
                     INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
-                        target_fixture_id, source_observation_id, source_sighting_id,\n                    feature_key, feature_value, prediction_cutoff_at\n                ) VALUES (%s, %s, %s, %s, %s, %s)
+                        target_fixture_id, source_observation_id, source_sighting_id,
+                    feature_key, feature_value, prediction_cutoff_at
+                ) VALUES (%s, %s, %s, %s, %s, %s)
                     """,
                     (
                         target_fixture_id,
