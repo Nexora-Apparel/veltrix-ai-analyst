@@ -228,7 +228,7 @@ def evaluate_paired_chronological_report(
         raise ValueError("input must be a non-PIT retrospective prequential report")
     source = report.get("source")
     if not isinstance(source, dict):
-        raise ValueError("input must include source chronology adjudication metadata")
+        raise TypeError("input source chronology adjudication metadata must be an object")
     if source.get("chronology_basis") != (
         "PROVIDER_KICKOFF_WITH_EVIDENCE_BACKED_OFFICIAL_CBF_ADJUDICATIONS"
     ):
