@@ -23,6 +23,8 @@ from app.validation.prospective_dataset import (
 def _jsonable_row(row) -> dict:
     return {
         "fixture_id": row.fixture_id,
+        "provider": row.provider,
+        "source_id": row.source_id,
         "competition_id": row.competition_id,
         "kickoff_at": row.kickoff_at.isoformat(),
         "prediction_cutoff_at": row.prediction_cutoff_at.isoformat(),
