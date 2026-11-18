@@ -176,3 +176,21 @@ def test_official_kickoff_adjudication_fails_closed_on_raw_timestamp_mismatch():
     )
     with pytest.raises(ValueError, match="raw timestamp mismatch"):
         apply_kickoff_adjudications([fixture], adjudications)
+
+
+def test_official_kickoff_adjudication_restores_simultaneous_cbf_batch():
+    registry = Path(__file__).resolve().parents[1] / "data/research/official_kickoff_adjudications.json"
+    adjudications = load_kickoff_adjudications(registry)
+    official = datetime.fromisoformat("2026-09-10T22:30:00+00:00")
+    fixtures = [
+        ResearchFixture("3196722470", official, "VIL", "GOI", 2, 0),
+        ResearchFixture(
+            "2179333578", datetime.fromisoformat("2026-09-10T23:49:59+00:00"), "SB", "LON", 1, 2
+        ),
+    ]
+    corrected, audit = apply_kickoff_adjudications(fixtures, adjudications)
+    report = chronological_research_run(corrected)
+
+    assert len(audit) == 1
+    assert {row["kickoff_at"] for row in report["predictions"]} == {official.isoformat()}
+    assert len(report["predictions"]) == 2
