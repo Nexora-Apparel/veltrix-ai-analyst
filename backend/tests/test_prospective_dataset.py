@@ -101,6 +101,7 @@ def test_retrieval_only_observations_are_excluded():
         fixture_id=late.fixture_id,
         provider=late.provider,
         source_id=late.source_id,
+        retrieved_at=late.retrieved_at,
         observed_at=late.observed_at,
         availability_basis="RETRIEVED_AT_ONLY",
         point_in_time_certifiable=False,
