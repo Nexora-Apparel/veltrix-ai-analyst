@@ -184,11 +184,19 @@ def main() -> int:
         if normalized["quote_count"]
         else "ENDPOINT_ACCESS_CONFIRMED_NO_TIMESTAMPED_H2H_QUOTES"
     )
-    manifest["quota_cost_within_one_credit_expectation"] = (
-        str(manifest["quota_last_cost"]) == "1"
-        if manifest["quota_last_cost"] is not None
-        else None
+    raw_cost = manifest["quota_last_cost"]
+    try:
+        actual_cost = int(str(raw_cost)) if raw_cost is not None else None
+    except ValueError:
+        actual_cost = None
+    manifest["actual_quota_cost"] = actual_cost
+    manifest["quota_cost_within_one_credit_cap"] = (
+        actual_cost is not None and 0 <= actual_cost <= 1
     )
+    if actual_cost is None:
+        manifest["outcome"] = "QUOTA_COST_HEADER_MISSING_OR_INVALID"
+    elif actual_cost > 1:
+        manifest["outcome"] = "QUOTA_COST_EXCEEDED_ONE_CREDIT_CAP"
     emit(manifest)
     return 0
 
