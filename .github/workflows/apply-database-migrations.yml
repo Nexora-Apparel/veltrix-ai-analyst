@@ -57,7 +57,7 @@ jobs:
           if "006_pre_match_feature_pit_gate.sql" not in applied:
               print("Migration 006 was already applied with a matching checksum.")
           PY
-      - name: Verify migration 006-009 checksum ledgers and database objects
+      - name: Verify migration 006-010 checksum ledgers and database objects
         run: |
           python - <<'PY'
           import hashlib
@@ -131,6 +131,20 @@ jobs:
                       "canonical_identity_review_case_events_append_only",
                   ],
               },
+              "010_system_observed_pit.sql": {
+                  "tables": [],
+                  "functions": ["enforce_pre_match_feature_pit()"],
+                  "triggers": [
+                      "pre_match_feature_pit_guard",
+                      "pre_match_feature_observations_append_only",
+                  ],
+                  "constraints": [
+                      "source_observations_availability_basis_check",
+                      "source_observations_pit_evidence_check",
+                      "source_observation_sightings_availability_basis_check",
+                      "source_observation_sightings_pit_evidence_check",
+                  ],
+              },
           }
 
           with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
@@ -192,6 +206,23 @@ jobs:
                       ).fetchone()[0]
                   if trigger_count != len(expected["triggers"]):
                       raise SystemExit(f"MIGRATION_TRIGGER_VERIFICATION_FAILED:{filename}")
+
+                  for constraint in expected.get("constraints", []):
+                      constraint_count = connection.execute(
+                          """
+                          SELECT COUNT(*)
+                          FROM pg_constraint constraint_row
+                          JOIN pg_namespace namespace
+                            ON namespace.oid = constraint_row.connamespace
+                          WHERE namespace.nspname = 'veltrix_ai_analyst'
+                            AND constraint_row.conname = %s
+                          """,
+                          (constraint,),
+                      ).fetchone()[0]
+                      if constraint_count != 1:
+                          raise SystemExit(
+                              f"MIGRATION_CONSTRAINT_VERIFICATION_FAILED:{filename}:{constraint}"
+                          )
                   print(f"{filename} VERIFIED: {checksum}")
 
               expected_case_counts = {
@@ -217,7 +248,7 @@ jobs:
 
               event_count = connection.execute(
                   """
-                  SELECT COUNT(*)
+                  SELECT COUNT(DISTINCT review_case.id)
                   FROM veltrix_ai_analyst.canonical_identity_review_case_events event
                   JOIN veltrix_ai_analyst.canonical_identity_review_cases review_case
                     ON review_case.id = event.case_id
@@ -241,7 +272,7 @@ jobs:
                     (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_fixture_duplicate_case_audit)
                   """
               ).fetchone()
-              if audit_counts != (21, 1, 374, 4):
+              if audit_counts != (21, 1, 384, 4):
                   raise SystemExit(f"CANONICAL_PROVENANCE_AUDIT_COUNTS_MISMATCH:{audit_counts}")
 
               resolution_counts = connection.execute(
@@ -257,6 +288,6 @@ jobs:
                   raise SystemExit(f"IDENTITY_HUMAN_REVIEW_GATE_MISMATCH:{resolution_counts}")
               print("IDENTITY_REVIEW_CASES_VERIFIED: 28")
               print("HUMAN_REVIEW_GATE_VERIFIED: no aliases or duplicate exclusions activated")
-              print("CANONICAL_PROVENANCE_AUDIT_VERIFIED: 21 teams, 1 competition, 374 fixtures")
+              print("CANONICAL_PROVENANCE_AUDIT_VERIFIED: 21 teams, 1 competition, 384 fixtures")
               print("OFFICIAL_DUPLICATE_CASES_VERIFIED: 4")
           PY
