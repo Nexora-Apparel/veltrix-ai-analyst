@@ -10,9 +10,9 @@ Prepare one exact fixture identity comparison before any The Odds API odds-marke
 
 ## Request budget
 
-For one selected competition:
+For one selected competition over a bounded 30-day upcoming window:
 - The Odds API: exactly one `GET /v4/sports/{sport_key}/events` request. Provider documentation says this endpoint does not consume odds usage credits.
-- 5DollarFootballAPI: exactly one `GET /v1/leagues/{id}/fixtures?status=scheduled&order=asc&per_page=100&page=1` request.
+- 5DollarFootballAPI: exactly one `GET /v1/leagues/{id}/fixtures?start_time=now&end_time=now+30d&status=scheduled&per_page=100&page=1` request.
 - Retries: zero.
 - Pagination: zero. If the 5Dollar response says `has_more=true`, the catalogue is marked incomplete and cannot qualify a market probe.
 - Odds markets: zero.
