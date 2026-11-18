@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 import unicodedata
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -142,6 +143,15 @@ def select_market_probe_candidate(
         if isinstance(fixture_id, str) and fixture_id.strip():
             fixture_index.setdefault(fixture_id, []).append(fixture)
 
+    matched_rows = [row for row in matches if row.get("status") == "MATCHED"]
+    event_match_counts = Counter(
+        row.get("event_id") for row in matched_rows
+        if isinstance(row.get("event_id"), str)
+    )
+    fixture_match_counts = Counter(
+        row.get("fixture_id") for row in matched_rows
+        if isinstance(row.get("fixture_id"), str)
+    )
     eligible: list[tuple[datetime, str, str, str, str]] = []
     for match in matches:
         if match.get("status") != "MATCHED":
@@ -149,6 +159,8 @@ def select_market_probe_candidate(
         event_id = match.get("event_id")
         fixture_id = match.get("fixture_id")
         if not isinstance(event_id, str) or not isinstance(fixture_id, str):
+            continue
+        if event_match_counts[event_id] != 1 or fixture_match_counts[fixture_id] != 1:
             continue
         event_rows = event_index.get(event_id, [])
         fixture_rows = fixture_index.get(fixture_id, [])
