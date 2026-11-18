@@ -88,7 +88,7 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
                 "data": [_fixture(fixture_id, kickoff)],
                 "pagination": {
                     "page": int(request.url.params["page"]),
-                    "per_page": 100,
+                    "per_page": 50,
                     "count": 1,
                     "has_more": False,
                 },
@@ -112,7 +112,7 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
 
     assert len(requests) == 34
     assert all(request.url.path == "/v1/leagues/522514093/fixtures" for request in requests)
-    assert all(request.url.params["per_page"] == "100" for request in requests)
+    assert all(request.url.params["per_page"] == "50" for request in requests)
 
     with psycopg.connect(database_url) as connection:
         run = connection.execute(
@@ -265,7 +265,7 @@ def test_competition_import_persists_under_selected_provider_scope(
                         competition_name="Brazil Serie A",
                     )
                 ],
-                "pagination": {"page": 1, "per_page": 100, "count": 1, "has_more": False},
+                "pagination": {"page": 1, "per_page": 50, "count": 1, "has_more": False},
             },
             headers={"X-Request-Id": "mock-serie-a-request"},
         )
@@ -423,7 +423,7 @@ def test_resume_replays_reserved_response_without_repeating_provider_http(
         "end_time": int(window.end_at.timestamp()),
         "status": "all",
         "page": 1,
-        "per_page": 100,
+        "per_page": 50,
     }
     endpoint = "/leagues/522514093/fixtures"
     request_key = (
@@ -474,7 +474,7 @@ def test_resume_replays_reserved_response_without_repeating_provider_http(
                 "data": [_fixture(99887766, "2026-08-30T12:00:00+00:00")],
                 "pagination": {
                     "page": 1,
-                    "per_page": 100,
+                    "per_page": 50,
                     "count": 1,
                     "has_more": False,
                 },
@@ -568,7 +568,7 @@ def test_incremental_import_uses_requested_window_and_small_request_budget(
                 "data": [_fixture(fixture_id, kickoff)],
                 "pagination": {
                     "page": int(request.url.params["page"]),
-                    "per_page": 100,
+                    "per_page": 50,
                     "count": 1,
                     "has_more": False,
                 },
@@ -600,7 +600,7 @@ def test_incremental_import_uses_requested_window_and_small_request_budget(
         str(int(start.timestamp())),
         str(int(datetime(2026, 11, 16, tzinfo=UTC).timestamp())),
     ]
-    assert all(request.url.params["per_page"] == "100" for request in requests)
+    assert all(request.url.params["per_page"] == "50" for request in requests)
 
     with psycopg.connect(database_url) as connection:
         run = connection.execute(
@@ -673,7 +673,7 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
                 "data": [fixture],
                 "pagination": {
                     "page": int(request.url.params["page"]),
-                    "per_page": 100,
+                    "per_page": 50,
                     "count": 1,
                     "has_more": False,
                 },
