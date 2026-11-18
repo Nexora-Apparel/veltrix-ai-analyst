@@ -70,20 +70,24 @@ invariants, not forecast quality. Fit parameters only inside each chronological
 training fold after identity, competition, duplicate, rights, source-time, and
 label-availability gates pass; evaluate on untouched future folds.
 
-## Project-owner review authorization — 2026-11-17
+## Project-owner review authorization — correction recorded 2026-11-18
 
-The project owner reports that they reviewed the recommendations, that a peer
-also reviewed them, and that a professional reviewer agreed with the conservative
-approach. The project owner authorizes proceeding with the evidence-first policy
-and implementation plan recorded above. This entry records the owner's report
-and authorization only; it is not a substitute for named reviewer attestations,
-individual case-level evidence, or the required immutable human-review events.
+The project owner personally reviewed the recommendations and authorized the
+project to proceed. Additional professional reviewers were approached, but they
+were in a hurry and did not provide substantive comments or endorsements. The
+previous wording that implied a peer reviewed the recommendations and that a
+professional reviewer agreed with the approach was inaccurate and is withdrawn.
+No professional endorsement is claimed or required.
 
-No case is changed to HUMAN_CONFIRMED by this authorization alone. Automated
-recommendations remain recommendations. Any future identity decision must cite
-specific authoritative evidence and record the actual reviewer identity and
-evidence hash. Personal/non-commercial use does not alter point-in-time feature
-eligibility or waive provider terms.
+VELTRIX AI ANALYST is a private, personal-use application for the project owner.
+The owner does not intend to publish it as a public service or provide it to
+other users. External professional review is therefore not a project release
+requirement. The owner's own review and decisions govern product direction.
+
+This correction does not waive engineering data-integrity controls. Canonical
+team, competition, fixture, alias, and duplicate decisions must still be based
+on traceable evidence and recorded accurately; no reviewer identity or approval
+may be fabricated. The owner may make those project-level decisions.
 
 
 ## Rights and PIT distinction
@@ -130,3 +134,23 @@ PR [#42](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/42) replaces 
 - Tests now use documented response examples rather than the prior synthetic shape.
 
 No live odds API request was made during this schema review. The user has explicitly confirmed project-owner authorization for all collected data, including odds, for the project's personal-use model research and training. That authorization is recorded; it does not manufacture source timestamps or override any applicable provider contract. The account plan and Brazil Serie B listing were subsequently verified as Community / visible, but the odds snapshot endpoint's account-specific response remains unverified. Odds capture stays inactive pending one bounded live snapshot probe. The full odds-history endpoint is documented as Ultra-only and is not part of the Community-plan probe. No new key/account is to be created.
+
+
+## Personal-use and review-scope correction — 2026-11-18
+
+- Intended audience: the project owner only. This is not a public-facing product
+  or a multi-user service.
+- Commercial status: non-monetised personal use only. No subscriptions, paid
+  predictions, commercial distribution, or monetised model outputs.
+- Professional review: not required. Additional professionals were unable to
+  provide comments because they were in a hurry; their silence must not be
+  described as agreement, approval, or endorsement.
+- Owner review: the project owner's own review is the governing product review.
+- Data use: continue using the already collected and authorized data for the
+  owner's personal model research and training, subject to known provider terms,
+  account entitlements, attribution obligations where applicable, and the
+  prohibition on raw-feed resale or redistribution.
+- Technical controls remain independent of external review: preserve provenance,
+  timestamps, fixture identity, source hashes, and honest point-in-time eligibility.
+  These controls protect prediction quality; they are not a requirement to obtain
+  professional opinions.
