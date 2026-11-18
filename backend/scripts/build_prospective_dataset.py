@@ -83,6 +83,7 @@ def build_report(
                 OR s.system_observed_at < s.retrieved_at
                 OR s.source_published_at IS NOT NULL
                 OR s.provider_response_id IS NULL
+                OR s.payload_sha256 IS NULL
                 OR s.payload_sha256 IS DISTINCT FROM o.payload_sha256
                 OR length(s.payload_sha256) <> 64
                 OR o.payload->>'competition_id' IS NULL
