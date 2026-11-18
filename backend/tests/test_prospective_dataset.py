@@ -41,6 +41,7 @@ def observation(fid, oid, sid, when, status, home_goals=None, away_goals=None):
         availability_basis="SYSTEM_OBSERVED_AT",
         point_in_time_certifiable=True,
         payload_sha256=f"{oid:064x}",
+        raw_response_sha256=f"{oid + 100:064x}",
         payload=payload,
     )
 
@@ -101,6 +102,7 @@ def test_retrieval_only_observations_are_excluded():
         availability_basis="RETRIEVED_AT_ONLY",
         point_in_time_certifiable=False,
         payload_sha256=late.payload_sha256,
+        raw_response_sha256=late.raw_response_sha256,
         payload=late.payload,
     )
     assert build_prospective_dataset([target], [late]) == ()
