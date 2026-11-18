@@ -56,6 +56,7 @@ def is_valid_retrospective_observation(row: Mapping[str, Any]) -> bool:
                 and response_system_observed_at == system_observed_at
             )
         )
+        and (system_observed_at is not None or response_system_observed_at is None)
         and row.get("provider_response_id") is not None
         and isinstance(payload_sha256, str)
         and re.fullmatch(r"[0-9a-f]{64}", payload_sha256.strip()) is not None
