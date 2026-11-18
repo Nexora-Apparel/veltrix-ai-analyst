@@ -50,6 +50,10 @@ Latest report: [workflow 44281629472](https://github.com/Nexora-Apparel/veltrix-
 
 The adaptive ensemble has the best point estimates, but all paired moving-block bootstrap 95% confidence intervals cross zero. No model is selected or promoted from this retrospective result.
 
+## Historical point-in-time evidence
+
+The production audit found 384 source observations and 384 sightings for the competition: zero source-publication timestamps, zero `available_at` timestamps, all 384 sightings marked `RETRIEVED_AT_ONLY`, and zero PIT-certifiable sightings. See the [historical PIT evidence audit](2026-11-18-historical-pit-evidence-audit.md). The historical corpus remains ineligible for PIT-certified pre-match features; no timestamps were backfilled.
+
 ## Remaining qualification blockers
 
 ### 1. Scoreline verification
