@@ -1,11 +1,12 @@
 """Fail-closed normalization for one event-specific The Odds API h2h response."""
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import math
-import unicodedata
 import re
-from typing import Any, Mapping
+import unicodedata
+from collections.abc import Mapping
+from datetime import UTC, datetime
+from typing import Any
 
 from app.providers.event_matching import match_event_to_fixture
 
