@@ -73,7 +73,16 @@ def _paired_block_bootstrap(
         raise ValueError("block_size must be positive")
     rng = random.Random(seed)
     n = len(rows)
-    blocks = [list(range(start, min(start + block_size, n))) for start in range(0, n, block_size)]
+    kickoff_groups = _kickoff_batches(rows)
+    blocks: list[list[dict[str, Any]]] = []
+    for start in range(len(kickoff_groups)):
+        block: list[dict[str, Any]] = []
+        for group in kickoff_groups[start:]:
+            block.extend(group)
+            if len(block) >= block_size:
+                break
+        if block:
+            blocks.append(block)
     comparisons: dict[str, Any] = {}
     for left_index, left in enumerate(MODEL_NAMES):
         for right in MODEL_NAMES[left_index + 1:]:
@@ -82,7 +91,7 @@ def _paired_block_bootstrap(
             for _ in range(resamples):
                 selected: list[dict[str, Any]] = []
                 while len(selected) < n:
-                    selected.extend(rows[index] for index in rng.choice(blocks))
+                    selected.extend(rng.choice(blocks))
                 sample = selected[:n]
                 left_metrics = _metrics(sample, left)
                 right_metrics = _metrics(sample, right)
