@@ -510,3 +510,15 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - **Research disposition:** fixed v1 remains the benchmark candidate; preserve v2 as an immutable comparator; do not use temperature scaling as the default. Neither is production- or PIT-certified.
 - **Restrictions unchanged:** one competition/season; unresolved identity/duplicate cases; no timestamped odds benchmark or prospective paper validation; no production endpoint, Android prediction integration, value-bet activation or public forecast publication. Android work remains deferred until real prediction endpoints exist.
 - Full metrics and limitations: [retrospective model screening ledger](ledger/2026-11-17-retrospective-model-screening.md#matched-v1-v2-evaluation-and-fold-contained-calibration--completed-2026-11-18).
+
+
+## 2026-11-18 — Provider access verification and bounded odds probe preparation
+
+- [x] User-dispatched provider-access workflow [#44214433784](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44214433784), job [#134500596876](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44214433784/job/134500596876), completed successfully. Existing API key authenticated; account plan is Community; daily request limit 300; rate window 3,600 seconds; burst limit 20/minute; usage at check time 0.
+- [x] Brazil competition listing returned two entries: Serie A 3118717965 and Serie B 522514093. The existing Community account's Brazil coverage is therefore visible; no new account/key was created.
+- [x] Public plan documentation confirms Community Access includes the top-five leagues plus one country pack, Bet365 odds markets, and 12 months of results/odds. The fixture odds snapshot endpoint is the intended first probe. Full odds tick history remains Ultra-only; do not call it with the current plan.
+- [x] PR #42 merged at 36b10411d73d3ecd41c7a239ef6412adaef3bc49: documented fixture-odds and history adapters, Bet365-only timestamped 1X2 snapshot admission, fixed-goal-line history dispatch, separate source tick/retrieval clocks. Backend tests, Ruff and Android debug APK CI all passed.
+- [x] PR #43 merged at e54dce54b8319560a89e86847652b0d0a726e5fd: manual-only one-request odds snapshot probe workflow and compact response manifest. CI passed backend tests, Ruff and Android debug APK build.
+- [ ] Manual dispatch remains required: run the 5Dollar single-fixture odds snapshot probe workflow on main, default fixture ID 1194891794. It makes exactly one GET /fixtures/{id}/odds request, no retries or pagination, and uploads only a compact schema/1X2-opening manifest. This is an operational trigger, not a permission request.
+- [ ] After the probe, verify HTTP status, actual response envelope, Bet365 1X2 opening fields and opened_at semantics. Only then design prospective odds capture; do not backfill historical availability from old provider tick times.
+- Restrictions unchanged: no odds pipeline activation, production prediction endpoint, Android/backend prediction integration, model promotion, value-bet activation or public forecast publication. Retrospective corpus remains non-PIT-certified.
