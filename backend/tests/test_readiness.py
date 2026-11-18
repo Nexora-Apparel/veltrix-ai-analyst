@@ -1,10 +1,10 @@
 from types import SimpleNamespace
 
 import psycopg
+from fastapi.testclient import TestClient
 
 from app.main import app
 from app.routes import readiness as readiness_module
-from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
