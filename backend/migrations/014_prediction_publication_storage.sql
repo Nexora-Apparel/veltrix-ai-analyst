@@ -23,6 +23,7 @@ CREATE TABLE veltrix_ai_analyst.predictions (
     model_artifact_id TEXT NOT NULL
         REFERENCES veltrix_ai_analyst.model_artifacts(model_artifact_id) ON DELETE RESTRICT,
     feature_snapshot_id TEXT NOT NULL,
+    feature_schema_version TEXT NOT NULL CHECK (length(btrim(feature_schema_version)) > 0),
     feature_snapshot_sha256 CHAR(64) NOT NULL
         CHECK (feature_snapshot_sha256 ~ '^[0-9a-f]{64}$'),
     prediction_cutoff_at TIMESTAMPTZ NOT NULL,
@@ -139,8 +140,8 @@ BEGIN
     LOOP
         IF NOT EXISTS (
             SELECT 1
-            FROM jsonb_array_elements(NEW.source_evidence) evidence
-            WHERE evidence->>'feature_key' = feature_name
+            FROM jsonb_array_elements(NEW.source_evidence) AS evidence(item)
+            WHERE item->>'feature_key' = feature_name
         ) THEN
             RAISE EXCEPTION 'PREDICTION_SNAPSHOT_FEATURE_WITHOUT_LINEAGE';
         END IF;
@@ -153,6 +154,96 @@ $$;
 CREATE TRIGGER prediction_feature_snapshot_pit_gate
     BEFORE INSERT ON veltrix_ai_analyst.prediction_feature_snapshots
     FOR EACH ROW EXECUTE FUNCTION veltrix_ai_analyst.enforce_prediction_feature_snapshot_pit();
+
+
+CREATE OR REPLACE FUNCTION veltrix_ai_analyst.enforce_prediction_inference_prematch()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $
+DECLARE
+    fixture_kickoff TIMESTAMPTZ;
+    snapshot RECORD;
+    artifact_row RECORD;
+BEGIN
+    SELECT kickoff_at INTO fixture_kickoff
+    FROM veltrix_ai_analyst.canonical_fixtures
+    WHERE id = NEW.canonical_fixture_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'PREDICTION_FIXTURE_NOT_FOUND';
+    END IF;
+
+    SELECT feature_schema_version, snapshot_sha256, prediction_cutoff_at
+    INTO snapshot
+    FROM veltrix_ai_analyst.prediction_feature_snapshots
+    WHERE feature_snapshot_id = NEW.feature_snapshot_id
+      AND canonical_fixture_id = NEW.canonical_fixture_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'PREDICTION_FEATURE_SNAPSHOT_NOT_FOUND';
+    END IF;
+    IF snapshot.snapshot_sha256 <> NEW.feature_snapshot_sha256
+       OR snapshot.feature_schema_version <> NEW.feature_schema_version
+       OR snapshot.prediction_cutoff_at <> NEW.prediction_cutoff_at THEN
+        RAISE EXCEPTION 'PREDICTION_FEATURE_SNAPSHOT_MISMATCH';
+    END IF;
+
+    SELECT training_cutoff_at, point_in_time_certified, artifact
+    INTO artifact_row
+    FROM veltrix_ai_analyst.model_artifacts
+    WHERE model_artifact_id = NEW.model_artifact_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'PREDICTION_MODEL_ARTIFACT_NOT_FOUND';
+    END IF;
+    IF artifact_row.point_in_time_certified IS NOT TRUE
+       OR artifact_row.artifact->>'deployment_status' <> 'PRODUCTION_APPROVED'
+       OR artifact_row.training_cutoff_at <> NEW.training_cutoff_at THEN
+        RAISE EXCEPTION 'PREDICTION_MODEL_NOT_PRODUCTION_APPROVED_AND_PIT_CERTIFIED';
+    END IF;
+
+    IF NEW.training_cutoff_at >= NEW.prediction_cutoff_at
+       OR NEW.prediction_cutoff_at >= fixture_kickoff
+       OR NEW.generated_at < NEW.prediction_cutoff_at
+       OR NEW.generated_at >= fixture_kickoff THEN
+        RAISE EXCEPTION 'PREDICTION_INFERENCE_OUTSIDE_PREMATCH_WINDOW';
+    END IF;
+
+    RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER prediction_inference_prematch_gate
+    BEFORE INSERT ON veltrix_ai_analyst.predictions
+    FOR EACH ROW EXECUTE FUNCTION veltrix_ai_analyst.enforce_prediction_inference_prematch();
+
+CREATE OR REPLACE FUNCTION veltrix_ai_analyst.prevent_market_changes_after_publication()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM veltrix_ai_analyst.prediction_publication_events
+        WHERE prediction_id = NEW.prediction_id
+        ORDER BY effective_at DESC, id DESC
+        LIMIT 1
+    ) AND (
+        SELECT decision
+        FROM veltrix_ai_analyst.prediction_publication_events
+        WHERE prediction_id = NEW.prediction_id
+        ORDER BY effective_at DESC, id DESC
+        LIMIT 1
+    ) = 'PUBLISHED' THEN
+        RAISE EXCEPTION 'PUBLISHED_PREDICTION_MARKETS_ARE_IMMUTABLE';
+    END IF;
+    RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER prediction_market_publication_guard
+    BEFORE INSERT ON veltrix_ai_analyst.prediction_market_probabilities
+    FOR EACH ROW EXECUTE FUNCTION veltrix_ai_analyst.prevent_market_changes_after_publication();
 
 CREATE OR REPLACE FUNCTION veltrix_ai_analyst.enforce_prediction_publish_gate()
 RETURNS TRIGGER
