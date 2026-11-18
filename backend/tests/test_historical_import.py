@@ -610,14 +610,16 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
         ).fetchone()[0]
         related_entity_evidence = connection.execute(
             """
-            SELECT entity_type, COUNT(*),
-                   BOOL_AND(point_in_time_certifiable IS TRUE),
-                   BOOL_AND(availability_basis = 'SYSTEM_OBSERVED_AT'),
-                   BOOL_AND(available_at = retrieved_at)
-            FROM veltrix_ai_analyst.source_observations
-            WHERE provider_response_id = %s
-              AND entity_type IN ('competition', 'team', 'fixture')
-            GROUP BY entity_type
+            SELECT o.entity_type, COUNT(*),
+                   BOOL_AND(s.point_in_time_certifiable IS TRUE),
+                   BOOL_AND(s.availability_basis = 'SYSTEM_OBSERVED_AT'),
+                   BOOL_AND(s.available_at = s.retrieved_at)
+            FROM veltrix_ai_analyst.source_observation_sightings s
+            JOIN veltrix_ai_analyst.source_observations o
+              ON o.id = s.source_observation_id
+            WHERE s.provider_response_id = %s
+              AND o.entity_type IN ('competition', 'team', 'fixture')
+            GROUP BY o.entity_type
             """,
             (row[10],),
         ).fetchall() if row is not None else []
