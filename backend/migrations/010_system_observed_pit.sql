@@ -74,6 +74,7 @@ ALTER TABLE veltrix_ai_analyst.source_observation_sightings
                     availability_basis = 'SOURCE_PUBLISHED_AT'
                     AND source_published_at IS NOT NULL
                     AND available_at >= source_published_at
+                    AND available_at <= retrieved_at
                 )
                 OR (
                     availability_basis = 'SYSTEM_OBSERVED_AT'
