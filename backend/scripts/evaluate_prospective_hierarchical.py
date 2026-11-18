@@ -101,6 +101,11 @@ def main() -> int:
         "distinct_competitions": dataset["distinct_competitions"],
         "distinct_kickoff_dates": dataset["distinct_kickoff_dates"],
         "feature_lineage_records": dataset["feature_lineage_records"],
+        "feature_coverage": dataset["feature_coverage"],
+        "model_feature_usage": (
+            "HIERARCHICAL_GOAL_RATE_MODEL_ONLY; CAPTURED_SHOT_POSSESSION_ATTACK_EVENT_FEATURES"
+            "_ARCHIVED_FOR_LATER_FEATURE_MODEL_VALIDATION"
+        ),
         "invalid_system_observed_sightings": dataset["invalid_system_observed_sightings"],
         "source_data_provider": dataset["provider"],
         "point_in_time_policy": "SYSTEM_OBSERVED_AT_STRICTLY_BEFORE_TARGET_KICKOFF",
