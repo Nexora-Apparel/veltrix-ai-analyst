@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/retrospective-research-rebuild.yml"
+      - "backend/data/research/official_kickoff_adjudications.json"
+      - "backend/scripts/train_retrospective_research.py"
+      - "backend/scripts/evaluate_paired_chronological.py"
 
 permissions:
   contents: read
