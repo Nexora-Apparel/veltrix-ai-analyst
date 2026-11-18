@@ -106,8 +106,9 @@ def test_skips_quotes_without_timestamps_and_invalid_prices():
 def test_rejects_future_tick_naive_retrieval_and_past_kickoff():
     response = payload()
     response["bookmakers"][0]["last_update"] = "2026-11-18T02:31:00Z"
-    with pytest.raises(OddsApiMarketPayloadError, match="RESPONSE"):
-        normalize(response)
+    result = normalize(response)
+    assert result["quote_count"] == 0
+    assert result["rejected_invalid_quote_count"] == 1
     with pytest.raises(OddsApiMarketPayloadError, match="TIMEZONE_AWARE"):
         normalize(retrieved=datetime(2026, 11, 18, 2, 30))
     with pytest.raises(OddsApiMarketPayloadError, match="KICKOFF_PASSED"):
