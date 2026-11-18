@@ -1,0 +1,49 @@
+name: VELTRIX retrospective development evaluation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-retrospective-development-evaluation
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        working-directory: backend
+        run: python -m pip install -e .
+      - name: Validate isolated database
+        run: |
+          test -n "$DATABASE_URL"
+          python - <<'PY'
+          import os
+          import psycopg
+          from urllib.parse import urlsplit
+          assert urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/").split("?")[0] == "veltrix_ai_analyst"
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              assert connection.info.dbname == "veltrix_ai_analyst"
+          PY
+      - name: Run retrospective-only development tuner and paired baselines
+        working-directory: backend
+        run: python ../scripts/run_retrospective_development_evaluation.py
+      - name: Upload development report
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-retrospective-development-report
+          path: backend/artifacts/retrospective-development-report.json
+          if-no-files-found: error
