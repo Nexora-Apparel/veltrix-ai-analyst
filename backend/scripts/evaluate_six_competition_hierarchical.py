@@ -27,9 +27,14 @@ from app.validation.hierarchical_tuning import (
     ChronologicalFold,
     select_hierarchical_hyperparameters,
 )
+from app.validation.binary_market_metrics import (
+    BinaryForecast,
+    evaluate_paired_binary_market,
+)
 from app.validation.paired_baselines import (
     ProbabilityForecast,
     compare_paired_baselines,
+    evaluate_paired_multiclass,
 )
 from app.validation.source_provenance import is_valid_retrospective_observation
 
@@ -245,6 +250,10 @@ def main() -> int:
     model_rows: list[dict] = []
     baseline_rows: list[dict] = []
     paired: list[ProbabilityForecast] = []
+    model_btts: list[BinaryForecast] = []
+    baseline_btts: list[BinaryForecast] = []
+    model_over25: list[BinaryForecast] = []
+    baseline_over25: list[BinaryForecast] = []
     for target in holdout:
         forecast = forecast_hierarchical_fixture(
             model, target.home_team_id, target.away_team_id, target.competition_id,
@@ -275,12 +284,51 @@ def main() -> int:
             "fixture_id": target.fixture_id, "outcome": outcome(target.home_goals,target.away_goals),
             "probabilities": baseline_probs, "scoreline_probability": baseline_score_prob,
         })
+        actual_btts = target.home_goals > 0 and target.away_goals > 0
+        actual_over25 = target.home_goals + target.away_goals > 2
+        model_btts.append(BinaryForecast(
+            target.fixture_id, target.competition_id, actual_btts, model_dist.btts_yes
+        ))
+        baseline_btts.append(BinaryForecast(
+            target.fixture_id, target.competition_id, actual_btts, baseline_dist.btts_yes
+        ))
+        model_over25.append(BinaryForecast(
+            target.fixture_id, target.competition_id, actual_over25, model_dist.over(2.5)
+        ))
+        baseline_over25.append(BinaryForecast(
+            target.fixture_id, target.competition_id, actual_over25, baseline_dist.over(2.5)
+        ))
         paired.extend((
-            ProbabilityForecast(target.fixture_id, "HIERARCHICAL_POISSON_DIXON_COLES", model_probs, outcome(target.home_goals,target.away_goals)),
-            ProbabilityForecast(target.fixture_id, "COMPETITION_ONLY_POISSON", baseline_probs, outcome(target.home_goals,target.away_goals)),
+            ProbabilityForecast(
+                target.fixture_id,
+                "HIERARCHICAL_POISSON_DIXON_COLES",
+                model_probs,
+                outcome(target.home_goals, target.away_goals),
+                target.competition_id,
+            ),
+            ProbabilityForecast(
+                target.fixture_id,
+                "COMPETITION_ONLY_POISSON",
+                baseline_probs,
+                outcome(target.home_goals, target.away_goals),
+                target.competition_id,
+            ),
         ))
 
     paired_comparison = compare_paired_baselines(tuple(paired))
+    paired_1x2_confidence = evaluate_paired_multiclass(
+        tuple(paired),
+        model_name="HIERARCHICAL_POISSON_DIXON_COLES",
+        baseline_name="COMPETITION_ONLY_POISSON",
+        bootstrap_replicates=2000,
+        seed=20261118,
+    )
+    btts_evaluation = evaluate_paired_binary_market(
+        model_btts, baseline_btts, bootstrap_replicates=2000, seed=20261119
+    )
+    over25_evaluation = evaluate_paired_binary_market(
+        model_over25, baseline_over25, bootstrap_replicates=2000, seed=20261120
+    )
     report = {
         "report_type": "SIX_COMPETITION_RETROSPECTIVE_DEVELOPMENT_EVALUATION",
         "status": "RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL",
@@ -343,6 +391,12 @@ def main() -> int:
                      "brier_score": score.brier_score, "log_loss": score.log_loss}
                     for score in paired_comparison.scores
                 ],
+            },
+            "one_x_two_confidence_and_competition_breakdown": paired_1x2_confidence,
+            "independent_binary_markets": {
+                "evaluation_basis": "RETROSPECTIVE_NON_PIT_RESEARCH_ONLY",
+                "BTTS": btts_evaluation,
+                "OVER_UNDER_2_5": over25_evaluation,
             },
         },
         "release_decision": {
