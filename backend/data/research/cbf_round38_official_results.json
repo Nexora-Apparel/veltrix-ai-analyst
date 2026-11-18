@@ -15,7 +15,10 @@
       "score": [
         0,
         2
-      ]
+      ],
+      "provider_home_name": "Ponte Preta",
+      "provider_away_name": "Operario PR",
+      "official_source_result": "Ponte Preta 0 x 2 Operário-PR"
     },
     {
       "ref": "372",
@@ -25,7 +28,10 @@
       "score": [
         2,
         2
-      ]
+      ],
+      "provider_home_name": "Sao Bernardo",
+      "provider_away_name": "Athletic Club MG",
+      "official_source_result": "São Bernardo 2 x 2 Athletic"
     },
     {
       "ref": "373",
@@ -35,7 +41,10 @@
       "score": [
         0,
         2
-      ]
+      ],
+      "provider_home_name": "America MG",
+      "provider_away_name": "Avai",
+      "official_source_result": "América-MG 0 x 2 Avaí"
     },
     {
       "ref": "374",
@@ -45,7 +54,10 @@
       "score": [
         2,
         1
-      ]
+      ],
+      "provider_home_name": "Londrina",
+      "provider_away_name": "Nautico",
+      "official_source_result": "Londrina 2 x 1 Náutico"
     },
     {
       "ref": "375",
@@ -55,7 +67,10 @@
       "score": [
         1,
         0
-      ]
+      ],
+      "provider_home_name": "Fortaleza",
+      "provider_away_name": "Vila Nova",
+      "official_source_result": "Fortaleza 1 x 0 Vila Nova"
     },
     {
       "ref": "376",
@@ -65,7 +80,10 @@
       "score": [
         1,
         0
-      ]
+      ],
+      "provider_home_name": "Atletico GO",
+      "provider_away_name": "Cuiaba",
+      "official_source_result": "Atlético-GO 1 x 0 Cuiabá"
     },
     {
       "ref": "377",
@@ -75,7 +93,10 @@
       "score": [
         0,
         1
-      ]
+      ],
+      "provider_home_name": "Criciuma",
+      "provider_away_name": "Novorizontino",
+      "official_source_result": "Novorizontino 1 x 0 Criciúma"
     },
     {
       "ref": "378",
@@ -85,7 +106,10 @@
       "score": [
         3,
         0
-      ]
+      ],
+      "provider_home_name": "Sport Recife",
+      "provider_away_name": "Goias",
+      "official_source_result": "Sport 3 x 0 Goiás"
     },
     {
       "ref": "379",
@@ -95,7 +119,10 @@
       "score": [
         1,
         1
-      ]
+      ],
+      "provider_home_name": "CRB",
+      "provider_away_name": "Ceara",
+      "official_source_result": "CRB 1 x 1 Ceará"
     },
     {
       "ref": "380",
@@ -105,7 +132,10 @@
       "score": [
         2,
         0
-      ]
+      ],
+      "provider_home_name": "Juventude",
+      "provider_away_name": "Botafogo SP",
+      "official_source_result": "Juventude 2 x 0 Botafogo-SP"
     }
   ]
 }
