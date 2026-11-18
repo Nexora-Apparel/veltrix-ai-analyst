@@ -1,4 +1,4 @@
-"""Read-only quality gate for a completed Brazil Serie B historical import."""
+"""Read-only quality gate for a completed competition-scoped historical import."""
 from __future__ import annotations
 
 import hashlib
@@ -24,8 +24,8 @@ class HistoricalValidationError(RuntimeError):
     """Raised when a completed import fails one or more quality gates."""
 
 
-def validate_brazil_serie_b_import(
-    connection: psycopg.Connection[Any], import_run_id: int
+def validate_competition_import(
+    connection: psycopg.Connection[Any], import_run_id: int, competition_id: str
 ) -> dict[str, Any]:
     database_name = connection.execute("SELECT current_database()").fetchone()[0]
     if database_name != EXPECTED_DATABASE_NAME:
@@ -36,7 +36,7 @@ def validate_brazil_serie_b_import(
         SELECT status, boundary_start, boundary_end, provider, source_id,
                request_budget, requests_used, records_seen, records_inserted,
                records_duplicate, records_rejected, records_quarantined,
-               rights_approval_id
+               rights_approval_id, scope_value
         FROM veltrix_ai_analyst.import_runs
         WHERE id = %s
         """,
@@ -59,6 +59,7 @@ def validate_brazil_serie_b_import(
         records_rejected,
         records_quarantined,
         approval_id,
+        run_scope_value,
     ) = run
     failures: list[str] = []
     if status != "COMPLETED":
@@ -67,6 +68,8 @@ def validate_brazil_serie_b_import(
         failures.append("IMPORT_BOUNDARY_INVALID")
     if request_budget < 1 or request_budget > REQUEST_BUDGET:
         failures.append("REQUEST_BUDGET_OUTSIDE_HARD_CAP")
+    if run_scope_value != competition_id:
+        failures.append("IMPORT_COMPETITION_SCOPE_MISMATCH")
     if (provider, source_id) != (PROVIDER_NAME, SOURCE_ID):
         failures.append("PROVIDER_SOURCE_MISMATCH")
     if requests_used > request_budget:
@@ -93,7 +96,7 @@ def validate_brazil_serie_b_import(
         approval_status, scope_type, scope_values, data_types, permitted_uses, commercial, attribution, raw_redistribution, currently_valid = approval
         if approval_status != "APPROVED":
             failures.append("RIGHTS_APPROVAL_NOT_ACTIVE")
-        if scope_type != "competition_id" or COMPETITION_ID not in scope_values:
+        if scope_type != "competition_id" or competition_id not in scope_values:
             failures.append("RIGHTS_COMPETITION_SCOPE_MISMATCH")
         if "fixtures_and_results" not in data_types:
             failures.append("RIGHTS_DATA_TYPE_NOT_APPROVED")
@@ -153,12 +156,12 @@ def validate_brazil_serie_b_import(
     response_count = 0
     for request_key, window_start, window_end, page_number, endpoint, params_hash, reserved_at in reservations:
         expected_key = (
-            f"{COMPETITION_ID}:{window_start.isoformat()}:"
+            f"{competition_id}:{window_start.isoformat()}:"
             f"{window_end.isoformat()}:page:{page_number}"
         )
         if request_key != expected_key:
             failures.append("RESERVATION_IDEMPOTENCY_KEY_MISMATCH")
-        if endpoint != f"/leagues/{COMPETITION_ID}/fixtures":
+        if endpoint != f"/leagues/{competition_id}/fixtures":
             failures.append("UNEXPECTED_PROVIDER_ENDPOINT")
         params = {
             "end_time": int(window_end.timestamp()),
@@ -246,7 +249,7 @@ def validate_brazil_serie_b_import(
                 response_ids,
                 PROVIDER_NAME,
                 SOURCE_ID,
-                COMPETITION_ID,
+                competition_id,
                 boundary_start,
                 boundary_end,
             ),
@@ -307,6 +310,7 @@ def validate_brazil_serie_b_import(
     report = {
         "passed": not failures,
         "import_run_id": import_run_id,
+        "competition_id": competition_id,
         "database": database_name,
         "status": status,
         "boundary_start": boundary_start.isoformat(),
@@ -329,3 +333,10 @@ def validate_brazil_serie_b_import(
     if failures:
         raise HistoricalValidationError(json.dumps(report, sort_keys=True))
     return report
+
+
+def validate_brazil_serie_b_import(
+    connection: psycopg.Connection[Any], import_run_id: int
+) -> dict[str, Any]:
+    """Backward-compatible validator for the original Brazil Serie B scope."""
+    return validate_competition_import(connection, import_run_id, COMPETITION_ID)

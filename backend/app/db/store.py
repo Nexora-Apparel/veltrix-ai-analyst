@@ -793,6 +793,14 @@ class PostgresIngestionStore:
                     veltrix_ai_analyst.provider_fixtures.last_seen_at,
                     EXCLUDED.last_seen_at
                 )
+            WHERE veltrix_ai_analyst.provider_fixtures.provider_competition_id
+                      = EXCLUDED.provider_competition_id
+              AND veltrix_ai_analyst.provider_fixtures.home_team_provider_id
+                      = EXCLUDED.home_team_provider_id
+              AND veltrix_ai_analyst.provider_fixtures.away_team_provider_id
+                      = EXCLUDED.away_team_provider_id
+              AND veltrix_ai_analyst.provider_fixtures.kickoff_at
+                      = EXCLUDED.kickoff_at
             RETURNING id
             """,
             (
@@ -823,7 +831,7 @@ class PostgresIngestionStore:
             ),
         ).fetchone()
         if inserted is None:
-            raise IngestionStoreError("PROVIDER_FIXTURE_UPSERT_FAILED")
+            raise IngestionStoreError("PROVIDER_FIXTURE_IDENTITY_CONFLICT_OR_UPSERT_FAILED")
         return int(inserted[0])
 
     def create_import_run(
@@ -856,8 +864,9 @@ class PostgresIngestionStore:
             """
             INSERT INTO veltrix_ai_analyst.import_runs (
                 provider, source_id, import_type, boundary_start, boundary_end,
-                status, importer_version, request_budget, rights_approval_id, started_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                status, importer_version, request_budget, rights_approval_id,
+                started_at, scope_value
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -871,6 +880,7 @@ class PostgresIngestionStore:
                 request_budget,
                 approval.approval_id,
                 started_at,
+                scope_value,
             ),
         ).fetchone()
         if row is None:

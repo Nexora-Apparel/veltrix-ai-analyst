@@ -1,6 +1,6 @@
 """Resumable, quota-bounded historical fixture ingestion.
 
-This module deliberately supports one reviewed competition scope only. Every
+This module supports only competition IDs covered by the exact reviewed source approval. Every
 provider page is reserved before HTTP, persisted with raw response provenance,
 and checkpointed before the adapter advances to the next page.
 """
@@ -35,7 +35,7 @@ PROVIDER_NAME = "5DollarFootballAPI"
 BOUNDARY_START = datetime(2026, 3, 21, tzinfo=UTC)
 BOUNDARY_END = datetime(2026, 11, 9, tzinfo=UTC)
 REQUEST_BUDGET = 40
-IMPORTER_VERSION = "brazil-serie-b-resumable-v2"
+IMPORTER_VERSION = "5dollar-competition-resumable-v3"
 IMPORT_APPROVAL = FIVEDOLLAR_COMMUNITY_APPROVAL
 SCHEMA_VERSION = "5dollar-fixture-v1"
 
@@ -54,12 +54,14 @@ class FixturePagePersister:
         import_run_id: int,
         approval: SourceApproval,
         window: DateWindow,
+        competition_id: str = COMPETITION_ID,
     ) -> None:
         self.connection = connection
         self.store = PostgresIngestionStore(connection)
         self.import_run_id = import_run_id
         self.approval = approval
         self.window = window
+        self.competition_id = competition_id
         checkpoint = next(
             (
                 item
@@ -103,7 +105,7 @@ class FixturePagePersister:
         payload = {"team_id": team_id, "team_name": team_name}
         observation_id = self.store.record_source_observation(
             self.approval,
-            scope_value=COMPETITION_ID,
+            scope_value=self.competition_id,
             data_type="team_catalogue",
             entity_type="team",
             provider_entity_id=team_id,
@@ -119,7 +121,7 @@ class FixturePagePersister:
         )
         self.store.upsert_provider_team(
             source_id=SOURCE_ID,
-            competition_id=COMPETITION_ID,
+            competition_id=self.competition_id,
             provider_team_id=team_id,
             name=team_name,
             source_observation_id=observation_id,
@@ -129,7 +131,7 @@ class FixturePagePersister:
         )
 
     def _persist_fixture(self, fixture: ProviderFixture, response_id: int) -> None:
-        if fixture.competition_id != COMPETITION_ID:
+        if fixture.competition_id != self.competition_id:
             raise HistoricalImportError("FIXTURE_COMPETITION_SCOPE_MISMATCH")
         if not self.window.start_at <= fixture.kickoff_at < self.window.end_at:
             raise HistoricalImportError("FIXTURE_OUTSIDE_REQUEST_WINDOW")
@@ -138,19 +140,19 @@ class FixturePagePersister:
         competition = ProviderCompetition(
             provenance=SourceProvenance(
                 provider=PROVIDER_NAME,
-                provider_record_id=COMPETITION_ID,
+                provider_record_id=self.competition_id,
                 retrieved_at=now,
             ),
-            competition_id=COMPETITION_ID,
-            name=fixture.competition_name or f"Competition {COMPETITION_ID}",
+            competition_id=self.competition_id,
+            name=fixture.competition_name or f"Competition {self.competition_id}",
             seasons=(fixture.season_id,) if fixture.season_id else (),
         )
         competition_observation = self.store.record_source_observation(
             self.approval,
-            scope_value=COMPETITION_ID,
+            scope_value=self.competition_id,
             data_type="competition_catalogue",
             entity_type="competition",
-            provider_entity_id=COMPETITION_ID,
+            provider_entity_id=self.competition_id,
             schema_version="5dollar-competition-v1",
             retrieved_at=now,
             available_at=now,
@@ -185,7 +187,7 @@ class FixturePagePersister:
         system_observed_pit = fixture.status == "scheduled" and fixture.kickoff_at > now
         observation_id = self.store.record_source_observation(
             self.approval,
-            scope_value=COMPETITION_ID,
+            scope_value=self.competition_id,
             data_type="fixtures_and_results",
             entity_type="fixture",
             provider_entity_id=fixture.provenance.provider_record_id,
@@ -224,7 +226,7 @@ class FixturePagePersister:
             if raw_body:
                 response_id = self.store.record_provider_response(
                     self.approval,
-                    scope_value=COMPETITION_ID,
+                    scope_value=self.competition_id,
                     data_type="fixtures_and_results",
                     endpoint=str(response["endpoint"]),
                     request_id=request_id,
@@ -238,7 +240,7 @@ class FixturePagePersister:
                 )
             self.store.record_provider_request_event(
                 self.approval,
-                scope_value=COMPETITION_ID,
+                scope_value=self.competition_id,
                 data_type="fixtures_and_results",
                 endpoint=str(response["endpoint"]),
                 request_params=dict(response["request_params"]),
@@ -300,9 +302,36 @@ class FixturePagePersister:
         with self.connection.transaction():
             fixtures = tuple(page["fixtures"])
             for fixture in fixtures:
+                existing = self.connection.execute(
+                    """
+                    SELECT provider_competition_id, home_team_provider_id,
+                           away_team_provider_id, kickoff_at
+                    FROM veltrix_ai_analyst.provider_fixtures
+                    WHERE provider = %s AND source_id = %s
+                      AND provider_fixture_id = %s
+                    """,
+                    (
+                        PROVIDER_NAME,
+                        SOURCE_ID,
+                        fixture.provenance.provider_record_id,
+                    ),
+                ).fetchone()
+                if existing is not None:
+                    expected_identity = (
+                        fixture.competition_id,
+                        fixture.home_team_id,
+                        fixture.away_team_id,
+                        fixture.kickoff_at,
+                    )
+                    if tuple(existing) != expected_identity:
+                        raise HistoricalImportError(
+                            "PROVIDER_FIXTURE_IDENTITY_CONFLICT"
+                        )
+                    self.records_duplicate += 1
+                else:
+                    self.records_inserted += 1
                 self._persist_fixture(fixture, int(response_id))
             self.records_seen += len(fixtures)
-            self.records_inserted += len(fixtures)
             self.requests_used += 1
             has_more = bool(page["has_more"])
             self.store.save_checkpoint(
@@ -447,6 +476,7 @@ def _replay_captured_page(
     window: DateWindow,
     page_number: int,
     persister: FixturePagePersister,
+    competition_id: str = COMPETITION_ID,
 ) -> bool | None:
     """Replay one reserved page from its immutable captured HTTP response.
 
@@ -463,9 +493,9 @@ def _replay_captured_page(
         "page": page_number,
         "per_page": 100,
     }
-    endpoint = f"/leagues/{COMPETITION_ID}/fixtures"
+    endpoint = f"/leagues/{competition_id}/fixtures"
     request_key = (
-        f"{COMPETITION_ID}:{window.start_at.isoformat()}:{window.end_at.isoformat()}:page:{page_number}"
+        f"{competition_id}:{window.start_at.isoformat()}:{window.end_at.isoformat()}:page:{page_number}"
     )
     params_hash = hashlib.sha256(
         json.dumps(params, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -643,7 +673,7 @@ def _finish(
     )
 
 
-async def run_brazil_serie_b_historical_import(
+async def run_competition_historical_import(
     database_url: str,
     *,
     api_key: str,
@@ -654,19 +684,23 @@ async def run_brazil_serie_b_historical_import(
     boundary_start: datetime = BOUNDARY_START,
     boundary_end: datetime = BOUNDARY_END,
     request_budget: int = REQUEST_BUDGET,
+    competition_id: str = COMPETITION_ID,
 ) -> int:
-    """Run or resume a bounded, non-commercial Brazil Serie B historical import.
+    """Run or resume a bounded, non-commercial competition historical import.
 
     Live HTTP requires both an explicit execute=True argument and the
     VELTRIX_ENABLE_HISTORICAL_COLLECTION=true environment gate.
     """
     if not execute or os.getenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION") != "true":
         raise HistoricalImportError("LIVE_COLLECTION_NOT_EXPLICITLY_ENABLED")
+    if not isinstance(competition_id, str) or not competition_id.strip():
+        raise HistoricalImportError("COMPETITION_ID_REQUIRED")
+    competition_id = competition_id.strip()
     if not api_key.strip():
         raise HistoricalImportError("FIVEDOLLAR_COMMUNITY_API_KEY_REQUIRED")
     if approval.approval_id != IMPORT_APPROVAL.approval_id:
         raise HistoricalImportError("UNRECOGNIZED_SOURCE_APPROVAL")
-    if COMPETITION_ID not in approval.scope_values:
+    if competition_id not in approval.scope_values:
         raise HistoricalImportError("COMPETITION_NOT_IN_APPROVED_SOURCE_SCOPE")
     if (
         boundary_start.tzinfo is None
@@ -697,7 +731,7 @@ async def run_brazil_serie_b_historical_import(
         if import_run_id is None:
             import_run_id = store.create_import_run(
                 approval,
-                scope_value=COMPETITION_ID,
+                scope_value=competition_id,
                 data_type="fixtures_and_results",
                 import_type="historical_backfill",
                 boundary_start=boundary_start,
@@ -710,7 +744,8 @@ async def run_brazil_serie_b_historical_import(
             row = connection.execute(
                 """
                 SELECT status, request_budget, requests_used, boundary_start, boundary_end,
-                       provider, source_id, rights_approval_id
+                       provider, source_id, rights_approval_id, scope_value,
+                       import_type
                 FROM veltrix_ai_analyst.import_runs
                 WHERE id = %s
                 """,
@@ -727,7 +762,9 @@ async def run_brazil_serie_b_historical_import(
                 row is None
                 or row[1] != request_budget
                 or int(row[2]) > request_budget
-                or tuple(row[3:]) != expected
+                or tuple(row[3:8]) != expected
+                or row[8] != competition_id
+                or row[9] != "historical_backfill"
             ):
                 raise HistoricalImportError("IMPORT_RUN_IDENTITY_OR_ENVELOPE_MISMATCH")
             if row[0] not in {"PAUSED", "RUNNING"}:
@@ -778,6 +815,7 @@ async def run_brazil_serie_b_historical_import(
                     import_run_id=import_run_id,
                     approval=approval,
                     window=window,
+                    competition_id=competition_id,
                 )
                 current_persister = persister
                 if checkpoint["status"] == "PENDING":
@@ -833,12 +871,13 @@ async def run_brazil_serie_b_historical_import(
                         window=window,
                         page_number=start_page,
                         persister=persister,
+                        competition_id=competition_id,
                     )
                 if replay_has_more is None or replay_has_more:
                     await active_provider.fetch_fixtures(
                         window.start_at,
                         window.end_at,
-                        competition_ids=[COMPETITION_ID],
+                        competition_ids=[competition_id],
                         request_reserver=reserve_page,
                         require_request_reservation=True,
                         response_observer=persister,
@@ -867,6 +906,7 @@ async def run_brazil_serie_b_historical_import(
                     import_run_id=import_run_id,
                     approval=approval,
                     window=current_persister.window,
+                    competition_id=competition_id,
                 )
                 quarantine_persister.last_request = current_persister.last_request
                 quarantine_persister.last_response_id = current_persister.last_response_id
@@ -893,3 +933,13 @@ async def run_brazil_serie_b_historical_import(
             ) from None
         raise
     return int(import_run_id)
+
+
+async def run_brazil_serie_b_historical_import(
+    database_url: str,
+    **kwargs: Any,
+) -> int:
+    """Backward-compatible wrapper for the original Brazil Serie B scope."""
+    return await run_competition_historical_import(
+        database_url, competition_id=COMPETITION_ID, **kwargs
+    )
