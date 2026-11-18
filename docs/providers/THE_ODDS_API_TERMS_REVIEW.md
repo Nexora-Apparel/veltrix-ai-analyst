@@ -20,10 +20,9 @@ The terms permit commercial use only where the provider's data is not the primar
 
 The terms prohibit reselling, repackaging or redistributing the provider's data as a standalone data product, including through an API, data feed or downloadable raw-data files. Raw redistribution is therefore not approved. The provider does not require attribution, but this project will retain source attribution in internal provenance.
 
-## Exact scope approved in this repository
+## Exact scope approved in this repository (seven sport keys aligned to the seven reviewed 5Dollar competition scopes)
 
 This review is limited to the following soccer sport keys, selected because they correspond to competitions already in the project's approved 5DollarFootballAPI scope:
-- `soccer_argentina_primera_division`
 - `soccer_brazil_campeonato`
 - `soccer_brazil_serie_b`
 - `soccer_epl`
