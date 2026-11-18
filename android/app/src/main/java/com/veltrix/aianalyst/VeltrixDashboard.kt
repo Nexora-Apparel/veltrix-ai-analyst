@@ -18,8 +18,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -80,7 +78,7 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 fun VeltrixDashboard() {
     val pal = if (isSystemInDarkTheme()) DarkPal else LightPal
     var tab by remember { mutableStateOf(Tab.Home) }
-    var predictions by remember { mutableStateOf<List<FixturePrediction>>(emptyList()) }
+    var predictions by remember { mutableStateOf<List<FixturePrediction>?>(null) }
     var loading by remember { mutableStateOf(true) }
     var refreshToken by remember { mutableIntStateOf(0) }
 
@@ -276,18 +274,19 @@ private fun EmptyState(message: String) {
 
 @Composable
 private fun HomeScreen(
-    predictions: List<FixturePrediction>,
+    predictions: List<FixturePrediction>?,
     loading: Boolean,
     onRefresh: () -> Unit,
 ) {
     val p = LocalPal.current
-    Screen("Veltrix", "AI match analysis · Today") {
+    val matches = predictions.orEmpty()
+    Screen("Veltrix", "Published match analysis") {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SectionTitle("Today's predictions")
+            SectionTitle("Upcoming predictions")
             Row(
                 Modifier.clip(CircleShape).clickable(onClick = onRefresh).padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -297,13 +296,12 @@ private fun HomeScreen(
             }
         }
 
-        if (loading && predictions.isEmpty()) {
-            EmptyState("Loading predictions…")
-        } else if (predictions.isEmpty()) {
-            EmptyState("No upcoming predictions.")
-        } else {
-            Card {
-                predictions.forEachIndexed { index, match ->
+        when {
+            loading && predictions == null -> EmptyState("Loading predictions…")
+            predictions == null -> EmptyState("Predictions are temporarily unavailable.")
+            matches.isEmpty() -> EmptyState("No upcoming predictions.")
+            else -> Card {
+                matches.forEachIndexed { index, match ->
                     if (index > 0) Divider()
                     Column(Modifier.padding(16.dp)) {
                         MatchHeader(
@@ -339,22 +337,39 @@ private fun HistoryScreen() {
 }
 
 @Composable
-private fun BttsScreen(predictions: List<FixturePrediction>, loading: Boolean) {
+private fun BttsScreen(predictions: List<FixturePrediction>?, loading: Boolean) {
     val p = LocalPal.current
+    val matches = predictions.orEmpty()
     Screen("BTTS", "Both teams to score") {
-        if (loading && predictions.isEmpty()) {
-            EmptyState("Loading predictions…")
-        } else if (predictions.isEmpty()) {
-            EmptyState("No upcoming predictions.")
-        } else {
-            Card {
-                predictions.sortedByDescending { it.bttsYes }.forEachIndexed { index, match ->
+        when {
+            loading && predictions == null -> EmptyState("Loading predictions…")
+            predictions == null -> EmptyState("Predictions are temporarily unavailable.")
+            matches.isEmpty() -> EmptyState("No upcoming predictions.")
+            else -> Card {
+                matches.sortedByDescending { it.bttsYes }.forEachIndexed { index, match ->
                     if (index > 0) Divider()
-                    Box(Modifier.padding(16.dp)) {
+                    Column(Modifier.padding(16.dp)) {
                         MatchHeader(
                             "${match.homeTeam} vs ${match.awayTeam}",
                             "${match.competition} · ${formatKickoff(match.kickoffAt)}",
-                        ) { Ring(percent(match.bttsYes), if (match.bttsYes >= 0.6) p.green else p.orange) }
+                        ) {
+                            Ring(
+                                percent(match.bttsYes),
+                                if (match.bttsYes >= 0.6) p.green else p.orange,
+                            )
+                        }
+                        SplitBar(
+                            listOf(
+                                percent(match.bttsYes) to p.green,
+                                percent(match.bttsNo) to p.red,
+                            ),
+                        )
+                        Legend(
+                            listOf(
+                                "Yes" to "${percent(match.bttsYes)}%",
+                                "No" to "${percent(match.bttsNo)}%",
+                            ),
+                        )
                     }
                 }
             }
@@ -365,13 +380,16 @@ private fun BttsScreen(predictions: List<FixturePrediction>, loading: Boolean) {
 @Composable
 private fun ValueScreen() {
     Screen("Value Bets", "Value selections") {
-        Card { EmptyState("No value bets available.") }
+        Card {
+            EmptyState("Value betting is locked until the model passes independent validation.")
+        }
     }
 }
 
 @Composable
-private fun OverUnderScreen(predictions: List<FixturePrediction>, loading: Boolean) {
+private fun OverUnderScreen(predictions: List<FixturePrediction>?, loading: Boolean) {
     val p = LocalPal.current
+    val matches = predictions.orEmpty()
     var line by remember { mutableStateOf("2.5") }
     Screen("Over / Under", "Total goals") {
         Row(
@@ -393,13 +411,12 @@ private fun OverUnderScreen(predictions: List<FixturePrediction>, loading: Boole
         }
         Spacer(Modifier.height(14.dp))
 
-        if (loading && predictions.isEmpty()) {
-            EmptyState("Loading predictions…")
-        } else if (predictions.isEmpty()) {
-            EmptyState("No upcoming predictions.")
-        } else {
-            Card {
-                predictions.forEachIndexed { index, match ->
+        when {
+            loading && predictions == null -> EmptyState("Loading predictions…")
+            predictions == null -> EmptyState("Predictions are temporarily unavailable.")
+            matches.isEmpty() -> EmptyState("No upcoming predictions.")
+            else -> Card {
+                matches.forEachIndexed { index, match ->
                     if (index > 0) Divider()
                     val over = when (line) {
                         "1.5" -> match.over15
@@ -433,42 +450,12 @@ private fun OverUnderScreen(predictions: List<FixturePrediction>, loading: Boole
 @Composable
 private fun MenuScreen() {
     Screen("Menu", "Veltrix AI Analyst") {
-        Card {
-            ToggleRow("Notifications", true)
-            Divider()
-            ToggleRow("Value bet alerts", false)
-        }
         SectionTitle("Preferences")
         Card {
             InfoRow("Odds format", "Decimal")
             Divider()
             InfoRow("App version", "0.1.0")
         }
-    }
-}
-
-@Composable
-private fun ToggleRow(label: String, initial: Boolean) {
-    val p = LocalPal.current
-    var on by remember { mutableStateOf(initial) }
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = t(17, c = p.text))
-        Switch(
-            on,
-            { on = it },
-            colors = SwitchDefaults.colors(
-                checkedTrackColor = p.green,
-                checkedThumbColor = Color.White,
-                checkedBorderColor = p.green,
-                uncheckedTrackColor = p.fill,
-                uncheckedThumbColor = Color.White,
-                uncheckedBorderColor = p.fill,
-            ),
-        )
     }
 }
 
