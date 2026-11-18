@@ -56,6 +56,7 @@ def _folds(values: list[dict]) -> tuple[ExpandingFold, ...]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--dataset-output")
     parser.add_argument("--bootstrap-replicates", type=int, default=2000)
     args = parser.parse_args()
     database_url = (
@@ -78,6 +79,16 @@ def main() -> int:
         _rows(dataset["rows"]),
         _folds(dataset["expanding_folds"]),
         bootstrap_replicates=args.bootstrap_replicates,
+    )
+    dataset_output = (
+        Path(args.dataset_output)
+        if args.dataset_output
+        else Path(args.output).with_name("prospective-dataset.json")
+    )
+    dataset_output.parent.mkdir(parents=True, exist_ok=True)
+    dataset_output.write_text(
+        json.dumps(dataset, indent=2, sort_keys=True, allow_nan=False) + "\\n",
+        encoding="utf-8",
     )
     report = {
         **evaluation,
@@ -110,6 +121,7 @@ def main() -> int:
         "folds": len(report["folds"]),
         "source_dataset_sha256": report["source_dataset_sha256"],
         "output": str(output),
+        "dataset_output": str(dataset_output),
         "production_promotion": "LOCKED",
         "value_betting": "LOCKED",
     }, sort_keys=True))
