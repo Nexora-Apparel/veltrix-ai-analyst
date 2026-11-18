@@ -12,7 +12,7 @@
 
 ## Result
 
-<badge>27 / 27 verified</badge>
+**27 / 27 verified.**
 
 - Official CBF match pages: 27
 - Provider fixture records matched: 27
