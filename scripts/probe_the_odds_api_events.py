@@ -23,7 +23,6 @@ from app.providers.the_odds_api_events import (  # noqa: E402
 )
 
 ALLOWED_SPORT_KEYS = {
-    "soccer_argentina_primera_division",
     "soccer_brazil_campeonato",
     "soccer_brazil_serie_b",
     "soccer_epl",
