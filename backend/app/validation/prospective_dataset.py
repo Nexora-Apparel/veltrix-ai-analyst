@@ -105,6 +105,39 @@ def _score(payload: dict[str, Any], field: str) -> int | None:
     return None
 
 
+def _validate_observation_fixture_identity(
+    fixture: FixtureIdentity,
+    observation: FixtureObservation,
+) -> None:
+    """Reject stale or cross-fixture observations rather than merging identities."""
+    payload = observation.payload
+    expected = {
+        "competition_id": fixture.competition_id,
+        "home_team_id": fixture.home_team_id,
+        "away_team_id": fixture.away_team_id,
+    }
+    for field, value in expected.items():
+        supplied = payload.get(field)
+        if supplied is not None and str(supplied) != value:
+            raise ValueError(f"observation {field} does not match fixture identity")
+    kickoff = payload.get("kickoff_at")
+    if kickoff is not None:
+        if not isinstance(kickoff, str):
+            raise ValueError("observation kickoff_at must be an ISO timestamp")
+        try:
+            observed_kickoff = datetime.fromisoformat(kickoff)
+        except ValueError:
+            raise ValueError("observation kickoff_at is invalid") from None
+        _require_aware(observed_kickoff, "observation kickoff_at")
+        if observed_kickoff != fixture.kickoff_at:
+            raise ValueError("observation kickoff_at does not match fixture identity")
+    provenance = payload.get("provenance")
+    if isinstance(provenance, dict):
+        provider_record_id = provenance.get("provider_record_id")
+        if provider_record_id is not None and str(provider_record_id) != fixture.fixture_id.split(":")[-1]:
+            raise ValueError("observation provider fixture ID does not match fixture identity")
+
+
 def _lineage(row: FixtureObservation) -> dict[str, Any]:
     return {
         "fixture_id": row.fixture_id,
@@ -199,6 +232,7 @@ def build_prospective_dataset(
             continue
         if (observation.provider, observation.source_id) != (fixture.provider, fixture.source_id):
             raise ValueError("observation provider identity does not match fixture")
+        _validate_observation_fixture_identity(fixture, observation)
         grouped[observation.fixture_id].append(observation)
 
     finished_matches_by_competition: dict[
