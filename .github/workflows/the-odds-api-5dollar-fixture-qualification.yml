@@ -53,7 +53,7 @@ jobs:
         if: always()
         run: python scripts/reconcile_odds_api_event_catalogue.py
 
-      - name: Make one event-specific h2h request only after a unique exact match
+      - name: Retrieve one exact-match h2h market (one credit maximum)
         if: success()
         env:
           THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
