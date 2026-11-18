@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
@@ -37,8 +38,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-/* ---------- Theme (iOS system colors) ---------- */
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.roundToInt
 
 private class Pal(
     val bg: Color, val card: Color, val text: Color, val sub: Color,
@@ -58,46 +62,10 @@ private val DarkPal = Pal(
 )
 
 private val LocalPal = compositionLocalOf { LightPal }
-
-/** Android has no SF Pro. Sans-serif is the closest system font; swap in Inter for a closer match. */
 private val Font = FontFamily.SansSerif
 
 private fun t(size: Int, w: FontWeight = FontWeight.Normal, c: Color) =
     TextStyle(fontFamily = Font, fontSize = size.sp, fontWeight = w, color = c)
-
-/* ---------- Sample data (replace with backend data later) ---------- */
-
-private data class Match(
-    val teams: String, val league: String,
-    val h: Int, val d: Int, val a: Int,
-    val btts: Int, val o15: Int, val o25: Int, val o35: Int,
-    val odds: Double, val pick: String,
-) {
-    val pickProb get() = when (pick) { "1" -> h; "X" -> d; else -> a }
-    val pickLabel get() = when (pick) { "1" -> "Home"; "X" -> "Draw"; else -> "Away" }
-    val edge get() = (pickProb / 100.0 * odds - 1) * 100
-}
-
-private data class Result(val teams: String, val score: String, val pick: String, val won: Boolean)
-
-private val matches = listOf(
-    Match("Arsenal vs Brighton", "Premier League · 17:30", 62, 23, 15, 48, 86, 64, 38, 1.85, "1"),
-    Match("Inter vs Napoli", "Serie A · 19:45", 44, 29, 27, 61, 84, 58, 31, 2.30, "1"),
-    Match("Girona vs Betis", "La Liga · 20:00", 36, 28, 36, 67, 85, 62, 35, 2.60, "X"),
-    Match("Leverkusen vs Mainz", "Bundesliga · 20:30", 70, 18, 12, 55, 91, 72, 49, 1.60, "1"),
-    Match("Lyon vs Nice", "Ligue 1 · 21:00", 41, 30, 29, 52, 80, 51, 27, 2.45, "1"),
-)
-
-private val history = listOf(
-    Result("Chelsea vs Spurs", "2-1", "1", true),
-    Result("Roma vs Lazio", "1-1", "X", true),
-    Result("Sevilla vs Valencia", "0-2", "1", false),
-    Result("Dortmund vs Köln", "3-0", "1", true),
-    Result("PSG vs Lille", "1-0", "1", true),
-    Result("Milan vs Torino", "1-2", "1", false),
-)
-
-/* ---------- Tabs ---------- */
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     Home("Home", Icons.Filled.Home),
@@ -108,29 +76,34 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     Menu("Menu", Icons.Filled.Menu),
 }
 
-/* ---------- Entry point ---------- */
-
 @Composable
 fun VeltrixDashboard() {
     val pal = if (isSystemInDarkTheme()) DarkPal else LightPal
     var tab by remember { mutableStateOf(Tab.Home) }
+    var predictions by remember { mutableStateOf<List<FixturePrediction>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var refreshToken by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(refreshToken) {
+        loading = true
+        predictions = PredictionApi.fetchUpcoming()
+        loading = false
+    }
 
     CompositionLocalProvider(LocalPal provides pal) {
         Box(Modifier.fillMaxSize().background(pal.bg)) {
             when (tab) {
-                Tab.Home -> HomeScreen()
+                Tab.Home -> HomeScreen(predictions, loading) { refreshToken++ }
                 Tab.History -> HistoryScreen()
-                Tab.Btts -> BttsScreen()
+                Tab.Btts -> BttsScreen(predictions, loading)
                 Tab.Value -> ValueScreen()
-                Tab.OverUnder -> OverUnderScreen()
+                Tab.OverUnder -> OverUnderScreen(predictions, loading)
                 Tab.Menu -> MenuScreen()
             }
             BottomMenu(tab, { tab = it }, Modifier.align(Alignment.BottomCenter))
         }
     }
 }
-
-/* ---------- Bottom menu box ---------- */
 
 @Composable
 private fun BottomMenu(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier) {
@@ -159,73 +132,85 @@ private fun BottomMenu(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifie
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Icon(item.icon, item.label, Modifier.size(24.dp), tint = if (on) p.blue else p.sub)
-                Text(
-                    item.label,
-                    style = t(10, FontWeight.Medium, if (on) p.blue else p.sub),
-                    maxLines = 1,
-                )
+                Text(item.label, style = t(10, FontWeight.Medium, if (on) p.blue else p.sub), maxLines = 1)
             }
         }
     }
 }
 
-/* ---------- Shared pieces ---------- */
-
 @Composable
-private fun Screen(title: String, subtitle: String, content: @Composable ColumnScope.() -> Unit) {
+private fun Screen(
+    title: String,
+    subtitle: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     val p = LocalPal.current
     LazyColumn(
         Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 120.dp),
     ) {
         item {
-            Text(title, style = t(34, FontWeight.Bold, p.text))
-            Text(subtitle, style = t(15, c = p.sub), modifier = Modifier.padding(top = 2.dp, bottom = 14.dp))
-            Column(content = content)
+            Column {
+                Text(title, style = t(34, FontWeight.Bold, p.text))
+                Text(
+                    subtitle,
+                    style = t(15, c = p.sub),
+                    modifier = Modifier.padding(top = 2.dp, bottom = 14.dp),
+                )
+                Column(content = content)
+            }
         }
     }
 }
 
 @Composable
-private fun Card(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+private fun Card(content: @Composable ColumnScope.() -> Unit) {
     Column(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(LocalPal.current.card),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(LocalPal.current.card),
         content = content,
     )
 }
 
 @Composable
-private fun Divider() = Box(Modifier.fillMaxWidth().height(0.5.dp).background(LocalPal.current.line))
+private fun Divider() =
+    Box(Modifier.fillMaxWidth().height(0.5.dp).background(LocalPal.current.line))
 
 @Composable
 private fun SectionTitle(text: String) =
-    Text(text, style = t(22, FontWeight.Bold, LocalPal.current.text),
-        modifier = Modifier.padding(start = 4.dp, top = 22.dp, bottom = 8.dp))
+    Text(
+        text,
+        style = t(22, FontWeight.Bold, LocalPal.current.text),
+        modifier = Modifier.padding(start = 4.dp, top = 22.dp, bottom = 8.dp),
+    )
 
 @Composable
 private fun Pill(text: String, color: Color) {
     Text(
         text,
         style = t(13, FontWeight.SemiBold, color),
-        modifier = Modifier.clip(CircleShape).background(color.copy(alpha = 0.16f))
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.16f))
             .padding(horizontal = 10.dp, vertical = 4.dp),
     )
 }
 
 @Composable
-private fun StatTile(value: String, label: String, color: Color, modifier: Modifier) {
-    val p = LocalPal.current
-    Column(modifier.clip(RoundedCornerShape(14.dp)).background(p.card).padding(14.dp)) {
-        Text(value, style = t(28, FontWeight.Bold, color))
-        Text(label, style = t(13, c = p.sub))
-    }
-}
-
-@Composable
 private fun SplitBar(parts: List<Pair<Int, Color>>) {
-    Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 6.dp).height(8.dp)
-        .clip(RoundedCornerShape(4.dp)), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        parts.forEach { (w, c) -> Box(Modifier.weight(w.coerceAtLeast(1).toFloat()).fillMaxHeight().background(c)) }
+    Row(
+        Modifier.fillMaxWidth()
+            .padding(top = 12.dp, bottom = 6.dp)
+            .height(8.dp)
+            .clip(RoundedCornerShape(4.dp)),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        parts.forEach { (weight, color) ->
+            Box(
+                Modifier.weight(weight.coerceAtLeast(1).toFloat())
+                    .fillMaxHeight()
+                    .background(color),
+            )
+        }
     }
 }
 
@@ -233,16 +218,27 @@ private fun SplitBar(parts: List<Pair<Int, Color>>) {
 private fun Legend(items: List<Pair<String, String>>) {
     val p = LocalPal.current
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        items.forEach { (k, v) ->
-            Row { Text("$k ", style = t(13, c = p.sub)); Text(v, style = t(13, FontWeight.SemiBold, p.text)) }
+        items.forEach { (label, value) ->
+            Row {
+                Text("$label ", style = t(13, c = p.sub))
+                Text(value, style = t(13, FontWeight.SemiBold, p.text))
+            }
         }
     }
 }
 
 @Composable
-private fun MatchHeader(teams: String, meta: String, trailing: @Composable () -> Unit) {
+private fun MatchHeader(
+    teams: String,
+    meta: String,
+    trailing: @Composable () -> Unit,
+) {
     val p = LocalPal.current
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Column(Modifier.weight(1f)) {
             Text(teams, style = t(17, FontWeight.SemiBold, p.text))
             Text(meta, style = t(13, c = p.sub), modifier = Modifier.padding(top = 2.dp))
@@ -256,39 +252,79 @@ private fun Ring(percent: Int, color: Color, size: Dp = 54.dp) {
     val p = LocalPal.current
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
-            val s = 6.dp.toPx()
-            val box = Size(this.size.width - s, this.size.height - s)
-            val tl = Offset(s / 2, s / 2)
-            drawArc(p.fill, 0f, 360f, false, tl, box, style = Stroke(s))
-            drawArc(color, -90f, percent * 3.6f, false, tl, box, style = Stroke(s, cap = StrokeCap.Round))
+            val stroke = 6.dp.toPx()
+            val arcSize = Size(this.size.width - stroke, this.size.height - stroke)
+            val topLeft = Offset(stroke / 2, stroke / 2)
+            drawArc(p.fill, 0f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
+            drawArc(
+                color, -90f, percent.coerceIn(0, 100) * 3.6f, false,
+                topLeft, arcSize, style = Stroke(stroke, cap = StrokeCap.Round),
+            )
         }
         Text("$percent%", style = t(14, FontWeight.Bold, p.text))
     }
 }
 
-/* ---------- Screens ---------- */
+@Composable
+private fun EmptyState(message: String) {
+    Text(
+        message,
+        style = t(14, c = LocalPal.current.sub),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+    )
+}
 
 @Composable
-private fun HomeScreen() {
+private fun HomeScreen(
+    predictions: List<FixturePrediction>,
+    loading: Boolean,
+    onRefresh: () -> Unit,
+) {
     val p = LocalPal.current
     Screen("Veltrix", "AI match analysis · Today") {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatTile("68%", "1X2 accuracy (30d)", p.green, Modifier.weight(1f))
-            StatTile("12", "Matches analysed", p.blue, Modifier.weight(1f))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SectionTitle("Today's predictions")
+            Row(
+                Modifier.clip(CircleShape).clickable(onClick = onRefresh).padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Refresh, "Refresh predictions", tint = p.blue, modifier = Modifier.size(19.dp))
+                Text("Refresh", style = t(13, FontWeight.Medium, p.blue))
+            }
         }
-        Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatTile("4", "Value bets found", p.orange, Modifier.weight(1f))
-            StatTile("+8.4u", "Profit this week", p.text, Modifier.weight(1f))
-        }
-        SectionTitle("Today's predictions")
-        Card {
-            matches.forEachIndexed { i, m ->
-                if (i > 0) Divider()
-                Column(Modifier.padding(16.dp)) {
-                    MatchHeader(m.teams, m.league) { Pill(m.pickLabel, p.blue) }
-                    SplitBar(listOf(m.h to p.blue, m.d to p.sub, m.a to p.orange))
-                    Legend(listOf("1" to "${m.h}%", "X" to "${m.d}%", "2" to "${m.a}%"))
+
+        if (loading && predictions.isEmpty()) {
+            EmptyState("Loading predictions…")
+        } else if (predictions.isEmpty()) {
+            EmptyState("No upcoming predictions.")
+        } else {
+            Card {
+                predictions.forEachIndexed { index, match ->
+                    if (index > 0) Divider()
+                    Column(Modifier.padding(16.dp)) {
+                        MatchHeader(
+                            "${match.homeTeam} vs ${match.awayTeam}",
+                            "${match.competition} · ${formatKickoff(match.kickoffAt)}",
+                        ) { Pill("1X2", p.blue) }
+                        SplitBar(
+                            listOf(
+                                percent(match.home) to p.blue,
+                                percent(match.draw) to p.sub,
+                                percent(match.away) to p.orange,
+                            ),
+                        )
+                        Legend(
+                            listOf(
+                                "1" to "${percent(match.home)}%",
+                                "X" to "${percent(match.draw)}%",
+                                "2" to "${percent(match.away)}%",
+                            ),
+                        )
+                    }
                 }
             }
         }
@@ -297,35 +333,29 @@ private fun HomeScreen() {
 
 @Composable
 private fun HistoryScreen() {
-    val p = LocalPal.current
     Screen("History", "Past predictions and results") {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatTile("41", "Won", p.green, Modifier.weight(1f))
-            StatTile("19", "Lost", p.red, Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(14.dp))
-        Card {
-            history.forEachIndexed { i, r ->
-                if (i > 0) Divider()
-                Box(Modifier.padding(16.dp)) {
-                    MatchHeader(r.teams, "Final ${r.score} · Predicted ${r.pick}") {
-                        Pill(if (r.won) "Won" else "Lost", if (r.won) p.green else p.red)
-                    }
-                }
-            }
-        }
+        Card { EmptyState("No settled predictions yet.") }
     }
 }
 
 @Composable
-private fun BttsScreen() {
+private fun BttsScreen(predictions: List<FixturePrediction>, loading: Boolean) {
     val p = LocalPal.current
     Screen("BTTS", "Both teams to score") {
-        Card {
-            matches.sortedByDescending { it.btts }.forEachIndexed { i, m ->
-                if (i > 0) Divider()
-                Box(Modifier.padding(16.dp)) {
-                    MatchHeader(m.teams, m.league) { Ring(m.btts, if (m.btts >= 60) p.green else p.orange) }
+        if (loading && predictions.isEmpty()) {
+            EmptyState("Loading predictions…")
+        } else if (predictions.isEmpty()) {
+            EmptyState("No upcoming predictions.")
+        } else {
+            Card {
+                predictions.sortedByDescending { it.bttsYes }.forEachIndexed { index, match ->
+                    if (index > 0) Divider()
+                    Box(Modifier.padding(16.dp)) {
+                        MatchHeader(
+                            "${match.homeTeam} vs ${match.awayTeam}",
+                            "${match.competition} · ${formatKickoff(match.kickoffAt)}",
+                        ) { Ring(percent(match.bttsYes), if (match.bttsYes >= 0.6) p.green else p.orange) }
+                    }
                 }
             }
         }
@@ -334,67 +364,66 @@ private fun BttsScreen() {
 
 @Composable
 private fun ValueScreen() {
-    val p = LocalPal.current
-    val bets = matches.filter { it.edge > 0 }.sortedByDescending { it.edge }
-    Screen("Value Bets", "Where our probability beats the bookmaker") {
-        Card {
-            if (bets.isEmpty()) {
-                Text("No value bets right now. Check again after odds update.",
-                    style = t(13, c = p.sub), modifier = Modifier.padding(16.dp))
-            }
-            bets.forEachIndexed { i, m ->
-                if (i > 0) Divider()
-                Column(Modifier.padding(16.dp)) {
-                    MatchHeader(m.teams, "${m.pickLabel} @ ${"%.2f".format(m.odds)}") {
-                        Pill("+${"%.1f".format(m.edge)}% edge", p.green)
-                    }
-                    Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Mini("Our probability", "${m.pickProb}%", Modifier.weight(1f))
-                        Mini("Bookmaker implied", "${(100 / m.odds).toInt()}%", Modifier.weight(1f))
-                    }
-                }
-            }
-        }
+    Screen("Value Bets", "Value selections") {
+        Card { EmptyState("No value bets available.") }
     }
 }
 
 @Composable
-private fun Mini(label: String, value: String, modifier: Modifier) {
-    val p = LocalPal.current
-    Column(modifier.clip(RoundedCornerShape(10.dp)).background(p.bg).padding(10.dp)) {
-        Text(label, style = t(12, c = p.sub))
-        Text(value, style = t(20, FontWeight.Bold, p.text), modifier = Modifier.padding(top = 2.dp))
-    }
-}
-
-@Composable
-private fun OverUnderScreen() {
+private fun OverUnderScreen(predictions: List<FixturePrediction>, loading: Boolean) {
     val p = LocalPal.current
     var line by remember { mutableStateOf("2.5") }
     Screen("Over / Under", "Total goals") {
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp)).background(p.fill).padding(2.dp)) {
-            listOf("1.5", "2.5", "3.5").forEach { l ->
-                val on = l == line
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp)).background(p.fill).padding(2.dp),
+        ) {
+            listOf("1.5", "2.5", "3.5").forEach { selectedLine ->
+                val selected = selectedLine == line
                 Box(
-                    Modifier.weight(1f).clip(RoundedCornerShape(7.dp))
-                        .background(if (on) p.card else Color.Transparent)
-                        .clickable { line = l }.padding(vertical = 7.dp),
+                    Modifier.weight(1f)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(if (selected) p.card else Color.Transparent)
+                        .clickable { line = selectedLine }
+                        .padding(vertical = 7.dp),
                     contentAlignment = Alignment.Center,
-                ) { Text(l, style = t(13, FontWeight.SemiBold, p.text)) }
+                ) {
+                    Text(selectedLine, style = t(13, FontWeight.SemiBold, p.text))
+                }
             }
         }
         Spacer(Modifier.height(14.dp))
-        Card {
-            matches.forEachIndexed { i, m ->
-                if (i > 0) Divider()
-                val over = when (line) { "1.5" -> m.o15; "3.5" -> m.o35; else -> m.o25 }
-                val under = 100 - over
-                Column(Modifier.padding(16.dp)) {
-                    MatchHeader(m.teams, m.league) {
-                        Pill(if (over >= 50) "Over $line" else "Under $line", if (over >= 50) p.green else p.orange)
+
+        if (loading && predictions.isEmpty()) {
+            EmptyState("Loading predictions…")
+        } else if (predictions.isEmpty()) {
+            EmptyState("No upcoming predictions.")
+        } else {
+            Card {
+                predictions.forEachIndexed { index, match ->
+                    if (index > 0) Divider()
+                    val over = when (line) {
+                        "1.5" -> match.over15
+                        "3.5" -> match.over35
+                        else -> match.over25
                     }
-                    SplitBar(listOf(over to p.green, under to p.red))
-                    Legend(listOf("Over" to "$over%", "Under" to "$under%"))
+                    val under = when (line) {
+                        "1.5" -> match.under15
+                        "3.5" -> match.under35
+                        else -> match.under25
+                    }
+                    Column(Modifier.padding(16.dp)) {
+                        MatchHeader(
+                            "${match.homeTeam} vs ${match.awayTeam}",
+                            "${match.competition} · ${formatKickoff(match.kickoffAt)}",
+                        ) {
+                            Pill(
+                                if (over >= 0.5) "Over $line" else "Under $line",
+                                if (over >= 0.5) p.green else p.orange,
+                            )
+                        }
+                        SplitBar(listOf(percent(over) to p.green, percent(under) to p.red))
+                        Legend(listOf("Over" to "${percent(over)}%", "Under" to "${percent(under)}%"))
+                    }
                 }
             }
         }
@@ -405,15 +434,15 @@ private fun OverUnderScreen() {
 private fun MenuScreen() {
     Screen("Menu", "Veltrix AI Analyst") {
         Card {
-            ToggleRow("Notifications", true); Divider()
-            ToggleRow("Value bet alerts", true)
+            ToggleRow("Notifications", true)
+            Divider()
+            ToggleRow("Value bet alerts", false)
         }
-        SectionTitle("Model")
+        SectionTitle("Preferences")
         Card {
-            InfoRow("Minimum edge", "5%"); Divider()
-            InfoRow("Leagues", "All"); Divider()
-            InfoRow("Odds format", "Decimal"); Divider()
-            InfoRow("Version", "0.1.0")
+            InfoRow("Odds format", "Decimal")
+            Divider()
+            InfoRow("App version", "0.1.0")
         }
     }
 }
@@ -422,20 +451,43 @@ private fun MenuScreen() {
 private fun ToggleRow(label: String, initial: Boolean) {
     val p = LocalPal.current
     var on by remember { mutableStateOf(initial) }
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(label, style = t(17, c = p.text))
-        Switch(on, { on = it }, colors = SwitchDefaults.colors(
-            checkedTrackColor = p.green, checkedThumbColor = Color.White, checkedBorderColor = p.green,
-            uncheckedTrackColor = p.fill, uncheckedThumbColor = Color.White, uncheckedBorderColor = p.fill))
+        Switch(
+            on,
+            { on = it },
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = p.green,
+                checkedThumbColor = Color.White,
+                checkedBorderColor = p.green,
+                uncheckedTrackColor = p.fill,
+                uncheckedThumbColor = Color.White,
+                uncheckedBorderColor = p.fill,
+            ),
+        )
     }
 }
 
 @Composable
 private fun InfoRow(label: String, value: String) {
     val p = LocalPal.current
-    Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(
+        Modifier.fillMaxWidth().padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
         Text(label, style = t(17, c = p.text))
         Text(value, style = t(17, c = p.sub))
     }
 }
+
+private fun percent(value: Double): Int = (value * 100.0).roundToInt().coerceIn(0, 100)
+
+private fun formatKickoff(value: String): String = runCatching {
+    DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
+        .withZone(ZoneId.systemDefault())
+        .format(Instant.parse(value))
+}.getOrDefault(value)
