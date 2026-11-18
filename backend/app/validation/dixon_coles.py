@@ -108,3 +108,58 @@ def estimate_dixon_coles_rho(
         lower_bound=lower,
         upper_bound=upper,
     )
+
+
+def estimate_rho_from_development_folds(
+    results,
+    folds,
+    candidate,
+    *,
+    min_training_fixtures: int = 30,
+) -> DixonColesRhoEstimate:
+    """Build strictly out-of-fold rates, then estimate rho on development data."""
+    from itertools import pairwise
+
+    from app.models.hierarchical_poisson import fit_hierarchical_poisson
+
+    rows = tuple(results)
+    ordered_folds = tuple(sorted(folds, key=lambda fold: fold.train_cutoff))
+    if not ordered_folds:
+        raise ValueError("at least one chronological fold is required")
+    if min_training_fixtures < 1:
+        raise ValueError("min_training_fixtures must be positive")
+    if len({row.fixture_id for row in rows}) != len(rows):
+        raise ValueError("duplicate fixture IDs are not allowed")
+    for previous, current in pairwise(ordered_folds):
+        if current.train_cutoff < previous.validation_end:
+            raise ValueError("chronological validation windows overlap")
+
+    observations = []
+    scored_fixture_ids = set()
+    for fold in ordered_folds:
+        training = tuple(row for row in rows if row.kickoff_at <= fold.train_cutoff)
+        validation = tuple(
+            row for row in rows
+            if fold.train_cutoff < row.kickoff_at <= fold.validation_end
+        )
+        if len(training) < min_training_fixtures or not validation:
+            continue
+        model = fit_hierarchical_poisson(
+            training,
+            as_of=fold.train_cutoff,
+            half_life_days=candidate.half_life_days,
+            team_ridge=candidate.team_ridge,
+            competition_ridge=candidate.competition_ridge,
+        )
+        for row in validation:
+            if row.fixture_id in scored_fixture_ids:
+                raise ValueError("a fixture appears in more than one validation fold")
+            rates = model.predict(row.home_team_id, row.away_team_id, row.competition_id)
+            observations.append(DixonColesObservation(
+                row.home_goals, row.away_goals, rates.home_lambda, rates.away_lambda
+            ))
+            scored_fixture_ids.add(row.fixture_id)
+
+    if len(observations) < 20:
+        raise ValueError("development folds produced fewer than 20 out-of-fold forecasts")
+    return estimate_dixon_coles_rho(observations)
