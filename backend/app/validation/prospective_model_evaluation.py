@@ -66,7 +66,7 @@ def _baseline_rates(
     grouped: dict[str, list[ProspectiveDatasetRow]] = defaultdict(list)
     for row in training_rows:
         grouped[row.competition_id].append(row)
-    output = {}
+    output = {"__GLOBAL__": (global_home, global_away)}
     for competition_id, rows in grouped.items():
         count = len(rows)
         home_sum = sum(int(row.label["home_goals"]) for row in rows)
@@ -216,9 +216,7 @@ def evaluate_prospective_model(
             model_forecast, applied_rho, model_cap = _model_distribution(fitted, row, rho)
             if abs(applied_rho - rho) > 1e-12:
                 clipped += 1
-            rates = baseline.get(row.competition_id)
-            if rates is None:
-                raise ValueError("validation competition has no training baseline")
+            rates = baseline.get(row.competition_id, baseline["__GLOBAL__"])
             baseline_forecast, baseline_cap = _baseline_distribution(*rates)
             fold_caps_model = max(fold_caps_model, model_cap)
             fold_caps_baseline = max(fold_caps_baseline, baseline_cap)
