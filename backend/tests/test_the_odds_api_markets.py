@@ -39,6 +39,7 @@ def payload(**overrides):
                 "markets": [
                     {
                         "key": "h2h",
+                        "last_update": "2026-11-18T02:29:00Z",
                         "outcomes": [
                             {"name": "Arsenal", "price": 1.8},
                             {"name": "Draw", "price": 3.5},
@@ -98,14 +99,15 @@ def test_skips_quotes_without_timestamps_and_invalid_prices():
     })
     response["bookmakers"][0]["markets"][0]["outcomes"][0]["price"] = float("nan")
     result = normalize(response)
-    assert result["quote_count"] == 2
+    assert result["quote_count"] == 0
     assert result["rejected_missing_timestamp_count"] == 1
     assert result["rejected_invalid_quote_count"] == 1
+    assert result["rejected_incomplete_bookmaker_count"] == 1
 
 
 def test_rejects_future_tick_naive_retrieval_and_past_kickoff():
     response = payload()
-    response["bookmakers"][0]["last_update"] = "2026-11-18T02:31:00Z"
+    response["bookmakers"][0]["markets"][0]["last_update"] = "2026-11-18T02:31:00Z"
     result = normalize(response)
     assert result["quote_count"] == 0
     assert result["rejected_invalid_quote_count"] == 1
