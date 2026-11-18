@@ -28,7 +28,6 @@ class OddsObservation(StrictModel):
     source_response_sha256: str = Field(pattern=r"^[a-fA-F0-9]{64}$")
     rights_approval_id: str = Field(min_length=1, max_length=200)
     use_purpose: Literal["VALUE_BETTING_ONLY"]
-    rights_allow_value_betting: bool = False
 
     @field_validator("source_tick_at", "request_started_at", "retrieved_at", "provider_response_date", "kickoff_at", "value_bet_decision_cutoff_at")
     @classmethod
@@ -51,8 +50,6 @@ class OddsObservation(StrictModel):
             raise ValueError("value-bet decision cutoff must be strictly before kickoff")
         if self.in_play:
             raise ValueError("in-play odds cannot enter pre-match value-betting decisions")
-        if not self.rights_allow_value_betting:
-            raise ValueError("odds source rights do not permit value betting")
         return self
 
 class OddsCaptureEnvelope(StrictModel):
