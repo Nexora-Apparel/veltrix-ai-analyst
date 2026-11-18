@@ -1,5 +1,6 @@
-import pytest
 from datetime import UTC, datetime
+
+import pytest
 
 from app.providers.the_odds_api_markets import (
     OddsApiMarketPayloadError,
