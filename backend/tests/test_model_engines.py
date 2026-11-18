@@ -88,3 +88,22 @@ def test_elo_draw_updates_rating_against_home_advantage() -> None:
     system.update(result("draw-1", "A", "B", 1, 1))
     assert system.rating("A").rating < 1500
     assert system.rating("B").rating > 1500
+
+
+def test_v1_required_markets_cover_btts_and_all_half_goal_totals() -> None:
+    distribution = build_scoreline_distribution(1.62, 1.08, rho=-0.06, max_goals=15)
+    markets = distribution.market_probabilities()
+
+    assert set(markets) == {
+        "1X2", "BTTS", "TOTALS_1_5", "TOTALS_2_5", "TOTALS_3_5"
+    }
+    assert set(markets["1X2"]) == {"HOME", "DRAW", "AWAY"}
+    assert set(markets["BTTS"]) == {"YES", "NO"}
+    for key in ("TOTALS_1_5", "TOTALS_2_5", "TOTALS_3_5"):
+        assert set(markets[key]) == {"OVER", "UNDER"}
+        assert markets[key]["OVER"] + markets[key]["UNDER"] == pytest.approx(1.0)
+
+    assert markets["TOTALS_1_5"]["OVER"] >= markets["TOTALS_2_5"]["OVER"]
+    assert markets["TOTALS_2_5"]["OVER"] >= markets["TOTALS_3_5"]["OVER"]
+    assert markets["BTTS"]["YES"] + markets["BTTS"]["NO"] == pytest.approx(1.0)
+    assert sum(markets["1X2"].values()) == pytest.approx(1.0)
