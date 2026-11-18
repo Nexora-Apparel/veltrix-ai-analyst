@@ -172,6 +172,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "010_system_observed_pit.sql",
             "011_import_run_competition_scope.sql",
             "012_database_observed_timestamps.sql",
+            "013_target_fixture_pre_match_gate.sql",
         }.issubset(migration_versions)
 
         timestamp_columns = {
