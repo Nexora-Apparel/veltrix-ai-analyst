@@ -84,7 +84,8 @@ def test_orchestration_emits_market_results_and_audit_for_approved_release():
     )
     assert result.evidence.tier.value == "STRONG"
     assert result.audit.release_id == "test-release"
-    assert result.audit.training_cutoff_at == result.audit.training_cutoff_at
+    assert result.audit.training_cutoff_at <= result.audit.generated_at
+    assert result.audit.generated_at == datetime(2026, 3, 1, tzinfo=UTC)
     assert result.markets["1X2"].available
     assert result.markets["BTTS"].available
     assert sum(result.markets["1X2"].probabilities.values()) == pytest.approx(1.0)
