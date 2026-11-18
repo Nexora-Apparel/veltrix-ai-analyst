@@ -72,6 +72,23 @@ def build_report(
               ON s.source_observation_id = o.id
             LEFT JOIN veltrix_ai_analyst.provider_responses r
               ON r.id = s.provider_response_id
+            LEFT JOIN veltrix_ai_analyst.source_approvals a
+              ON a.approval_id = o.rights_approval_id
+            JOIN veltrix_ai_analyst.source_approvals a
+              ON a.approval_id = o.rights_approval_id
+            LEFT JOIN LATERAL (
+                SELECT COALESCE(
+                    jsonb_agg(
+                        jsonb_build_object(
+                            'status', e.status,
+                            'effective_at', e.effective_at
+                        ) ORDER BY e.effective_at, e.id
+                    ),
+                    '[]'::jsonb
+                ) AS status_events
+                FROM veltrix_ai_analyst.source_approval_status_events e
+                WHERE e.approval_id = a.approval_id
+            ) approval_events ON TRUE
             WHERE o.provider = '5DollarFootballAPI'
               AND o.source_id = '5dollarfootballapi'
               AND o.data_type = 'fixtures_and_results'
@@ -101,6 +118,11 @@ def build_report(
                 OR r.system_observed_at IS DISTINCT FROM s.system_observed_at
                 OR r.response_sha256 IS NULL
                 OR length(r.response_sha256) <> 64
+                OR a.approval_id IS NULL
+                OR a.status <> 'APPROVED'
+                OR NOT (
+                    a.permitted_uses @> '["FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb
+                )
               )
             """
         ).fetchone()[0]
@@ -115,7 +137,9 @@ def build_report(
                    o.payload->>'competition_id' AS competition_id,
                    s.retrieved_at, s.system_observed_at,
                    s.availability_basis, s.point_in_time_certifiable,
-                   s.payload_sha256, r.response_sha256, o.payload
+                   s.payload_sha256, r.response_sha256, o.payload,
+                   o.rights_approval_id, a.status, a.valid_from, a.valid_until,
+                   a.permitted_uses, approval_events.status_events
             FROM veltrix_ai_analyst.source_observations o
             JOIN veltrix_ai_analyst.source_observation_sightings s
               ON s.source_observation_id = o.id
@@ -169,6 +193,12 @@ def build_report(
             payload_sha256=str(row[11]).strip(),
             raw_response_sha256=str(row[12]).strip(),
             payload=dict(row[13]),
+            rights_approval_id=str(row[14]) if row[14] is not None else None,
+            rights_status=str(row[15]) if row[15] is not None else None,
+            rights_valid_from=row[16],
+            rights_valid_until=row[17],
+            rights_permitted_uses=tuple(row[18] or ()),
+            rights_status_events=tuple(row[19] or ()),
         )
         for row in observation_rows
     ]
