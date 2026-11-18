@@ -26,7 +26,7 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(diagnostics, indent=2, sort_keys=True, allow_nan=False) + "\\n",
-        encoding="utf-8",
+        json.dumps(diagnostics, indent=2, sort_keys=True, allow_nan=False) + "\n",
     )
     print(json.dumps({
         "status": "PAIRED_CHRONOLOGICAL_DIAGNOSTICS_COMPLETE",
