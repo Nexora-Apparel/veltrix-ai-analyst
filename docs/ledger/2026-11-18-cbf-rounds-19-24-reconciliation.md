@@ -30,7 +30,7 @@ The CBF schedule explicitly states that listed times are Brasília time and that
 
 ## Boundaries and next checks
 
-- This pass covers rounds 19–24 only (60/380 fixtures). Rounds 1–18 remain to be reconciled.
+- This pass covers rounds 19–24 only (60/380 fixtures). Rounds 1–18 schedule reconciliation is recorded in [the rounds 1–18 ledger](2026-11-18-cbf-rounds-1-18-reconciliation.md).
 - All 60 ordered pairings and kickoff times matched, but all 60 final scores still need independent CBF match-page verification.
 - Team identity remains limited to the existing reviewed provider-ID candidate matrix. This audit does not approve aliases or canonical merges.
 - The four UNKNOWN source rows and the separate America MG provider-team identity conflict remain unresolved.
