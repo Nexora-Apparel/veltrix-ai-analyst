@@ -55,8 +55,13 @@ class FixtureObservation:
         _require_aware(self.observed_at, "observed_at")
         if self.observed_at < self.retrieved_at:
             raise ValueError("system observation cannot precede retrieval")
-        if len(self.payload_sha256) != 64 or len(self.raw_response_sha256) != 64:
-            raise ValueError("payload and raw response hashes must be SHA-256 digests")
+        for digest in (self.payload_sha256, self.raw_response_sha256):
+            if len(digest) != 64 or digest != digest.lower():
+                raise ValueError("payload and raw response hashes must be lowercase SHA-256 digests")
+            try:
+                bytes.fromhex(digest)
+            except ValueError:
+                raise ValueError("payload and raw response hashes must be hexadecimal") from None
 
 
 @dataclass(frozen=True, slots=True)
