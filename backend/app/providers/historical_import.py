@@ -54,7 +54,7 @@ class FixturePagePersister:
         import_run_id: int,
         approval: SourceApproval,
         window: DateWindow,
-        competition_id: str = self.competition_id,
+        competition_id: str = COMPETITION_ID,
     ) -> None:
         self.connection = connection
         self.store = PostgresIngestionStore(connection)
@@ -449,7 +449,7 @@ def _replay_captured_page(
     window: DateWindow,
     page_number: int,
     persister: FixturePagePersister,
-    competition_id: str = competition_id,
+    competition_id: str = COMPETITION_ID,
 ) -> bool | None:
     """Replay one reserved page from its immutable captured HTTP response.
 
@@ -657,7 +657,7 @@ async def run_competition_historical_import(
     boundary_start: datetime = BOUNDARY_START,
     boundary_end: datetime = BOUNDARY_END,
     request_budget: int = REQUEST_BUDGET,
-    competition_id: str = competition_id,
+    competition_id: str = COMPETITION_ID,
 ) -> int:
     """Run or resume a bounded, non-commercial Brazil Serie B historical import.
 
