@@ -430,7 +430,12 @@ class PostgresIngestionStore:
         provider_response_id: int | None = None,
         purpose: DataUsePurpose = DataUsePurpose.STORAGE,
     ) -> int:
-        """Persist an immutable normalized observation with explicit time semantics."""
+        """Persist immutable evidence using database-observed response time.
+
+        SYSTEM_OBSERVED_AT is never accepted from the caller. It is read from
+        the provider_responses row created by the database and propagated to
+        the observation and sighting records.
+        """
         for name, value in (
             ("RETRIEVED_AT", retrieved_at),
             ("SOURCE_UPDATED_AT", source_updated_at),
@@ -443,6 +448,36 @@ class PostgresIngestionStore:
             raise IngestionStoreError("SOURCE_OBSERVATION_IDENTITY_REQUIRED")
         if source_published_at is not None and source_published_at > retrieved_at:
             raise IngestionStoreError("SOURCE_PUBLICATION_AFTER_RETRIEVAL")
+
+        response = None
+        if provider_response_id is not None:
+            response = self.connection.execute(
+                """
+                SELECT provider, source_id, fetched_at, system_observed_at
+                FROM veltrix_ai_analyst.provider_responses
+                WHERE id = %s
+                """,
+                (provider_response_id,),
+            ).fetchone()
+            if response is None or tuple(response[:2]) != (approval.provider, approval.source_id):
+                raise IngestionStoreError("PROVIDER_RESPONSE_IDENTITY_MISMATCH")
+
+        if availability_basis == "SYSTEM_OBSERVED_AT":
+            if provider_response_id is None or response is None:
+                raise IngestionStoreError("SYSTEM_OBSERVED_AT_REQUIRES_CAPTURED_RESPONSE")
+            if response[2] != retrieved_at:
+                raise IngestionStoreError("SYSTEM_OBSERVED_PIT_RESPONSE_TIMESTAMP_MISMATCH")
+            if response[3] is None:
+                raise IngestionStoreError("SYSTEM_OBSERVED_AT_DATABASE_TIMESTAMP_MISSING")
+            if source_published_at is not None:
+                raise IngestionStoreError("SYSTEM_OBSERVED_AT_CANNOT_CLAIM_SOURCE_PUBLICATION")
+            if available_at is not None:
+                raise IngestionStoreError("SYSTEM_OBSERVED_AT_TIMESTAMP_MUST_BE_DATABASE_DERIVED")
+            observed_at = response[3]
+            available_at = observed_at
+        else:
+            observed_at = response[3] if response is not None else None
+
         if point_in_time_certifiable:
             if provider_response_id is None or available_at is None:
                 raise IngestionStoreError("PIT_CERTIFICATION_REQUIRES_CAPTURED_RESPONSE_AND_AVAILABILITY")
@@ -454,10 +489,11 @@ class PostgresIngestionStore:
                 if available_at > retrieved_at:
                     raise IngestionStoreError("AVAILABILITY_AFTER_RETRIEVAL")
             elif availability_basis == "SYSTEM_OBSERVED_AT":
-                if source_published_at is not None or available_at != retrieved_at:
-                    raise IngestionStoreError("SYSTEM_OBSERVED_PIT_REQUIRES_RETRIEVAL_TIMESTAMP")
+                if observed_at is None or available_at != observed_at:
+                    raise IngestionStoreError("SYSTEM_OBSERVED_AT_TIMESTAMP_MUST_BE_DATABASE_DERIVED")
             else:
                 raise IngestionStoreError("PIT_CERTIFICATION_REQUIRES_VERIFIED_AVAILABILITY_BASIS")
+
         self._authorize(
             approval,
             scope_value=scope_value,
@@ -465,23 +501,6 @@ class PostgresIngestionStore:
             purpose=purpose,
             at_utc=retrieved_at,
         )
-        if provider_response_id is not None:
-            response = self.connection.execute(
-                """
-                SELECT provider, source_id, fetched_at
-                FROM veltrix_ai_analyst.provider_responses
-                WHERE id = %s
-                """,
-                (provider_response_id,),
-            ).fetchone()
-            if response is None or tuple(response[:2]) != (approval.provider, approval.source_id):
-                raise IngestionStoreError("PROVIDER_RESPONSE_IDENTITY_MISMATCH")
-            if (
-                point_in_time_certifiable
-                and availability_basis == "SYSTEM_OBSERVED_AT"
-                and response[2] != retrieved_at
-            ):
-                raise IngestionStoreError("SYSTEM_OBSERVED_PIT_RESPONSE_TIMESTAMP_MISMATCH")
 
         payload_json, payload_hash = self._canonical_json(payload)
         inserted = self.connection.execute(
@@ -491,9 +510,10 @@ class PostgresIngestionStore:
                 payload_sha256, schema_version, retrieved_at, source_updated_at,
                 source_event_time, source_published_at, available_at,
                 availability_basis, point_in_time_certifiable, rights_approval_id,
-                provider_response_id, payload
+                provider_response_id, payload, system_observed_at
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                COALESCE(%s, clock_timestamp())
             )
             ON CONFLICT (
                 provider, source_id, data_type, entity_type, provider_entity_id, payload_sha256
@@ -518,6 +538,7 @@ class PostgresIngestionStore:
                 approval.approval_id,
                 provider_response_id,
                 Jsonb(json.loads(payload_json)),
+                observed_at,
             ),
         ).fetchone()
         if inserted is not None:
@@ -556,8 +577,8 @@ class PostgresIngestionStore:
             INSERT INTO veltrix_ai_analyst.source_observation_sightings (
                 source_observation_id, provider_response_id, retrieved_at,
                 source_published_at, available_at, availability_basis,
-                point_in_time_certifiable, payload_sha256
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                point_in_time_certifiable, payload_sha256, system_observed_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, clock_timestamp()))
             ON CONFLICT DO NOTHING
             RETURNING id
             """,
@@ -570,13 +591,14 @@ class PostgresIngestionStore:
                 availability_basis,
                 point_in_time_certifiable,
                 payload_hash,
+                observed_at,
             ),
         ).fetchone()
         if sighting is None:
             existing_sighting = self.connection.execute(
                 """
                 SELECT source_published_at, available_at, availability_basis,
-                       point_in_time_certifiable, payload_sha256
+                       point_in_time_certifiable, payload_sha256, system_observed_at
                 FROM veltrix_ai_analyst.source_observation_sightings
                 WHERE source_observation_id = %s
                   AND provider_response_id IS NOT DISTINCT FROM %s
@@ -590,6 +612,7 @@ class PostgresIngestionStore:
                 availability_basis,
                 point_in_time_certifiable,
                 payload_hash,
+                observed_at,
             )
             if existing_sighting is None:
                 raise IngestionStoreError("SOURCE_OBSERVATION_SIGHTING_LOOKUP_FAILED")
@@ -597,6 +620,8 @@ class PostgresIngestionStore:
                 existing_sighting[:4]
             ) != expected_sighting[:4]:
                 raise EvidenceConflict("SOURCE_OBSERVATION_SIGHTING_CONFLICT")
+            if observed_at is not None and existing_sighting[5] != observed_at:
+                raise EvidenceConflict("SOURCE_OBSERVATION_SIGHTING_CAPTURE_TIME_CONFLICT")
         return observation_id
 
     def upsert_provider_competition(
