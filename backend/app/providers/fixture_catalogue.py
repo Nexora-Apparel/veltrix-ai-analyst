@@ -21,6 +21,26 @@ def _parse_aware(value: object, field_name: str) -> datetime:
     return parsed.astimezone(UTC)
 
 
+def _fixture_kickoff(row: dict[str, Any]) -> datetime:
+    raw = row.get("kickoff_utc")
+    if isinstance(raw, str) and raw.strip():
+        try:
+            parsed = datetime.fromisoformat(raw)
+        except ValueError:
+            raise FixtureCatalogueError("FIXTURE_KICKOFF_INVALID") from None
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise FixtureCatalogueError("FIXTURE_KICKOFF_MUST_BE_TIMEZONE_AWARE")
+        return parsed.astimezone(UTC)
+
+    timestamp = row.get("kickoff_ts")
+    if isinstance(timestamp, (int, float)) and not isinstance(timestamp, bool):
+        try:
+            return datetime.fromtimestamp(timestamp, tz=UTC)
+        except (OverflowError, OSError, ValueError):
+            raise FixtureCatalogueError("FIXTURE_KICKOFF_INVALID") from None
+    raise FixtureCatalogueError("FIXTURE_KICKOFF_REQUIRED")
+
+
 def normalize_scheduled_fixture_catalogue(
     payload: Any, *, competition_id: str, as_of: datetime
 ) -> tuple[tuple[dict[str, str], ...], bool, int]:
@@ -48,12 +68,12 @@ def normalize_scheduled_fixture_catalogue(
         status = row.get("status")
         league = row.get("league")
         teams = row.get("teams")
-        if not isinstance(fixture_id, (str, int)) or str(fixture_id).strip() == "":
+        if isinstance(fixture_id, bool) or not isinstance(fixture_id, (str, int)) or str(fixture_id).strip() == "":
             raise FixtureCatalogueError("FIXTURE_ID_REQUIRED")
         fixture_id = str(fixture_id)
         if fixture_id in seen_ids:
             raise FixtureCatalogueError("DUPLICATE_FIXTURE_ID")
-        if status != "scheduled":
+        if not isinstance(status, str) or status.strip().casefold() != "scheduled":
             raise FixtureCatalogueError("UNEXPECTED_FIXTURE_STATUS")
         if not isinstance(league, dict) or str(league.get("id")) != competition_id:
             raise FixtureCatalogueError("FIXTURE_COMPETITION_MISMATCH")
@@ -70,7 +90,7 @@ def normalize_scheduled_fixture_catalogue(
             for name in (home_name, away_name)
         ):
             raise FixtureCatalogueError("FIXTURE_TEAM_NAME_REQUIRED")
-        kickoff = _parse_aware(row.get("kickoff_utc"), "FIXTURE_KICKOFF")
+        kickoff = _fixture_kickoff(row)
         seen_ids.add(fixture_id)
         if kickoff <= as_of.astimezone(UTC):
             excluded_nonfuture += 1
