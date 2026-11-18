@@ -9,9 +9,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from math import exp, log
 from datetime import UTC, datetime
 from pathlib import Path
-from math import exp, log
 
 import psycopg
 from psycopg.rows import dict_row
