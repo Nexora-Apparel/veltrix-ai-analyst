@@ -169,6 +169,10 @@ class FixturePagePersister:
             team_name=fixture.away_team_name,
             response_id=response_id,
         )
+        # A future fixture captured in this exact response can be used only
+        # from this system-observed timestamp onward. Past fixtures remain
+        # retrieval-only and are never promoted into historical pre-match data.
+        system_observed_pit = fixture.kickoff_at > now
         observation_id = self.store.record_source_observation(
             self.approval,
             scope_value=COMPETITION_ID,
@@ -179,8 +183,10 @@ class FixturePagePersister:
             retrieved_at=now,
             source_event_time=fixture.kickoff_at,
             available_at=now,
-            availability_basis="RETRIEVED_AT_ONLY",
-            point_in_time_certifiable=False,
+            availability_basis=(
+                "SYSTEM_OBSERVED_AT" if system_observed_pit else "RETRIEVED_AT_ONLY"
+            ),
+            point_in_time_certifiable=system_observed_pit,
             payload=fixture.model_dump(mode="json"),
             provider_response_id=response_id,
         )
