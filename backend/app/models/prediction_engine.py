@@ -33,7 +33,7 @@ def _aware_datetime(value: Any, field: str) -> datetime:
     if not isinstance(value, str):
         raise ModelArtifactNotPromoted(f"{field}_MISSING")
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError as exc:
         raise ModelArtifactNotPromoted(f"{field}_INVALID") from exc
     if parsed.tzinfo is None or parsed.utcoffset() is None:
