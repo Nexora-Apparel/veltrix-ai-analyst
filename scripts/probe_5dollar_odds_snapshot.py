@@ -43,7 +43,7 @@ def summarize_bookmaker(row: Any) -> dict[str, Any]:
         "one_x_two_closing_fields": (
             sorted(str(key) for key in one_x_two.get("closing", {}))
             if isinstance(one_x_two.get("closing"), dict)
-            else [],
+            else []
         ),
     }
 
