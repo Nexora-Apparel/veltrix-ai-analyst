@@ -24,6 +24,44 @@ def database_url() -> str:
     return url
 
 
+def _seed_target_teams(
+    store: PostgresIngestionStore,
+    *,
+    now: datetime,
+    response_id: int,
+    marker: str,
+    home_team_id: str,
+    away_team_id: str,
+) -> None:
+    for team_id, name in (
+        (home_team_id, f"Home {marker}"),
+        (away_team_id, f"Away {marker}"),
+    ):
+        observation_id = store.record_source_observation(
+            FIVEDOLLAR_COMMUNITY_APPROVAL,
+            scope_value="522514093",
+            data_type="team_catalogue",
+            entity_type="team",
+            provider_entity_id=team_id,
+            schema_version="pit-gate-team-v1",
+            retrieved_at=now,
+            availability_basis="SYSTEM_OBSERVED_AT",
+            point_in_time_certifiable=True,
+            payload={"team_id": team_id, "team_name": name},
+            provider_response_id=response_id,
+        )
+        store.upsert_provider_team(
+            source_id="5dollarfootballapi",
+            competition_id="522514093",
+            provider_team_id=team_id,
+            name=name,
+            source_observation_id=observation_id,
+            approval=FIVEDOLLAR_COMMUNITY_APPROVAL,
+            first_seen_at=now,
+            last_seen_at=now,
+        )
+
+
 def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
     database_url: str,
 ) -> None:
@@ -76,6 +114,14 @@ def test_database_gate_accepts_verified_publication_and_rejects_retrieval_only(
                 provider_response_id=response_id,
             )
 
+            _seed_target_teams(
+                store,
+                now=now,
+                response_id=response_id,
+                marker=marker,
+                home_team_id=f"home-{marker}",
+                away_team_id=f"away-{marker}",
+            )
             target_fixture_id = store.upsert_provider_fixture(
                 ProviderFixture(
                     provenance=SourceProvenance(
@@ -195,6 +241,14 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 point_in_time_certifiable=True,
                 payload={"test": marker, "case": "system-observed"},
                 provider_response_id=response_id,
+            )
+            _seed_target_teams(
+                store,
+                now=now,
+                response_id=response_id,
+                marker=marker,
+                home_team_id=f"system-home-{marker}",
+                away_team_id=f"system-away-{marker}",
             )
             target_fixture_id = store.upsert_provider_fixture(
                 ProviderFixture(
