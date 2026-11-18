@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from math import isfinite, log
-from typing import Mapping
 
 
 TIERS = ("STRONG", "MEDIUM", "LOW")
