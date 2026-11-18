@@ -1,4 +1,4 @@
-"""Read-only quality gate for a completed Brazil Serie B historical import."""
+"""Read-only quality gate for a completed competition-scoped historical import."""
 from __future__ import annotations
 
 import hashlib
