@@ -19,11 +19,14 @@ def base_args():
     return {
         "provider_fixture_id": "fx-1",
         "kickoff_at": KICKOFF,
+        "request_started_at": RETRIEVED - timedelta(seconds=1),
         "retrieved_at": RETRIEVED,
+        "provider_response_date": RETRIEVED,
         "prediction_cutoff_at": CUTOFF,
         "source_observation_id": "obs-1",
         "rights_approval_id": "rights-1",
-        "rights_allow_model_training": True,
+        "use_purpose": "VALUE_BETTING_ONLY",
+        "rights_allow_value_betting": True,
     }
 
 
@@ -170,11 +173,11 @@ def test_dispatcher_accepts_both_documented_envelopes():
     assert len(normalize_5dollar_odds(fixed, **base_args())) == 2
 
 
-def test_rejects_unapproved_training_rights():
+def test_rejects_unapproved_value_betting_rights():
     with pytest.raises(OddsPayloadError, match="rights"):
         normalize_5dollar_fixture_odds(
             fixture_odds_response(),
-            **{**base_args(), "rights_allow_model_training": False},
+            **{**base_args(), "rights_allow_value_betting": False},
         )
 
 
