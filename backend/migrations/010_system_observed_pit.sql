@@ -33,6 +33,7 @@ ALTER TABLE veltrix_ai_analyst.source_observations
                     availability_basis = 'SOURCE_PUBLISHED_AT'
                     AND source_published_at IS NOT NULL
                     AND available_at >= source_published_at
+                    AND available_at <= retrieved_at
                 )
                 OR (
                     availability_basis = 'SYSTEM_OBSERVED_AT'
@@ -139,6 +140,7 @@ BEGIN
         IF sighting.source_published_at IS NULL
            OR sighting.source_published_at > sighting.retrieved_at
            OR sighting.available_at < sighting.source_published_at
+           OR sighting.available_at > sighting.retrieved_at
            OR sighting.source_published_at > NEW.prediction_cutoff_at
            OR sighting.available_at > NEW.prediction_cutoff_at THEN
             RAISE EXCEPTION 'PRE_MATCH_SOURCE_NOT_AVAILABLE_AT_CUTOFF';
