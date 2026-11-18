@@ -70,4 +70,4 @@ def test_source_publication_must_be_explicit_and_not_in_future():
 
 
 def test_payload_hash_is_exact_sha256_of_raw_bytes():
-    assert hash_raw_payload(b"raw") == "d7439bee24773bcbfa2f5f4e0e6f0a1d7d6a4f7d2b5d2f2e4f5e6f7a8b9c0d1e"[:64]
+    assert hash_raw_payload(b"raw") == "d7439bee24773bcbfa2d0a97947ee36227b10d1022b1a55847e928965bb6bfde"
