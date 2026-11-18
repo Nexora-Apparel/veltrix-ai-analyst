@@ -7,7 +7,6 @@ carrying a score in that source; it never infers missing scores.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
 import hashlib
 import json
 import os
@@ -15,7 +14,6 @@ from pathlib import Path
 import re
 import unicodedata
 from urllib.request import Request, urlopen
-from zoneinfo import ZoneInfo
 
 import pymupdf as fitz
 import psycopg
