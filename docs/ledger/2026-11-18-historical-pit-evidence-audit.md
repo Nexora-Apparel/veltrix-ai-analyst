@@ -33,6 +33,8 @@ The current production corpus has no source-publication or system-availability t
 
 A prospective capture path is now implemented in code. It uses the separate `SYSTEM_OBSERVED_AT` basis only when the exact provider response has been captured and linked, `available_at = retrieved_at`, the response fetch timestamp equals the sighting retrieval timestamp, and the prediction cutoff is at or after that capture. It does not invent or claim a provider publication timestamp. Historical fixtures captured after kickoff remain `RETRIEVED_AT_ONLY` and non-PIT. The new integration test exercises the future-fixture path.
 
+**Code verification:** [CI run 44288668318](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44288668318) passed on commit `dae564eca874b5b16385909a96ad904db60334ad`: 290 backend tests, Ruff lint and Android debug build. The integration suite verifies that system-observed evidence is rejected if the response fetch time differs from the sighting retrieval time or if the prediction cutoff precedes capture.
+
 **Production status:** migration `010_system_observed_pit.sql` is committed and covered by CI, but is not yet applied to the production Neon database. The production `schema_migrations` ledger currently ends at migration 009. Until migration 010 is applied and verified through the checksum-gated migration workflow, the new basis is not active in production.
 
 **Activation blocker:** the repository's `Apply checksum-verified database migrations` workflow is manual by design. It requires the explicit input `APPLY_CHECKSUM_VERIFIED_MIGRATIONS`. The workflow has been updated to verify migration 010's checksum, PIT constraints and trigger; it has not been dispatched from this session.
