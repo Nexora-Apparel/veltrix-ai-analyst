@@ -113,13 +113,13 @@ def normalize_5dollar_fixture_odds(
     source tick timestamp in this response, so they are deliberately not admitted.
     """
     data = _response_data(response)
-    rights_approval_id = _require_odds_rights(competition_id, retrieved_at)
     returned_fixture_id = data.get("fixture_id")
     if returned_fixture_id is not None and str(returned_fixture_id) != provider_fixture_id:
         raise OddsPayloadError("odds response fixture_id does not match requested fixture")
     bookmakers = data.get("bookmakers")
     if not isinstance(bookmakers, list):
         raise OddsPayloadError("fixture odds data has no bookmakers array")
+    rights_approval_id = _require_odds_rights(competition_id, retrieved_at)
     digest = _response_hash(response)
     output: list[OddsObservation] = []
     for bookmaker_row in bookmakers:
@@ -183,6 +183,7 @@ def normalize_5dollar_odds_history(
     bookmaker_data = data.get("bookmaker")
     if not isinstance(bookmaker_data, Mapping):
         raise OddsPayloadError("odds history has no bookmaker object")
+    rights_approval_id = _require_odds_rights(competition_id, retrieved_at)
     bookmaker = str(bookmaker_data.get("slug") or bookmaker_data.get("name") or "").strip()
     market_name = str(data.get("market") or "").lower()
     market_map = {"1x2": ("1X2", ("home", "draw", "away")),
