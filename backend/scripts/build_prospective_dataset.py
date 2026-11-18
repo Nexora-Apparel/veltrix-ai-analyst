@@ -74,21 +74,6 @@ def build_report(
               ON r.id = s.provider_response_id
             LEFT JOIN veltrix_ai_analyst.source_approvals a
               ON a.approval_id = o.rights_approval_id
-            JOIN veltrix_ai_analyst.source_approvals a
-              ON a.approval_id = o.rights_approval_id
-            LEFT JOIN LATERAL (
-                SELECT COALESCE(
-                    jsonb_agg(
-                        jsonb_build_object(
-                            'status', e.status,
-                            'effective_at', e.effective_at
-                        ) ORDER BY e.effective_at, e.id
-                    ),
-                    '[]'::jsonb
-                ) AS status_events
-                FROM veltrix_ai_analyst.source_approval_status_events e
-                WHERE e.approval_id = a.approval_id
-            ) approval_events ON TRUE
             WHERE o.provider = '5DollarFootballAPI'
               AND o.source_id = '5dollarfootballapi'
               AND o.data_type = 'fixtures_and_results'
@@ -120,6 +105,8 @@ def build_report(
                 OR length(r.response_sha256) <> 64
                 OR a.approval_id IS NULL
                 OR a.status <> 'APPROVED'
+                OR a.valid_from > s.system_observed_at
+                OR (a.valid_until IS NOT NULL AND a.valid_until <= s.system_observed_at)
                 OR NOT (
                     a.permitted_uses @> '["FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb
                 )
@@ -150,6 +137,21 @@ def build_report(
              AND r.http_status BETWEEN 200 AND 299
              AND r.fetched_at = s.retrieved_at
              AND r.system_observed_at = s.system_observed_at
+            JOIN veltrix_ai_analyst.source_approvals a
+              ON a.approval_id = o.rights_approval_id
+            LEFT JOIN LATERAL (
+                SELECT COALESCE(
+                    jsonb_agg(
+                        jsonb_build_object(
+                            'status', e.status,
+                            'effective_at', e.effective_at
+                        ) ORDER BY e.effective_at, e.id
+                    ),
+                    '[]'::jsonb
+                ) AS status_events
+                FROM veltrix_ai_analyst.source_approval_status_events e
+                WHERE e.approval_id = a.approval_id
+            ) approval_events ON TRUE
             WHERE o.provider = '5DollarFootballAPI'
               AND o.source_id = '5dollarfootballapi'
               AND o.data_type = 'fixtures_and_results'
