@@ -10,11 +10,11 @@ This does **not** make the corpus PIT-certified or the model production-ready. S
 
 | CBF rounds | Fixtures | Ordered pairings | Schedule result | Scoreline verification |
 |---|---:|---:|---|---|
-| 1–18 | 180 | 180/180 | 26 official schedule changes confirmed; 1 provider timestamp precision discrepancy corrected in research layer; 0 unexplained differences | 0/180 |
-| 19–24 | 60 | 60/60 | 2 official schedule changes accounted for; all 60 final kickoff times match | 0/60 |
-| 25–30 | 60 | 60/60 | 6 official schedule changes accounted for; ref 262 corrected in research layer | 7/7 changed/discrepant scorelines verified; 53 remain |
-| 31–38 | 80 | 80/80 | 8 official schedule changes accounted for; all 80 final kickoff times match | 8/8 changed scorelines verified; 72 remain |
-| **Total** | **380** | **380/380** | **42 official schedule changes; 2 research-only chronology corrections; 0 unresolved kickoff discrepancies after correction** | **15/380 verified; 365 pending** |
+| 1–18 | 180 | 180/180 | 26 official schedule changes confirmed; 1 provider timestamp precision discrepancy corrected in research layer; 0 unexplained differences | 180/180 verified |
+| 19–24 | 60 | 60/60 | 2 official schedule changes accounted for; all 60 final kickoff times match | 60/60 verified |
+| 25–30 | 60 | 60/60 | 6 official schedule changes accounted for; ref 262 corrected in research layer | 50/60 verified (rounds 25–29); 10 pending (round 30) |
+| 31–38 | 80 | 80/80 | 8 official schedule changes accounted for; all 80 final kickoff times match | 8/80 verified; 72 pending |
+| **Total** | **380** | **380/380** | **42 official schedule changes; 2 research-only chronology corrections; 0 unresolved kickoff discrepancies after correction** | **298/380 verified; 82 pending** |
 
 The 42 official schedule changes are 26 in rounds 1–18, 2 in rounds 19–24, 6 in rounds 25–30 and 8 in rounds 31–38. Provider kickoff timestamps were compared in `America/Sao_Paulo`; final CBF match pages were used for the changed fixtures.
 
@@ -58,7 +58,7 @@ The production audit found 384 source observations and 384 sightings for the com
 
 ### 1. Scoreline verification
 
-Only 15 scorelines have been independently checked in the schedule-exception passes (7 in rounds 25–30 and 8 in rounds 31–38). The remaining 365 finished scores require official CBF match-page comparison. The schedule audit must not be represented as score certification.
+The official CBF score table reconciles 290/290 fixtures in rounds 1–29. One PDF score conflict (Fortaleza–Operário, CBF ref 245) is resolved using the individual CBF match page and corroborating CBF news article; the raw PDF and provider rows are preserved. Eight additional fixtures in rounds 31–38 were independently checked against individual CBF match pages. Total unique scorelines verified: 298/380. The remaining 82 are round 30 (10) and rounds 31–38 (72), and still require official match-page evidence. See the [rounds 1–29 score verification ledger](2026-11-18-cbf-score-verification-rounds-1-29.md).
 
 ### 2. Canonical identity review
 
@@ -78,7 +78,7 @@ No team alias, duplicate fixture, competition mapping or canonical merge has bee
 
 ### 3. Historical PIT evidence
 
-The 384 historical provider observations have no source-publication or availability timestamps and none is PIT-certifiable. Retrieval after the event cannot establish pre-match availability. This historical gap cannot be repaired by inventing timestamps or by using final match schedules.
+The 384 historical provider observations have no source-publication or `available_at` timestamps and none is PIT-certifiable. Retrieval after the event cannot establish pre-match availability. This historical gap cannot be repaired by inventing timestamps or by using final match schedules.
 
 Future ingestion must capture immutable source payloads and verified observation/availability timestamps before kickoff, with source rights and publication metadata. Historical records stay excluded from PIT-certified feature inputs.
 
@@ -99,7 +99,7 @@ The API import windows reconcile internally, but the provider catalogue does not
 
 ## Next sequence
 
-1. Complete official scoreline verification for the remaining 365 finished fixtures.
+1. Complete official scoreline verification for the remaining 82 finished fixtures.
 2. Complete human review of the 28 identity/quality cases; preserve all conflicting rows until signed off.
 3. Implement forward-looking source snapshot capture with reliable pre-kickoff availability evidence and rights metadata.
 4. Extend independent prospective validation across additional competitions/seasons.
