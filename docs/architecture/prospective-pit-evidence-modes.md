@@ -44,8 +44,8 @@ This proves only that VELTRIX had this exact payload by the recorded capture tim
 ## Ingestion behavior
 
 For each newly ingested fixture:
-- if kickoff_at > retrieved_at, the exact fixture sighting is marked SYSTEM_OBSERVED_AT and PIT-certifiable for cutoffs at or after retrieved_at;
-- otherwise it remains RETRIEVED_AT_ONLY and non-PIT-certifiable.
+- if kickoff_at > retrieved_at, the exact fixture, team and competition sightings captured in that response are marked SYSTEM_OBSERVED_AT and PIT-certifiable for cutoffs at or after retrieved_at;
+- otherwise those sightings remain RETRIEVED_AT_ONLY and non-PIT-certifiable.
 
 The database trigger independently enforces the timestamp rule. Application validation alone is not sufficient.
 
