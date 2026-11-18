@@ -87,7 +87,7 @@ def main() -> int:
     )
     dataset_output.parent.mkdir(parents=True, exist_ok=True)
     dataset_output.write_text(
-        json.dumps(dataset, indent=2, sort_keys=True, allow_nan=False) + "\\n",
+        json.dumps(dataset, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
     report = {
