@@ -428,7 +428,6 @@ class PostgresIngestionStore:
         available_at: datetime | None = None,
         point_in_time_certifiable: bool = False,
         provider_response_id: int | None = None,
-        target_kickoff_at: datetime | None = None,
         purpose: DataUsePurpose = DataUsePurpose.STORAGE,
     ) -> int:
         """Persist immutable evidence using database-observed response time.
@@ -449,8 +448,6 @@ class PostgresIngestionStore:
             raise IngestionStoreError("SOURCE_OBSERVATION_IDENTITY_REQUIRED")
         if source_published_at is not None and source_published_at > retrieved_at:
             raise IngestionStoreError("SOURCE_PUBLICATION_AFTER_RETRIEVAL")
-        self._require_aware(target_kickoff_at, "TARGET_KICKOFF_AT")
-
         response = None
         if provider_response_id is not None:
             response = self.connection.execute(
@@ -475,12 +472,8 @@ class PostgresIngestionStore:
                 raise IngestionStoreError("SYSTEM_OBSERVED_AT_CANNOT_CLAIM_SOURCE_PUBLICATION")
             if available_at is not None:
                 raise IngestionStoreError("SYSTEM_OBSERVED_AT_TIMESTAMP_MUST_BE_DATABASE_DERIVED")
-            if point_in_time_certifiable and target_kickoff_at is None:
-                raise IngestionStoreError("SYSTEM_OBSERVED_PIT_REQUIRES_TARGET_KICKOFF")
             observed_at = response[3]
             available_at = observed_at
-            if point_in_time_certifiable and observed_at >= target_kickoff_at:
-                point_in_time_certifiable = False
         else:
             observed_at = response[3] if response is not None else None
 
