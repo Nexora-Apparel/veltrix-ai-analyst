@@ -85,15 +85,18 @@ jobs:
           from datetime import UTC, datetime, timedelta
           now = datetime.now(UTC)
           day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-          print(f"start_at={(day - timedelta(days=7)).isoformat()}")
-          print(f"end_at={(day + timedelta(days=7)).isoformat()}")
+          # Two UTC days only: yesterday's settlements and today's schedule.
+          # The provider adapter splits these into at most two daily requests
+          # per competition, keeping the seven-league daily budget bounded.
+          print(f"start_at={(day - timedelta(days=1)).isoformat()}")
+          print(f"end_at={(day + timedelta(days=1)).isoformat()}")
           PY
       - name: Capture recent results and upcoming fixtures sequentially
         run: |
           python scripts/collect_5dollar_all_approved_competitions.py \
             --start-at "${{ steps.window.outputs.start_at }}" \
             --end-at "${{ steps.window.outputs.end_at }}" \
-            --request-budget 20 \
+            --request-budget 4 \
             --import-type prospective_capture \
             --execute
       - name: Build leakage-safe expanding dataset
