@@ -157,6 +157,7 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
     with psycopg.connect(database_url) as connection:
         store = PostgresIngestionStore(connection)
         with connection.transaction():
+            store.sync_source_approval(FIVEDOLLAR_COMMUNITY_APPROVAL)
             response_id = store.record_provider_response(
                 FIVEDOLLAR_COMMUNITY_APPROVAL,
                 scope_value="522514093",
