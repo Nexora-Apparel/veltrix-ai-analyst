@@ -160,6 +160,11 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
                 COUNT(*) FILTER (WHERE s.available_at IS NOT NULL),
                 COUNT(*) FILTER (WHERE s.source_published_at IS NULL),
                 COUNT(*) FILTER (
+                    WHERE s.availability_basis = 'SYSTEM_OBSERVED_AT'
+                      AND s.system_observed_at IS NOT NULL
+                      AND s.available_at = s.system_observed_at
+                ),
+                COUNT(*) FILTER (
                     WHERE s.availability_basis = 'RETRIEVED_AT_ONLY'
                       AND s.point_in_time_certifiable IS FALSE
                 ),
@@ -189,8 +194,9 @@ def test_historical_import_persists_page_evidence_and_checkpoints(
     assert sighting_times[0] > 0
     assert sighting_times[1] == sighting_times[0]  # exact system-observed availability
     assert sighting_times[2] == sighting_times[0]  # provider exposes no verified publication time
-    assert sighting_times[3] == sighting_times[0]  # retrieval-only evidence is not PIT
-    assert sighting_times[4] == 0
+    assert sighting_times[3] == sighting_times[0]  # DB capture time is the availability basis
+    assert sighting_times[4] == 0  # no capture is downgraded to retrieval-only
+    assert sighting_times[5] == sighting_times[0]  # every captured snapshot is PIT-eligible at/after capture
     with psycopg.connect(database_url) as connection:
         report = historical_validation.validate_brazil_serie_b_import(connection, run_id)
     assert report["passed"] is True
