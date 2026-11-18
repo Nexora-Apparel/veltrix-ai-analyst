@@ -22,7 +22,7 @@ class OddsObservation(StrictModel):
     retrieved_at: datetime
     provider_response_date: datetime | None = None
     kickoff_at: datetime
-    prediction_cutoff_at: datetime
+    value_bet_decision_cutoff_at: datetime
     in_play: bool
     source_observation_id: str = Field(min_length=1, max_length=200)
     source_response_sha256: str = Field(pattern=r"^[a-fA-F0-9]{64}$")
@@ -30,7 +30,7 @@ class OddsObservation(StrictModel):
     use_purpose: Literal["VALUE_BETTING_ONLY"]
     rights_allow_value_betting: bool = False
 
-    @field_validator("source_tick_at", "request_started_at", "retrieved_at", "provider_response_date", "kickoff_at", "prediction_cutoff_at")
+    @field_validator("source_tick_at", "request_started_at", "retrieved_at", "provider_response_date", "kickoff_at", "value_bet_decision_cutoff_at")
     @classmethod
     def require_aware(cls, value: datetime | None) -> datetime | None:
         if value is not None and (value.tzinfo is None or value.utcoffset() is None):
@@ -43,11 +43,11 @@ class OddsObservation(StrictModel):
             raise ValueError("request cannot start after retrieval")
         if self.source_tick_at > self.retrieved_at:
             raise ValueError("source tick cannot be later than retrieval")
-        if self.retrieved_at > self.prediction_cutoff_at:
+        if self.retrieved_at > self.value_bet_decision_cutoff_at:
             raise ValueError("odds were retrieved after the prediction cutoff")
-        if self.source_tick_at > self.prediction_cutoff_at:
+        if self.source_tick_at > self.value_bet_decision_cutoff_at:
             raise ValueError("source odds tick is after the prediction cutoff")
-        if self.prediction_cutoff_at >= self.kickoff_at:
+        if self.value_bet_decision_cutoff_at >= self.kickoff_at:
             raise ValueError("prediction cutoff must be strictly before kickoff")
         if self.in_play:
             raise ValueError("in-play odds cannot enter pre-match features")
