@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - "backend/**"
+      - "backend/tests/test_the_odds_api_markets.py"
       - "android/**"
       - "scripts/verify_5dollar_access.py"
       - "scripts/collect_aimidas_brazil_serie_b_snapshot.py"
