@@ -172,7 +172,7 @@ class FixturePagePersister:
         # A future fixture captured in this exact response can be used only
         # from this system-observed timestamp onward. Past fixtures remain
         # retrieval-only and are never promoted into historical pre-match data.
-        system_observed_pit = fixture.kickoff_at > now
+        system_observed_pit = fixture.status == "scheduled" and fixture.kickoff_at > now
         observation_id = self.store.record_source_observation(
             self.approval,
             scope_value=COMPETITION_ID,
