@@ -744,7 +744,7 @@ def test_future_fixture_capture_records_system_observed_pit_evidence(
               AND o.entity_type IN ('competition', 'team', 'fixture')
             GROUP BY o.entity_type
             """,
-            (row[10],),
+            (row[12],),
         ).fetchall() if row is not None else []
 
     assert run_status == "COMPLETED"
