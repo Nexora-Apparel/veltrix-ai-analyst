@@ -100,17 +100,18 @@ def test_system_observed_payload_is_eligible_only_after_capture() -> None:
 def test_system_observed_basis_rejects_non_capture_timestamps(
     changes: dict[str, object],
 ) -> None:
+    values: dict[str, object] = {
+        "source_published_at": None,
+        "available_at": RETRIEVED,
+        "availability_basis": "SYSTEM_OBSERVED_AT",
+        "point_in_time_certifiable": True,
+    }
+    values.update(changes)
     with pytest.raises(
         FeatureEligibilityError,
         match="SYSTEM_OBSERVED_AVAILABILITY_TIMESTAMP_REQUIRED",
     ):
         require_pre_match_eligibility(
-            evidence(
-                source_published_at=None,
-                available_at=RETRIEVED,
-                availability_basis="SYSTEM_OBSERVED_AT",
-                point_in_time_certifiable=True,
-                **changes,
-            ),
+            evidence(**values),
             prediction_cutoff_at=CUTOFF,
         )
