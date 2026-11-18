@@ -120,3 +120,20 @@ def test_missing_model_provenance_fails_closed() -> None:
             away_model_team_id="away",
             team_identity_verified=True,
         )
+
+
+
+def test_inference_expands_score_grid_for_high_goal_rates() -> None:
+    artifact = make_artifact()
+    primary = artifact["primary_model"]
+    assert isinstance(primary, dict)
+    primary["intercept"] = 3.7
+    result = predict_fixture(
+        artifact,
+        make_request(),
+        home_model_team_id="home",
+        away_model_team_id="away",
+        team_identity_verified=True,
+        generated_at=CUTOFF,
+    )
+    assert result.uncertainty["scoreline_probability_mass_before_renormalization"] > 0.99999
