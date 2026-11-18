@@ -56,22 +56,37 @@ def make_artifact(**changes: object) -> dict[str, object]:
     return artifact
 
 
-def test_v1_inference_returns_all_required_markets_from_one_distribution() -> None:
-    result = predict_fixture(
-        make_artifact(),
-        make_request(),
-        home_team_mapping=VerifiedTeamMapping(
-            canonical_team_id=make_request().home_team_id,
+def make_mappings(
+    *, home_status: str = "VERIFIED", away_status: str = "VERIFIED"
+) -> tuple[VerifiedTeamMapping, VerifiedTeamMapping]:
+    request = make_request()
+    return (
+        VerifiedTeamMapping(
+            canonical_team_id=request.home_team_id,
             model_team_id="home",
-            identity_status="VERIFIED",
+            identity_status=home_status,
         ),
-        away_team_mapping=VerifiedTeamMapping(
-            canonical_team_id=make_request().away_team_id,
+        VerifiedTeamMapping(
+            canonical_team_id=request.away_team_id,
             model_team_id="away",
-            identity_status="VERIFIED",
+            identity_status=away_status,
         ),
+    )
+
+
+def predict(artifact: dict[str, object]):
+    home_mapping, away_mapping = make_mappings()
+    return predict_fixture(
+        artifact,
+        make_request(),
+        home_team_mapping=home_mapping,
+        away_team_mapping=away_mapping,
         generated_at=CUTOFF,
     )
+
+
+def test_v1_inference_returns_all_required_markets_from_one_distribution() -> None:
+    result = predict(make_artifact())
     markets = result.market_probabilities
 
     assert set(markets) == {
@@ -97,20 +112,7 @@ def test_research_or_non_pit_artifacts_cannot_predict(
     changes: dict[str, object], reason: str
 ) -> None:
     with pytest.raises(ModelArtifactNotPromoted, match=reason):
-        predict_fixture(
-            make_artifact(**changes),
-            make_request(),
-            home_team_mapping=VerifiedTeamMapping(
-            canonical_team_id=make_request().home_team_id,
-            model_team_id="home",
-            identity_status="VERIFIED",
-        ),
-        away_team_mapping=VerifiedTeamMapping(
-            canonical_team_id=make_request().away_team_id,
-            model_team_id="away",
-            identity_status="VERIFIED",
-        ),
-        )
+        predict(make_artifact(**changes))
 
 
 def test_training_cutoff_must_precede_prediction_cutoff() -> None:
@@ -118,41 +120,25 @@ def test_training_cutoff_must_precede_prediction_cutoff() -> None:
     with pytest.raises(
         ModelArtifactNotPromoted, match="MODEL_TRAINING_CUTOFF_NOT_BEFORE_PREDICTION"
     ):
-        predict_fixture(
-            artifact,
-            make_request(),
-            home_team_mapping=VerifiedTeamMapping(
-            canonical_team_id=make_request().home_team_id,
-            model_team_id="home",
-            identity_status="VERIFIED",
-        ),
-        away_team_mapping=VerifiedTeamMapping(
-            canonical_team_id=make_request().away_team_id,
-            model_team_id="away",
-            identity_status="VERIFIED",
-        ),
-        )
+        predict(artifact)
 
 
 def test_missing_model_provenance_fails_closed() -> None:
     artifact = make_artifact()
     artifact.pop("code_commit")
     with pytest.raises(ModelArtifactNotPromoted, match="CODE_COMMIT_MISSING"):
-        predict_fixture(
-            artifact,
-            make_request(),
-            home_team_mapping=VerifiedTeamMapping(
-            canonical_team_id=make_request().home_team_id,
-            model_team_id="home",
-            identity_status="VERIFIED",
-        ),
-        away_team_mapping=VerifiedTeamMapping(
-            canonical_team_id=make_request().away_team_id,
-            model_team_id="away",
-            identity_status="VERIFIED",
-        ),
-        )
+        predict(artifact)
 
+
+def test_unverified_or_mismatched_team_identity_is_rejected() -> None:
+    home_mapping, away_mapping = make_mappings(home_status="REVIEW_REQUIRED")
+    with pytest.raises(ValueError, match="CANONICAL_TEAM_IDENTITY_NOT_VERIFIED"):
+        predict_fixture(
+            make_artifact(),
+            make_request(),
+            home_team_mapping=home_mapping,
+            away_team_mapping=away_mapping,
+        )
 
 
 def test_inference_expands_score_grid_for_high_goal_rates() -> None:
@@ -160,19 +146,10 @@ def test_inference_expands_score_grid_for_high_goal_rates() -> None:
     primary = artifact["primary_model"]
     assert isinstance(primary, dict)
     primary["intercept"] = 3.7
-    result = predict_fixture(
-        artifact,
-        make_request(),
-        home_team_mapping=VerifiedTeamMapping(
-            canonical_team_id=make_request().home_team_id,
-            model_team_id="home",
-            identity_status="VERIFIED",
-        ),
-        away_team_mapping=VerifiedTeamMapping(
-            canonical_team_id=make_request().away_team_id,
-            model_team_id="away",
-            identity_status="VERIFIED",
-        ),
-        generated_at=CUTOFF,
+
+    result = predict(artifact)
+
+    assert (
+        result.uncertainty["scoreline_probability_mass_before_renormalization"]
+        > 0.99999
     )
-    assert result.uncertainty["scoreline_probability_mass_before_renormalization"] > 0.99999
