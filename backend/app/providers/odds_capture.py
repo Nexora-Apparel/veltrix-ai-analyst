@@ -76,7 +76,6 @@ def _observation(
             source_response_sha256=digest,
             rights_approval_id=rights_approval_id,
             use_purpose="VALUE_BETTING_ONLY",
-            rights_allow_value_betting=True,
         )
     except ValueError as exc:
         raise OddsPayloadError(str(exc)) from None
@@ -252,7 +251,7 @@ def normalize_5dollar_odds_history(
                 kickoff_at=kickoff_at, value_bet_decision_cutoff_at=value_bet_decision_cutoff_at,
                 source_observation_id=source_observation_id, digest=digest,
                 rights_approval_id=rights_approval_id,
-                ))
+            ))
     return tuple(output)
 
 
@@ -261,8 +260,7 @@ def normalize_5dollar_odds(
     request_started_at: datetime, retrieved_at: datetime,
     provider_response_date: datetime | None = None,
     value_bet_decision_cutoff_at: datetime,
-    source_observation_id: str, rights_approval_id: str,
-    rights_allow_value_betting: bool,
+    source_observation_id: str, competition_id: str,
 ) -> tuple[OddsObservation, ...]:
     """Dispatch documented fixture-odds and odds-history response envelopes."""
     data = _response_data(response)
@@ -273,7 +271,7 @@ def normalize_5dollar_odds(
             provider_response_date=provider_response_date,
             value_bet_decision_cutoff_at=value_bet_decision_cutoff_at,
             source_observation_id=source_observation_id,
-            rights_approval_id=rights_approval_id,
+            competition_id=competition_id,
         )
     if "bookmaker" in data and ("ticks" in data or "lines" in data):
         return normalize_5dollar_odds_history(
