@@ -16,7 +16,7 @@ Required:
 - source_published_at no later than retrieval
 - available_at no earlier than source publication
 - source publication and availability no later than prediction cutoff
-- rights approved at cutoff and canonical identity verified
+- access/use permission applicable to the data at cutoff and canonical identity verified
 
 ### 2. SYSTEM_OBSERVED_AT
 
@@ -29,7 +29,7 @@ Required:
 - available_at must equal the system retrieval timestamp exactly
 - retrieval timestamp must be no later than prediction cutoff
 - fixture kickoff must still be in the future at capture
-- rights approved at cutoff and canonical identity verified
+- access/use permission applicable to the data at cutoff and canonical identity verified
 
 This proves only that VELTRIX had this exact payload by the recorded capture time. It does not prove when the provider originally published it.
 
@@ -49,6 +49,6 @@ For each newly ingested fixture:
 
 The database trigger independently enforces the timestamp rule. Application validation alone is not sufficient.
 
-## Rights and commercial boundary
+## Personal-use data boundary
 
-The current 5DollarFootballAPI approval permits internal analysis, feature engineering, model training, validation and public display with attribution, but does not permit commercial use or raw response redistribution. This pipeline does not change those terms. Do not commercialize the resulting data/model or redistribute raw provider responses without a new rights approval.
+The project owner states that the provider has authorized use of data available through the account's free mode for personal, non-monetized use, including collection, analysis, feature engineering, model training and validation. Commercial use or monetization requires a paid subscription. The implementation must remain within the actual free-tier access, request, endpoint, retention and attribution conditions. Do not bypass provider limits, use paid-only endpoints, or redistribute raw provider responses. No professional review or commercial-use approval is a release requirement for the current private, non-monetized deployment. Reassess only if the intended use or provider plan changes.
