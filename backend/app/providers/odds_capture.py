@@ -264,6 +264,6 @@ def normalize_5dollar_odds(
             retrieved_at=retrieved_at, prediction_cutoff_at=prediction_cutoff_at,
             source_observation_id=source_observation_id,
             rights_approval_id=rights_approval_id,
-            rights_allow_model_training=rights_allow_model_training,
+            rights_allow_value_betting=rights_allow_value_betting,
         )
     raise OddsPayloadError("unrecognized documented 5Dollar odds response envelope")
