@@ -63,6 +63,28 @@ jobs:
           test -n "$DATABASE_URL"
           test -n "$FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY"
           python -c "from urllib.parse import urlsplit; import os; assert urlsplit(os.environ['DATABASE_URL']).path.lstrip('/').split('?')[0] == 'veltrix_ai_analyst'"
+      - name: Require competition-scope migration before collection
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != "veltrix_ai_analyst":
+                  raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
+              exists = connection.execute(
+                  """
+                  SELECT EXISTS (
+                      SELECT 1 FROM information_schema.columns
+                      WHERE table_schema = 'veltrix_ai_analyst'
+                        AND table_name = 'import_runs'
+                        AND column_name = 'scope_value'
+                  )
+                  """
+              ).fetchone()[0]
+              if not exists:
+                  raise SystemExit("MIGRATION_011_REQUIRED_BEFORE_COMPETITION_IMPORT")
+          PY
       - name: Import one approved competition with durable request reservations
         working-directory: backend
         run: |
