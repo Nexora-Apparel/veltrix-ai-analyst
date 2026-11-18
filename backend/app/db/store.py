@@ -468,14 +468,17 @@ class PostgresIngestionStore:
         if provider_response_id is not None:
             response = self.connection.execute(
                 """
-                SELECT provider, source_id
+                SELECT provider, source_id, fetched_at
                 FROM veltrix_ai_analyst.provider_responses
                 WHERE id = %s
                 """,
                 (provider_response_id,),
             ).fetchone()
-            if response is None or tuple(response) != (approval.provider, approval.source_id):
+            if response is None or tuple(response[:2]) != (approval.provider, approval.source_id):
                 raise IngestionStoreError("PROVIDER_RESPONSE_IDENTITY_MISMATCH")
+            if point_in_time_certifiable and availability_basis == "SYSTEM_OBSERVED_AT":
+                if response[2] != retrieved_at:
+                    raise IngestionStoreError("SYSTEM_OBSERVED_PIT_RESPONSE_TIMESTAMP_MISMATCH")
 
         payload_json, payload_hash = self._canonical_json(payload)
         inserted = self.connection.execute(
