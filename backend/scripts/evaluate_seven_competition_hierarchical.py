@@ -74,25 +74,53 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             """
             SELECT pf.id::text AS row_id, pf.provider_fixture_id, pf.provider_competition_id,
                    pf.kickoff_at, pf.home_team_provider_id, pf.away_team_provider_id,
-                   UPPER(COALESCE(so.payload->>'status', 'UNKNOWN')) AS status,
-                   NULLIF(so.payload->>'home_goals', '')::int AS home_goals,
-                   NULLIF(so.payload->>'away_goals', '')::int AS away_goals,
+                   UPPER(COALESCE(evidence.payload->>'status', 'UNKNOWN')) AS status,
+                   NULLIF(evidence.payload->>'home_goals', '')::int AS home_goals,
+                   NULLIF(evidence.payload->>'away_goals', '')::int AS away_goals,
                    EXTRACT(YEAR FROM pf.kickoff_at)::int AS calendar_year,
-                   so.payload->>'season_id' AS provider_season_id,
-                   so.id AS source_observation_id,
-                   so.availability_basis, so.point_in_time_certifiable,
-                   so.retrieved_at, so.system_observed_at,
-                   so.source_published_at, so.available_at,
-                   so.payload_sha256, so.provider_response_id,
-                   pr.http_status, pr.response_sha256 AS raw_response_sha256
+                   evidence.payload->>'season_id' AS provider_season_id,
+                   evidence.source_observation_id, evidence.source_sighting_id,
+                   evidence.availability_basis, evidence.point_in_time_certifiable,
+                   evidence.retrieved_at, evidence.system_observed_at,
+                   evidence.source_published_at, evidence.available_at,
+                   evidence.payload_sha256, evidence.provider_response_id,
+                   evidence.http_status, evidence.raw_response_sha256
             FROM veltrix_ai_analyst.provider_fixtures pf
-            JOIN veltrix_ai_analyst.source_observations so
-              ON so.id = pf.source_observation_id
-            LEFT JOIN veltrix_ai_analyst.provider_responses pr
-              ON pr.id = so.provider_response_id
+            JOIN LATERAL (
+                SELECT o.id AS source_observation_id, o.payload,
+                       s.id AS source_sighting_id, s.availability_basis,
+                       s.point_in_time_certifiable, s.retrieved_at,
+                       s.system_observed_at, s.source_published_at, s.available_at,
+                       s.payload_sha256, s.provider_response_id,
+                       r.http_status, r.response_sha256 AS raw_response_sha256
+                FROM veltrix_ai_analyst.source_observations o
+                JOIN veltrix_ai_analyst.source_observation_sightings s
+                  ON s.source_observation_id = o.id
+                JOIN veltrix_ai_analyst.provider_responses r
+                  ON r.id = s.provider_response_id
+                WHERE o.provider = pf.provider
+                  AND o.source_id = pf.source_id
+                  AND o.data_type = 'fixtures_and_results'
+                  AND o.entity_type = 'fixture'
+                  AND o.provider_entity_id = pf.provider_fixture_id
+                  AND UPPER(COALESCE(o.payload->>'status', 'UNKNOWN'))
+                      = UPPER(pf.status)
+                  AND UPPER(COALESCE(o.payload->>'status', 'UNKNOWN'))
+                      IN ('FINISHED', 'UNKNOWN')
+                  AND o.payload->>'competition_id' = pf.provider_competition_id
+                  AND o.payload->>'home_team_id' = pf.home_team_provider_id
+                  AND o.payload->>'away_team_id' = pf.away_team_provider_id
+                  AND NULLIF(o.payload->>'kickoff_at', '')::timestamptz = pf.kickoff_at
+                  AND NULLIF(o.payload->>'home_goals', '')::int
+                      IS NOT DISTINCT FROM pf.home_goals
+                  AND NULLIF(o.payload->>'away_goals', '')::int
+                      IS NOT DISTINCT FROM pf.away_goals
+                  AND o.payload #>> '{provenance,provider_record_id}' = pf.provider_fixture_id
+                ORDER BY s.retrieved_at DESC, s.id DESC
+                LIMIT 1
+            ) evidence ON TRUE
             WHERE pf.provider = %s AND pf.source_id = %s
               AND pf.provider_competition_id = ANY(%s)
-              AND UPPER(COALESCE(so.payload->>'status', 'UNKNOWN')) IN ('FINISHED', 'UNKNOWN')
             ORDER BY pf.kickoff_at, pf.provider_fixture_id
             """,
             (PROVIDER, SOURCE_ID, list(COMPETITIONS)),
@@ -152,6 +180,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             "home_goals": result.home_goals,
             "away_goals": result.away_goals,
             "source_observation_id": str(row["source_observation_id"]),
+            "source_sighting_id": str(row["source_sighting_id"]),
             "provider_response_id": str(row["provider_response_id"]),
             "retrieved_at": row["retrieved_at"].isoformat(),
             "system_observed_at": (
@@ -233,6 +262,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
                 "away_team_provider_id": row["away_team_provider_id"],
                 "kickoff_at": row["kickoff_at"].isoformat(),
                 "source_observation_id": str(row["source_observation_id"]),
+                "source_sighting_id": str(row["source_sighting_id"]),
                 "provider_response_id": str(row["provider_response_id"]),
                 "retrieved_at": row["retrieved_at"].isoformat(),
                 "system_observed_at": (
