@@ -87,3 +87,57 @@ def test_stronger_ridge_penalty_shrinks_team_effects():
         abs(v) for v in strong.defence.values()
     )
     assert strong_effect < weak_effect
+
+
+def test_fitted_parameters_satisfy_single_ridge_penalized_objective():
+    from math import exp, log
+
+    teams = ("A", "B", "C", "D")
+    results = [
+        row(
+            f"objective-{day}",
+            day + 1,
+            teams[day % 4],
+            teams[(day + 1) % 4],
+            2 if day % 5 == 0 else day % 2,
+            1 if day % 7 == 0 else 0,
+        )
+        for day in range(40)
+    ]
+    ridge = 0.4
+    model = fit_attack_defence(results, ridge=ridge, max_iterations=6000)
+    as_of = max(item.kickoff_at for item in results)
+    weights = [
+        exp(-log(2) * (as_of - item.kickoff_at).total_seconds() / 86400 / model.half_life_days)
+        for item in results
+    ]
+    total_weight = sum(weights)
+    grad_intercept = 0.0
+    grad_home = 0.0
+    grad_attack = {team: ridge * model.attack[team] for team in model.teams}
+    grad_defence = {team: ridge * model.defence[team] for team in model.teams}
+
+    for item, weight in zip(results, weights):
+        home_rate = exp(
+            model.intercept + model.home_advantage
+            + model.attack[item.home_team] - model.defence[item.away_team]
+        )
+        away_rate = exp(
+            model.intercept + model.attack[item.away_team] - model.defence[item.home_team]
+        )
+        home_error = weight * (home_rate - item.home_goals) / total_weight
+        away_error = weight * (away_rate - item.away_goals) / total_weight
+        grad_intercept += home_error + away_error
+        grad_home += home_error
+        grad_attack[item.home_team] += home_error
+        grad_defence[item.away_team] -= home_error
+        grad_attack[item.away_team] += away_error
+        grad_defence[item.home_team] -= away_error
+
+    gradients = [
+        grad_intercept,
+        grad_home,
+        *grad_attack.values(),
+        *grad_defence.values(),
+    ]
+    assert max(abs(value) for value in gradients) < 1e-4
