@@ -1,0 +1,54 @@
+name: The Odds API zero-credit event discovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      sport_key:
+        description: Soccer competition catalogue key
+        required: true
+        type: choice
+        default: soccer_epl
+        options:
+          - soccer_epl
+          - soccer_argentina_primera_division
+          - soccer_brazil_campeonato
+          - soccer_brazil_serie_b
+          - soccer_france_ligue_one
+          - soccer_germany_bundesliga
+          - soccer_italy_serie_a
+          - soccer_spain_la_liga
+
+permissions:
+  contents: read
+
+concurrency:
+  group: the-odds-api-event-discovery
+  cancel-in-progress: false
+
+jobs:
+  event-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Discover upcoming events (no odds-market request)
+        env:
+          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+          ODDS_API_SPORT_KEY: ${{ inputs.sport_key }}
+        run: python scripts/probe_the_odds_api_events.py
+
+      - name: Upload compact event manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-odds-api-event-discovery
+          path: odds-api-events-manifest.json
+          if-no-files-found: ignore
+          retention-days: 7
