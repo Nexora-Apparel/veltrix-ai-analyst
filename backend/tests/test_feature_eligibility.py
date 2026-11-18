@@ -38,7 +38,7 @@ def test_verified_publication_before_cutoff_is_eligible() -> None:
     ("changes", "error"),
     [
         ({"point_in_time_certifiable": False}, "SOURCE_NOT_POINT_IN_TIME_CERTIFIABLE"),
-        ({"availability_basis": "RETRIEVED_AT_ONLY"}, "VERIFIED_SOURCE_PUBLICATION_TIME_REQUIRED"),
+        ({"availability_basis": "RETRIEVED_AT_ONLY"}, "VERIFIED_AVAILABILITY_BASIS_REQUIRED"),
         ({"source_published_at": None}, "SOURCE_PUBLICATION_AND_AVAILABILITY_TIMES_REQUIRED"),
         ({"available_at": None}, "SOURCE_PUBLICATION_AND_AVAILABILITY_TIMES_REQUIRED"),
         ({"provider_response_id": None}, "CAPTURED_PROVIDER_RESPONSE_REQUIRED"),
@@ -66,5 +66,51 @@ def test_event_time_or_kickoff_cannot_replace_publication_evidence() -> None:
     with pytest.raises(FeatureEligibilityError, match="VERIFIED_SOURCE_PUBLICATION_TIME_REQUIRED"):
         require_pre_match_eligibility(
             evidence(availability_basis="SOURCE_EVENT_TIME"),
+            prediction_cutoff_at=CUTOFF,
+        )
+
+
+
+def test_system_observed_payload_is_eligible_only_after_capture() -> None:
+    observed = evidence(
+        source_published_at=None,
+        available_at=RETRIEVED,
+        availability_basis="SYSTEM_OBSERVED_AT",
+        point_in_time_certifiable=True,
+    )
+    require_pre_match_eligibility(observed, prediction_cutoff_at=CUTOFF)
+
+    with pytest.raises(
+        FeatureEligibilityError,
+        match="SOURCE_NOT_OBSERVED_BY_PREDICTION_CUTOFF",
+    ):
+        require_pre_match_eligibility(
+            observed,
+            prediction_cutoff_at=RETRIEVED - timedelta(seconds=1),
+        )
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"available_at": RETRIEVED + timedelta(seconds=1)},
+        {"source_published_at": PUBLISHED},
+    ],
+)
+def test_system_observed_basis_rejects_non_capture_timestamps(
+    changes: dict[str, object],
+) -> None:
+    with pytest.raises(
+        FeatureEligibilityError,
+        match="SYSTEM_OBSERVED_AVAILABILITY_TIMESTAMP_REQUIRED",
+    ):
+        require_pre_match_eligibility(
+            evidence(
+                source_published_at=None,
+                available_at=RETRIEVED,
+                availability_basis="SYSTEM_OBSERVED_AT",
+                point_in_time_certifiable=True,
+                **changes,
+            ),
             prediction_cutoff_at=CUTOFF,
         )
