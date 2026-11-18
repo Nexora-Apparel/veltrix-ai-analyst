@@ -132,6 +132,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "011_import_run_competition_scope.sql",
             "012_database_observed_timestamps.sql",
             "013_target_fixture_pre_match_gate.sql",
+            "014_prediction_publication_storage.sql",
         }
     )
 
@@ -173,6 +174,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "011_import_run_competition_scope.sql",
             "012_database_observed_timestamps.sql",
             "013_target_fixture_pre_match_gate.sql",
+            "014_prediction_publication_storage.sql",
         }.issubset(migration_versions)
 
         timestamp_columns = {
@@ -242,6 +244,12 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "canonical_team_alias_case_audit",
             "effective_canonical_team_aliases",
             "effective_canonical_fixture_deduplication",
+            "prediction_feature_snapshots",
+            "predictions",
+            "prediction_market_probabilities",
+            "prediction_publication_events",
+            "published_predictions",
+            "published_prediction_markets",
         }.issubset(tables)
 
         case_count = connection.execute(
