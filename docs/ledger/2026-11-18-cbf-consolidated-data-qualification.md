@@ -89,6 +89,10 @@ Future ingestion must capture immutable source payloads and exact observation/av
 
 The API import windows reconcile internally, but the provider catalogue does not independently prove complete season coverage or all competition metadata. The 1 season-coverage review case and 1 competition-identity case remain open for human evidence review.
 
+### 5. Commercial source rights
+
+The current 5DollarFootballAPI and The Odds API approvals are noncommercial. Internal research and the specifically approved uses remain bounded by each provider's scope and permitted-use list. Commercial distribution, paid predictions or monetized model outputs must not be enabled until separate written commercial rights are recorded and approved. See `docs/providers/5DOLLAR_TERMS_REVIEW.md` and `docs/providers/THE_ODDS_API_TERMS_REVIEW.md`.
+
 ## Controls retained
 
 - Raw 5DollarFootballAPI fixtures and source observations remain immutable.
