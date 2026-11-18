@@ -188,12 +188,63 @@ def test_store_records_provider_response_and_normalized_observation(connection) 
             provider_entity_id="fixture-system-observed-time-mismatch",
             schema_version="provider-fixture-v1",
             retrieved_at=now + timedelta(seconds=1),
-            available_at=now + timedelta(seconds=1),
             availability_basis="SYSTEM_OBSERVED_AT",
             point_in_time_certifiable=True,
             payload={"fixture_id": "fixture-system-observed-time-mismatch"},
             provider_response_id=response_id,
         )
+
+    with pytest.raises(
+        IngestionStoreError,
+        match="SYSTEM_OBSERVED_AT_TIMESTAMP_MUST_BE_DATABASE_DERIVED",
+    ):
+        store.record_source_observation(
+            approval,
+            scope_value=competition_id,
+            data_type="fixtures_and_results",
+            entity_type="fixture",
+            provider_entity_id="fixture-system-observed-caller-time",
+            schema_version="provider-fixture-v1",
+            retrieved_at=now,
+            available_at=now,
+            availability_basis="SYSTEM_OBSERVED_AT",
+            point_in_time_certifiable=True,
+            payload={"fixture_id": "fixture-system-observed-caller-time"},
+            provider_response_id=response_id,
+        )
+
+    observed_fixture_id = "fixture-system-observed-valid"
+    observed_payload = {"fixture_id": observed_fixture_id, "status": "scheduled"}
+    observed_id = store.record_source_observation(
+        approval,
+        scope_value=competition_id,
+        data_type="fixtures_and_results",
+        entity_type="fixture",
+        provider_entity_id=observed_fixture_id,
+        schema_version="provider-fixture-v1",
+        retrieved_at=now,
+        availability_basis="SYSTEM_OBSERVED_AT",
+        point_in_time_certifiable=True,
+        payload=observed_payload,
+        provider_response_id=response_id,
+    )
+    observed = connection.execute(
+        """
+        SELECT o.system_observed_at, o.available_at, o.retrieved_at,
+               s.system_observed_at, r.system_observed_at
+        FROM veltrix_ai_analyst.source_observations o
+        JOIN veltrix_ai_analyst.source_observation_sightings s
+          ON s.source_observation_id = o.id
+        JOIN veltrix_ai_analyst.provider_responses r
+          ON r.id = s.provider_response_id
+        WHERE o.id = %s
+        """,
+        (observed_id,),
+    ).fetchone()
+    assert observed is not None
+    assert observed[0] == observed[1] == observed[3] == observed[4]
+    assert observed[0] is not None
+    assert observed[0] != observed[2]
 
     with pytest.raises(IngestionStoreError, match="SENSITIVE_REQUEST_PARAMETER_REJECTED"):
         store.record_provider_response(
