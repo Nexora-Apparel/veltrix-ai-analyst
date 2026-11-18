@@ -119,18 +119,42 @@ def main() -> int:
                 manifest["data_keys"] = sorted(data) if isinstance(data, dict) else []
                 manifest["stop_reason"] = "Response envelope or fixture identity did not match"
             else:
-                manifest["access_result"] = "ODDS_SNAPSHOT_ACCESS_CONFIRMED"
                 manifest["bookmaker_count"] = len(data["bookmakers"])
                 manifest["bookmakers"] = [
                     summarize_bookmaker(row) for row in data["bookmakers"]
                 ]
-                manifest["stop_reason"] = "Single odds snapshot captured; no further requests"
+                bet365 = [
+                    row for row in data["bookmakers"]
+                    if isinstance(row, dict) and row.get("slug") == "bet365"
+                ]
+                timestamped_opening = any(
+                    isinstance(row.get("odds"), dict)
+                    and isinstance(row["odds"].get("1x2"), dict)
+                    and isinstance(row["odds"]["1x2"].get("opening"), dict)
+                    and row["odds"]["1x2"]["opening"].get("opened_at")
+                    for row in bet365
+                )
+                if timestamped_opening:
+                    manifest["access_result"] = "ODDS_SNAPSHOT_ACCESS_CONFIRMED"
+                    manifest["stop_reason"] = "Timestamped Bet365 1X2 opening received; one request only"
+                elif not data["bookmakers"]:
+                    manifest["access_result"] = "ENDPOINT_ACCESS_CONFIRMED_NO_BOOKMAKERS"
+                    manifest["stop_reason"] = "Endpoint returned no bookmakers for this fixture"
+                elif not bet365:
+                    manifest["access_result"] = "ENDPOINT_ACCESS_CONFIRMED_BET365_NOT_RETURNED"
+                    manifest["stop_reason"] = "Endpoint returned bookmakers but no Bet365 row"
+                else:
+                    manifest["access_result"] = "ENDPOINT_ACCESS_CONFIRMED_NO_TIMESTAMPED_1X2_OPENING"
+                    manifest["stop_reason"] = "Bet365 returned without a timestamped 1X2 opening"
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(manifest, indent=2, sort_keys=True))
     return 0 if manifest.get("access_result") in {
         "ODDS_SNAPSHOT_ACCESS_CONFIRMED",
+        "ENDPOINT_ACCESS_CONFIRMED_NO_BOOKMAKERS",
+        "ENDPOINT_ACCESS_CONFIRMED_BET365_NOT_RETURNED",
+        "ENDPOINT_ACCESS_CONFIRMED_NO_TIMESTAMPED_1X2_OPENING",
         "AUTHENTICATION_OR_ENTITLEMENT_BLOCKED",
         "RATE_LIMITED",
         "HTTP_ERROR",
