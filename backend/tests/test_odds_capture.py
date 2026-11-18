@@ -219,3 +219,10 @@ def test_capture_envelope_rejects_duplicate_observation_identity():
     assert len(envelope.observations) == 3
     with pytest.raises(ValueError, match="duplicate odds observation identity"):
         OddsCaptureEnvelope(captured_at=RETRIEVED, request_id="capture-2", observations=(rows[0], rows[0]))
+
+
+def test_history_rejects_bookmaker_outside_community_scope():
+    response = odds_history_response()
+    response["data"]["bookmaker"]["slug"] = "other-book"
+    with pytest.raises(OddsPayloadError, match="only supports Bet365"):
+        normalize_5dollar_odds_history(response, **base_args())
