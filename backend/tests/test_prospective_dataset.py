@@ -36,6 +36,7 @@ def observation(fid, oid, sid, when, status, home_goals=None, away_goals=None):
         fixture_id=fid,
         provider="5DollarFootballAPI",
         source_id="5dollarfootballapi",
+        retrieved_at=when - timedelta(milliseconds=1),
         observed_at=when,
         availability_basis="SYSTEM_OBSERVED_AT",
         point_in_time_certifiable=True,
@@ -74,6 +75,8 @@ def test_dataset_uses_only_results_observed_before_target_cutoff():
         "over_25": True,
     }
     assert target.label_observation_id == 5
+    assert target.label_lineage is not None
+    assert target.label_lineage["provider_response_id"] == 1005
     assert all(item["system_observed_at"] <= target.prediction_cutoff_at.isoformat()
                for item in target.feature_lineage)
 
@@ -125,4 +128,5 @@ def test_expanding_folds_keep_simultaneous_kickoffs_together():
             next(row for row in rows if row.fixture_id == fid).kickoff_at < fold.validation_start_at
             for fid in fold.train_fixture_ids
         )
-        assert "f-3" in fold.validation_fixture_ids or "f-same-time" not in fold.validation_fixture_ids
+        if "f-3" in fold.validation_fixture_ids or "f-same-time" in fold.validation_fixture_ids:
+            assert {"f-3", "f-same-time"}.issubset(fold.validation_fixture_ids)
