@@ -55,6 +55,7 @@ def test_dataset_uses_only_results_observed_before_target_cutoff():
     observations = [
         observation("past-1", 1, 1, BASE + timedelta(days=2), "finished", 2, 0),
         observation("past-2", 2, 2, BASE + timedelta(days=3), "finished", 1, 1),
+        observation("past-1", 6, 6, BASE + timedelta(days=3, hours=12), "finished", 3, 0),
         observation("target", 3, 3, BASE + timedelta(days=4), "scheduled"),
         # A result captured after the target cutoff must not enter its features.
         observation("past-2", 4, 4, BASE + timedelta(days=4, hours=1), "finished", 4, 0),
@@ -64,7 +65,7 @@ def test_dataset_uses_only_results_observed_before_target_cutoff():
     target = next(row for row in rows if row.fixture_id == "target")
     assert target.prediction_cutoff_at == BASE + timedelta(days=4)
     assert target.features["home_matches_last5"] == 2
-    assert target.features["home_goals_for_per_match_last5"] == 1.5
+    assert target.features["home_goals_for_per_match_last5"] == 2.0
     assert target.features["away_matches_last5"] == 1
     assert target.label == {
         "home_goals": 2,
@@ -80,6 +81,8 @@ def test_dataset_uses_only_results_observed_before_target_cutoff():
     assert target.label_lineage["provider_response_id"] == 1005
     assert all(item["system_observed_at"] <= target.prediction_cutoff_at.isoformat()
                for item in target.feature_lineage)
+    assert 6 in {item["source_observation_id"] for item in target.feature_lineage}
+    assert 1 not in {item["source_observation_id"] for item in target.feature_lineage}
 
 
 def test_post_kickoff_schedule_snapshot_is_not_a_target_row():
@@ -128,6 +131,7 @@ def test_expanding_folds_keep_simultaneous_kickoffs_together():
         assert set(fold.train_fixture_ids).isdisjoint(fold.validation_fixture_ids)
         assert all(
             next(row for row in rows if row.fixture_id == fid).kickoff_at < fold.validation_start_at
+            and next(row for row in rows if row.fixture_id == fid).label_observed_at < fold.validation_start_at
             for fid in fold.train_fixture_ids
         )
         if "f-3" in fold.validation_fixture_ids or "f-same-time" in fold.validation_fixture_ids:
