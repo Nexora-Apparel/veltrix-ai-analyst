@@ -143,7 +143,6 @@ THE_ODDS_API_SOCCER_APPROVAL = SourceApproval(
     scope_type="sport_key",
     scope_values=frozenset(
         {
-            "soccer_argentina_primera_division",
             "soccer_brazil_campeonato",
             "soccer_brazil_serie_b",
             "soccer_epl",
@@ -174,7 +173,7 @@ THE_ODDS_API_SOCCER_APPROVAL = SourceApproval(
     terms_url="https://the-odds-api.com/terms-and-conditions.html",
     terms_version="2026-08-31",
     evidence_uri="docs/providers/THE_ODDS_API_TERMS_REVIEW.md",
-    evidence_sha256="cb9bea56a928fdf13a3cd6e079c3ccd0b61411aad39bd38f1467e803b69c9e87",
+    evidence_sha256="31488183c74343d9e52a17d58d2927e9bb9f5553c425aea094b80c63257b6181",
     rights_basis="TERMS",
     reviewed_at_utc=datetime(2026, 11, 18, tzinfo=UTC),
     reviewer_id="project-owner",
