@@ -205,13 +205,17 @@ def normalize_5dollar_odds_history(
             line = float(raw_line) if raw_line is not None else None
         except (TypeError, ValueError):
             raise OddsPayloadError("invalid odds line") from None
-        for selection in selections:
-            if tick.get(selection) is None:
-                raise OddsPayloadError("pre-match odds tick is missing a price")
+        prices = tuple(tick.get(selection) for selection in selections)
+        if all(price is None for price in prices):
+            # Provider docs define all-null prices as a withdrawn market/line.
+            continue
+        if any(price is None for price in prices):
+            raise OddsPayloadError("pre-match odds tick has a partially missing price set")
+        for selection, price in zip(selections, prices, strict=True):
             output.append(_observation(
                 provider_fixture_id=provider_fixture_id, bookmaker=bookmaker,
                 market=normalized_market, selection=selection, line=line,
-                price=tick[selection], tick_at=tick_at, retrieved_at=retrieved_at,
+                price=price, tick_at=tick_at, retrieved_at=retrieved_at,
                 kickoff_at=kickoff_at, prediction_cutoff_at=prediction_cutoff_at,
                 source_observation_id=source_observation_id, digest=digest,
                 rights_approval_id=rights_approval_id,
