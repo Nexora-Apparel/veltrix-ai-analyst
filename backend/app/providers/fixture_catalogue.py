@@ -4,7 +4,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-
 class FixtureCatalogueError(ValueError):
     """The 5Dollar fixture catalogue response is malformed or inconsistent."""
 
