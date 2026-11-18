@@ -9,8 +9,8 @@ import hashlib
 import json
 import os
 import sys
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -25,7 +25,7 @@ def utc_now() -> str:
 
 def emit(manifest: dict[str, object]) -> None:
     rendered = json.dumps(manifest, sort_keys=True, indent=2)
-    Path("odds-api-catalogue-manifest.json").write_text(rendered + "\\n", encoding="utf-8")
+    Path("odds-api-catalogue-manifest.json").write_text(rendered + "\n", encoding="utf-8")
     print(rendered)
 
 
@@ -73,8 +73,7 @@ def main() -> int:
     except (URLError, TimeoutError, OSError):
         manifest["retrieved_at"] = utc_now()
         manifest["outcome"] = "NETWORK_ERROR"
-        print("The Odds API: NETWORK_ERROR")
-        print(json.dumps(manifest, sort_keys=True))
+        emit(manifest)
         return 3
 
     manifest["retrieved_at"] = utc_now()
@@ -87,22 +86,19 @@ def main() -> int:
 
     if status != 200:
         manifest["outcome"] = "HTTP_ERROR"
-        print(f"The Odds API: HTTP_{status}")
-        print(json.dumps(manifest, sort_keys=True))
+        emit(manifest)
         return 4
 
     try:
         payload = json.loads(body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         manifest["outcome"] = "INVALID_JSON"
-        print("The Odds API: INVALID_JSON")
-        print(json.dumps(manifest, sort_keys=True))
+        emit(manifest)
         return 5
 
     if not isinstance(payload, list):
         manifest["outcome"] = "UNEXPECTED_SCHEMA"
-        print("The Odds API: UNEXPECTED_SCHEMA")
-        print(json.dumps(manifest, sort_keys=True))
+        emit(manifest)
         return 6
 
     sports = [
@@ -114,15 +110,11 @@ def main() -> int:
     keys = sorted({str(row["key"]) for row in sports if row.get("key")})
     manifest["active_soccer_sports_count"] = len(keys)
     manifest["active_soccer_sport_keys"] = keys
-    manifest["outcome"] = "AUTHENTICATED_SOCCER_CATALOGUE_AVAILABLE" if keys else "AUTHENTICATED_NO_ACTIVE_SOCCER_SPORTS"
-    print(f"The Odds API: HTTP_200; active_soccer_sports={len(keys)}")
-    if manifest["quota_remaining"] is not None:
-        print(f"Quota remaining: {manifest['quota_remaining']}")
-    if manifest["quota_used"] is not None:
-        print(f"Quota used: {manifest['quota_used']}")
-    if manifest["quota_last_cost"] is not None:
-        print(f"Last request cost: {manifest['quota_last_cost']}")
-    print(json.dumps(manifest, sort_keys=True))
+    manifest["outcome"] = (
+        "AUTHENTICATED_SOCCER_CATALOGUE_AVAILABLE"
+        if keys else "AUTHENTICATED_NO_ACTIVE_SOCCER_SPORTS"
+    )
+    emit(manifest)
     return 0 if keys else 7
 
 
