@@ -1,4 +1,4 @@
-"""Read-only six-competition hierarchical Poisson/Dixon-Coles development study.
+"""Read-only seven-competition hierarchical Poisson/Dixon-Coles development study.
 
 Uses only finished score labels and provider-local IDs. Historical provider
 retrieval timestamps are not treated as pre-match feature availability. The
@@ -43,6 +43,7 @@ PROVIDER = "5DollarFootballAPI"
 SOURCE_ID = "5dollarfootballapi"
 COMPETITIONS = {
     "3118717965": "Brazil Serie A",
+    "522514093": "Brazil Serie B",
     "4160026622": "England Premier League",
     "3614399544": "France Ligue 1",
     "686337048": "Germany Bundesliga I",
@@ -64,7 +65,7 @@ MAX_GOALS = 12
 
 
 def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
-    """Load and validate the six scoped competitions in a read-only transaction."""
+    """Load and validate the seven scoped competitions in a read-only transaction."""
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET TRANSACTION READ ONLY")
         if connection.execute("SELECT current_database() AS n").fetchone()["n"] != DATABASE_NAME:
@@ -74,6 +75,8 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             SELECT pf.id::text AS row_id, pf.provider_fixture_id, pf.provider_competition_id,
                    pf.kickoff_at, pf.home_team_provider_id, pf.away_team_provider_id,
                    pf.home_goals, pf.away_goals, pf.status,
+                   EXTRACT(YEAR FROM pf.kickoff_at)::int AS calendar_year,
+                   so.payload->>'season_id' AS provider_season_id,
                    so.availability_basis, so.point_in_time_certifiable,
                    so.retrieved_at, so.source_published_at, so.available_at,
                    so.payload_sha256, so.provider_response_id,
@@ -90,8 +93,8 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             (PROVIDER, SOURCE_ID, list(COMPETITIONS)),
         ).fetchall()
 
-    if len(rows) != 614:
-        raise RuntimeError(f"EXPECTED_614_SCOPED_SOURCE_ROWS_GOT_{len(rows)}")
+    if len(rows) != 998:
+        raise RuntimeError(f"EXPECTED_998_SCOPED_SOURCE_ROWS_GOT_{len(rows)}")
     fixture_keys = [(row["provider_competition_id"], row["provider_fixture_id"]) for row in rows]
     if len(fixture_keys) != len(set(fixture_keys)):
         raise RuntimeError("DUPLICATE_PROVIDER_FIXTURE_KEYS")
@@ -109,7 +112,7 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         if row["status"] == "UNKNOWN"
         and row["home_goals"] is None and row["away_goals"] is None
     ]
-    if len(finished) != 610 or len(unknown) != 4 or len(finished) + len(unknown) != len(rows):
+    if len(finished) != 990 or len(unknown) != 8 or len(finished) + len(unknown) != len(rows):
         raise RuntimeError("SOURCE_STATUS_SCORE_AUDIT_MISMATCH")
 
     results = [
@@ -144,6 +147,16 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
         "source_id": SOURCE_ID,
         "competition_ids": COMPETITIONS,
         "source_rows": len(rows),
+        "calendar_year_fixture_counts": {
+            str(year): sum(1 for row in rows if row["calendar_year"] == year)
+            for year in sorted({row["calendar_year"] for row in rows})
+        },
+        "provider_season_id_counts": {
+            str(season): sum(1 for row in rows if row["provider_season_id"] == season)
+            for season in sorted({row["provider_season_id"] for row in rows if row["provider_season_id"]})
+        },
+        "provider_season_id_coverage": sum(1 for row in rows if row["provider_season_id"]),
+        "multi_calendar_year_coverage": len({row["calendar_year"] for row in rows}) > 1,
         "finished_labeled_rows": len(finished),
         "unknown_unlabeled_rows_excluded": len(unknown),
         "unknown_fixture_ids": sorted(
@@ -330,7 +343,7 @@ def main() -> int:
         model_over25, baseline_over25, bootstrap_replicates=2000, seed=20261120
     )
     report = {
-        "report_type": "SIX_COMPETITION_RETROSPECTIVE_DEVELOPMENT_EVALUATION",
+        "report_type": "SEVEN_COMPETITION_RETROSPECTIVE_DEVELOPMENT_EVALUATION",
         "status": "RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL",
         "created_at": datetime.now(UTC).isoformat(),
         "provenance": provenance,
@@ -411,7 +424,7 @@ def main() -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
     print(json.dumps({
-        "status": "SIX_COMPETITION_RETROSPECTIVE_EVALUATION_COMPLETE",
+        "status": "SEVEN_COMPETITION_RETROSPECTIVE_EVALUATION_COMPLETE",
         "report_path": str(output),
         "report_sha256": report["report_sha256"],
         "development_fixtures": len(development),
