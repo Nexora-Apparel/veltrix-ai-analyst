@@ -113,4 +113,10 @@ def test_missing_model_provenance_fails_closed() -> None:
     artifact = make_artifact()
     artifact.pop("code_commit")
     with pytest.raises(ModelArtifactNotPromoted, match="CODE_COMMIT_MISSING"):
-        predict_fixture(artifact, make_request())
+        predict_fixture(
+            artifact,
+            make_request(),
+            home_model_team_id="home",
+            away_model_team_id="away",
+            team_identity_verified=True,
+        )
