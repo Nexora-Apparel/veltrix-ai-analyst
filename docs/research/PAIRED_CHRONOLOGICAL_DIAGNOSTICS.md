@@ -55,3 +55,9 @@ Neither this diagnostic report nor the existing retrospective reports
 establish PIT eligibility, prospective performance, bookmaker-market
 outperformance, CLV or value-betting certification. Production promotion and
 value betting remain blocked by their independent gates.
+
+## Mandatory kickoff-integrity prerequisite
+
+The evaluator trusts the `kickoff_at` values in its input report and does not independently adjudicate them against official competition schedules. Do not use its output as trusted chronological or model-selection evidence until every fixture kickoff has been reconciled and simultaneous kickoff batches are represented correctly.
+
+A live CBF audit of rounds 25–30 found provider fixture `2179333578` (CBF ref 262, São Bernardo x Londrina) stored at 20:49:59 BRT, while the official CBF match record is 19:30 BRT. The retrospective training artifact contains the provider timestamp and places another fixture from the same official 19:30 kickoff (`3196722470`, Vila Nova x Goiás) earlier in the sequence. This creates a possible same-kickoff leakage path if the training runner updates state fixture-by-fixture. The training runner's simultaneous-batch behavior must be inspected, the chronology corrected in a separate evidence-backed research layer, and the retrospective predictions regenerated before paired diagnostics are interpreted. Never rewrite the raw provider timestamp to hide this discrepancy.
