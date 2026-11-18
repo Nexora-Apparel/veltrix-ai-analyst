@@ -22,14 +22,14 @@ from app.models.hierarchical_poisson import (
 )
 from app.models.hierarchical_scoreline import forecast_hierarchical_fixture
 from app.models.scoreline import build_scoreline_distribution
+from app.validation.binary_market_metrics import (
+    BinaryForecast,
+    evaluate_paired_binary_market,
+)
 from app.validation.dixon_coles import estimate_rho_from_development_folds
 from app.validation.hierarchical_tuning import (
     ChronologicalFold,
     select_hierarchical_hyperparameters,
-)
-from app.validation.binary_market_metrics import (
-    BinaryForecast,
-    evaluate_paired_binary_market,
 )
 from app.validation.paired_baselines import (
     ProbabilityForecast,
