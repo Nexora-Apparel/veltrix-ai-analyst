@@ -159,7 +159,7 @@ def test_official_kickoff_adjudication_changes_research_time_and_preserves_raw_e
     assert corrected[0].kickoff_at == datetime.fromisoformat("2026-09-10T22:30:00+00:00")
     assert fixture.kickoff_at == raw  # immutable original object / provider timestamp
     assert audit[0]["raw_provider_kickoff_at"] == raw.isoformat()
-    assert audit[0]["cbf_match_reference"] if "cbf_match_reference" in audit[0] else True
+    assert audit[0]["cbf_match_reference"] == "262"
 
 
 def test_official_kickoff_adjudication_fails_closed_on_raw_timestamp_mismatch():
