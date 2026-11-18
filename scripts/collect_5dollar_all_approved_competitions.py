@@ -42,7 +42,12 @@ def completed_run(database_url: str, competition_id: str, start_at: datetime, en
             try:
                 report = validate_competition_import(connection, int(run_id), competition_id)
                 return int(run_id), report
-            except Exception:  # noqa: BLE001 - invalid historical runs are skipped so older valid runs can be checked
+            except Exception as exc:  # noqa: BLE001 - invalid historical runs are skipped so older valid runs can be checked
+                print(
+                    f"COMPLETED_RUN_VALIDATION_FAILED import_run_id={run_id} "
+                    f"error={type(exc).__name__}:{str(exc)[:300]}",
+                    flush=True,
+                )
                 continue
     return None
 
