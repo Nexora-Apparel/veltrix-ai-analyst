@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import log
 
@@ -32,7 +33,7 @@ class BinaryMarketEvaluation:
 
 
 def binary_metrics(
-    rows: tuple[BinaryForecast, ...] | list[BinaryForecast],
+    rows: Sequence[BinaryForecast],
 ) -> BinaryMarketEvaluation:
     if not rows:
         raise ValueError("binary market evaluation requires at least one row")
@@ -63,8 +64,8 @@ def _interval(values: list[float]) -> dict[str, float]:
 
 
 def evaluate_paired_binary_market(
-    model_rows: tuple[BinaryForecast, ...] | list[BinaryForecast],
-    baseline_rows: tuple[BinaryForecast, ...] | list[BinaryForecast],
+    model_rows: Sequence[BinaryForecast],
+    baseline_rows: Sequence[BinaryForecast],
     *,
     bootstrap_replicates: int = 2000,
     seed: int = 20261118,
