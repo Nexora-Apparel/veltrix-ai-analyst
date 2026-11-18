@@ -1,0 +1,360 @@
+"""Leakage-safe expanding-window datasets from prospectively captured fixtures."""
+from __future__ import annotations
+
+from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime
+from statistics import mean
+from typing import Any
+
+
+@dataclass(frozen=True, slots=True)
+class FixtureIdentity:
+    fixture_id: str
+    provider: str
+    source_id: str
+    competition_id: str
+    home_team_id: str
+    away_team_id: str
+    kickoff_at: datetime
+
+    def __post_init__(self) -> None:
+        for name in (
+            "fixture_id", "provider", "source_id", "competition_id",
+            "home_team_id", "away_team_id",
+        ):
+            if not getattr(self, name).strip():
+                raise ValueError(f"{name} is required")
+        if self.home_team_id == self.away_team_id:
+            raise ValueError("home and away team IDs must differ")
+        _require_aware(self.kickoff_at, "kickoff_at")
+
+
+@dataclass(frozen=True, slots=True)
+class FixtureObservation:
+    observation_id: int
+    sighting_id: int
+    provider_response_id: int
+    fixture_id: str
+    provider: str
+    source_id: str
+    observed_at: datetime
+    availability_basis: str
+    point_in_time_certifiable: bool
+    payload_sha256: str
+    payload: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        if min(self.observation_id, self.sighting_id, self.provider_response_id) < 1:
+            raise ValueError("source observation, sighting and response IDs must be positive")
+        if not self.fixture_id.strip() or not self.provider.strip() or not self.source_id.strip():
+            raise ValueError("fixture and provider identity are required")
+        _require_aware(self.observed_at, "observed_at")
+        if len(self.payload_sha256) != 64:
+            raise ValueError("payload_sha256 must be a SHA-256 digest")
+
+
+@dataclass(frozen=True, slots=True)
+class ProspectiveDatasetRow:
+    fixture_id: str
+    competition_id: str
+    kickoff_at: datetime
+    prediction_cutoff_at: datetime
+    home_team_id: str
+    away_team_id: str
+    features: dict[str, float]
+    feature_lineage: tuple[dict[str, Any], ...]
+    label: dict[str, Any] | None
+    label_observed_at: datetime | None
+    label_observation_id: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class ExpandingFold:
+    fold_number: int
+    train_fixture_ids: tuple[str, ...]
+    validation_fixture_ids: tuple[str, ...]
+    train_cutoff_at: datetime
+    validation_start_at: datetime
+    validation_end_at: datetime
+
+
+def _require_aware(value: datetime, field: str) -> None:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError(f"{field} must be timezone-aware")
+
+
+def _status(payload: dict[str, Any]) -> str:
+    return str(payload.get("status") or "").strip().casefold()
+
+
+def _score(payload: dict[str, Any], field: str) -> int | None:
+    value = payload.get(field)
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int) and value >= 0:
+        return value
+    return None
+
+
+def _lineage(row: FixtureObservation) -> dict[str, Any]:
+    return {
+        "source_observation_id": row.observation_id,
+        "source_sighting_id": row.sighting_id,
+        "provider_response_id": row.provider_response_id,
+        "payload_sha256": row.payload_sha256,
+        "system_observed_at": row.observed_at.isoformat(),
+    }
+
+
+def _finished_result(row: FixtureObservation) -> tuple[int, int] | None:
+    if (
+        row.availability_basis != "SYSTEM_OBSERVED_AT"
+        or not row.point_in_time_certifiable
+        or _status(row.payload) != "finished"
+    ):
+        return None
+    home_goals = _score(row.payload, "home_goals")
+    away_goals = _score(row.payload, "away_goals")
+    if home_goals is None or away_goals is None:
+        return None
+    return home_goals, away_goals
+
+
+def _team_form(
+    target_team_id: str,
+    matches: list[tuple[FixtureIdentity, FixtureObservation, int, int]],
+    target_kickoff: datetime,
+    prefix: str,
+    limit: int = 5,
+) -> tuple[dict[str, float], list[FixtureObservation]]:
+    appearances = [
+        item for item in matches
+        if item[0].home_team_id == target_team_id or item[0].away_team_id == target_team_id
+    ]
+    appearances.sort(key=lambda item: (item[0].kickoff_at, item[1].observed_at), reverse=True)
+    selected = appearances[:limit]
+    points: list[float] = []
+    goals_for: list[float] = []
+    goals_against: list[float] = []
+    for fixture, _, home_goals, away_goals in selected:
+        if fixture.home_team_id == target_team_id:
+            scored, conceded = home_goals, away_goals
+        else:
+            scored, conceded = away_goals, home_goals
+        goals_for.append(float(scored))
+        goals_against.append(float(conceded))
+        points.append(3.0 if scored > conceded else 1.0 if scored == conceded else 0.0)
+    latest_kickoff = selected[0][0].kickoff_at if selected else None
+    rest_days = (
+        max(0.0, (target_kickoff - latest_kickoff).total_seconds() / 86400.0)
+        if latest_kickoff is not None else 0.0
+    )
+    values = {
+        f"{prefix}_matches_last5": float(len(selected)),
+        f"{prefix}_points_per_match_last5": mean(points) if points else 0.0,
+        f"{prefix}_goals_for_per_match_last5": mean(goals_for) if goals_for else 0.0,
+        f"{prefix}_goals_against_per_match_last5": mean(goals_against) if goals_against else 0.0,
+        f"{prefix}_goal_difference_per_match_last5": (
+            mean(goals_for) - mean(goals_against) if selected else 0.0
+        ),
+        f"{prefix}_rest_days": rest_days,
+    }
+    return values, [item[1] for item in selected]
+
+
+def build_prospective_dataset(
+    fixtures: list[FixtureIdentity] | tuple[FixtureIdentity, ...],
+    observations: list[FixtureObservation] | tuple[FixtureObservation, ...],
+) -> tuple[ProspectiveDatasetRow, ...]:
+    """Build one target row per fixture with a genuine pre-kickoff snapshot.
+
+    A schedule observation supplies the target prediction cutoff. Every feature
+    source result must have been captured no later than that cutoff and belong
+    to an earlier fixture in the same competition. Labels are read only from a
+    finished observation captured after that target fixture's kickoff.
+    """
+    fixture_by_id = {fixture.fixture_id: fixture for fixture in fixtures}
+    if len(fixture_by_id) != len(fixtures):
+        raise ValueError("duplicate provider fixture IDs")
+    grouped: dict[str, list[FixtureObservation]] = defaultdict(list)
+    for observation in observations:
+        fixture = fixture_by_id.get(observation.fixture_id)
+        if fixture is None:
+            continue
+        if (observation.provider, observation.source_id) != (fixture.provider, fixture.source_id):
+            raise ValueError("observation provider identity does not match fixture")
+        grouped[observation.fixture_id].append(observation)
+
+    finished_matches_by_competition: dict[
+        tuple[str, str, str], list[tuple[FixtureIdentity, FixtureObservation, int, int]]
+    ] = defaultdict(list)
+    for fixture in fixtures:
+        for observation in grouped.get(fixture.fixture_id, []):
+            result = _finished_result(observation)
+            if result is not None:
+                finished_matches_by_competition[
+                    (fixture.provider, fixture.source_id, fixture.competition_id)
+                ].append((fixture, observation, result[0], result[1]))
+
+    rows: list[ProspectiveDatasetRow] = []
+    for fixture in sorted(fixtures, key=lambda item: (item.kickoff_at, item.fixture_id)):
+        fixture_observations = grouped.get(fixture.fixture_id, [])
+        pre_match_snapshots = [
+            row for row in fixture_observations
+            if row.availability_basis == "SYSTEM_OBSERVED_AT"
+            and row.point_in_time_certifiable
+            and _status(row.payload) == "scheduled"
+            and row.observed_at < fixture.kickoff_at
+        ]
+        if not pre_match_snapshots:
+            continue
+        snapshot = max(pre_match_snapshots, key=lambda row: (row.observed_at, row.sighting_id))
+        cutoff = snapshot.observed_at
+        competition_matches = finished_matches_by_competition[
+            (fixture.provider, fixture.source_id, fixture.competition_id)
+        ]
+        eligible_matches = [
+            item for item in competition_matches
+            if item[0].fixture_id != fixture.fixture_id
+            and item[0].kickoff_at < fixture.kickoff_at
+            and item[1].observed_at <= cutoff
+        ]
+        home_features, home_lineage = _team_form(
+            fixture.home_team_id, eligible_matches, fixture.kickoff_at, "home"
+        )
+        away_features, away_lineage = _team_form(
+            fixture.away_team_id, eligible_matches, fixture.kickoff_at, "away"
+        )
+        recent_competition = sorted(
+            eligible_matches,
+            key=lambda item: (item[0].kickoff_at, item[1].observed_at),
+            reverse=True,
+        )[:20]
+        totals = [float(home + away) for _, _, home, away in recent_competition]
+        btts_values = [float(home > 0 and away > 0) for _, _, home, away in recent_competition]
+        over_values = [float(home + away > 2) for _, _, home, away in recent_competition]
+        features = {
+            **home_features,
+            **away_features,
+            "competition_matches_last20": float(len(recent_competition)),
+            "competition_goals_per_match_last20": mean(totals) if totals else 0.0,
+            "competition_btts_rate_last20": mean(btts_values) if btts_values else 0.0,
+            "competition_over25_rate_last20": mean(over_values) if over_values else 0.0,
+        }
+        lineage_by_id = {
+            (item.observation_id, item.sighting_id): item
+            for item in [snapshot, *home_lineage, *away_lineage]
+        }
+        lineage = tuple(
+            _lineage(item)
+            for item in sorted(
+                lineage_by_id.values(),
+                key=lambda item: (item.observed_at, item.observation_id, item.sighting_id),
+            )
+        )
+        labels = [
+            row for row in fixture_observations
+            if _finished_result(row) is not None and row.observed_at > fixture.kickoff_at
+        ]
+        label_observation = max(
+            labels, key=lambda row: (row.observed_at, row.sighting_id), default=None
+        )
+        label = None
+        label_observed_at = None
+        label_observation_id = None
+        if label_observation is not None:
+            home_goals, away_goals = _finished_result(label_observation) or (0, 0)
+            label = {
+                "home_goals": home_goals,
+                "away_goals": away_goals,
+                "home_win": home_goals > away_goals,
+                "draw": home_goals == away_goals,
+                "away_win": home_goals < away_goals,
+                "btts": home_goals > 0 and away_goals > 0,
+                "over_25": home_goals + away_goals > 2,
+            }
+            label_observed_at = label_observation.observed_at
+            label_observation_id = label_observation.observation_id
+        rows.append(
+            ProspectiveDatasetRow(
+                fixture_id=fixture.fixture_id,
+                competition_id=fixture.competition_id,
+                kickoff_at=fixture.kickoff_at,
+                prediction_cutoff_at=cutoff,
+                home_team_id=fixture.home_team_id,
+                away_team_id=fixture.away_team_id,
+                features=features,
+                feature_lineage=lineage,
+                label=label,
+                label_observed_at=label_observed_at,
+                label_observation_id=label_observation_id,
+            )
+        )
+    return tuple(rows)
+
+
+def build_expanding_window_folds(
+    rows: tuple[ProspectiveDatasetRow, ...] | list[ProspectiveDatasetRow],
+    *,
+    minimum_training_fixtures: int = 30,
+    validation_block_fixtures: int = 25,
+) -> tuple[ExpandingFold, ...]:
+    """Create chronological folds with simultaneous kickoffs kept together.
+
+    Training labels must themselves have been observed before the first
+    validation kickoff. The validation block is selected by chronological
+    fixture order; no random split or post-kickoff feature is permitted.
+    """
+    if minimum_training_fixtures < 1 or validation_block_fixtures < 1:
+        raise ValueError("fold sizes must be positive")
+    labelled = [row for row in rows if row.label is not None and row.label_observed_at is not None]
+    labelled.sort(key=lambda row: (row.kickoff_at, row.fixture_id))
+    groups: list[list[ProspectiveDatasetRow]] = []
+    for row in labelled:
+        if not groups or groups[-1][0].kickoff_at != row.kickoff_at:
+            groups.append([row])
+        else:
+            groups[-1].append(row)
+
+    folds: list[ExpandingFold] = []
+    train_groups: list[list[ProspectiveDatasetRow]] = []
+    group_index = 0
+    fold_number = 1
+    while group_index < len(groups):
+        train_rows = [row for group in train_groups for row in group]
+        if len(train_rows) >= minimum_training_fixtures:
+            validation_groups: list[list[ProspectiveDatasetRow]] = []
+            validation_count = 0
+            cursor = group_index
+            while cursor < len(groups) and validation_count < validation_block_fixtures:
+                validation_groups.append(groups[cursor])
+                validation_count += len(groups[cursor])
+                cursor += 1
+            validation_rows = [row for group in validation_groups for row in group]
+            validation_start = validation_rows[0].kickoff_at
+            validation_end = validation_rows[-1].kickoff_at
+            eligible_train = [
+                row for row in train_rows
+                if row.kickoff_at < validation_start
+                and row.label_observed_at is not None
+                and row.label_observed_at < validation_start
+            ]
+            if len(eligible_train) >= minimum_training_fixtures and validation_rows:
+                folds.append(
+                    ExpandingFold(
+                        fold_number=fold_number,
+                        train_fixture_ids=tuple(row.fixture_id for row in eligible_train),
+                        validation_fixture_ids=tuple(row.fixture_id for row in validation_rows),
+                        train_cutoff_at=max(row.kickoff_at for row in eligible_train),
+                        validation_start_at=validation_start,
+                        validation_end_at=validation_end,
+                    )
+                )
+                fold_number += 1
+            train_groups.extend(validation_groups)
+            group_index = cursor
+        else:
+            train_groups.append(groups[group_index])
+            group_index += 1
+    return tuple(folds)
