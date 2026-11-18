@@ -156,6 +156,9 @@ def validate_manual_capture(
             returned_fixture_id = data.get("fixture_id")
             if str(returned_fixture_id or "") != expected.provider_fixture_id:
                 raise ValueError("PROVIDER_FIXTURE_ID_MISMATCH")
+            returned_event_id = data.get("event_id")
+            if returned_event_id is not None and str(returned_event_id) != expected.provider_event_id:
+                raise ValueError("PROVIDER_EVENT_ID_MISMATCH")
             observations = normalize_5dollar_odds(
                 payload,
                 provider_fixture_id=expected.provider_fixture_id,
@@ -169,6 +172,8 @@ def validate_manual_capture(
             )
             if not observations:
                 raise ValueError("NO_ADMISSIBLE_OBSERVATIONS")
+            if len(observations) != manifest.observation_count:
+                raise ValueError("OBSERVATION_COUNT_MISMATCH")
             if any(item.rights_approval_id != resolved_approval_id for item in observations):
                 raise ValueError("OBSERVATION_RIGHTS_ID_MISMATCH")
             if any(item.bookmaker.casefold().replace(" ", "") != "bet365" for item in observations):
