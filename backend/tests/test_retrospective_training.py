@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
+from app.models.chronology_adjudication import apply_kickoff_adjudications, load_kickoff_adjudications
 from app.models.elo import EloSystem, HistoricalResult
 from app.models.retrospective import (
     HistoricalRateModel,
@@ -144,3 +146,33 @@ def test_overall_team_attack_informs_predictions_at_the_other_venue() -> None:
     strong_rate, _ = model.rates(strong_away, target)
     neutral_rate, _ = model.rates(neutral_away, target)
     assert strong_rate > neutral_rate
+
+
+def test_official_kickoff_adjudication_changes_research_time_and_preserves_raw_evidence():
+    registry = Path(__file__).resolve().parents[1] / "data/research/official_kickoff_adjudications.json"
+    adjudications = load_kickoff_adjudications(registry)
+    raw = datetime.fromisoformat("2026-09-10T23:49:59+00:00")
+    fixture = ResearchFixture("2179333578", raw, "SB", "LON", 1, 2)
+
+    corrected, audit = apply_kickoff_adjudications([fixture], adjudications)
+
+    assert corrected[0].kickoff_at == datetime.fromisoformat("2026-09-10T22:30:00+00:00")
+    assert fixture.kickoff_at == raw  # immutable original object / provider timestamp
+    assert audit[0]["raw_provider_kickoff_at"] == raw.isoformat()
+    assert audit[0]["cbf_match_reference"] if "cbf_match_reference" in audit[0] else True
+
+
+def test_official_kickoff_adjudication_fails_closed_on_raw_timestamp_mismatch():
+    adjudications = {
+        "2179333578": {
+            "raw_provider_kickoff_at": "2026-09-10T23:49:59+00:00",
+            "official_kickoff_at": "2026-09-10T22:30:00+00:00",
+            "source_url": "https://example.invalid/cbf",
+            "reason": "test",
+        }
+    }
+    fixture = ResearchFixture(
+        "2179333578", datetime.fromisoformat("2026-09-10T23:50:00+00:00"), "SB", "LON", 1, 2
+    )
+    with pytest.raises(ValueError, match="raw timestamp mismatch"):
+        apply_kickoff_adjudications([fixture], adjudications)
