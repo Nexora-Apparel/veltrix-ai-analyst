@@ -14,6 +14,8 @@ def captured_observation():
         "availability_basis": "RETRIEVED_AT_ONLY",
         "point_in_time_certifiable": False,
         "retrieved_at": retrieved,
+        "response_fetched_at": retrieved,
+        "response_system_observed_at": None,
         "source_published_at": None,
         "available_at": retrieved,
         "system_observed_at": None,
@@ -44,6 +46,7 @@ def test_missing_available_at_is_allowed_when_basis_is_retrieval_only(captured_o
         ("available_at", datetime(2026, 11, 18, 14, 9, 33, tzinfo=UTC)),
         ("available_at", datetime(2026, 11, 18, 14, 9, 35, tzinfo=UTC)),
         ("retrieved_at", None),
+        ("response_fetched_at", datetime(2026, 11, 18, 14, 9, 33, tzinfo=UTC)),
         ("provider_response_id", None),
         ("payload_sha256", "invalid"),
         ("raw_response_sha256", None),
@@ -70,6 +73,7 @@ def test_database_observed_capture_is_valid_retrospective_label_evidence(
         availability_basis="SYSTEM_OBSERVED_AT",
         point_in_time_certifiable=True,
         system_observed_at=observed,
+        response_system_observed_at=observed,
         available_at=observed,
     )
     assert is_valid_retrospective_observation(captured_observation)
@@ -80,6 +84,7 @@ def test_system_observed_capture_before_retrieval_is_rejected(captured_observati
         availability_basis="SYSTEM_OBSERVED_AT",
         point_in_time_certifiable=True,
         system_observed_at=captured_observation["retrieved_at"] - timedelta(microseconds=1),
+        response_system_observed_at=captured_observation["retrieved_at"] - timedelta(microseconds=1),
         available_at=captured_observation["retrieved_at"] - timedelta(microseconds=1),
     )
     assert not is_valid_retrospective_observation(captured_observation)
