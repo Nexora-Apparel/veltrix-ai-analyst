@@ -53,6 +53,10 @@ Latest corrected report: [workflow 44286932299](https://github.com/Nexora-Appare
 
 The adaptive ensemble has the best point estimates, but all paired moving-block bootstrap 95% confidence intervals cross zero. No model is selected or promoted from this retrospective result.
 
+## Model and value-betting release gates
+
+The current 380-match retrospective report is not enough for production selection. Before any model or value-betting activation, require at least 1,000 walk-forward matches per market, at least 300 prospective settled selections across 90 distinct dates, at least 98% timestamped-odds coverage, positive net ROI with a positive lower 95% ROI confidence bound, and 1X2 Brier score and log loss that both beat the bookmaker benchmark. The current report does not satisfy these gates.
+
 ## Historical point-in-time evidence
 
 The production audit found 384 source observations and 384 sightings for the competition: zero source-publication timestamps, zero `available_at` timestamps, all 384 sightings marked `RETRIEVED_AT_ONLY`, and zero PIT-certifiable sightings. See the [historical PIT evidence audit](2026-11-18-historical-pit-evidence-audit.md). The historical corpus remains ineligible for PIT-certified pre-match features; no timestamps were backfilled.
