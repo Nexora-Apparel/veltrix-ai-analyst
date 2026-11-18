@@ -1,0 +1,66 @@
+name: Cross-provider fixture catalogue qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      competition:
+        description: Competition to compare across both providers
+        required: true
+        type: choice
+        default: premier_league
+        options:
+          - brazil_serie_a
+          - brazil_serie_b
+          - premier_league
+          - ligue_1
+          - bundesliga
+          - serie_a
+          - la_liga
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cross-provider-fixture-qualification
+  cancel-in-progress: false
+
+jobs:
+  compare-fixture-catalogues:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Retrieve The Odds API event catalogue (no odds market)
+        env:
+          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+          ODDS_API_SPORT_KEY: ${{ inputs.competition == 'brazil_serie_a' && 'soccer_brazil_campeonato' || inputs.competition == 'brazil_serie_b' && 'soccer_brazil_serie_b' || inputs.competition == 'premier_league' && 'soccer_epl' || inputs.competition == 'ligue_1' && 'soccer_france_ligue_one' || inputs.competition == 'bundesliga' && 'soccer_germany_bundesliga' || inputs.competition == 'serie_a' && 'soccer_italy_serie_a' || 'soccer_spain_la_liga' }}
+        run: python scripts/probe_the_odds_api_events.py
+
+      - name: Retrieve 5Dollar scheduled fixture catalogue (one request)
+        env:
+          FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY: ${{ secrets.FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY || secrets.FIVEDOLLARFOOTBALL_API_KEY || secrets.FIVE_DOLLAR_FOOTBALL_API_KEY }}
+          FIVEDOLLAR_COMPETITION_ID: ${{ inputs.competition == 'brazil_serie_a' && '3118717965' || inputs.competition == 'brazil_serie_b' && '522514093' || inputs.competition == 'premier_league' && '4160026622' || inputs.competition == 'ligue_1' && '3614399544' || inputs.competition == 'bundesliga' && '686337048' || inputs.competition == 'serie_a' && '3405541143' || '4212821298' }}
+        run: python scripts/probe_5dollar_scheduled_fixtures.py
+
+      - name: Reconcile event identities and kickoff times
+        if: always()
+        run: python scripts/reconcile_odds_api_event_catalogue.py
+
+      - name: Upload cross-provider qualification manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-provider-fixture-qualification
+          path: |
+            odds-api-events-manifest.json
+            5dollar-scheduled-fixtures-manifest.json
+            odds-api-5dollar-fixture-match-manifest.json
+          if-no-files-found: ignore
+          retention-days: 7
