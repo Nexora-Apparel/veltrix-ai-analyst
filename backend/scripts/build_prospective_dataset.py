@@ -5,7 +5,6 @@ import argparse
 import hashlib
 import json
 import os
-from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -128,7 +127,17 @@ def build_report(
         validation_block_fixtures=validation_block_fixtures,
     )
     serialized_rows = [_jsonable_row(row) for row in rows]
-    serialized_folds = [asdict(fold) for fold in folds]
+    serialized_folds = [
+        {
+            "fold_number": fold.fold_number,
+            "train_fixture_ids": list(fold.train_fixture_ids),
+            "validation_fixture_ids": list(fold.validation_fixture_ids),
+            "train_cutoff_at": fold.train_cutoff_at.isoformat(),
+            "validation_start_at": fold.validation_start_at.isoformat(),
+            "validation_end_at": fold.validation_end_at.isoformat(),
+        }
+        for fold in folds
+    ]
     canonical = json.dumps(
         {"rows": serialized_rows, "folds": serialized_folds},
         sort_keys=True,
