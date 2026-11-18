@@ -10,7 +10,7 @@ from datetime import datetime
 from hashlib import sha256
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.providers.approvals import FIVEDOLLAR_COMMUNITY_ODDS_APPROVAL
 from app.providers.contracts import StrictModel
@@ -32,8 +32,9 @@ class CaptureExpectation(StrictModel):
     kickoff_at: datetime
     value_bet_decision_cutoff_at: datetime
 
+    @field_validator("kickoff_at", "value_bet_decision_cutoff_at")
     @classmethod
-    def _aware(cls, value: datetime) -> datetime:
+    def timestamps_must_be_aware(cls, value: datetime) -> datetime:
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("expectation timestamps must be timezone-aware")
         return value
