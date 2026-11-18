@@ -10,6 +10,7 @@ import json
 from datetime import UTC, datetime
 from math import ceil, isfinite, sqrt
 from typing import Any
+from uuid import UUID
 
 from app.contracts.prediction import FixturePredictionRequest, ModelPredictionOutput
 from app.models.attack_defence import AttackDefenceModel
@@ -18,6 +19,13 @@ from app.models.scoreline import build_scoreline_distribution
 
 class ModelArtifactNotPromoted(ValueError):
     """Raised when an artifact is not eligible for production inference."""
+
+
+@dataclass(frozen=True, slots=True)
+class VerifiedTeamMapping:
+    canonical_team_id: UUID
+    model_team_id: str
+    identity_status: str
 
 
 def _aware_datetime(value: Any, field: str) -> datetime:
@@ -85,23 +93,33 @@ def predict_fixture(
     artifact: dict[str, Any],
     request: FixturePredictionRequest,
     *,
-    home_model_team_id: str,
-    away_model_team_id: str,
-    team_identity_verified: bool,
+    home_team_mapping: VerifiedTeamMapping,
+    away_team_mapping: VerifiedTeamMapping,
     generated_at: datetime | None = None,
 ) -> ModelPredictionOutput:
     """Calculate every V1 market from one scoreline probability matrix."""
     model, rho, training_cutoff = _load_promoted_model(artifact)
-    if not team_identity_verified:
+    if (
+        home_team_mapping.canonical_team_id != request.home_team_id
+        or away_team_mapping.canonical_team_id != request.away_team_id
+        or home_team_mapping.identity_status != "VERIFIED"
+        or away_team_mapping.identity_status != "VERIFIED"
+    ):
         raise ValueError("CANONICAL_TEAM_IDENTITY_NOT_VERIFIED")
-    if not home_model_team_id or not away_model_team_id or home_model_team_id == away_model_team_id:
+    if (
+        not home_team_mapping.model_team_id
+        or not away_team_mapping.model_team_id
+        or home_team_mapping.model_team_id == away_team_mapping.model_team_id
+    ):
         raise ValueError("RESOLVED_MODEL_TEAM_IDS_REQUIRED_AND_DISTINCT")
     if training_cutoff >= request.prediction_cutoff_at:
         raise ModelArtifactNotPromoted("MODEL_TRAINING_CUTOFF_NOT_BEFORE_PREDICTION")
 
     # Canonical UUIDs are never assumed to equal provider-local model IDs.
     # The caller must resolve and verify both identities before inference.
-    rates = model.predict(home_model_team_id, away_model_team_id)
+    rates = model.predict(
+        home_team_mapping.model_team_id, away_team_mapping.model_team_id
+    )
     # Choose a fixture-specific grid large enough to avoid material tail loss.
     # The fitted rate parameter is bounded, so this remains computationally small.
     max_rate = max(rates.home_lambda, rates.away_lambda)
