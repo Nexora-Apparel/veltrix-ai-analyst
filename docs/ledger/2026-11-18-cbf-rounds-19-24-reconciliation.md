@@ -16,10 +16,10 @@ The join used ordered home/away provider team IDs from the existing reviewed can
 | Exact local kickoff matches | 60/60 |
 | Missing ordered pairings | 0 |
 | Kickoff discrepancies | 0 |
-| Provider scorelines independently checked against CBF match pages in this pass | 0/60 |
+| Scorelines reconciled against the later official CBF score table (rounds 1–29) | 60/60 |
 | Production rows modified | 0 |
 
-The provider schedule timestamps agree with the official CBF schedule for all 60 ordered fixture pairings in rounds 19–24. This is a schedule reconciliation, not an independent score verification.
+The provider schedule timestamps agree with the official CBF schedule for all 60 ordered fixture pairings in rounds 19–24. A later official CBF score-table audit, updated 23 September 2026, independently reconciles all 60 scores in rounds 19–24; see [score verification rounds 1–29](2026-11-18-cbf-score-verification-rounds-1-29.md). The schedule reconciliation and score verification are separate evidence passes.
 
 ## Official CBF sources
 
