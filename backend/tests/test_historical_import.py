@@ -13,7 +13,6 @@ from app.db.migrations import apply_migrations
 from app.db.request_budget import PostgresRequestBudget
 from app.db.store import PostgresIngestionStore
 from app.providers import historical_import, historical_validation
-from app.providers.historical_validation import validate_competition_import
 from app.providers.collection_plan import DateWindow
 from app.providers.five_dollar import FiveDollarFootballProvider
 from app.providers.historical_import import (
@@ -24,6 +23,7 @@ from app.providers.historical_import import (
     run_brazil_serie_b_historical_import,
     run_competition_historical_import,
 )
+from app.providers.historical_validation import validate_competition_import
 
 
 @pytest.fixture
