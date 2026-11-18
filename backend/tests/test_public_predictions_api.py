@@ -1,0 +1,66 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from uuid import UUID
+
+import pytest
+from pydantic import ValidationError
+
+from app.routes.public_predictions import _public_prediction
+
+
+def test_public_prediction_mapper_returns_only_fixture_and_market_data() -> None:
+    prediction_id = UUID("00000000-0000-0000-0000-000000000001")
+    fixture_id = UUID("00000000-0000-0000-0000-000000000002")
+    fixture = {
+        "prediction_id": prediction_id,
+        "canonical_fixture_id": fixture_id,
+        "competition": "Premier League",
+        "home_team": "Home FC",
+        "away_team": "Away FC",
+        "kickoff_at": datetime(2026, 11, 19, 18, 0, tzinfo=UTC),
+        "expected_home_goals": 1.4,
+        "expected_away_goals": 1.1,
+    }
+    market_rows = [
+        {"market": "1X2", "outcome": "HOME", "probability": 0.48},
+        {"market": "1X2", "outcome": "DRAW", "probability": 0.27},
+        {"market": "1X2", "outcome": "AWAY", "probability": 0.25},
+        {"market": "BTTS", "outcome": "YES", "probability": 0.54},
+        {"market": "BTTS", "outcome": "NO", "probability": 0.46},
+        {"market": "TOTALS_1_5", "outcome": "OVER", "probability": 0.78},
+        {"market": "TOTALS_1_5", "outcome": "UNDER", "probability": 0.22},
+        {"market": "TOTALS_2_5", "outcome": "OVER", "probability": 0.51},
+        {"market": "TOTALS_2_5", "outcome": "UNDER", "probability": 0.49},
+        {"market": "TOTALS_3_5", "outcome": "OVER", "probability": 0.29},
+        {"market": "TOTALS_3_5", "outcome": "UNDER", "probability": 0.71},
+    ]
+
+    result = _public_prediction(fixture, market_rows)
+    payload = result.model_dump()
+
+    assert payload["prediction_id"] == prediction_id
+    assert payload["fixture"]["fixture_id"] == fixture_id
+    assert payload["markets"]["one_x_two"]["HOME"] == 0.48
+    assert payload["markets"]["btts"]["YES"] == 0.54
+    assert payload["markets"]["over_under_1_5"]["OVER"] == 0.78
+    assert payload["markets"]["over_under_2_5"]["OVER"] == 0.51
+    assert payload["markets"]["over_under_3_5"]["UNDER"] == 0.71
+    assert "notes" not in payload
+    assert "system_report" not in payload
+    assert "model_report" not in payload
+
+
+def test_public_prediction_mapper_rejects_incomplete_market_data() -> None:
+    fixture = {
+        "prediction_id": UUID("00000000-0000-0000-0000-000000000001"),
+        "canonical_fixture_id": UUID("00000000-0000-0000-0000-000000000002"),
+        "competition": "Premier League",
+        "home_team": "Home FC",
+        "away_team": "Away FC",
+        "kickoff_at": datetime(2026, 11, 19, 18, 0, tzinfo=UTC),
+        "expected_home_goals": 1.4,
+        "expected_away_goals": 1.1,
+    }
+    with pytest.raises(ValidationError):
+        _public_prediction(fixture, [])
