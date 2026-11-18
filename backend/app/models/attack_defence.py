@@ -120,8 +120,10 @@ def fit_attack_defence(
     home_advantage = 0.12
 
     for _ in range(max_iterations):
-        grad_a = [ridge * value for value in attack]
-        grad_d = [ridge * value for value in defence]
+        # The normalized likelihood gradient is scaled below; apply each
+        # ridge derivative exactly once when assembling the final gradient.
+        grad_a = [0.0] * n
+        grad_d = [0.0] * n
         grad_mu = 0.0
         grad_home = 0.0
         for row in rows:
