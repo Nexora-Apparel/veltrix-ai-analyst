@@ -261,7 +261,9 @@ def normalize_5dollar_odds(
     if "bookmaker" in data and ("ticks" in data or "lines" in data):
         return normalize_5dollar_odds_history(
             response, provider_fixture_id=provider_fixture_id, kickoff_at=kickoff_at,
-            retrieved_at=retrieved_at, prediction_cutoff_at=prediction_cutoff_at,
+            request_started_at=request_started_at, retrieved_at=retrieved_at,
+            provider_response_date=provider_response_date,
+            prediction_cutoff_at=prediction_cutoff_at,
             source_observation_id=source_observation_id,
             rights_approval_id=rights_approval_id,
             rights_allow_value_betting=rights_allow_value_betting,
