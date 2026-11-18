@@ -8,11 +8,23 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from app.providers.event_matching import match_event_to_fixture
+from app.providers.event_matching import (
+    match_event_to_fixture,
+    select_market_probe_candidate,
+)
 
 ODDS_MANIFEST = Path("odds-api-events-manifest.json")
 FIXTURE_MANIFEST = Path("5dollar-scheduled-fixtures-manifest.json")
 OUTPUT = Path("odds-api-5dollar-fixture-match-manifest.json")
+APPROVED_SPORT_KEYS = {
+    "soccer_brazil_campeonato",
+    "soccer_brazil_serie_b",
+    "soccer_epl",
+    "soccer_france_ligue_one",
+    "soccer_germany_bundesliga",
+    "soccer_italy_serie_a",
+    "soccer_spain_la_liga",
+}
 
 
 def main() -> int:
@@ -28,10 +40,7 @@ def main() -> int:
         print("Provider manifests do not contain normalized arrays.")
         return 3
 
-    decisions = [
-        match_event_to_fixture(event, fixtures)
-        for event in events
-    ]
+    decisions = [match_event_to_fixture(event, fixtures) for event in events]
     status_counts = Counter(decision.status for decision in decisions)
     matches = [
         {
@@ -50,6 +59,12 @@ def main() -> int:
         and fixtures_payload.get("pagination_has_more") is False
     )
     exact_matches = status_counts.get("MATCHED", 0)
+    selected = (
+        select_market_probe_candidate(
+            matches, events, fixtures, allowed_sport_keys=APPROVED_SPORT_KEYS
+        )
+        if complete else None
+    )
     result = {
         "provider": "The Odds API + 5DollarFootballAPI",
         "odds_event_count": len(events),
@@ -58,16 +73,21 @@ def main() -> int:
         "match_status_counts": dict(sorted(status_counts.items())),
         "exact_unique_match_count": exact_matches,
         "matches": matches,
-        "market_probe_candidate": bool(complete and exact_matches == 1),
-        "market_probe_authorized": bool(complete and exact_matches == 1),
+        "eligible_exact_match_count": sum(
+            1 for row in matches if row.get("status") == "MATCHED"
+        ),
+        "selected_candidate": selected,
+        "selection_policy": (
+            "EARLIEST_FUTURE_EXACT_MATCH_THEN_EVENT_ID_FIXTURE_ID"
+        ),
+        "market_probe_candidate": selected is not None,
+        "market_probe_authorized": selected is not None,
         "outcome": (
-            "ONE_EXACT_MATCH_AUTHORIZED_FOR_SINGLE_H2H_PROBE"
-            if complete and exact_matches == 1
+            "ONE_EXACT_MATCH_SELECTED_FOR_SINGLE_H2H_PROBE"
+            if selected is not None
             else "CATALOGUE_TRUNCATED"
             if not complete
-            else "NO_UNIQUE_EXACT_MATCH"
-            if exact_matches == 0
-            else "MULTIPLE_EXACT_MATCHES"
+            else "NO_ELIGIBLE_UNAMBIGUOUS_EXACT_MATCH"
         ),
     }
     OUTPUT.write_text(

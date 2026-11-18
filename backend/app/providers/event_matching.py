@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -114,3 +115,88 @@ def match_event_to_fixture(
         tuple(sorted(fixture_id for fixture_id, _ in team_candidates)),
         nearest_delta,
     )
+
+
+def select_market_probe_candidate(
+    matches: list[Mapping[str, object]],
+    events: list[Mapping[str, object]],
+    fixtures: list[Mapping[str, object]],
+    *,
+    allowed_sport_keys: set[str],
+    now: datetime | None = None,
+) -> dict[str, str] | None:
+    """Select one deterministic, fully cross-referenced future event for a capped probe.
+
+    Multiple exact catalogue matches are expected. Only one is selected: the
+    earliest eligible kickoff, with stable ID tie-breakers. No aliases or
+    fuzzy matching are introduced here.
+    """
+    current = (now or datetime.now(UTC)).astimezone(UTC)
+    event_index: dict[str, list[Mapping[str, object]]] = {}
+    fixture_index: dict[str, list[Mapping[str, object]]] = {}
+    for event in events:
+        event_id = event.get("event_id")
+        if isinstance(event_id, str) and event_id.strip():
+            event_index.setdefault(event_id, []).append(event)
+    for fixture in fixtures:
+        fixture_id = fixture.get("provider_fixture_id")
+        if isinstance(fixture_id, str) and fixture_id.strip():
+            fixture_index.setdefault(fixture_id, []).append(fixture)
+
+    matched_rows = [row for row in matches if row.get("status") == "MATCHED"]
+    event_match_counts = Counter(
+        row.get("event_id") for row in matched_rows
+        if isinstance(row.get("event_id"), str)
+    )
+    fixture_match_counts = Counter(
+        row.get("fixture_id") for row in matched_rows
+        if isinstance(row.get("fixture_id"), str)
+    )
+    eligible: list[tuple[datetime, str, str, str, str]] = []
+    for match in matches:
+        if match.get("status") != "MATCHED":
+            continue
+        event_id = match.get("event_id")
+        fixture_id = match.get("fixture_id")
+        if not isinstance(event_id, str) or not isinstance(fixture_id, str):
+            continue
+        if event_match_counts[event_id] != 1 or fixture_match_counts[fixture_id] != 1:
+            continue
+        event_rows = event_index.get(event_id, [])
+        fixture_rows = fixture_index.get(fixture_id, [])
+        if len(event_rows) != 1 or len(fixture_rows) != 1:
+            continue
+        event = event_rows[0]
+        fixture = fixture_rows[0]
+        sport_key = event.get("sport_key")
+        if not isinstance(sport_key, str) or sport_key not in allowed_sport_keys:
+            continue
+        try:
+            event_kickoff = _parse_aware_datetime(
+                event.get("commence_time"), "EVENT_KICKOFF"
+            )
+            fixture_kickoff = _parse_aware_datetime(
+                fixture.get("kickoff_at"), "FIXTURE_KICKOFF"
+            )
+        except (TypeError, ValueError):
+            continue
+        if event_kickoff <= current or fixture_kickoff <= current:
+            continue
+        if abs((event_kickoff - fixture_kickoff).total_seconds()) > 300:
+            continue
+        eligible.append((
+            event_kickoff, event_id, fixture_id, sport_key,
+            str(event.get("commence_time")),
+        ))
+
+    if not eligible:
+        return None
+    kickoff, event_id, fixture_id, sport_key, commence_time = min(eligible)
+    return {
+        "event_id": event_id,
+        "fixture_id": fixture_id,
+        "sport_key": sport_key,
+        "commence_time": commence_time,
+        "fixture_kickoff_at": kickoff.isoformat(),
+        "selection_policy": "EARLIEST_FUTURE_EXACT_MATCH_THEN_EVENT_ID_FIXTURE_ID",
+    }
