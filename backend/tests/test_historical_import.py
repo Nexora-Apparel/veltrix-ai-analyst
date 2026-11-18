@@ -13,6 +13,7 @@ from app.db.migrations import apply_migrations
 from app.db.request_budget import PostgresRequestBudget
 from app.db.store import PostgresIngestionStore
 from app.providers import historical_import, historical_validation
+from app.providers.historical_validation import validate_competition_import
 from app.providers.collection_plan import DateWindow
 from app.providers.five_dollar import FiveDollarFootballProvider
 from app.providers.historical_import import (
@@ -299,6 +300,10 @@ def test_competition_import_persists_under_selected_provider_scope(
         ).fetchone()
     assert run == ("COMPLETED", competition_id, 1)
     assert fixture == (competition_id, "880001")
+    with psycopg.connect(database_url) as connection:
+        report = validate_competition_import(connection, run_id, competition_id)
+    assert report["passed"] is True
+    assert report["competition_id"] == competition_id
 
 
 def test_live_import_requires_both_explicit_execution_gates(
