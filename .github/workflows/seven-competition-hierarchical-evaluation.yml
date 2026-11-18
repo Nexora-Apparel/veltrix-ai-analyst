@@ -43,6 +43,24 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - name: Install backend
         run: python -m pip install -e .
+      - name: Verify database capture schema
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != "veltrix_ai_analyst":
+                  raise SystemExit("DATABASE_TARGET_MISMATCH")
+              present = connection.execute("""
+                  SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='veltrix_ai_analyst'
+                      AND table_name='source_observations'
+                      AND column_name='system_observed_at'
+                  )
+              """).fetchone()[0]
+              if not present:
+                  raise SystemExit("MIGRATION_012_REQUIRED")
       - name: Run read-only chronological hierarchical evaluation
         run: python scripts/evaluate_seven_competition_hierarchical.py
       - name: Upload immutable research report
