@@ -126,6 +126,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "006_pre_match_feature_pit_gate.sql",
             "007_canonical_entity_layer.sql",
             "008_canonical_identity_link_uniqueness.sql",
+            "008_model_artifacts.sql",
             "009_canonical_identity_review_cases.sql",
             "010_system_observed_pit.sql",
         }
@@ -163,6 +164,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "006_pre_match_feature_pit_gate.sql",
             "007_canonical_entity_layer.sql",
             "008_canonical_identity_link_uniqueness.sql",
+            "008_model_artifacts.sql",
             "009_canonical_identity_review_cases.sql",
             "010_system_observed_pit.sql",
         }.issubset(migration_versions)
@@ -186,6 +188,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "import_run_events",
             "import_request_reservations",
             "pre_match_feature_observations",
+            "model_artifacts",
             "canonical_teams",
             "canonical_competitions",
             "canonical_fixtures",
