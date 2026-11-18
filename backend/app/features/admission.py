@@ -26,18 +26,27 @@ def require_feature_admission(request: FeatureAdmissionRequest) -> None:
         raise FeatureAdmissionError("UNSUPPORTED_PREDICTION_FEATURE_DATA_DOMAIN")
     if not evidence.point_in_time_certifiable:
         raise FeatureAdmissionError("SOURCE_NOT_POINT_IN_TIME_CERTIFIABLE")
-    if evidence.availability_basis is not AvailabilityBasis.SOURCE_PUBLISHED_AT:
-        raise FeatureAdmissionError("VERIFIED_SOURCE_PUBLICATION_TIME_REQUIRED")
-    if evidence.source_published_at is None or evidence.available_at is None:
-        raise FeatureAdmissionError("SOURCE_PUBLICATION_AND_AVAILABILITY_TIMES_REQUIRED")
+    if evidence.available_at is None:
+        raise FeatureAdmissionError("SOURCE_AVAILABILITY_TIME_REQUIRED")
     if evidence.provider_response_id <= 0 or evidence.sighting_id <= 0:
         raise FeatureAdmissionError("EXACT_RESPONSE_AND_SIGHTING_REQUIRED")
-    if evidence.source_published_at > evidence.retrieved_at:
-        raise FeatureAdmissionError("SOURCE_PUBLICATION_AFTER_RETRIEVAL")
-    if evidence.available_at < evidence.source_published_at:
-        raise FeatureAdmissionError("AVAILABILITY_PRECEDES_SOURCE_PUBLICATION")
-    if evidence.source_published_at > cutoff or evidence.available_at > cutoff:
-        raise FeatureAdmissionError("SOURCE_NOT_AVAILABLE_AT_PREDICTION_CUTOFF")
+
+    if evidence.availability_basis is AvailabilityBasis.SOURCE_PUBLISHED_AT:
+        if evidence.source_published_at is None:
+            raise FeatureAdmissionError("SOURCE_PUBLICATION_TIME_REQUIRED")
+        if evidence.source_published_at > evidence.retrieved_at:
+            raise FeatureAdmissionError("SOURCE_PUBLICATION_AFTER_RETRIEVAL")
+        if evidence.available_at < evidence.source_published_at:
+            raise FeatureAdmissionError("AVAILABILITY_PRECEDES_SOURCE_PUBLICATION")
+        if evidence.source_published_at > cutoff or evidence.available_at > cutoff:
+            raise FeatureAdmissionError("SOURCE_NOT_AVAILABLE_AT_PREDICTION_CUTOFF")
+    elif evidence.availability_basis is AvailabilityBasis.SYSTEM_OBSERVED_AT:
+        if evidence.source_published_at is not None or evidence.available_at != evidence.retrieved_at:
+            raise FeatureAdmissionError("SYSTEM_OBSERVED_AVAILABILITY_TIMESTAMP_REQUIRED")
+        if evidence.retrieved_at > cutoff:
+            raise FeatureAdmissionError("SOURCE_NOT_OBSERVED_BY_PREDICTION_CUTOFF")
+    else:
+        raise FeatureAdmissionError("VERIFIED_SOURCE_AVAILABILITY_BASIS_REQUIRED")
     if evidence.rights_status_at_cutoff is not RightsStatus.APPROVED:
         raise FeatureAdmissionError("SOURCE_RIGHTS_NOT_APPROVED_AT_CUTOFF")
     required_uses = {"FEATURE_ENGINEERING", "MODEL_TRAINING"}
