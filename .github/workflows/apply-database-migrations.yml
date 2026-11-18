@@ -392,3 +392,115 @@ jobs:
                   raise SystemExit("MIGRATION_011_SCOPE_COLUMN_MISSING")
           print(f"MIGRATION_011_VERIFIED: {checksum}")
           PY
+
+      - name: Verify migration 014 prediction storage and publication gate
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          import psycopg
+
+          migration = Path("migrations/014_prediction_publication_storage.sql")
+          checksum = hashlib.sha256(migration.read_bytes()).hexdigest()
+          tables = [
+              "prediction_feature_snapshots",
+              "predictions",
+              "prediction_market_probabilities",
+              "prediction_publication_events",
+          ]
+          views = [
+              "published_predictions",
+              "published_prediction_markets",
+          ]
+          functions = [
+              "enforce_prediction_feature_snapshot_pit()",
+              "enforce_prediction_inference_prematch()",
+              "prevent_market_changes_after_publication()",
+              "enforce_prediction_publish_gate()",
+          ]
+          triggers = [
+              "prediction_feature_snapshot_pit_gate",
+              "prediction_inference_prematch_gate",
+              "prediction_market_publication_guard",
+              "prediction_publication_gate",
+              "prediction_feature_snapshots_append_only",
+              "predictions_append_only",
+              "prediction_market_probabilities_append_only",
+              "prediction_publication_events_append_only",
+          ]
+
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != "veltrix_ai_analyst":
+                  raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
+
+              recorded = connection.execute(
+                  "SELECT checksum FROM public.schema_migrations WHERE version = %s",
+                  (migration.name,),
+              ).fetchone()
+              if recorded is None or recorded[0].strip() != checksum:
+                  raise SystemExit("MIGRATION_014_CHECKSUM_NOT_APPLIED")
+
+              for relation in tables + views:
+                  if connection.execute(
+                      "SELECT to_regclass(%s)",
+                      (f"veltrix_ai_analyst.{relation}",),
+                  ).fetchone()[0] is None:
+                      raise SystemExit(f"MIGRATION_014_RELATION_MISSING:{relation}")
+
+              for function in functions:
+                  if connection.execute(
+                      "SELECT to_regprocedure(%s)",
+                      (f"veltrix_ai_analyst.{function}",),
+                  ).fetchone()[0] is None:
+                      raise SystemExit(f"MIGRATION_014_FUNCTION_MISSING:{function}")
+
+              trigger_count = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM pg_trigger trigger_row
+                  JOIN pg_class relation ON relation.oid = trigger_row.tgrelid
+                  JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+                  WHERE namespace.nspname = 'veltrix_ai_analyst'
+                    AND NOT trigger_row.tgisinternal
+                    AND trigger_row.tgname = ANY(%s)
+                  """,
+                  (triggers,),
+              ).fetchone()[0]
+              if trigger_count != len(triggers):
+                  raise SystemExit("MIGRATION_014_TRIGGER_SET_INCOMPLETE")
+
+              historical_counts = connection.execute(
+                  """
+                  SELECT
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.source_observations),
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.source_observation_sightings),
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.provider_responses),
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.source_observations
+                     WHERE system_observed_at IS NOT NULL),
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.source_observation_sightings
+                     WHERE system_observed_at IS NOT NULL),
+                    (SELECT COUNT(*) FROM veltrix_ai_analyst.provider_responses
+                     WHERE system_observed_at IS NOT NULL)
+                  """
+              ).fetchone()
+              if historical_counts[:3] < (1243, 2884, 115):
+                  raise SystemExit(f"HISTORICAL_EVIDENCE_COUNT_REGRESSION:{historical_counts[:3]}")
+              if historical_counts[3:] != (0, 0, 0):
+                  raise SystemExit(
+                      f"HISTORICAL_PIT_TIMESTAMPS_WERE_BACKFILLED:{historical_counts[3:]}"
+                  )
+
+              published_count = connection.execute(
+                  "SELECT COUNT(*) FROM veltrix_ai_analyst.published_predictions"
+              ).fetchone()[0]
+              if published_count != 0:
+                  raise SystemExit("UNEXPECTED_PREDICTIONS_PUBLISHED_DURING_SCHEMA_MIGRATION")
+
+          print(f"MIGRATION_014_VERIFIED: {checksum}")
+          print("PREDICTION_STORAGE_VERIFIED: 4 tables, 2 views, 4 functions, 8 triggers")
+          print("HISTORICAL_EVIDENCE_PRESERVED: 1243+ observations, 2884+ sightings, 115+ responses")
+          print("PIT_HISTORY_PRESERVED: historical system_observed_at values remain NULL")
+          print("PUBLICATION_GATE_VERIFIED: no prediction was published by schema migration")
+          PY
