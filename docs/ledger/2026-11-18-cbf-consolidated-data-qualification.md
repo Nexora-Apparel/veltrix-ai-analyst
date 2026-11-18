@@ -59,7 +59,7 @@ The production audit found 384 source observations and 384 sightings for the com
 
 ## Remaining qualification blockers
 
-### 1. Scoreline verification
+### Resolved — scoreline verification
 
 The official CBF score table reconciles 290/290 fixtures in rounds 1–29. One PDF score conflict (Fortaleza–Operário, CBF ref 245) is resolved using the individual CBF match page and corroborating CBF news article; the raw PDF and provider rows are preserved. Official CBF result articles verify all 10 round-30 fixtures, all 10 round-38 fixtures, and all 40 fixtures in rounds 33–36. The 33–36 article pass has two overlaps with previously checked individual match pages (refs 325 and 360); the round-38 article has three overlaps (refs 371, 372 and 374). The final 27 outstanding fixtures (rounds 31–32 and 37) were then cross-checked against individual official CBF match pages, with 27/27 matches, 0 mismatches and 0 missing provider fixtures. **All 380/380 scorelines are now verified.** See the [rounds 1–29 score ledger](2026-11-18-cbf-score-verification-rounds-1-29.md), [round 30](2026-11-18-cbf-round30-score-verification.md), [rounds 31–32 and 37](2026-11-18-cbf-rounds-31-32-37-score-verification.md), [rounds 33–36](2026-11-18-cbf-rounds-33-36-score-verification.md), and [round 38](2026-11-18-cbf-round38-score-verification.md).
 
