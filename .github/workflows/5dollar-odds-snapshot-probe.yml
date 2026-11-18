@@ -6,7 +6,7 @@ on:
       fixture_id:
         description: Existing 5Dollar provider fixture ID (one request only)
         required: true
-        default: "1194891794"
+        default: "4042864659"
         type: string
 
 permissions:
