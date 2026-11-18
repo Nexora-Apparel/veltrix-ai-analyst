@@ -67,13 +67,21 @@ def _load_promoted_model(artifact: dict[str, Any]) -> tuple[AttackDefenceModel, 
         ridge = float(primary["ridge"])
         training_fixtures = int(primary["training_fixtures"])
         rho = float(artifact["dixon_coles"]["rho"])
-    except (KeyError, TypeError, ValueError) as exc:
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
         raise ModelArtifactNotPromoted("MODEL_PARAMETERS_INVALID") from exc
 
     values = [*attack.values(), *defence.values(), intercept, home_advantage, rho]
     if not all(isfinite(value) for value in values):
         raise ModelArtifactNotPromoted("MODEL_PARAMETERS_NON_FINITE")
-    if not attack or set(attack) != set(defence) or training_fixtures < 1:
+    if (
+        not attack
+        or set(attack) != set(defence)
+        or training_fixtures < 1
+        or not isfinite(half_life_days)
+        or half_life_days <= 0
+        or not isfinite(ridge)
+        or ridge < 0
+    ):
         raise ModelArtifactNotPromoted("MODEL_TEAM_PARAMETERS_INCOMPLETE")
 
     model = AttackDefenceModel(
@@ -140,6 +148,8 @@ def predict_fixture(
     generated = generated_at or datetime.now(UTC)
     if generated.tzinfo is None or generated.utcoffset() is None:
         raise ValueError("generated_at must be timezone-aware")
+    if generated < request.prediction_cutoff_at or generated >= request.kickoff_at:
+        raise ValueError("GENERATION_TIME_OUTSIDE_PREMATCH_WINDOW")
 
     primary = artifact["primary_model"]
     model_id = _required_text(artifact, "model_id")
