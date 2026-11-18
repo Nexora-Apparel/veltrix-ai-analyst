@@ -155,6 +155,16 @@ def download_pdf() -> bytes:
         return response.read()
 
 
+def load_score_adjudications() -> dict[str, dict[str, object]]:
+    registry_path = Path(__file__).resolve().parents[1] / "data/research/official_score_adjudications.json"
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    entries = registry.get("adjudications", [])
+    adjudications = {str(row["cbf_reference"]): row for row in entries}
+    if len(adjudications) != len(entries):
+        raise RuntimeError("DUPLICATE_OFFICIAL_SCORE_ADJUDICATION_REFERENCE")
+    return adjudications
+
+
 def main() -> int:
     database_url = os.environ.get("DATABASE_URL", "")
     if not database_url:
@@ -176,6 +186,8 @@ def main() -> int:
                 FIXTURE_QUERY, (PROVIDER, SOURCE_ID, COMPETITION_ID)
             ).fetchall()
 
+    score_adjudications = load_score_adjudications()
+    consumed_adjudications: set[str] = set()
     provider_by_pair: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
     for fixture_id, home_id, away_id, home_name, away_name, home_goals, away_goals in provider_rows:
         provider_by_pair[(str(home_id), str(away_id))].append({
@@ -187,6 +199,7 @@ def main() -> int:
         })
 
     verified = []
+    adjudicated = []
     mismatches = []
     missing = []
     ambiguous = []
@@ -217,22 +230,53 @@ def main() -> int:
         }
         if provider_score == expected_score:
             verified.append(audit_row)
+            continue
+        adjudication = score_adjudications.get(str(cbf["cbf_reference"]))
+        if adjudication is not None:
+            official_score = tuple(int(value) for value in adjudication["official_score"])
+            pdf_score = tuple(int(value) for value in adjudication["pdf_score"])
+            official_page = str(adjudication["official_match_page_url"])
+            if (
+                str(adjudication["provider_fixture_id"]) != provider["provider_fixture_id"]
+                or pdf_score != expected_score
+                or official_score != provider_score
+                or "cbf.com.br/futebol-brasileiro/jogos/" not in official_page
+            ):
+                mismatches.append({**audit_row, "adjudication_validation": "FAILED"})
+            else:
+                consumed_adjudications.add(str(cbf["cbf_reference"]))
+                adjudicated.append({
+                    **audit_row,
+                    "pdf_score": list(expected_score),
+                    "official_match_page_score": list(official_score),
+                    "official_match_page_url": official_page,
+                    "corroborating_official_news_url": adjudication.get(
+                        "corroborating_official_cbf_news_url"
+                    ),
+                    "adjudication_status": adjudication["status"],
+                    "reason": adjudication["reason"],
+                })
         else:
             mismatches.append(audit_row)
 
+    unused_adjudications = sorted(set(score_adjudications) - consumed_adjudications)
     counts = {
         "cbf_scored_rows": len(cbf_fixtures),
         "provider_finished_rows": len(provider_rows),
-        "verified_exact_score_matches": len(verified),
-        "score_mismatches": len(mismatches),
+        "pdf_exact_score_matches": len(verified),
+        "official_match_page_score_adjudications": len(adjudicated),
+        "verified_against_controlling_official_cbf_evidence": len(verified) + len(adjudicated),
+        "unresolved_score_mismatches": len(mismatches),
         "provider_pairing_missing": len(missing),
         "multiple_provider_candidates": len(ambiguous),
         "unmapped_cbf_teams": len(unmapped),
+        "unused_score_adjudications": len(unused_adjudications),
     }
     passed = (
         len(cbf_fixtures) == EXPECTED_SCORED_FIXTURES
-        and len(verified) == EXPECTED_SCORED_FIXTURES
+        and len(verified) + len(adjudicated) == EXPECTED_SCORED_FIXTURES
         and not mismatches and not missing and not ambiguous and not unmapped
+        and not unused_adjudications
     )
     output = {
         "audit_type": "OFFICIAL_CBF_PUBLISHED_SCORE_TABLE_VS_5DOLLAR_FINISHED_FIXTURES_READ_ONLY",
@@ -246,13 +290,16 @@ def main() -> int:
         "score_scope": "Rounds 1–29 only; later rounds have no score in this PDF and are not inferred.",
         "passed": passed,
         "counts": counts,
-        "verified": verified,
+        "verified_pdf_exact_matches": verified,
+        "official_match_page_adjudications": adjudicated,
         "mismatches": mismatches,
+        "unused_score_adjudications": unused_adjudications,
         "missing": missing,
         "ambiguous": ambiguous,
         "unmapped": unmapped,
         "limitations": [
-            "Official CBF score column is the independent score reference; no CBF match-page scraping is claimed.",
+            "The CBF basic-schedule PDF is the primary score source; individual CBF match pages control where a documented source conflict exists.",
+            "The one PDF conflict at match 245 is adjudicated to the individual official CBF match page, corroborated by an official CBF round article; raw PDF and provider rows remain unchanged.",
             "The PDF is updated 2026-09-23 and carries scores for rounds 1–29 only.",
             "This does not verify scores for rounds 30–38.",
             "Candidate provider-team mapping is used only to pair fixtures; no canonical identity is approved.",
