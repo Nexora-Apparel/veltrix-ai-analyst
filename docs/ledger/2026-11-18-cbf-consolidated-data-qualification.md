@@ -4,7 +4,7 @@
 
 The 380-fixture finished corpus now has full fixture-reference, ordered home/away pairing and kickoff chronology reconciliation against official CBF schedules. Two evidence-backed research-only timestamp corrections are applied. The raw provider fixtures and source observations remain immutable.
 
-This does **not** make the corpus PIT-certified or the model production-ready. Scoreline verification and canonical identity review remain incomplete.
+This does **not** make the corpus PIT-certified or the model production-ready. Scoreline verification is complete; canonical identity review and historical PIT evidence remain unresolved.
 
 ## Schedule and chronology coverage
 
@@ -32,7 +32,7 @@ Detailed evidence:
 
 ## Corrected retrospective research
 
-Latest corrected report: [workflow 44286437268](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286437268); [corrected report artifact](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286437268/artifacts/14419186651); [paired diagnostics artifact](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286437268/artifacts/14418483224).
+Latest corrected report: [workflow 44286932299](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286932299); [corrected report artifact](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286932299/artifacts/14419193217); [paired diagnostics artifact](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44286932299/artifacts/14420445186).
 
 - Source observations: 384
 - FINISHED labeled fixtures: 380
@@ -40,8 +40,8 @@ Latest corrected report: [workflow 44286437268](https://github.com/Nexora-Appare
 - Provider-local teams in finished corpus: 20
 - Invalid rows: 0
 - Kickoff adjudications applied: 2
-- Independently cross-checked official CBF scores: 353/380; 27 pending
-- Corrected report SHA-256: `2a411e223508db929c63e26185798c9c94f36dc1ddc2c81a8a9b76d97388fd80`
+- Independently cross-checked official CBF scores: 380/380; 0 pending
+- Corrected report SHA-256: `e5d8356a4cd34551d5fe2a5a98f0f3b476d338335873c0b721fd507a844c3caa`
 - Paired diagnostics: 2,000 moving-block bootstrap resamples, block size 20; every pairwise 95% interval crosses zero.
 - Detailed report: [corrected retrospective research report ledger](2026-11-18-corrected-retrospective-research-report.md)
 
