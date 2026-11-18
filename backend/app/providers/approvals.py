@@ -90,6 +90,22 @@ FIVEDOLLAR_ACCOUNT_APPROVAL = SourceApproval(
 )
 
 
+FIVEDOLLAR_COMMUNITY_ODDS_APPROVAL = SourceApproval(
+    approval_id="approval-5dollar-community-odds-value-betting-2026-11-18",
+    provider="5DollarFootballAPI", source_id="5dollarfootballapi",
+    scope_type="competition_id", scope_values=FIVEDOLLAR_COMMUNITY_APPROVAL.scope_values,
+    data_types=frozenset({"bookmaker_odds"}), status=ApprovalStatus.APPROVED,
+    permitted_uses=frozenset({DataUsePurpose.COLLECTION, DataUsePurpose.STORAGE, DataUsePurpose.INTERNAL_ANALYSIS, DataUsePurpose.VALUE_BETTING, DataUsePurpose.CACHE}),
+    commercial_use_allowed=False, terms_url="https://5dollarfootballapi.com/terms",
+    terms_version="October 2026", evidence_uri="docs/providers/5DOLLAR_TERMS_REVIEW.md",
+    evidence_sha256="e818940f894b924ec3e25fbf36e3a43e3969b17d509b21b7a476ddf14a10d879",
+    rights_basis="TERMS", reviewed_at_utc=datetime(2026, 11, 18, tzinfo=UTC),
+    reviewer_id="project-owner", valid_from_utc=datetime(2026, 11, 18, tzinfo=UTC),
+    attribution_required=True, attribution_text="Football data by 5DollarFootballAPI",
+    attribution_url="https://5dollarfootballapi.com", raw_redistribution_allowed=False,
+)
+
+
 AIMIDAS_BRAZIL_SERIE_B_APPROVAL = SourceApproval(
     approval_id="approval-aimidas-football-data-noncommercial-2026-11-15",
     provider="AI Midas Football Data",
@@ -161,12 +177,9 @@ THE_ODDS_API_SOCCER_APPROVAL = SourceApproval(
             DataUsePurpose.COLLECTION,
             DataUsePurpose.STORAGE,
             DataUsePurpose.INTERNAL_ANALYSIS,
-            DataUsePurpose.FEATURE_ENGINEERING,
-            DataUsePurpose.MODEL_TRAINING,
-            DataUsePurpose.MODEL_VALIDATION,
+            DataUsePurpose.VALUE_BETTING,
             DataUsePurpose.BENCHMARKING,
             DataUsePurpose.CACHE,
-            DataUsePurpose.PUBLIC_DISPLAY,
         }
     ),
     commercial_use_allowed=False,
