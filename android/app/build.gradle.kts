@@ -4,6 +4,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val veltrixApiBaseUrl = providers.gradleProperty("VELTRIX_API_BASE_URL")
+    .orElse(providers.environmentVariable("VELTRIX_API_BASE_URL"))
+    .getOrElse("")
+val escapedVeltrixApiBaseUrl = veltrixApiBaseUrl
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
+
 android {
     namespace = "com.veltrix.aianalyst"
     compileSdk = 35
@@ -14,7 +21,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
-        buildConfigField("String", "API_BASE_URL", "")
+        buildConfigField("String", "API_BASE_URL", "\"$escapedVeltrixApiBaseUrl\"")
     }
 
     buildFeatures {
