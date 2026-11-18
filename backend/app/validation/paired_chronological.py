@@ -5,12 +5,11 @@ uses bookmaker prices and does not claim point-in-time (PIT) certification.
 """
 from __future__ import annotations
 
-from collections import defaultdict
-from collections.abc import Sequence
-from datetime import datetime
-from math import log
+import collections
+import datetime
+import math
 import random
-from typing import Any
+import typing
 
 
 MODEL_NAMES = ("elo", "poisson", "ensemble")
@@ -24,7 +23,7 @@ COLD_START_PHASES = (
 )
 
 
-def _probability_vector(row: dict[str, Any], model: str) -> tuple[float, float, float]:
+def _probability_vector(row: dict[str, typing.Any], model: str) -> tuple[float, float, float]:
     if model in ("elo", "poisson"):
         raw = row[f"{model}_1x2"]
         return tuple(float(value) for value in raw)  # type: ignore[return-value]
@@ -38,12 +37,12 @@ def _probability_vector(row: dict[str, Any], model: str) -> tuple[float, float, 
     return tuple(value / total for value in values)  # type: ignore[return-value]
 
 
-def _actual(row: dict[str, Any]) -> int:
+def _actual(row: dict[str, typing.Any]) -> int:
     home, away = int(row["actual_home_goals"]), int(row["actual_away_goals"])
     return 0 if home > away else 1 if home == away else 2
 
 
-def _metrics(rows: Sequence[dict[str, Any]], model: str) -> dict[str, float | int]:
+def _metrics(rows: collections.abc.Sequence[dict[str, typing.Any]], model: str) -> dict[str, float | int]:
     if not rows:
         return {"matches": 0, "brier": 0.0, "log_loss": 0.0}
     brier = 0.0
@@ -52,11 +51,11 @@ def _metrics(rows: Sequence[dict[str, Any]], model: str) -> dict[str, float | in
         actual = _actual(row)
         probs = _probability_vector(row, model)
         brier += sum((probs[i] - float(i == actual)) ** 2 for i in range(3))
-        log_loss -= log(max(1e-15, probs[actual]))
+        log_loss -= math.log(max(1e-15, probs[actual]))
     return {"matches": len(rows), "brier": brier / len(rows), "log_loss": log_loss / len(rows)}
 
 
-def _percentile(values: Sequence[float], quantile: float) -> float:
+def _percentile(values: collections.abc.Sequence[float], quantile: float) -> float:
     ordered = sorted(values)
     position = (len(ordered) - 1) * quantile
     lower = int(position)
@@ -66,8 +65,8 @@ def _percentile(values: Sequence[float], quantile: float) -> float:
 
 
 def _paired_block_bootstrap(
-    rows: Sequence[dict[str, Any]], *, resamples: int, block_size: int, seed: int
-) -> dict[str, Any]:
+    rows: collections.abc.Sequence[dict[str, typing.Any]], *, resamples: int, block_size: int, seed: int
+) -> dict[str, typing.Any]:
     if len(rows) < 2:
         raise ValueError("at least two paired predictions are required")
     if resamples < 100:
@@ -77,23 +76,23 @@ def _paired_block_bootstrap(
     rng = random.Random(seed)
     n = len(rows)
     kickoff_groups = _kickoff_batches(rows)
-    blocks: list[list[dict[str, Any]]] = []
+    blocks: list[list[dict[str, typing.Any]]] = []
     for start in range(len(kickoff_groups)):
-        block: list[dict[str, Any]] = []
+        block: list[dict[str, typing.Any]] = []
         for group in kickoff_groups[start:]:
             block.extend(group)
             if len(block) >= block_size:
                 break
         if block:
             blocks.append(block)
-    comparisons: dict[str, Any] = {}
+    comparisons: dict[str, typing.Any] = {}
     sample_sizes: list[int] = []
     for left_index, left in enumerate(MODEL_NAMES):
         for right in MODEL_NAMES[left_index + 1:]:
             samples_brier: list[float] = []
             samples_log: list[float] = []
             for _ in range(resamples):
-                selected: list[dict[str, Any]] = []
+                selected: list[dict[str, typing.Any]] = []
                 while len(selected) < n:
                     selected.extend(rng.choice(blocks))
                 sample = selected
@@ -127,17 +126,17 @@ def _paired_block_bootstrap(
     }
 
 
-def _kickoff_batches(rows: Sequence[dict[str, Any]]) -> list[list[dict[str, Any]]]:
-    batches: list[list[dict[str, Any]]] = []
+def _kickoff_batches(rows: collections.abc.Sequence[dict[str, typing.Any]]) -> list[list[dict[str, typing.Any]]]:
+    batches: list[list[dict[str, typing.Any]]] = []
     for row in rows:
-        kickoff = datetime.fromisoformat(row["kickoff_at"])
-        if not batches or datetime.fromisoformat(batches[-1][0]["kickoff_at"]) != kickoff:
+        kickoff = datetime.datetime.fromisoformat(row["kickoff_at"])
+        if not batches or datetime.datetime.fromisoformat(batches[-1][0]["kickoff_at"]) != kickoff:
             batches.append([])
         batches[-1].append(row)
     return batches
 
 
-def _periods(rows: Sequence[dict[str, Any]], period_count: int) -> list[dict[str, Any]]:
+def _periods(rows: collections.abc.Sequence[dict[str, typing.Any]], period_count: int) -> list[dict[str, typing.Any]]:
     batches = _kickoff_batches(rows)
     if not batches:
         return []
@@ -158,10 +157,10 @@ def _periods(rows: Sequence[dict[str, Any]], period_count: int) -> list[dict[str
     return periods
 
 
-def _cold_start(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+def _cold_start(rows: collections.abc.Sequence[dict[str, typing.Any]]) -> list[dict[str, typing.Any]]:
     batches = _kickoff_batches(rows)
     history_count = 0
-    phase_rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    phase_rows: dict[str, list[dict[str, typing.Any]]] = collections.defaultdict(list)
     for batch in batches:
         if history_count == 0:
             phase = "cold_start_0"
@@ -188,12 +187,12 @@ def _cold_start(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
     return output
 
 
-def _calibration(rows: Sequence[dict[str, Any]], *, bins: int = 10) -> dict[str, Any]:
+def _calibration(rows: collections.abc.Sequence[dict[str, typing.Any]], *, bins: int = 10) -> dict[str, typing.Any]:
     if bins < 2:
         raise ValueError("at least two calibration bins are required")
-    output: dict[str, Any] = {}
+    output: dict[str, typing.Any] = {}
     for class_index, class_name in enumerate(OUTCOMES):
-        model_data: dict[str, Any] = {}
+        model_data: dict[str, typing.Any] = {}
         for model in MODEL_NAMES:
             bucket_rows: list[list[tuple[float, float]]] = [[] for _ in range(bins)]
             for row in rows:
@@ -221,15 +220,15 @@ def _calibration(rows: Sequence[dict[str, Any]], *, bins: int = 10) -> dict[str,
 
 
 def evaluate_paired_chronological_report(
-    report: dict[str, Any], *, resamples: int = 2000, block_size: int = 20,
+    report: dict[str, typing.Any], *, resamples: int = 2000, block_size: int = 20,
     seed: int = 20261118, period_count: int = 4, calibration_bins: int = 10,
-) -> dict[str, Any]:
+) -> dict[str, typing.Any]:
     if report.get("dataset_type") != "RETROSPECTIVE_RESEARCH_NOT_PIT_CERTIFIED":
         raise ValueError("input must be a non-PIT retrospective prequential report")
     predictions = report.get("predictions")
     if not isinstance(predictions, list) or len(predictions) < 2:
         raise ValueError("at least two predictions are required")
-    rows = sorted(predictions, key=lambda row: (datetime.fromisoformat(row["kickoff_at"]), row["fixture_id"]))
+    rows = sorted(predictions, key=lambda row: (datetime.datetime.fromisoformat(row["kickoff_at"]), row["fixture_id"]))
     for row in rows:
         for model in MODEL_NAMES:
             vector = _probability_vector(row, model)
