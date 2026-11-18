@@ -66,7 +66,7 @@ def safe_provider_error(body: bytes, api_key: str) -> tuple[str | None, str | No
 
 def emit(manifest: dict[str, object]) -> None:
     Path("odds-api-events-manifest.json").write_text(
-        json.dumps(manifest, sort_keys=True, indent=2) + "\\n", encoding="utf-8"
+        json.dumps(manifest, sort_keys=True, indent=2) + "\n", encoding="utf-8"
     )
     print(json.dumps(manifest, sort_keys=True, indent=2))
 
