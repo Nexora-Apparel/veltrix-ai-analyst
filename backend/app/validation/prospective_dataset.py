@@ -360,7 +360,11 @@ def _team_form(
         max(0.0, (target_kickoff - latest_kickoff).total_seconds() / 86400.0)
         if latest_kickoff is not None else 0.0
     )
-    values = {f"{prefix}_matches_last5": float(len(selected))}
+    values = {
+        f"{prefix}_matches_last5": float(len(selected)),
+        f"{prefix}_stats_coverage_last5": float(stats_coverage),
+        f"{prefix}_events_coverage_last5": float(events_coverage),
+    }
     if selected:
         values.update({
             f"{prefix}_points_per_match_last5": mean(points),
@@ -370,8 +374,6 @@ def _team_form(
                 mean(goals_for) - mean(goals_against)
             ),
             f"{prefix}_rest_days": rest_days,
-            f"{prefix}_stats_coverage_last5": float(stats_coverage),
-            f"{prefix}_events_coverage_last5": float(events_coverage),
         })
     for key, metric_values in statistic_values.items():
         if metric_values:
