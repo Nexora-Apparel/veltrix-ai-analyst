@@ -22,6 +22,8 @@ def is_valid_retrospective_observation(row: Mapping[str, Any]) -> bool:
     available_at = row.get("available_at")
     system_observed_at = row.get("system_observed_at")
     http_status = row.get("http_status")
+    response_fetched_at = row.get("response_fetched_at")
+    response_system_observed_at = row.get("response_system_observed_at")
     raw_response_sha256 = row.get("raw_response_sha256")
     payload_sha256 = row.get("payload_sha256")
     basis = row.get("availability_basis")
@@ -46,7 +48,14 @@ def is_valid_retrospective_observation(row: Mapping[str, Any]) -> bool:
         availability_valid
         and row.get("source_published_at") is None
         and retrieved_at is not None
-        and (system_observed_at is None or system_observed_at >= retrieved_at)
+        and response_fetched_at == retrieved_at
+        and (
+            system_observed_at is None
+            or (
+                system_observed_at >= retrieved_at
+                and response_system_observed_at == system_observed_at
+            )
+        )
         and row.get("provider_response_id") is not None
         and isinstance(payload_sha256, str)
         and re.fullmatch(r"[0-9a-f]{64}", payload_sha256.strip()) is not None
