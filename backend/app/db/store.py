@@ -1303,7 +1303,8 @@ class PostgresIngestionStore:
         evidence availability and the strict target-fixture kickoff cutoff.
         """
         self._require_aware(prediction_cutoff_at, "PREDICTION_CUTOFF_AT")
-        if min(target_fixture_id, source_observation_id, source_sighting_id) < 1:
+        identifiers = (target_fixture_id, source_observation_id, source_sighting_id)
+        if any(type(value) is not int or value < 1 for value in identifiers):
             raise IngestionStoreError("PRE_MATCH_FEATURE_IDENTITY_REQUIRED")
         if not feature_key.strip() or len(feature_key.strip()) > 160:
             raise IngestionStoreError("PRE_MATCH_FEATURE_KEY_INVALID")
