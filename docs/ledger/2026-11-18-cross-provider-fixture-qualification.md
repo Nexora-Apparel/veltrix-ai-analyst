@@ -61,3 +61,7 @@ No historical odds, retries, pagination, bulk collection, database writes, recur
 - No retries, pagination, history request, DB write or recurring schedule is performed.
 - The response manifest records request/retrieval timestamps, response hash/size, provider date header and quota headers. The API key and raw response are never logged.
 - The observation remains research-only. `last_update` alone does not establish PIT admissibility; source publication/availability and system receipt evidence must still satisfy the feature admission contract.
+
+
+- PR #52 merged as `30f4036b819c901ce4404b5ff65336fec992344c`; CI [#44224762047](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44224762047) passed with 214 backend tests, Ruff and Android debug build.
+- The event h2h manifest records the parsed `actual_quota_cost` and `quota_cost_within_one_credit_cap`. A zero-cost empty response and a one-credit response both satisfy the cap; a missing/invalid cost header or cost above one is explicitly flagged.
