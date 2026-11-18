@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import sys
+from pathlib import Path
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -20,6 +21,12 @@ TIMEOUT_SECONDS = 20
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def emit(manifest: dict[str, object]) -> None:
+    rendered = json.dumps(manifest, sort_keys=True, indent=2)
+    Path("odds-api-catalogue-manifest.json").write_text(rendered + "\\n", encoding="utf-8")
+    print(rendered)
 
 
 def main() -> int:
@@ -44,7 +51,7 @@ def main() -> int:
     if not key:
         manifest["outcome"] = "MISSING_SECRET"
         print("The Odds API: MISSING_SECRET (THE_ODDS_API_KEY)")
-        print(json.dumps(manifest, sort_keys=True))
+        emit(manifest)
         return 2
 
     request = Request(
