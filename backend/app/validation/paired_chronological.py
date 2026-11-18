@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime
+from math import log
 import random
 from typing import Any, Sequence
 
@@ -48,7 +49,7 @@ def _metrics(rows: Sequence[dict[str, Any]], model: str) -> dict[str, float | in
         actual = _actual(row)
         probs = _probability_vector(row, model)
         brier += sum((probs[i] - float(i == actual)) ** 2 for i in range(3))
-        log_loss -= __import__("math").log(max(1e-15, probs[actual]))
+        log_loss -= log(max(1e-15, probs[actual]))
     return {"matches": len(rows), "brier": brier / len(rows), "log_loss": log_loss / len(rows)}
 
 
@@ -144,7 +145,6 @@ def _cold_start(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
     batches = _kickoff_batches(rows)
     history_count = 0
     phase_rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    phase_ranges = {name: (low, high) for name, low, high in COLD_START_PHASES}
     for batch in batches:
         if history_count == 0:
             phase = "cold_start_0"
