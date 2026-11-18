@@ -659,7 +659,7 @@ async def run_competition_historical_import(
     request_budget: int = REQUEST_BUDGET,
     competition_id: str = COMPETITION_ID,
 ) -> int:
-    """Run or resume a bounded, non-commercial Brazil Serie B historical import.
+    """Run or resume a bounded, non-commercial competition historical import.
 
     Live HTTP requires both an explicit execute=True argument and the
     VELTRIX_ENABLE_HISTORICAL_COLLECTION=true environment gate.
@@ -717,7 +717,8 @@ async def run_competition_historical_import(
             row = connection.execute(
                 """
                 SELECT status, request_budget, requests_used, boundary_start, boundary_end,
-                       provider, source_id, rights_approval_id
+                       provider, source_id, rights_approval_id, scope_value,
+                       data_type, import_type
                 FROM veltrix_ai_analyst.import_runs
                 WHERE id = %s
                 """,
@@ -734,7 +735,10 @@ async def run_competition_historical_import(
                 row is None
                 or row[1] != request_budget
                 or int(row[2]) > request_budget
-                or tuple(row[3:]) != expected
+                or tuple(row[3:8]) != expected
+                or row[8] != competition_id
+                or row[9] != "fixtures_and_results"
+                or row[10] != "historical_backfill"
             ):
                 raise HistoricalImportError("IMPORT_RUN_IDENTITY_OR_ENVELOPE_MISMATCH")
             if row[0] not in {"PAUSED", "RUNNING"}:
