@@ -451,6 +451,8 @@ class PostgresIngestionStore:
                     raise IngestionStoreError("PIT_CERTIFICATION_REQUIRES_VERIFIED_PUBLICATION_TIME")
                 if available_at < source_published_at:
                     raise IngestionStoreError("AVAILABILITY_PRECEDES_SOURCE_PUBLICATION")
+                if available_at > retrieved_at:
+                    raise IngestionStoreError("AVAILABILITY_AFTER_RETRIEVAL")
             elif availability_basis == "SYSTEM_OBSERVED_AT":
                 if source_published_at is not None or available_at != retrieved_at:
                     raise IngestionStoreError("SYSTEM_OBSERVED_PIT_REQUIRES_RETRIEVAL_TIMESTAMP")
