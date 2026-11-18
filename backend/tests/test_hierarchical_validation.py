@@ -59,7 +59,7 @@ def test_optimizer_reports_convergence_and_finite_gradient():
 )
 def test_sparse_team_forecasts_flow_through_dixon_coles(home, away, expected_counts):
     model = fit_hierarchical_poisson(fixture_history())
-    forecast = forecast_hierarchical_fixture(model, home, away, "league-a")
+    forecast = forecast_hierarchical_fixture(model, home, away, "league-a", rho=0.0)
     assert (
         forecast.rates.home_team_history,
         forecast.rates.away_team_history,
@@ -89,8 +89,8 @@ def test_competition_context_changes_unseen_team_goal_rates():
             )
         ]
     )
-    a = forecast_hierarchical_fixture(model, "NEW1", "NEW2", "league-a")
-    b = forecast_hierarchical_fixture(model, "NEW1", "NEW2", "league-b")
+    a = forecast_hierarchical_fixture(model, "NEW1", "NEW2", "league-a", rho=0.0)
+    b = forecast_hierarchical_fixture(model, "NEW1", "NEW2", "league-b", rho=0.0)
     assert (a.rates.home_lambda, a.rates.away_lambda) != (
         b.rates.home_lambda,
         b.rates.away_lambda,
