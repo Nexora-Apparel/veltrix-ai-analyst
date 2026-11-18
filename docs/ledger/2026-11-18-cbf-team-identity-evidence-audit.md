@@ -45,7 +45,7 @@ Provider spelling/diacritic variants above remain the same provider ID; this aud
 
 ## Separate América Mineiro identity conflict
 
-Provider ID `3808811746`, labelled `América Mineiro`, appears only in one UNKNOWN duplicate candidate and has zero FINISHED appearances. Provider ID `1102583842`, labelled `America MG`, has 38 FINISHED appearances (19 home, 19 away). The official CBF Round 1 Goiás 3–1 América-MG page records one real match, while the provider catalogue has one FINISHED row and one UNKNOWN row 85 seconds apart.
+Provider ID `3808811746`, labelled `América Mineiro`, appears only in one UNKNOWN duplicate candidate and has zero FINISHED appearances. Provider ID `1102583842`, labelled `America MG`, has 38 FINISHED appearances (19 home, 19 away). The [official CBF Round 1 Goiás 3–1 América-MG match page](https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-america/832843) records one real match, while the provider catalogue has one FINISHED row and one UNKNOWN row 85 seconds apart.
 
 **Recommendation for human review:** treat `3808811746` as a probable duplicate/alias identity candidate, not a second active club. Preserve both source IDs and all raw rows; do not merge until signed off.
 
