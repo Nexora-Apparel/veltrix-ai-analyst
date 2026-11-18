@@ -85,11 +85,9 @@ def _lineage_rights_valid(
             if isinstance(event_id, bool) or not isinstance(event_id, int):
                 return False
             effective_events.append((effective_at, event_id, event.get("status")))
-    if effective_events and max(
+    return not effective_events or max(
         effective_events, key=lambda item: (item[0], item[1])
-    )[2] != "APPROVED":
-        return False
-    return True
+    )[2] == "APPROVED"
 
 
 def _goal_result(row: ProspectiveDatasetRow) -> HierarchicalGoalResult:
