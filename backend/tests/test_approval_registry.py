@@ -156,7 +156,7 @@ def test_the_odds_api_approval_is_exact_scope_and_noncommercial() -> None:
 
 def test_the_odds_api_approval_evidence_hash_matches_review() -> None:
     repository_root = Path(__file__).resolve().parents[2]
-    evidence = repository_root / "docs" / "providers" / "BOOKMAKER_ODDS_USE_BOUNDARY.md"
+    evidence = repository_root / "docs" / "providers" / "THE_ODDS_API_TERMS_REVIEW.md"
 
     assert sha256(evidence.read_bytes()).hexdigest() == THE_ODDS_API_SOCCER_APPROVAL.evidence_sha256
 
@@ -164,7 +164,7 @@ def test_the_odds_api_approval_evidence_hash_matches_review() -> None:
 def test_5dollar_odds_approval_is_value_betting_only() -> None:
     approval = FIVEDOLLAR_COMMUNITY_ODDS_APPROVAL
     repository_root = Path(__file__).resolve().parents[2]
-    evidence = repository_root / "docs" / "providers" / "BOOKMAKER_ODDS_USE_BOUNDARY.md"
+    evidence = repository_root / "docs" / "providers" / "5DOLLAR_TERMS_REVIEW.md"
     assert sha256(evidence.read_bytes()).hexdigest() == approval.evidence_sha256
     assert approval.data_types == frozenset({"bookmaker_odds"})
     assert DataUsePurpose.VALUE_BETTING in approval.permitted_uses
