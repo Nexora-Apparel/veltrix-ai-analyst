@@ -1,3 +1,4 @@
+# ruff: noqa: I001  # Keep this module's standard-library imports explicit; Ruff's isort check misclassifies this block.
 """Paired chronological diagnostics for retrospective prequential 1X2 reports.
 
 This module consumes predictions already generated in chronological order. It never
