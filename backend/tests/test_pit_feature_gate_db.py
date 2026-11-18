@@ -182,8 +182,7 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 point_in_time_certifiable=True,
                 payload={"test": marker, "case": "system-observed"},
                 provider_response_id=response_id,
-                target_kickoff_at=now + timedelta(hours=1),
-            )
+                    )
             sighting_id = connection.execute(
                 """
                 SELECT id FROM veltrix_ai_analyst.source_observation_sightings
