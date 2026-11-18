@@ -29,7 +29,7 @@ The 5Dollar request uses only the exact seven competition IDs already approved i
 - Reject duplicate candidates and ambiguous matches.
 - Require both catalogues to be complete.
 - Produce `market_probe_candidate=true` only if exactly one unique exact match exists and both catalogues are complete.
-- The manifest always sets `market_probe_authorized=false`; a human review and separate market-request decision remain necessary.
+- The user has explicitly authorized use of the existing Odds API account for this project. The manifest sets `market_probe_authorized=true` only when both catalogues are complete and exactly one unique exact match exists. The workflow then performs exactly one event-specific `h2h` request in one region (UK), with an expected maximum cost of one credit. No other market or region is requested.
 
 ## Audit evidence
 
@@ -38,3 +38,13 @@ Each provider manifest records request start, local retrieval time, HTTP status,
 ## Explicit non-goals
 
 No odds markets, historical odds, retries, pagination, bulk collection, database writes, recurring schedule, model features, CLV, value betting, production prediction endpoint, public odds display or Android integration are enabled.
+
+
+## Bounded h2h market probe
+
+- The event-specific endpoint is called only after one exact unique match across complete catalogues.
+- One market (`h2h`) and one region (`uk`) are specified. Official v4 documentation states usage cost is one credit per returned market per region; maximum expected cost is one credit, and an empty response may cost zero.
+- The parser requires event ID, sport key, home/away orientation and kickoff to match the selected canonical fixture. It retains only timestamped market-level quotes and complete HOME/DRAW/AWAY bookmaker sets; incomplete or untimestamped quotes are excluded.
+- No retries, pagination, history request, DB write or recurring schedule is performed.
+- The response manifest records request/retrieval timestamps, response hash/size, provider date header and quota headers. The API key and raw response are never logged.
+- The observation remains research-only. `last_update` alone does not establish PIT admissibility; source publication/availability and system receipt evidence must still satisfy the feature admission contract.
