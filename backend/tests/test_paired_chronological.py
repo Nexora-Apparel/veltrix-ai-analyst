@@ -116,6 +116,6 @@ def test_cli_writes_valid_json_with_one_trailing_newline(tmp_path, monkeypatch):
 
     assert evaluate_cli_main() == 0
     output = output_path.read_text(encoding="utf-8")
-    assert output.endswith("\\n")
-    assert not output.endswith("\\n\\n")
+    assert output.endswith("\n")
+    assert not output.endswith("\n\n")
     assert json.loads(output)["fixture_count"] == 12
