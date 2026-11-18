@@ -12,6 +12,17 @@
       "source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/sao-bernardo-saf-x-londrina-saf/833143",
       "reason": "Official CBF match page records kickoff at 19:30 America/Sao_Paulo (22:30 UTC); provider row stores 23:49:59 UTC. Score independently matches 1-2.",
       "reviewed_at": "2026-11-18"
+    },
+    {
+      "provider_fixture_id": "3116209225",
+      "raw_provider_kickoff_at": "2026-03-22T20:58:35+00:00",
+      "official_kickoff_at": "2026-03-22T21:00:00+00:00",
+      "competition": "CBF Serie B 2026",
+      "cbf_match_reference": 6,
+      "fixture": "Goias x America",
+      "source_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/goias-x-america/832843",
+      "reason": "Official CBF match page records the scheduled kickoff at 18:00 America/Sao_Paulo (21:00 UTC) and the final score 3-1. The provider timestamp is 17:58:35 local, which could split this fixture from other officially simultaneous 18:00 matches in retrospective chronology; normalize the research input to the official CBF kickoff. Raw provider row remains unchanged.",
+      "reviewed_at": "2026-11-18"
     }
   ]
 }
