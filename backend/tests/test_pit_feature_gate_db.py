@@ -203,7 +203,24 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 point_in_time_certifiable=True,
                 payload={"test": marker, "case": "system-observed"},
                 provider_response_id=response_id,
-                    )
+            )
+            target_fixture_id = store.upsert_provider_fixture(
+                ProviderFixture(
+                    provenance=SourceProvenance(
+                        provider="5DollarFootballAPI",
+                        provider_record_id=f"system-observed-{marker}",
+                        retrieved_at=now,
+                    ),
+                    competition_id="522514093",
+                    home_team_id=f"system-home-{marker}",
+                    away_team_id=f"system-away-{marker}",
+                    kickoff_at=now + timedelta(hours=1),
+                    status="scheduled",
+                ),
+                source_id="5dollarfootballapi",
+                source_observation_id=observation_id,
+                approval=FIVEDOLLAR_COMMUNITY_APPROVAL,
+            )
             sighting_id = connection.execute(
                 """
                 SELECT id FROM veltrix_ai_analyst.source_observation_sightings
@@ -249,11 +266,10 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
             connection.execute(
                 """
                 INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
-                    source_observation_id, source_sighting_id, feature_key,
-                    feature_value, prediction_cutoff_at
-                ) VALUES (%s, %s, %s, %s, %s)
+                    target_fixture_id, source_observation_id, source_sighting_id,\n                    feature_key, feature_value, prediction_cutoff_at\n                ) VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
+                    target_fixture_id,
                     observation_id,
                     sighting_id,
                     "system_observed.allowed",
@@ -272,11 +288,10 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 connection.execute(
                     """
                     INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
-                        source_observation_id, source_sighting_id, feature_key,
-                        feature_value, prediction_cutoff_at
-                    ) VALUES (%s, %s, %s, %s, %s)
+                        target_fixture_id, source_observation_id, source_sighting_id,\n                    feature_key, feature_value, prediction_cutoff_at\n                ) VALUES (%s, %s, %s, %s, %s, %s)
                     """,
                     (
+                        target_fixture_id,
                         observation_id,
                         mismatched_sighting_id,
                         "system_observed.response_time_mismatch",
@@ -295,11 +310,10 @@ def test_database_gate_accepts_system_observed_payload_only_after_capture(
                 connection.execute(
                     """
                     INSERT INTO veltrix_ai_analyst.pre_match_feature_observations (
-                        source_observation_id, source_sighting_id, feature_key,
-                        feature_value, prediction_cutoff_at
-                    ) VALUES (%s, %s, %s, %s, %s)
+                        target_fixture_id, source_observation_id, source_sighting_id,\n                    feature_key, feature_value, prediction_cutoff_at\n                ) VALUES (%s, %s, %s, %s, %s, %s)
                     """,
                     (
+                        target_fixture_id,
                         observation_id,
                         sighting_id,
                         "system_observed.must_be_rejected",
