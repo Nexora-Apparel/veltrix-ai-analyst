@@ -88,10 +88,6 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     fixture_kickoff TIMESTAMPTZ;
-    evidence_item JSONB;
-    feature_name TEXT;
-    observation_id BIGINT;
-    sighting_id BIGINT;
 BEGIN
     SELECT kickoff_at INTO fixture_kickoff
     FROM veltrix_ai_analyst.canonical_fixtures
@@ -109,43 +105,38 @@ BEGIN
         RAISE EXCEPTION 'PREDICTION_SNAPSHOT_FEATURE_EVIDENCE_REQUIRED';
     END IF;
 
-    FOR evidence_item IN SELECT value FROM jsonb_array_elements(NEW.source_evidence)
-    LOOP
-        BEGIN
-            observation_id := (evidence_item->>'source_observation_id')::BIGINT;
-            sighting_id := (evidence_item->>'source_sighting_id')::BIGINT;
-            feature_name := evidence_item->>'feature_key';
-        EXCEPTION WHEN OTHERS THEN
-            RAISE EXCEPTION 'PREDICTION_SNAPSHOT_EVIDENCE_SHAPE_INVALID';
-        END;
-
-        IF observation_id IS NULL OR sighting_id IS NULL
-           OR feature_name IS NULL OR length(btrim(feature_name)) = 0
+    IF EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(NEW.source_evidence) AS evidence(item)
+        WHERE jsonb_typeof(evidence.item) <> 'object'
            OR NOT EXISTS (
                SELECT 1
                FROM veltrix_ai_analyst.canonical_fixture_sources source_link
                JOIN veltrix_ai_analyst.pre_match_feature_observations feature
                  ON feature.target_fixture_id = source_link.provider_fixture_row_id
                WHERE source_link.canonical_fixture_id = NEW.canonical_fixture_id
-                 AND feature.source_observation_id = observation_id
-                 AND feature.source_sighting_id = sighting_id
-                 AND feature.feature_key = feature_name
+                 AND feature.source_observation_id =
+                     (evidence.item->>'source_observation_id')::BIGINT
+                 AND feature.source_sighting_id =
+                     (evidence.item->>'source_sighting_id')::BIGINT
+                 AND feature.feature_key = evidence.item->>'feature_key'
                  AND feature.prediction_cutoff_at = NEW.prediction_cutoff_at
-           ) THEN
-            RAISE EXCEPTION 'PREDICTION_SNAPSHOT_EVIDENCE_NOT_PIT_ADMITTED';
-        END IF;
-    END LOOP;
+           )
+    ) THEN
+        RAISE EXCEPTION 'PREDICTION_SNAPSHOT_EVIDENCE_NOT_PIT_ADMITTED';
+    END IF;
 
-    FOR feature_name IN SELECT jsonb_object_keys(NEW.features)
-    LOOP
-        IF NOT EXISTS (
+    IF EXISTS (
+        SELECT 1
+        FROM jsonb_object_keys(NEW.features) AS feature_key(key)
+        WHERE NOT EXISTS (
             SELECT 1
             FROM jsonb_array_elements(NEW.source_evidence) AS evidence(item)
-            WHERE item->>'feature_key' = feature_name
-        ) THEN
-            RAISE EXCEPTION 'PREDICTION_SNAPSHOT_FEATURE_WITHOUT_LINEAGE';
-        END IF;
-    END LOOP;
+            WHERE evidence.item->>'feature_key' = feature_key.key
+        )
+    ) THEN
+        RAISE EXCEPTION 'PREDICTION_SNAPSHOT_FEATURE_WITHOUT_LINEAGE';
+    END IF;
 
     RETURN NEW;
 END;
@@ -154,7 +145,6 @@ $$;
 CREATE TRIGGER prediction_feature_snapshot_pit_gate
     BEFORE INSERT ON veltrix_ai_analyst.prediction_feature_snapshots
     FOR EACH ROW EXECUTE FUNCTION veltrix_ai_analyst.enforce_prediction_feature_snapshot_pit();
-
 
 CREATE OR REPLACE FUNCTION veltrix_ai_analyst.enforce_prediction_inference_prematch()
 RETURNS TRIGGER
