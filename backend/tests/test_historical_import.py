@@ -35,10 +35,15 @@ def database_url() -> str:
     return url
 
 
-def _fixture(fixture_id: int, kickoff: str) -> dict[str, object]:
+def _fixture(
+    fixture_id: int,
+    kickoff: str,
+    competition_id: int = 522514093,
+    competition_name: str = "Brazil Serie B",
+) -> dict[str, object]:
     return {
         "id": fixture_id,
-        "league": {"id": 522514093, "name": "Brazil Serie B", "season": "2026"},
+        "league": {"id": competition_id, "name": competition_name, "season": "2026"},
         "teams": {
             "home": {"id": 1101, "name": "Home FC"},
             "away": {"id": 1102, "name": "Away FC"},
@@ -226,6 +231,74 @@ def test_competition_import_rejects_blank_competition_id_before_database_access(
                 competition_id=" ",
             )
         )
+
+
+def test_competition_import_persists_under_selected_provider_scope(
+    database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
+    monkeypatch.setattr(historical_import, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    competition_id = "3118717965"
+    start_at = datetime(2026, 11, 1, tzinfo=UTC)
+    end_at = datetime(2026, 11, 8, tzinfo=UTC)
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "success": 1,
+                "data": [
+                    _fixture(
+                        880001,
+                        "2026-11-02T12:00:00+00:00",
+                        competition_id=int(competition_id),
+                        competition_name="Brazil Serie A",
+                    )
+                ],
+                "pagination": {"page": 1, "per_page": 100, "count": 1, "has_more": False},
+            },
+            headers={"X-Request-Id": "mock-serie-a-request"},
+        )
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-only-key",
+        transport=httpx.MockTransport(handler),
+    )
+    run_id = asyncio.run(
+        run_competition_historical_import(
+            database_url,
+            api_key="test-only-key",
+            execute=True,
+            approval=IMPORT_APPROVAL,
+            provider=provider,
+            boundary_start=start_at,
+            boundary_end=end_at,
+            request_budget=1,
+            competition_id=competition_id,
+        )
+    )
+
+    assert len(requests) == 1
+    assert requests[0].url.path == f"/v1/leagues/{competition_id}/fixtures"
+    with psycopg.connect(database_url) as connection:
+        run = connection.execute(
+            """
+            SELECT status, scope_value, requests_used
+            FROM veltrix_ai_analyst.import_runs WHERE id = %s
+            """,
+            (run_id,),
+        ).fetchone()
+        fixture = connection.execute(
+            """
+            SELECT competition_id, provider_fixture_id
+            FROM veltrix_ai_analyst.provider_fixtures
+            WHERE provider_fixture_id = '880001'
+            """
+        ).fetchone()
+    assert run == ("COMPLETED", competition_id, 1)
+    assert fixture == (competition_id, "880001")
 
 
 def test_live_import_requires_both_explicit_execution_gates(
