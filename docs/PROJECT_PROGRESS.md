@@ -2,11 +2,28 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-18 (The Odds API catalogue authenticated; zero-credit event discovery implementation merged; awaiting one manual event-catalogue dispatch; no production release)
+**Last updated:** 2026-11-18 (cross-provider qualification implementation merged; bounded market workflow prepared; manual dispatch pending)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
 **Product:** Personal-use, cloud-backed native Android football analysis and prediction application
+
+## Latest execution checkpoint — bounded cross-provider odds qualification (2026-11-18)
+
+- [x] The Odds API zero-credit catalogue authentication was confirmed in run [#44220418309](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44220418309): HTTP 200, 46 active soccer sport keys, one request, zero retries, `x-requests-last=0`, `x-requests-remaining=271`, `x-requests-used=229`.
+- [x] User explicitly authorized use of the existing Odds API account for this project. Continue to conserve credits and obey the exact-scope internal approval; no commercial use or raw redistribution.
+- [x] PR [#47](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/47) added strict offline event-to-fixture matching: exact home/away orientation, kickoff within five minutes, unique match only; alias inference, reversed orientation, drift and ambiguity fail closed.
+- [x] PR [#48](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/48) added a manual cross-provider fixture catalogue qualification workflow. It makes one quota-free Odds API events request and one 5Dollar scheduled-fixture request, with no retries, pagination, DB writes or recurring schedule. A partial 5Dollar catalogue cannot qualify a market request.
+- [x] PR [#49](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/49) added strict parsing/tests for a single event-specific h2h response, including event/sport identity, home-away orientation, kickoff alignment, timestamp and price validation.
+- [x] PR [#51](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/51) enabled exactly one event-specific h2h request only after both catalogues are complete and exactly one unique exact fixture match exists. One region (UK), one market (h2h), no retries or pagination.
+- [x] PR [#52](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/52) added parsing and recording of the actual `x-requests-last` cost; missing/invalid cost and any cost above the strict one-credit cap are explicit fail-closed outcomes.
+- [x] PR #52 CI run [#44224762047](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44224762047) passed Android debug build and backend tests/Ruff. Debug APK artifact [14391932429](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44224762047).
+- [ ] **Manual dispatch blocker:** run the [Cross-provider fixture catalogue qualification workflow](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/the-odds-api-5dollar-fixture-qualification.yml) for one competition. This GitHub integration session exposes read/write repository and artifact tools but no Actions workflow-dispatch operation; the workflow must be started from GitHub Actions by a repository user.
+- [ ] After dispatch, inspect all manifests: both catalogue completeness flags, exact-match manifest, h2h response hash, bookmaker/selection timestamp completeness, `actual_quota_cost`, and remaining quota. Stop if actual cost exceeds one credit or any identity/completeness check fails.
+- [ ] Compare The Odds API's timestamped h2h quote coverage against the 5Dollar Bet365 snapshot. A successful request is provider-access evidence only, not PIT certification. Local `retrieved_at` must be no later than the prediction cutoff; source `last_update` alone does not prove local availability.
+- **No ingestion, database writes, recurring collection, odds-derived model features, CLV claims, value betting, production prediction endpoint, model promotion, public forecast publication or Android/backend prediction integration is enabled.** The retrospective v1/v2 models remain non-PIT-certified.
+
+## Previous checkpoint — The Odds API catalogue and event discovery
 
 ## Latest execution checkpoint — The Odds API catalogue and event discovery (2026-11-18)
 
