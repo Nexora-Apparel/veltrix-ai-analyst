@@ -53,6 +53,12 @@ jobs:
         if: always()
         run: python scripts/reconcile_odds_api_event_catalogue.py
 
+      - name: Retrieve one exact-match h2h market (one credit maximum)
+        if: success()
+        env:
+          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+        run: python scripts/probe_the_odds_api_event_h2h.py
+
       - name: Upload cross-provider qualification manifests
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,5 +68,6 @@ jobs:
             odds-api-events-manifest.json
             5dollar-scheduled-fixtures-manifest.json
             odds-api-5dollar-fixture-match-manifest.json
+            the-odds-api-event-h2h-probe-manifest.json
           if-no-files-found: ignore
           retention-days: 7
