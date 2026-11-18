@@ -46,6 +46,14 @@ def observation(fid, oid, sid, when, status, home_goals=None, away_goals=None):
         payload_sha256=f"{oid:064x}",
         raw_response_sha256=f"{oid + 100:064x}",
         payload=payload,
+        rights_approval_id="test-approval",
+        rights_status="APPROVED",
+        rights_valid_from=BASE - timedelta(days=365),
+        rights_permitted_uses=(
+            "FEATURE_ENGINEERING",
+            "MODEL_TRAINING",
+            "MODEL_VALIDATION",
+        ),
     )
 
 
@@ -169,6 +177,12 @@ def test_stale_fixture_identity_observation_is_rejected():
         payload_sha256=stale.payload_sha256,
         raw_response_sha256=stale.raw_response_sha256,
         payload=stale_payload,
+        rights_approval_id=stale.rights_approval_id,
+        rights_status=stale.rights_status,
+        rights_valid_from=stale.rights_valid_from,
+        rights_valid_until=stale.rights_valid_until,
+        rights_permitted_uses=stale.rights_permitted_uses,
+        rights_status_events=stale.rights_status_events,
     )
     try:
         build_prospective_dataset([target], [stale])
