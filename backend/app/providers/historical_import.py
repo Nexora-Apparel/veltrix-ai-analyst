@@ -111,13 +111,13 @@ class FixturePagePersister:
             provider_entity_id=team_id,
             schema_version="5dollar-team-v1",
             retrieved_at=now,
-            available_at=now,
             availability_basis=(
                 "SYSTEM_OBSERVED_AT" if system_observed_pit else "RETRIEVED_AT_ONLY"
             ),
             point_in_time_certifiable=system_observed_pit,
             payload=payload,
             provider_response_id=response_id,
+            target_kickoff_at=fixture.kickoff_at if system_observed_pit else None,
         )
         self.store.upsert_provider_team(
             source_id=SOURCE_ID,
@@ -155,13 +155,13 @@ class FixturePagePersister:
             provider_entity_id=self.competition_id,
             schema_version="5dollar-competition-v1",
             retrieved_at=now,
-            available_at=now,
             availability_basis=(
                 "SYSTEM_OBSERVED_AT" if system_observed_pit else "RETRIEVED_AT_ONLY"
             ),
             point_in_time_certifiable=system_observed_pit,
             payload=competition.model_dump(mode="json"),
             provider_response_id=response_id,
+            target_kickoff_at=fixture.kickoff_at if system_observed_pit else None,
         )
         self.store.upsert_provider_competition(
             competition,
@@ -194,13 +194,13 @@ class FixturePagePersister:
             schema_version=SCHEMA_VERSION,
             retrieved_at=now,
             source_event_time=fixture.kickoff_at,
-            available_at=now,
             availability_basis=(
                 "SYSTEM_OBSERVED_AT" if system_observed_pit else "RETRIEVED_AT_ONLY"
             ),
             point_in_time_certifiable=system_observed_pit,
             payload=fixture.model_dump(mode="json"),
             provider_response_id=response_id,
+            target_kickoff_at=fixture.kickoff_at if system_observed_pit else None,
         )
         self.store.upsert_provider_fixture(
             fixture,
