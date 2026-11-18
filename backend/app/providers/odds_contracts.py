@@ -68,4 +68,10 @@ class OddsCaptureEnvelope(StrictModel):
     def capture_not_before_retrieval(self) -> OddsCaptureEnvelope:
         if any(item.retrieved_at > self.captured_at for item in self.observations):
             raise ValueError("envelope capture cannot precede observation retrieval")
+        identities = {
+            (item.provider, item.source_observation_id, item.bookmaker, item.market, item.selection, item.line, item.source_tick_at)
+            for item in self.observations
+        }
+        if len(identities) != len(self.observations):
+            raise ValueError("duplicate odds observation identity in capture envelope")
         return self
