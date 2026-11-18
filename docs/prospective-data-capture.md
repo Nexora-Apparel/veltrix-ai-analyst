@@ -4,7 +4,7 @@
 
 The primary capture source is 5DollarFootballAPI. Fixture requests use the league-scoped fixtures endpoint with `include=stats,events` and deliberately omit bookmaker odds. The API documents a 50-row page limit when statistics/events are included.
 
-The scheduled capture workflow runs daily and collects yesterday and today's fixture window for the seven approved competitions. It uses one shared provider client with a 60-second request pacer and a four-request per-competition budget. The workflow stops before provider requests unless migrations 012 and 013 are present.
+The scheduled capture workflow runs daily and collects yesterday's settlements plus a rolling seven-day forward fixture window for the seven approved competitions. It uses one shared provider client with a 60-second request pacer and a four-request per-competition budget. The daily workflow only captures and persists evidence; it does not repeatedly scan the full database to rebuild datasets. The workflow stops before provider requests unless migrations 012 and 013 are present.
 
 ## Evidence retained
 
