@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "purpose": "Research-only adjudications for conflicts between the CBF basic schedule PDF score column and the individual official CBF match record.",
+  "adjudications": [
+    {
+      "cbf_reference": "245",
+      "provider_fixture_id": "336388319",
+      "fixture": "Fortaleza SAF x Operário",
+      "pdf_source_url": "https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf",
+      "pdf_score": [1, 0],
+      "official_score": [1, 1],
+      "official_match_page_url": "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-b/2026/fortaleza-saf-x-operario/833126",
+      "corroborating_official_cbf_news_url": "https://www.cbf.com.br/futebol-brasileiro/noticias/campeonato-brasileiro/campeonato-brasileiro-serie-b/juventude-tenta-disparar-na-lideranca-da-serie-b",
+      "reason": "The individual official CBF match page identifies match 245, Round 25, 31 August 2026, and records 1-1. The CBF Round 25 article also records Fortaleza 1 x 1 Operário-PR. The 23 September basic schedule PDF score column conflicts at 1-0. The individual match record is used as the controlling result; raw provider and PDF evidence remain unchanged.",
+      "raw_provider_score_expected": [1, 1],
+      "status": "RESEARCH_ONLY_OFFICIAL_MATCH_PAGE_ADJUDICATION"
+    }
+  ]
+}
