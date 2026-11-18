@@ -54,7 +54,7 @@ def estimate_dixon_coles_rho(
         max(-1.0 / row.home_lambda, -1.0 / row.away_lambda, -1.0)
         for row in rows
     )
-    upper = min(1.0 / (row.home_lambda * row.away_lambda) for row in rows)
+    upper = min(1.0, *(1.0 / (row.home_lambda * row.away_lambda) for row in rows))
     if not lower < upper:
         raise ValueError("no common feasible rho interval for supplied rates")
 
