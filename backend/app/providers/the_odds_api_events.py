@@ -41,7 +41,7 @@ def normalize_event_catalogue(
         if event_id in seen_ids:
             raise OddsApiEventPayloadError("duplicate event id in response")
         try:
-            kickoff = datetime.fromisoformat(commence_time.replace("Z", "+00:00"))
+            kickoff = datetime.fromisoformat(commence_time)
         except ValueError:
             raise OddsApiEventPayloadError("invalid event commence_time") from None
         if kickoff.tzinfo is None or kickoff.utcoffset() is None:
