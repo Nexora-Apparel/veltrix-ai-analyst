@@ -47,7 +47,8 @@ def _observation(
     *, provider_fixture_id: str, bookmaker: str, market: str, selection: str,
     line: float | None, price: Any, tick_at: datetime, retrieved_at: datetime,
     kickoff_at: datetime, prediction_cutoff_at: datetime, source_observation_id: str,
-    digest: str, rights_approval_id: str, rights_allow_model_training: bool,
+    digest: str, rights_approval_id: str, rights_allow_value_betting: bool,
+    request_started_at: datetime, provider_response_date: datetime | None,
 ) -> OddsObservation:
     try:
         decimal_odds = float(price)
@@ -63,14 +64,17 @@ def _observation(
             line=line,
             decimal_odds=decimal_odds,
             source_tick_at=tick_at,
+            request_started_at=request_started_at,
             retrieved_at=retrieved_at,
+            provider_response_date=provider_response_date,
             kickoff_at=kickoff_at,
             prediction_cutoff_at=prediction_cutoff_at,
             in_play=False,
             source_observation_id=source_observation_id,
             source_response_sha256=digest,
             rights_approval_id=rights_approval_id,
-            rights_allow_model_training=rights_allow_model_training,
+            use_purpose="VALUE_BETTING_ONLY",
+            rights_allow_value_betting=rights_allow_value_betting,
         )
     except ValueError as exc:
         raise OddsPayloadError(str(exc)) from None
@@ -78,9 +82,11 @@ def _observation(
 
 def normalize_5dollar_fixture_odds(
     response: Mapping[str, Any], *, provider_fixture_id: str, kickoff_at: datetime,
-    retrieved_at: datetime, prediction_cutoff_at: datetime,
+    request_started_at: datetime, retrieved_at: datetime,
+    provider_response_date: datetime | None = None,
+    prediction_cutoff_at: datetime,
     source_observation_id: str, rights_approval_id: str,
-    rights_allow_model_training: bool,
+    rights_allow_value_betting: bool,
 ) -> tuple[OddsObservation, ...]:
     """Normalize only timestamped 1X2 opening prices from /fixtures/{id}/odds.
 
@@ -128,20 +134,24 @@ def normalize_5dollar_fixture_odds(
             output.append(_observation(
                 provider_fixture_id=provider_fixture_id, bookmaker=bookmaker,
                 market="1X2", selection=selection, line=None, price=opening[selection],
-                tick_at=tick_at, retrieved_at=retrieved_at, kickoff_at=kickoff_at,
+                tick_at=tick_at, request_started_at=request_started_at,
+                retrieved_at=retrieved_at, provider_response_date=provider_response_date,
+                kickoff_at=kickoff_at,
                 prediction_cutoff_at=prediction_cutoff_at,
                 source_observation_id=source_observation_id, digest=digest,
                 rights_approval_id=rights_approval_id,
-                rights_allow_model_training=rights_allow_model_training,
+                rights_allow_value_betting=rights_allow_value_betting,
             ))
     return tuple(output)
 
 
 def normalize_5dollar_odds_history(
     response: Mapping[str, Any], *, provider_fixture_id: str, kickoff_at: datetime,
-    retrieved_at: datetime, prediction_cutoff_at: datetime,
+    request_started_at: datetime, retrieved_at: datetime,
+    provider_response_date: datetime | None = None,
+    prediction_cutoff_at: datetime,
     source_observation_id: str, rights_approval_id: str,
-    rights_allow_model_training: bool,
+    rights_allow_value_betting: bool,
 ) -> tuple[OddsObservation, ...]:
     """Normalize pre-match ticks from /fixtures/{id}/odds/history.
 
@@ -218,37 +228,44 @@ def normalize_5dollar_odds_history(
             output.append(_observation(
                 provider_fixture_id=provider_fixture_id, bookmaker=bookmaker,
                 market=normalized_market, selection=selection, line=line,
-                price=price, tick_at=tick_at, retrieved_at=retrieved_at,
+                price=price, tick_at=tick_at, request_started_at=request_started_at,
+                retrieved_at=retrieved_at, provider_response_date=provider_response_date,
                 kickoff_at=kickoff_at, prediction_cutoff_at=prediction_cutoff_at,
                 source_observation_id=source_observation_id, digest=digest,
                 rights_approval_id=rights_approval_id,
-                rights_allow_model_training=rights_allow_model_training,
+                rights_allow_value_betting=rights_allow_value_betting,
             ))
     return tuple(output)
 
 
 def normalize_5dollar_odds(
     response: Mapping[str, Any], *, provider_fixture_id: str, kickoff_at: datetime,
-    retrieved_at: datetime, prediction_cutoff_at: datetime,
+    request_started_at: datetime, retrieved_at: datetime,
+    provider_response_date: datetime | None = None,
+    prediction_cutoff_at: datetime,
     source_observation_id: str, rights_approval_id: str,
-    rights_allow_model_training: bool,
+    rights_allow_value_betting: bool,
 ) -> tuple[OddsObservation, ...]:
     """Dispatch documented fixture-odds and odds-history response envelopes."""
     data = _response_data(response)
     if "bookmakers" in data:
         return normalize_5dollar_fixture_odds(
             response, provider_fixture_id=provider_fixture_id, kickoff_at=kickoff_at,
-            retrieved_at=retrieved_at, prediction_cutoff_at=prediction_cutoff_at,
+            request_started_at=request_started_at, retrieved_at=retrieved_at,
+            provider_response_date=provider_response_date,
+            prediction_cutoff_at=prediction_cutoff_at,
             source_observation_id=source_observation_id,
             rights_approval_id=rights_approval_id,
-            rights_allow_model_training=rights_allow_model_training,
+            rights_allow_value_betting=rights_allow_value_betting,
         )
     if "bookmaker" in data and ("ticks" in data or "lines" in data):
         return normalize_5dollar_odds_history(
             response, provider_fixture_id=provider_fixture_id, kickoff_at=kickoff_at,
-            retrieved_at=retrieved_at, prediction_cutoff_at=prediction_cutoff_at,
+            request_started_at=request_started_at, retrieved_at=retrieved_at,
+            provider_response_date=provider_response_date,
+            prediction_cutoff_at=prediction_cutoff_at,
             source_observation_id=source_observation_id,
             rights_approval_id=rights_approval_id,
-            rights_allow_model_training=rights_allow_model_training,
+            rights_allow_value_betting=rights_allow_value_betting,
         )
     raise OddsPayloadError("unrecognized documented 5Dollar odds response envelope")
