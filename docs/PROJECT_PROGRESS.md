@@ -2,11 +2,25 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-18 (single-fixture Bet365 odds snapshot access verified; prospective capture design is next; no production release)
+**Last updated:** 2026-11-18 (The Odds API catalogue authenticated; zero-credit event discovery implementation prepared; no production release)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
 **Product:** Personal-use, cloud-backed native Android football analysis and prediction application
+
+## Latest execution checkpoint — The Odds API catalogue and event discovery (2026-11-18)
+
+- [x] PR [#44](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/44) merged; manual-only catalogue workflow is on `main`.
+- [x] Manual workflow run [#44220418309](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44220418309) completed successfully on merge commit `b71bfa82ae59dc52134ed2609aa7c56dd8c39cb7`.
+- [x] Existing `THE_ODDS_API_KEY` secret authenticated successfully: `GET /v4/sports/` returned HTTP 200 and 46 active soccer sport keys.
+- [x] Probe made exactly one request, zero retries, and reported `x-requests-last=0`, `x-requests-remaining=271`, `x-requests-used=229`. No odds credits were consumed; 271 remains the last verified balance.
+- [x] Added a manual, one-sport, one-request event-discovery dry-run workflow on research branch `research/the-odds-api-zero-credit-event-discovery`. It calls only `/v4/sports/{sport}/events`, which The Odds API v4 documentation identifies as quota-free; it does not request markets, write to Neon, or activate model features.
+- [x] Added strict event catalogue normalization and unit tests for future-event filtering, exact sport-key matching, duplicate IDs, required fields, timezone awareness and team identity sanity.
+- [ ] Run CI and review the event-discovery PR before merge.
+- [ ] Manually dispatch event discovery for one competition, then compare event IDs/team identities/kickoff against canonical 5Dollar fixtures. This requires one user-side workflow dispatch; it is expected to consume zero odds credits, and returned quota headers must verify this.
+- **Provider qualification remains research-only.** No market requests, DB writes, recurring collection, model feature activation, CLV, value betting, production predictions or Android integration.
+
+Detailed design: [The Odds API Event Discovery — Zero-Credit Qualification](ledger/2026-11-18-odds-api-event-discovery-design.md).
 
 ## Latest execution checkpoint — Stage 2 canonical closure (2026-11-17)
 
