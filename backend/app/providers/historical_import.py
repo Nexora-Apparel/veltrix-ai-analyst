@@ -35,7 +35,7 @@ PROVIDER_NAME = "5DollarFootballAPI"
 BOUNDARY_START = datetime(2026, 3, 21, tzinfo=UTC)
 BOUNDARY_END = datetime(2026, 11, 9, tzinfo=UTC)
 REQUEST_BUDGET = 40
-IMPORTER_VERSION = "5dollar-competition-resumable-v3"
+IMPORTER_VERSION = "5dollar-competition-resumable-v4"
 IMPORT_APPROVAL = FIVEDOLLAR_COMMUNITY_APPROVAL
 SCHEMA_VERSION = "5dollar-fixture-v1"
 
@@ -683,6 +683,7 @@ async def run_competition_historical_import(
     request_budget: int = REQUEST_BUDGET,
     competition_id: str = COMPETITION_ID,
     import_type: str = "historical_backfill",
+    window_days: int = 7,
 ) -> int:
     """Run or resume a bounded, non-commercial competition historical import.
 
@@ -720,7 +721,10 @@ async def run_competition_historical_import(
         or request_budget > REQUEST_BUDGET
     ):
         raise HistoricalImportError("REQUEST_BUDGET_OUTSIDE_HARD_CAP")
-    windows = build_date_windows(boundary_start, boundary_end, window_days=7)
+    if isinstance(window_days, bool) or not isinstance(window_days, int) or not 1 <= window_days <= 365:
+        raise HistoricalImportError("WINDOW_DAYS_OUTSIDE_SAFE_RANGE")
+    windows = build_date_windows(boundary_start, boundary_end, window_days=window_days)
+    importer_version = f"{IMPORTER_VERSION}-window-{window_days}d"
     if request_budget < len(windows):
         raise HistoricalImportError("REQUEST_BUDGET_BELOW_MINIMUM_WINDOW_COUNT")
     with psycopg.connect(database_url) as connection:
@@ -737,7 +741,7 @@ async def run_competition_historical_import(
                 boundary_start=boundary_start,
                 boundary_end=boundary_end,
                 request_budget=request_budget,
-                importer_version=IMPORTER_VERSION,
+                importer_version=importer_version,
                 started_at=datetime.now(UTC),
             )
         else:
@@ -745,7 +749,7 @@ async def run_competition_historical_import(
                 """
                 SELECT status, request_budget, requests_used, boundary_start, boundary_end,
                        provider, source_id, rights_approval_id, scope_value,
-                       import_type
+                       import_type, importer_version
                 FROM veltrix_ai_analyst.import_runs
                 WHERE id = %s
                 """,
@@ -765,6 +769,7 @@ async def run_competition_historical_import(
                 or tuple(row[3:8]) != expected
                 or row[8] != competition_id
                 or row[9] != import_type
+                or row[10] != importer_version
             ):
                 raise HistoricalImportError("IMPORT_RUN_IDENTITY_OR_ENVELOPE_MISMATCH")
             if row[0] not in {"PAUSED", "RUNNING"}:
@@ -795,7 +800,7 @@ async def run_competition_historical_import(
 
     active_provider = provider or FiveDollarFootballProvider(
         api_key=api_key,
-        min_request_interval_seconds=12.0,
+        min_request_interval_seconds=60.0,
     )
     current_persister: FixturePagePersister | None = None
     try:
