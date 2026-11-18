@@ -68,6 +68,7 @@ Cold-start and warm-up diagnostics are included in the paired artifact. They rem
 - Feature semantics: lagged historical results; not historical point-in-time replay.
 - Source-publication and availability timestamps remain absent for the historical 384 observations.
 - The retrospective evaluation is not prospective deployment evidence and does not meet the 1,000-match walk-forward or 300-settled prospective-selection gates.
+- Release gates remain: at least 1,000 walk-forward matches per market; at least 300 prospective settled selections across 90 distinct dates; at least 98% timestamped-odds coverage; positive net ROI with a positive lower 95% ROI confidence bound; and 1X2 Brier score plus log loss better than the bookmaker benchmark.
 - No model was selected or promoted.
 - Value betting remains locked.
 - No bookmaker odds were used in the core prediction model.
