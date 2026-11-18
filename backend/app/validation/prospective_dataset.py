@@ -45,6 +45,12 @@ class FixtureObservation:
     payload_sha256: str
     raw_response_sha256: str
     payload: dict[str, Any]
+    rights_approval_id: str | None = None
+    rights_status: str | None = None
+    rights_valid_from: datetime | None = None
+    rights_valid_until: datetime | None = None
+    rights_permitted_uses: tuple[str, ...] = ()
+    rights_status_events: tuple[dict[str, Any], ...] = ()
 
     def __post_init__(self) -> None:
         if min(self.observation_id, self.sighting_id, self.provider_response_id) < 1:
@@ -143,6 +149,45 @@ def _validate_observation_fixture_identity(
             raise ValueError("observation provider fixture ID does not match fixture identity")
 
 
+def _rights_valid(
+    observation: FixtureObservation,
+    cutoff: datetime,
+    required_uses: tuple[str, ...] = (
+        "FEATURE_ENGINEERING",
+        "MODEL_TRAINING",
+        "MODEL_VALIDATION",
+    ),
+) -> bool:
+    if (
+        observation.rights_approval_id is None
+        or observation.rights_status != "APPROVED"
+        or observation.rights_valid_from is None
+        or observation.rights_valid_from > cutoff
+        or (
+            observation.rights_valid_until is not None
+            and observation.rights_valid_until <= cutoff
+        )
+        or not set(required_uses).issubset(observation.rights_permitted_uses)
+    ):
+        return False
+    effective_events = []
+    for event in observation.rights_status_events:
+        status = event.get("status")
+        effective_at = event.get("effective_at")
+        if isinstance(effective_at, str):
+            try:
+                effective_at = datetime.fromisoformat(effective_at)
+            except ValueError:
+                return False
+        if isinstance(effective_at, datetime) and effective_at <= cutoff:
+            effective_events.append((effective_at, str(status)))
+    if effective_events:
+        latest = max(effective_events, key=lambda item: item[0])
+        if latest[1] != "APPROVED":
+            return False
+    return True
+
+
 def _lineage(row: FixtureObservation) -> dict[str, Any]:
     return {
         "fixture_id": row.fixture_id,
@@ -153,6 +198,26 @@ def _lineage(row: FixtureObservation) -> dict[str, Any]:
         "provider_response_id": row.provider_response_id,
         "payload_sha256": row.payload_sha256,
         "raw_response_sha256": row.raw_response_sha256,
+        "rights_approval_id": row.rights_approval_id,
+        "rights_status": row.rights_status,
+        "rights_valid_from": (
+            row.rights_valid_from.isoformat() if row.rights_valid_from else None
+        ),
+        "rights_valid_until": (
+            row.rights_valid_until.isoformat() if row.rights_valid_until else None
+        ),
+        "rights_permitted_uses": list(row.rights_permitted_uses),
+        "rights_status_events": [
+            {
+                "status": event.get("status"),
+                "effective_at": (
+                    event["effective_at"].isoformat()
+                    if isinstance(event.get("effective_at"), datetime)
+                    else event.get("effective_at")
+                ),
+            }
+            for event in row.rights_status_events
+        ],
         "availability_basis": row.availability_basis,
         "point_in_time_certifiable": row.point_in_time_certifiable,
         "retrieved_at": row.retrieved_at.isoformat(),
@@ -350,6 +415,7 @@ def build_prospective_dataset(
             and row.point_in_time_certifiable
             and _status(row.payload) == "scheduled"
             and row.observed_at < fixture.kickoff_at
+            and _rights_valid(row, row.observed_at)
         ]
         if not pre_match_snapshots:
             continue
@@ -365,6 +431,7 @@ def build_prospective_dataset(
                 source_fixture.fixture_id == fixture.fixture_id
                 or source_fixture.kickoff_at >= fixture.kickoff_at
                 or source_observation.observed_at > cutoff
+                or not _rights_valid(source_observation, cutoff)
             ):
                 continue
             previous = eligible_by_fixture.get(source_fixture.fixture_id)
