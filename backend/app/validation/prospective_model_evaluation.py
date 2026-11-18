@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
+
 from app.models.hierarchical_poisson import (
     HierarchicalGoalResult,
     fit_hierarchical_poisson,
