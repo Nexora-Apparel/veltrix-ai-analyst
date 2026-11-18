@@ -91,6 +91,17 @@ def test_fixture_odds_uses_only_timestamped_1x2_opening_prices():
     assert all(row.line is None for row in rows)
 
 
+def test_fixture_odds_ignores_non_bet365_even_if_timestamped():
+    response = fixture_odds_response()
+    other = response["data"]["bookmakers"][0].copy()
+    other["name"] = "Other Book"
+    other["slug"] = "other-book"
+    response["data"]["bookmakers"].append(other)
+    rows = normalize_5dollar_fixture_odds(response, **base_args())
+    assert len(rows) == 3
+    assert {row.bookmaker for row in rows} == {"Bet 365"}
+
+
 def test_fixture_odds_skips_prices_without_a_documented_source_timestamp():
     response = fixture_odds_response()
     del response["data"]["bookmakers"][0]["odds"]["1x2"]["opening"]["opened_at"]
@@ -146,6 +157,17 @@ def test_history_normalizer_maps_goal_line_to_totals():
 def test_dispatcher_accepts_both_documented_envelopes():
     assert len(normalize_5dollar_odds(fixture_odds_response(), **base_args())) == 3
     assert len(normalize_5dollar_odds(odds_history_response(), **base_args())) == 3
+    fixed = odds_history_response()
+    fixed["data"]["market"] = "goalline_fixed"
+    fixed["data"].pop("ticks")
+    fixed["data"]["lines"] = [{
+        "line": 2.5,
+        "ticks": [{
+            "minute": None, "over": 1.9, "under": 1.9,
+            "recorded_at": TICK.isoformat(),
+        }],
+    }]
+    assert len(normalize_5dollar_odds(fixed, **base_args())) == 2
 
 
 def test_rejects_unapproved_training_rights():
