@@ -263,7 +263,6 @@ def validate_brazil_serie_b_import(
               AND (
                 s.point_in_time_certifiable IS TRUE
                 OR s.availability_basis <> 'RETRIEVED_AT_ONLY'
-                OR s.available_at IS NOT NULL
                 OR s.source_published_at IS NOT NULL
               )
             """,
