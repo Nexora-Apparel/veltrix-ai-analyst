@@ -1,9 +1,9 @@
 """Paired baseline scoring on an identical held-out fixture set."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from math import isfinite, log
-from typing import Mapping
 
 
 @dataclass(frozen=True, slots=True)
