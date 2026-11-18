@@ -1,10 +1,10 @@
 """Read-only comparison of CBF's official Round 30 results article with provider fixtures."""
 from __future__ import annotations
 
-from pathlib import Path
 import hashlib
 import json
 import os
+from pathlib import Path
 
 import psycopg
 
