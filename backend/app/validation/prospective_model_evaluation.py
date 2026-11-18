@@ -81,8 +81,13 @@ def _lineage_rights_valid(
         if effective_at.utcoffset() is None:
             return False
         if effective_at <= cutoff:
-            effective_events.append((effective_at, event.get("status")))
-    if effective_events and max(effective_events, key=lambda item: item[0])[1] != "APPROVED":
+            event_id = event.get("id", 0)
+            if isinstance(event_id, bool) or not isinstance(event_id, int):
+                return False
+            effective_events.append((effective_at, event_id, event.get("status")))
+    if effective_events and max(
+        effective_events, key=lambda item: (item[0], item[1])
+    )[2] != "APPROVED":
         return False
     return True
 
