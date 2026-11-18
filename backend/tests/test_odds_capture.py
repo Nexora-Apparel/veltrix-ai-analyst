@@ -91,11 +91,10 @@ def test_fixture_odds_uses_only_timestamped_1x2_opening_prices():
     assert all(row.line is None for row in rows)
 
 
-def test_fixture_odds_rejects_missing_opened_at():
+def test_fixture_odds_skips_prices_without_a_documented_source_timestamp():
     response = fixture_odds_response()
     del response["data"]["bookmakers"][0]["odds"]["1x2"]["opening"]["opened_at"]
-    with pytest.raises(OddsPayloadError, match="timestamp is missing"):
-        normalize_5dollar_fixture_odds(response, **base_args())
+    assert normalize_5dollar_fixture_odds(response, **base_args()) == ()
 
 
 def test_fixture_odds_rejects_mismatched_fixture_identity():
@@ -162,3 +161,20 @@ def test_rejects_unsuccessful_or_unrecognized_envelope():
         normalize_5dollar_fixture_odds({"success": 0, "data": {}}, **base_args())
     with pytest.raises(OddsPayloadError, match="unrecognized"):
         normalize_5dollar_odds({"success": 1, "data": {}}, **base_args())
+
+
+def test_history_normalizer_maps_fixed_goal_line_groups():
+    response = odds_history_response()
+    response["data"]["market"] = "goalline_fixed"
+    response["data"].pop("ticks")
+    response["data"]["lines"] = [{
+        "line": 2.5,
+        "ticks": [{
+            "minute": None, "over": 1.9, "under": 1.9,
+            "recorded_at": TICK.isoformat(),
+        }],
+    }]
+    rows = normalize_5dollar_odds_history(response, **base_args())
+    assert len(rows) == 2
+    assert {row.market for row in rows} == {"TOTALS"}
+    assert {row.line for row in rows} == {2.5}
