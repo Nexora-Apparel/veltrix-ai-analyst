@@ -7,9 +7,9 @@ strictly earlier than the fixture kickoff.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 import hashlib
 import re
-from dataclasses import dataclass
 from datetime import datetime
 
 
