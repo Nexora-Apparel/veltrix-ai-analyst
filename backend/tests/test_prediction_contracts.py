@@ -68,7 +68,7 @@ def test_complete_verified_evidence_is_admitted() -> None:
     ("changes", "reason"),
     [
         ({"point_in_time_certifiable": False}, "SOURCE_NOT_POINT_IN_TIME_CERTIFIABLE"),
-        ({"availability_basis": AvailabilityBasis.RETRIEVED_AT_ONLY}, "VERIFIED_SOURCE_PUBLICATION_TIME_REQUIRED"),
+        ({"availability_basis": AvailabilityBasis.RETRIEVED_AT_ONLY}, "VERIFIED_SOURCE_AVAILABILITY_BASIS_REQUIRED"),
         ({"source_published_at": None}, "SOURCE_PUBLICATION_AND_AVAILABILITY_TIMES_REQUIRED"),
         ({"available_at": CUTOFF + timedelta(seconds=1)}, "SOURCE_NOT_AVAILABLE_AT_PREDICTION_CUTOFF"),
         ({"rights_status_at_cutoff": RightsStatus.REVOKED}, "SOURCE_RIGHTS_NOT_APPROVED_AT_CUTOFF"),
@@ -140,4 +140,45 @@ def test_bookmaker_odds_are_rejected_from_core_prediction_features() -> None:
 def test_unknown_prediction_feature_data_domain_fails_closed() -> None:
     evidence = make_evidence(data_domain="UNCLASSIFIED")
     with pytest.raises(FeatureAdmissionError, match="UNSUPPORTED_PREDICTION_FEATURE_DATA_DOMAIN"):
+        require_feature_admission(make_request(evidence=evidence))
+
+
+
+def test_system_observed_evidence_is_admitted_only_after_capture() -> None:
+    evidence = make_evidence(
+        source_published_at=None,
+        available_at=RETRIEVED,
+        availability_basis=AvailabilityBasis.SYSTEM_OBSERVED_AT,
+    )
+    require_feature_admission(make_request(evidence=evidence))
+
+
+def test_system_observed_evidence_rejects_cutoff_before_capture() -> None:
+    evidence = make_evidence(
+        source_published_at=None,
+        available_at=RETRIEVED,
+        availability_basis=AvailabilityBasis.SYSTEM_OBSERVED_AT,
+    )
+    with pytest.raises(
+        FeatureAdmissionError,
+        match="SOURCE_NOT_OBSERVED_BY_PREDICTION_CUTOFF",
+    ):
+        require_feature_admission(
+            make_request(
+                evidence=evidence,
+                prediction_cutoff_at=RETRIEVED - timedelta(seconds=1),
+            )
+        )
+
+
+def test_system_observed_evidence_requires_exact_retrieval_timestamp() -> None:
+    evidence = make_evidence(
+        source_published_at=None,
+        available_at=RETRIEVED - timedelta(seconds=1),
+        availability_basis=AvailabilityBasis.SYSTEM_OBSERVED_AT,
+    )
+    with pytest.raises(
+        FeatureAdmissionError,
+        match="SYSTEM_OBSERVED_AVAILABILITY_TIMESTAMP_REQUIRED",
+    ):
         require_feature_admission(make_request(evidence=evidence))
