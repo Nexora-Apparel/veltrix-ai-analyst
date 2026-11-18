@@ -37,7 +37,7 @@ BOUNDARY_END = datetime(2026, 11, 9, tzinfo=UTC)
 REQUEST_BUDGET = 40
 IMPORTER_VERSION = "5dollar-competition-resumable-v4"
 IMPORT_APPROVAL = FIVEDOLLAR_COMMUNITY_APPROVAL
-SCHEMA_VERSION = "5dollar-fixture-v1"
+SCHEMA_VERSION = "5dollar-fixture-v2"
 
 
 class HistoricalImportError(RuntimeError):
