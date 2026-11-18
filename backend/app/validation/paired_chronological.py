@@ -226,6 +226,22 @@ def evaluate_paired_chronological_report(
 ) -> dict[str, typing.Any]:
     if report.get("dataset_type") != "RETROSPECTIVE_RESEARCH_NOT_PIT_CERTIFIED":
         raise ValueError("input must be a non-PIT retrospective prequential report")
+    source = report.get("source")
+    if not isinstance(source, dict):
+        raise ValueError("input must include source chronology adjudication metadata")
+    if source.get("chronology_basis") != (
+        "PROVIDER_KICKOFF_WITH_EVIDENCE_BACKED_OFFICIAL_CBF_ADJUDICATIONS"
+    ):
+        raise ValueError("input chronology has not passed official kickoff adjudication")
+    applied = source.get("kickoff_adjudications_applied")
+    applied_count = source.get("kickoff_adjudication_count")
+    if (
+        not isinstance(applied, list)
+        or type(applied_count) is not int
+        or applied_count < 0
+        or len(applied) != applied_count
+    ):
+        raise ValueError("input kickoff adjudication audit is incomplete")
     predictions = report.get("predictions")
     if not isinstance(predictions, list) or len(predictions) < 2:
         raise ValueError("at least two predictions are required")
