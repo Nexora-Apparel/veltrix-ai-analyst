@@ -443,10 +443,19 @@ class PostgresIngestionStore:
             raise IngestionStoreError("SOURCE_OBSERVATION_IDENTITY_REQUIRED")
         if source_published_at is not None and source_published_at > retrieved_at:
             raise IngestionStoreError("SOURCE_PUBLICATION_AFTER_RETRIEVAL")
-        if point_in_time_certifiable and (
-            source_published_at is None or availability_basis != "SOURCE_PUBLISHED_AT"
-        ):
-            raise IngestionStoreError("PIT_CERTIFICATION_REQUIRES_VERIFIED_PUBLICATION_TIME")
+        if point_in_time_certifiable:
+            if provider_response_id is None or available_at is None:
+                raise IngestionStoreError("PIT_CERTIFICATION_REQUIRES_CAPTURED_RESPONSE_AND_AVAILABILITY")
+            if availability_basis == "SOURCE_PUBLISHED_AT":
+                if source_published_at is None:
+                    raise IngestionStoreError("PIT_CERTIFICATION_REQUIRES_VERIFIED_PUBLICATION_TIME")
+                if available_at < source_published_at:
+                    raise IngestionStoreError("AVAILABILITY_PRECEDES_SOURCE_PUBLICATION")
+            elif availability_basis == "SYSTEM_OBSERVED_AT":
+                if source_published_at is not None or available_at != retrieved_at:
+                    raise IngestionStoreError("SYSTEM_OBSERVED_PIT_REQUIRES_RETRIEVAL_TIMESTAMP")
+            else:
+                raise IngestionStoreError("PIT_CERTIFICATION_REQUIRES_VERIFIED_AVAILABILITY_BASIS")
         self._authorize(
             approval,
             scope_value=scope_value,
