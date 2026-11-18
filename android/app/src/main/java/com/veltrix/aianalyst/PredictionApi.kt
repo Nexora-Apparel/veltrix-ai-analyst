@@ -38,11 +38,11 @@ object PredictionApi {
         .callTimeout(20, TimeUnit.SECONDS)
         .build()
 
-    suspend fun fetchUpcoming(): List<FixturePrediction> = withContext(Dispatchers.IO) {
+    suspend fun fetchUpcoming(): List<FixturePrediction>? = withContext(Dispatchers.IO) {
         val baseUrl = BuildConfig.API_BASE_URL.trim().trimEnd('/')
         if (baseUrl.isBlank()) {
             Log.w(TAG, "API base URL has not been configured")
-            return@withContext emptyList()
+            return@withContext null
         }
 
         val request = Request.Builder()
@@ -54,23 +54,25 @@ object PredictionApi {
         try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IOException("Prediction API returned HTTP ${response.code}")
+                    Log.w(TAG, "Prediction API returned HTTP ${response.code}")
+                    null
+                } else {
+                    val body = response.body?.string()
+                        ?: throw IOException("Prediction API returned an empty response")
+                    parsePredictions(body)
                 }
-                val body = response.body?.string()
-                    ?: throw IOException("Prediction API returned an empty response")
-                parsePredictions(body)
             }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
             Log.e(TAG, "Unable to load published predictions", exception)
-            emptyList()
+            null
         }
     }
 
     internal fun parsePredictions(json: String): List<FixturePrediction> {
         val root = JSONObject(json)
-        val items = root.optJSONArray("predictions") ?: return emptyList()
+        val items = root.optJSONArray("predictions") ?: throw IllegalArgumentException("Missing predictions array")
         return buildList(items.length()) {
             for (index in 0 until items.length()) {
                 val item = items.getJSONObject(index)
