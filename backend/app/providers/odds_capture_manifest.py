@@ -74,6 +74,16 @@ class ProspectiveOddsCaptureManifest(StrictModel):
 
     @model_validator(mode="after")
     def enforce_capture_and_admission_rules(self) -> ProspectiveOddsCaptureManifest:
+        expected_identity = deterministic_capture_identity(
+            provider=self.provider,
+            provider_event_id=self.provider_event_id,
+            provider_fixture_id=self.provider_fixture_id,
+            canonical_fixture_id=self.canonical_fixture_id,
+            competition_id=self.competition_id,
+            request_started_at=self.request_started_at,
+        )
+        if self.capture_identity.casefold() != expected_identity:
+            raise ValueError("capture identity does not match manifest request identity")
         if self.request_started_at > self.retrieved_at:
             raise ValueError("request cannot start after retrieval")
         if (self.source_tick_min_at is None) != (self.source_tick_max_at is None):
