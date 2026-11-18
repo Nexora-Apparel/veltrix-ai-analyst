@@ -10,7 +10,7 @@ from app.providers.odds_capture import (
     normalize_5dollar_odds_history,
 )
 
-CUTOFF = datetime(2026, 11, 17, 12, tzinfo=UTC)
+CUTOFF = datetime(2026, 11, 18, 12, tzinfo=UTC)
 KICKOFF = CUTOFF + timedelta(hours=2)
 TICK = CUTOFF - timedelta(minutes=5)
 RETRIEVED = CUTOFF - timedelta(minutes=4)
