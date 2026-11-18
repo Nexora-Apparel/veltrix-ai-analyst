@@ -183,8 +183,11 @@ def normalize_5dollar_odds_history(
     bookmaker_data = data.get("bookmaker")
     if not isinstance(bookmaker_data, Mapping):
         raise OddsPayloadError("odds history has no bookmaker object")
+    bookmaker_slug = str(bookmaker_data.get("slug") or "").strip().casefold()
+    if bookmaker_slug != "bet365":
+        raise OddsPayloadError("Community odds approval only supports Bet365")
     rights_approval_id = _require_odds_rights(competition_id, retrieved_at)
-    bookmaker = str(bookmaker_data.get("slug") or bookmaker_data.get("name") or "").strip()
+    bookmaker = str(bookmaker_data.get("name") or bookmaker_slug).strip()
     market_name = str(data.get("market") or "").lower()
     market_map = {"1x2": ("1X2", ("home", "draw", "away")),
                   "goalline": ("TOTALS", ("over", "under")),
