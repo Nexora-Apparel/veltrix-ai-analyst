@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from math import isfinite
-
 from app.models.hierarchical_poisson import (
     HierarchicalGoalResult,
     fit_hierarchical_poisson,
@@ -45,10 +43,6 @@ SCORELINE_MASS_TARGET = 0.99999
 def _goal_result(row: ProspectiveDatasetRow) -> HierarchicalGoalResult:
     if row.label is None or row.label_observed_at is None:
         raise ValueError("settled prospective label is required")
-    if row.label_observed_at >= row.kickoff_at + (row.label_observed_at - row.kickoff_at):
-        # Keep the explicit observation timestamp in the validation contract;
-        # fold-level cutoff checks below establish whether it was available.
-        pass
     return HierarchicalGoalResult(
         fixture_id=row.fixture_id,
         kickoff_at=row.kickoff_at,
@@ -181,8 +175,6 @@ def evaluate_prospective_model(
     model_totals: list[BinaryForecast] = []
     baseline_totals: list[BinaryForecast] = []
     fold_reports = []
-    max_model_goals = 0
-    max_baseline_goals = 0
     total_rho_clipped = 0
 
     for fold in folds:
