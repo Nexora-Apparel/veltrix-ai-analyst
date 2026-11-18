@@ -7,16 +7,16 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from app.providers.the_odds_api_markets import (  # noqa: E402
+from app.providers.the_odds_api_markets import (
     OddsApiMarketPayloadError,
     normalize_event_h2h_odds_response,
 )
