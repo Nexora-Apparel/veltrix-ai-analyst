@@ -87,6 +87,7 @@ def _paired_block_bootstrap(
         if block:
             blocks.append(block)
     comparisons: dict[str, Any] = {}
+    sample_sizes: list[int] = []
     for left_index, left in enumerate(MODEL_NAMES):
         for right in MODEL_NAMES[left_index + 1:]:
             samples_brier: list[float] = []
@@ -95,7 +96,8 @@ def _paired_block_bootstrap(
                 selected: list[dict[str, Any]] = []
                 while len(selected) < n:
                     selected.extend(rng.choice(blocks))
-                sample = selected[:n]
+                sample = selected
+                sample_sizes.append(len(sample))
                 left_metrics = _metrics(sample, left)
                 right_metrics = _metrics(sample, right)
                 samples_brier.append(float(left_metrics["brier"]) - float(right_metrics["brier"]))
@@ -117,6 +119,9 @@ def _paired_block_bootstrap(
         "resamples": resamples,
         "block_size_fixtures": block_size,
         "seed": seed,
+        "resample_size_min": min(sample_sizes),
+        "resample_size_max": max(sample_sizes),
+        "resample_size_policy": "WHOLE_KICKOFF_BATCHES_RETAINED; SAMPLE MAY EXCEED TARGET_FIXTURE_COUNT",
         "comparisons": comparisons,
         "interpretation": "Negative differences favour the left-hand model; intervals are paired and descriptive, not PIT certification.",
     }
@@ -125,8 +130,8 @@ def _paired_block_bootstrap(
 def _kickoff_batches(rows: Sequence[dict[str, Any]]) -> list[list[dict[str, Any]]]:
     batches: list[list[dict[str, Any]]] = []
     for row in rows:
-        kickoff = row["kickoff_at"]
-        if not batches or batches[-1][0]["kickoff_at"] != kickoff:
+        kickoff = datetime.fromisoformat(row["kickoff_at"])
+        if not batches or datetime.fromisoformat(batches[-1][0]["kickoff_at"]) != kickoff:
             batches.append([])
         batches[-1].append(row)
     return batches
