@@ -7,6 +7,7 @@ pre-match availability.
 from __future__ import annotations
 
 from collections.abc import Mapping
+import re
 from typing import Any
 
 
@@ -21,6 +22,8 @@ def is_valid_retrospective_observation(row: Mapping[str, Any]) -> bool:
     available_at = row.get("available_at")
     system_observed_at = row.get("system_observed_at")
     http_status = row.get("http_status")
+    raw_response_sha256 = row.get("raw_response_sha256")
+    payload_sha256 = row.get("payload_sha256")
     basis = row.get("availability_basis")
 
     if basis == "RETRIEVED_AT_ONLY":
@@ -45,6 +48,10 @@ def is_valid_retrospective_observation(row: Mapping[str, Any]) -> bool:
         and retrieved_at is not None
         and (system_observed_at is None or system_observed_at >= retrieved_at)
         and row.get("provider_response_id") is not None
+        and isinstance(payload_sha256, str)
+        and re.fullmatch(r"[0-9a-f]{64}", payload_sha256.strip()) is not None
+        and isinstance(raw_response_sha256, str)
+        and re.fullmatch(r"[0-9a-f]{64}", raw_response_sha256.strip()) is not None
         and isinstance(http_status, int)
         and not isinstance(http_status, bool)
         and 200 <= http_status < 300
