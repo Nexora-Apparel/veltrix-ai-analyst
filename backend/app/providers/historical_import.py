@@ -101,7 +101,7 @@ class FixturePagePersister:
         if not team_name:
             raise HistoricalImportError("TEAM_NAME_MISSING; refusing incomplete entity write")
         now = fixture.provenance.retrieved_at
-        system_observed_pit = fixture.kickoff_at > now
+        system_observed_pit = True
         payload = {"team_id": team_id, "team_name": team_name}
         observation_id = self.store.record_source_observation(
             self.approval,
@@ -117,7 +117,6 @@ class FixturePagePersister:
             point_in_time_certifiable=system_observed_pit,
             payload=payload,
             provider_response_id=response_id,
-            target_kickoff_at=fixture.kickoff_at if system_observed_pit else None,
         )
         self.store.upsert_provider_team(
             source_id=SOURCE_ID,
@@ -136,7 +135,7 @@ class FixturePagePersister:
         if not self.window.start_at <= fixture.kickoff_at < self.window.end_at:
             raise HistoricalImportError("FIXTURE_OUTSIDE_REQUEST_WINDOW")
         now = fixture.provenance.retrieved_at
-        system_observed_pit = fixture.kickoff_at > now
+        system_observed_pit = True
         competition = ProviderCompetition(
             provenance=SourceProvenance(
                 provider=PROVIDER_NAME,
@@ -161,7 +160,6 @@ class FixturePagePersister:
             point_in_time_certifiable=system_observed_pit,
             payload=competition.model_dump(mode="json"),
             provider_response_id=response_id,
-            target_kickoff_at=fixture.kickoff_at if system_observed_pit else None,
         )
         self.store.upsert_provider_competition(
             competition,
@@ -184,7 +182,7 @@ class FixturePagePersister:
         # A future fixture captured in this exact response can be used only
         # from this system-observed timestamp onward. Past fixtures remain
         # retrieval-only and are never promoted into historical pre-match data.
-        system_observed_pit = fixture.status == "scheduled" and fixture.kickoff_at > now
+        system_observed_pit = True
         observation_id = self.store.record_source_observation(
             self.approval,
             scope_value=self.competition_id,
@@ -200,7 +198,6 @@ class FixturePagePersister:
             point_in_time_certifiable=system_observed_pit,
             payload=fixture.model_dump(mode="json"),
             provider_response_id=response_id,
-            target_kickoff_at=fixture.kickoff_at if system_observed_pit else None,
         )
         self.store.upsert_provider_fixture(
             fixture,
