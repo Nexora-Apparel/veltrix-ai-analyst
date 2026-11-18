@@ -40,7 +40,19 @@ def _synthetic_rows(count: int = 120) -> list[ProspectiveDatasetRow]:
             },
             label_observed_at=kickoff + timedelta(hours=3),
             label_observation_id=index + 1,
-            label_lineage={"provider_response_id": index + 1001},
+            label_lineage={
+                "provider_response_id": index + 1001,
+                "rights_approval_id": "synthetic-approved-source",
+                "rights_status": "APPROVED",
+                "rights_valid_from": (start - timedelta(days=1)).isoformat(),
+                "rights_valid_until": None,
+                "rights_permitted_uses": [
+                    "FEATURE_ENGINEERING",
+                    "MODEL_TRAINING",
+                    "MODEL_VALIDATION",
+                ],
+                "rights_status_events": [],
+            },
         ))
     return rows
 
