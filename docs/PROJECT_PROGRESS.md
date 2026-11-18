@@ -630,3 +630,38 @@ A pre-collection code audit found that `backend/app/providers/historical_import.
 - [ ] Provider-specific bookmaker-odds rights must be reviewed and approved for the exact data type, provider scope and value-betting purpose. The contract's rights gate does not itself grant permission.
 - [ ] Next: implement a registry-backed rights decision adapter, then a dry-run one-fixture capture envelope with idempotency tests. No database writer, recurring schedule, odds-derived model features or value-bet activation until those gates pass.
 - **Architecture invariant:** bookmaker odds remain excluded from core prediction generation. An odds failure may suppress a value-bet recommendation only; it must not suppress an otherwise eligible independent football prediction. Value betting remains locked pending separate certification.
+
+
+## 2026-11-18 — Historical corpus audit and retrospective research pipeline
+
+- [x] PR #58 merged: manual 5Dollar odds capture dry-run validator. Latest-head CI passed backend tests, Ruff and Android debug build.
+- [x] PR #59 merged: exact raw odds response retention requirements. Manifest-only odds artifacts are metadata-only, not raw-response verified or PIT evidence.
+- [x] PR #60 merged: read-only live Neon historical corpus qualification audit.
+- [x] PR #61 merged: reproducible SELECT-only historical corpus audit SQL.
+- [x] PR #63 merged: CBF-backed 21-row provider team identity review matrix. All candidate mappings remain REVIEW_REQUIRED; the America MG / América Mineiro alias is not merged.
+- [x] PR #62 merged as `171d1565cb66b2a0691e55bdf488e75dc6da2ebf`: provider-local retrospective Elo / smoothed attack-defence Poisson / Dixon-Coles / adaptive ensemble, read-only Neon training runner, regression tests and manually dispatched research workflow.
+- [x] PR #32 closed as superseded by the clean current-main port in PR #62.
+- [x] Current-main CI for PR #62 head `2a84c15a7c46e3f20b97b0dc2ba1143e6d48f58d`: 255 backend tests passed, Ruff passed, Android debug build passed.
+
+### Live Neon corpus qualification snapshot
+
+Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_analyst`:
+
+- 384 provider fixture rows: 380 FINISHED with scores, 4 UNKNOWN without scores.
+- 384 fixture/result source observations and 384 sightings; every one lacks `source_published_at` and `available_at`; zero are PIT-certifiable.
+- 384 canonical fixtures: 382 IDENTITY_REVIEW_REQUIRED and 2 CONFLICT; all SOURCE_ROW_ONLY.
+- 384 fixture source links: source provenance verified, but all remain SOURCE_FIXTURE_REVIEW_REQUIRED.
+- 21 provider team links: source provenance verified, but all remain REAL_WORLD_IDENTITY_REVIEW_REQUIRED.
+- One competition link remains REAL_WORLD_IDENTITY_REVIEW_REQUIRED.
+- Outstanding review inventory: 20 team identity candidates, one alias candidate, one competition identity candidate, four duplicate fixture candidates, one season coverage reconciliation case and one PIT timestamp gap.
+- No Neon data was modified. No provider request or odds API credit was used for this audit.
+
+### Next execution gates
+
+1. Manually dispatch the [Retrospective model training workflow](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/retrospective-training.yml) with `RUN_RETROSPECTIVE_RESEARCH`. The workflow reads Neon in a READ ONLY transaction and uploads a private retrospective report. This manual dispatch is not available through the current GitHub action controls in this session.
+2. Inspect the report's row counts, exclusions, report hash, scorecards, rho and adaptive ensemble weights. These full-corpus prequential metrics are exploratory and are not directly comparable to the existing 305-fixture nested walk-forward evaluation.
+3. Keep all outputs RETROSPECTIVE_RESEARCH_NOT_PIT_CERTIFIED. Do not promote a model or enable production predictions from this report.
+4. Continue the full 370-FINISHED-row CBF fixture-by-fixture schedule reconciliation and human identity decisions. Preserve all source rows and unresolved provider IDs.
+5. Keep the PIT timestamp gap open unless authoritative source-publication/availability evidence is found. No kickoff or retrieval timestamp substitution.
+6. Keep Android integration deferred until genuine prediction endpoints exist; keep value betting locked pending separate certification.
+
