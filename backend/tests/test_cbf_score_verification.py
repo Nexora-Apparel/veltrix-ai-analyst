@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from verify_cbf_scores_rounds_1_29 import parse_scored_row  # noqa: E402
+from verify_cbf_scores_rounds_1_29 import parse_scored_row
 
 
 def test_parse_cbf_score_row_with_full_schedule_metadata() -> None:
