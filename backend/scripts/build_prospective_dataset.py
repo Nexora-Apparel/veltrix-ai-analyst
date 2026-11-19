@@ -224,44 +224,28 @@ def build_report(
                    ht.canonical_team_id::text, at.canonical_team_id::text,
                    pf.kickoff_at, pf.home_goals, pf.away_goals,
                    o.id, s.id, s.provider_response_id, s.retrieved_at,
-                   CASE
-                     WHEN s.availability_basis = 'SYSTEM_OBSERVED_AT'
-                      AND s.point_in_time_certifiable IS TRUE
-                      AND s.system_observed_at IS NOT NULL
-                      AND s.system_observed_at >= s.retrieved_at
-                     THEN s.system_observed_at
-                     ELSE s.created_at
-                   END AS label_observed_at,
-                   CASE
-                     WHEN s.availability_basis = 'SYSTEM_OBSERVED_AT'
-                      AND s.point_in_time_certifiable IS TRUE
-                      AND s.system_observed_at IS NOT NULL
-                      AND s.system_observed_at >= s.retrieved_at
-                     THEN 'SYSTEM_OBSERVED_AT'
-                     ELSE 'DATABASE_INSERTED_AT_TRAINING_ONLY'
-                   END AS label_availability_basis,
-                   CASE
-                     WHEN s.availability_basis = 'SYSTEM_OBSERVED_AT'
-                      AND s.point_in_time_certifiable IS TRUE
-                      AND s.system_observed_at IS NOT NULL
-                      AND s.system_observed_at >= s.retrieved_at
-                     THEN TRUE ELSE FALSE
-                   END AS label_point_in_time_certifiable,
+                   ir.id AS import_run_id, ir.finished_at AS label_observed_at,
                    o.payload_sha256, r.response_sha256,
                    o.rights_approval_id, a.status, a.valid_from, a.valid_until,
-                   a.permitted_uses, approval_events.status_events
+                   a.permitted_uses, approval_events.status_events,
+                   s.system_observed_at
             FROM veltrix_ai_analyst.provider_fixtures pf
             JOIN veltrix_ai_analyst.source_observations o
               ON o.id = pf.source_observation_id
              AND o.provider = pf.provider AND o.source_id = pf.source_id
              AND o.provider_entity_id = pf.provider_fixture_id
+             AND o.data_type = 'fixtures_and_results'
+             AND o.entity_type = 'fixture'
             JOIN veltrix_ai_analyst.source_observation_sightings s
               ON s.source_observation_id = o.id
+             AND s.provider_response_id IS NOT NULL
+             AND s.payload_sha256 = o.payload_sha256
             JOIN veltrix_ai_analyst.provider_responses r
               ON r.id = s.provider_response_id
              AND r.provider = o.provider AND r.source_id = o.source_id
              AND r.http_status BETWEEN 200 AND 299
              AND r.fetched_at = s.retrieved_at
+             AND length(r.response_sha256) = 64
              AND (
                (s.availability_basis = 'SYSTEM_OBSERVED_AT'
                 AND s.point_in_time_certifiable IS TRUE
@@ -270,21 +254,21 @@ def build_report(
                 AND r.system_observed_at = s.system_observed_at)
                OR (s.system_observed_at IS NULL AND r.system_observed_at IS NULL)
              )
+            JOIN veltrix_ai_analyst.import_request_reservations irr
+              ON irr.provider_response_id = r.id
+            JOIN veltrix_ai_analyst.import_runs ir
+              ON ir.id = irr.import_run_id
+             AND ir.provider = pf.provider
+             AND ir.source_id = pf.source_id
+             AND ir.status = 'COMPLETED'
+             AND ir.finished_at IS NOT NULL
+             AND ir.finished_at >= s.retrieved_at
+             AND ir.finished_at > pf.kickoff_at
             JOIN veltrix_ai_analyst.source_approvals a
               ON a.approval_id = o.rights_approval_id
              AND a.status = 'APPROVED'
-             AND a.valid_from <= CASE
-               WHEN s.availability_basis = 'SYSTEM_OBSERVED_AT'
-                AND s.point_in_time_certifiable IS TRUE
-                AND s.system_observed_at IS NOT NULL
-                AND s.system_observed_at >= s.retrieved_at
-               THEN s.system_observed_at ELSE s.created_at END
-             AND (a.valid_until IS NULL OR a.valid_until > CASE
-               WHEN s.availability_basis = 'SYSTEM_OBSERVED_AT'
-                AND s.point_in_time_certifiable IS TRUE
-                AND s.system_observed_at IS NOT NULL
-                AND s.system_observed_at >= s.retrieved_at
-               THEN s.system_observed_at ELSE s.created_at END)
+             AND a.valid_from <= ir.finished_at
+             AND (a.valid_until IS NULL OR a.valid_until > ir.finished_at)
              AND a.permitted_uses @> '["MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb
             JOIN veltrix_ai_analyst.effective_canonical_fixture_sources link
               ON link.provider_fixture_row_id = pf.id
@@ -346,22 +330,13 @@ def build_report(
               AND o.payload->>'kickoff_at' IS NOT NULL
               AND (o.payload->>'kickoff_at')::timestamptz = pf.kickoff_at
               AND o.payload #>> '{provenance,provider_record_id}' = pf.provider_fixture_id
-              AND s.created_at > pf.kickoff_at
               AND length(o.payload_sha256) = 64
-              AND length(r.response_sha256) = 64
               AND NOT EXISTS (
                   SELECT 1
                   FROM veltrix_ai_analyst.prospective_feature_snapshots existing
                   WHERE existing.canonical_fixture_id = cf.id
               )
-            ORDER BY pf.id,
-                     CASE
-                       WHEN s.availability_basis = 'SYSTEM_OBSERVED_AT'
-                        AND s.point_in_time_certifiable IS TRUE
-                        AND s.system_observed_at IS NOT NULL
-                        AND s.system_observed_at >= s.retrieved_at
-                       THEN s.system_observed_at ELSE s.created_at END DESC,
-                     s.id DESC
+            ORDER BY pf.id, ir.finished_at ASC, s.id DESC
             """
         ).fetchall()
     fixtures = [
@@ -406,9 +381,7 @@ def build_report(
     ]
     training_only_rows = []
     for row in historical_training_rows_raw:
-        label_observed_at = row[13]
-        availability_basis = str(row[14])
-        point_in_time_certifiable = bool(row[15])
+        label_observed_at = row[14]
         label_lineage = {
             "fixture_id": f"{row[0]}:{row[1]}",
             "provider": "5DollarFootballAPI",
@@ -416,26 +389,21 @@ def build_report(
             "source_observation_id": int(row[9]),
             "source_sighting_id": int(row[10]),
             "provider_response_id": int(row[11]),
-            "payload_sha256": str(row[16]).strip(),
-            "raw_response_sha256": str(row[17]).strip(),
-            "rights_approval_id": str(row[18]),
-            "rights_status": str(row[19]),
-            "rights_valid_from": row[20].isoformat(),
-            "rights_valid_until": row[21].isoformat() if row[21] else None,
-            "rights_permitted_uses": list(row[22] or ()),
-            "rights_status_events": list(row[23] or ()),
-            "availability_basis": availability_basis,
-            "point_in_time_certifiable": point_in_time_certifiable,
+            "payload_sha256": str(row[15]).strip(),
+            "raw_response_sha256": str(row[16]).strip(),
+            "rights_approval_id": str(row[17]),
+            "rights_status": str(row[18]),
+            "rights_valid_from": row[19].isoformat(),
+            "rights_valid_until": row[20].isoformat() if row[20] else None,
+            "rights_permitted_uses": list(row[21] or ()),
+            "rights_status_events": list(row[22] or ()),
+            "availability_basis": "IMPORT_RUN_COMPLETED_AT_TRAINING_ONLY",
+            "point_in_time_certifiable": False,
             "retrieved_at": row[12].isoformat(),
-            "database_inserted_at": (
-                label_observed_at.isoformat()
-                if availability_basis == "DATABASE_INSERTED_AT_TRAINING_ONLY"
-                else None
-            ),
-            "system_observed_at": (
-                label_observed_at.isoformat()
-                if availability_basis == "SYSTEM_OBSERVED_AT"
-                else None
+            "import_run_id": int(row[13]),
+            "import_run_finished_at": label_observed_at.isoformat(),
+            "source_system_observed_at": (
+                row[23].isoformat() if row[23] else None
             ),
         }
         home_goals, away_goals = int(row[7]), int(row[8])
