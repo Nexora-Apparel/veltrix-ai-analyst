@@ -104,15 +104,21 @@ def test_chronological_tuner_only_scores_after_training_cutoff():
         train_cutoff=BASE + timedelta(days=30),
         validation_end=BASE + timedelta(days=40),
     )
+    availability = {
+        row.fixture_id: row.kickoff_at + timedelta(hours=1)
+        for row in rows
+    }
     selected = select_hierarchical_hyperparameters(
         rows,
         [fold],
+        label_available_at=availability,
+        evaluation_as_of=BASE + timedelta(days=50),
         half_lives=(90.0, 180.0),
         team_ridges=(0.5, 2.0),
         competition_ridges=(1.0,),
         min_training_fixtures=20,
     )
-    assert selected.protocol == "EXPANDING_WINDOW_PAIRED_POISSON_NLL_V1"
+    assert selected.protocol == "EXPANDING_WINDOW_LABEL_AVAILABILITY_AWARE_PAIRED_POISSON_NLL_V2"
     assert selected.leaderboard
     assert selected.leaderboard[0].scored_matches == 10
     assert selected.selected == selected.leaderboard[0].candidate
