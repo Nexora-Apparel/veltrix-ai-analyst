@@ -22,6 +22,8 @@ from app.validation.prospective_dataset import (
 def _jsonable_row(row) -> dict:
     return {
         "fixture_id": row.fixture_id,
+        "provider_fixture_id": row.fixture_id.split(":", 1)[1],
+        "provider_competition_id": row.competition_id,
         "canonical_fixture_id": row.canonical_fixture_id,
         "canonical_competition_id": row.canonical_competition_id,
         "provider": row.provider,
