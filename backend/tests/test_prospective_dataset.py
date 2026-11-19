@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from app.validation.prospective_dataset import (
     FixtureIdentity,
     FixtureObservation,
+    ProspectiveDatasetRow,
     build_expanding_window_folds,
     build_prospective_dataset,
 )
@@ -354,3 +355,77 @@ def test_canonical_competition_key_unifies_provider_scope_for_team_history():
 
     assert target_row.features["home_matches_last5"] == 1.0
     assert target_row.canonical_competition_id == "canonical-league"
+
+
+def test_historical_training_only_rows_seed_folds_but_never_validate():
+    def labelled_row(fid, day, observed_day, *, validation_eligible):
+        kickoff = BASE + timedelta(days=day)
+        observed = BASE + timedelta(days=observed_day)
+        training_only = not validation_eligible
+        lineage = {
+            "rights_approval_id": "test-approval",
+            "rights_status": "APPROVED",
+            "rights_valid_from": (BASE - timedelta(days=365)).isoformat(),
+            "rights_valid_until": None,
+            "rights_permitted_uses": ["MODEL_TRAINING", "MODEL_VALIDATION"],
+            "rights_status_events": [],
+            "availability_basis": (
+                "DATABASE_INSERTED_AT_TRAINING_ONLY"
+                if training_only else "SYSTEM_OBSERVED_AT"
+            ),
+            "point_in_time_certifiable": not training_only,
+        }
+        if training_only:
+            lineage["database_inserted_at"] = observed.isoformat()
+        else:
+            lineage["system_observed_at"] = observed.isoformat()
+        return ProspectiveDatasetRow(
+            fixture_id=fid,
+            provider="5DollarFootballAPI",
+            source_id="5dollarfootballapi",
+            competition_id="league",
+            kickoff_at=kickoff,
+            prediction_cutoff_at=(
+                None if training_only else kickoff - timedelta(hours=2)
+            ),
+            home_team_id=f"{fid}-home",
+            away_team_id=f"{fid}-away",
+            features={},
+            feature_lineage=(),
+            label={
+                "home_goals": 2,
+                "away_goals": 1,
+                "home_win": True,
+                "draw": False,
+                "away_win": False,
+                "btts": True,
+                "over_25": True,
+            },
+            label_observed_at=observed,
+            label_observation_id=1,
+            label_lineage=lineage,
+            validation_eligible=validation_eligible,
+        )
+
+    history = labelled_row(
+        "history-only", 1, 2, validation_eligible=False
+    )
+    first = labelled_row("prospective-1", 5, 6, validation_eligible=True)
+    second = labelled_row("prospective-2", 7, 8, validation_eligible=True)
+
+    folds = build_expanding_window_folds(
+        [history, first, second],
+        minimum_training_fixtures=1,
+        validation_block_fixtures=1,
+    )
+
+    assert len(folds) == 2
+    assert folds[0].train_fixture_ids == ("history-only",)
+    assert folds[0].validation_fixture_ids == ("prospective-1",)
+    assert "history-only" in folds[1].train_fixture_ids
+    assert "prospective-1" in folds[1].train_fixture_ids
+    assert all(
+        "history-only" not in fold.validation_fixture_ids
+        for fold in folds
+    )
+
