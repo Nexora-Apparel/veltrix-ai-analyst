@@ -10,8 +10,8 @@ import pytest
 
 from app.canonicalization import (
     BRAZIL_SERIE_B_RUN_3,
-    CanonicalMaterializationScope,
     SUPPORTED_FIXTURE_STATUSES,
+    CanonicalMaterializationScope,
     _identity_collision_fixture_ids,
     materialize_brazil_serie_b_canonical_entities,
 )
