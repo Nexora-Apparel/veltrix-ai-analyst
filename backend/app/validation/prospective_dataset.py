@@ -442,7 +442,7 @@ def build_prospective_dataset(
         snapshot = max(pre_match_snapshots, key=lambda row: (row.observed_at, row.sighting_id))
         cutoff = snapshot.observed_at
         competition_matches = finished_matches_by_competition[
-            (fixture.provider, fixture.source_id, fixture.competition_id)
+            (fixture.provider, fixture.source_id, fixture.canonical_competition_id or fixture.competition_id)
         ]
         eligible_by_fixture: dict[str, tuple[FixtureIdentity, FixtureObservation, int, int]] = {}
         for item in competition_matches:
