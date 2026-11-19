@@ -1,6 +1,14 @@
 name: Stage 6 prospective dataset read-only preview
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/app/validation/prospective_dataset.py'
+      - 'backend/scripts/build_prospective_dataset.py'
+      - 'backend/scripts/materialize_prospective_snapshots.py'
+      - 'backend/migrations/016_immutable_prospective_feature_snapshots.sql'
+      - '.github/workflows/stage-6-prospective-dataset-preview.yml'
   workflow_dispatch:
     inputs:
       confirm_preview:
@@ -21,7 +29,7 @@ concurrency:
 
 jobs:
   preview:
-    if: inputs.confirm_preview == 'BUILD_READ_ONLY_PROSPECTIVE_DATASET'
+    if: github.event_name == 'push' || inputs.confirm_preview == 'BUILD_READ_ONLY_PROSPECTIVE_DATASET'
     environment: veltrix-historical-import
     runs-on: ubuntu-latest
     timeout-minutes: 20
