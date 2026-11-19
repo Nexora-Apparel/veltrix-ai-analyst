@@ -81,6 +81,8 @@ def test_inventory_is_read_only_and_reports_scope_coverage():
     assert scope["canonical_fixture_links"]["identity_review_required"]==1
     assert scope["unresolved_linked_review_cases"]==2
     assert scope["review_case_breakdown"][0]["case_type"]=="FIXTURE_DUPLICATE_CANDIDATE"
+    assert any("competition_rows" in sql for sql,_ in connection.queries)
+    assert any("primary_team_identity_link_id" in sql and "competition_identity_link_id" in sql for sql,_ in connection.queries)
     assert all("INSERT" not in sql.upper() and "UPDATE " not in sql.upper() and "DELETE " not in sql.upper() for sql,_ in connection.queries)
 
 
