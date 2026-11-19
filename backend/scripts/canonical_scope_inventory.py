@@ -146,7 +146,7 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                 team_counts = dict(cur.fetchone())
 
                 cur.execute("""
-                    SELECT count(*) AS linked_fixture_rows,
+                    SELECT count(f.id) AS linked_fixture_rows,
                            count(*) FILTER (WHERE f.identity_status='VERIFIED') AS identity_verified,
                            count(*) FILTER (WHERE f.identity_status='IDENTITY_REVIEW_REQUIRED') AS identity_review_required,
                            count(*) FILTER (WHERE f.identity_status='CONFLICT') AS identity_conflicts,
