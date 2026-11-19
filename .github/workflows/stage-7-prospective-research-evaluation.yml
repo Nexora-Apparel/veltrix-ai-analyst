@@ -116,7 +116,7 @@ jobs:
               for key in (
                   "walk_forward_fixtures_per_market",
                   "settled_prospective_fixtures",
-                  "distinct_kickoff_dates",
+                  "distinct_kickoff_dates_with_settled_labels",
               )
           )
           report["certification_gates"] = gates
