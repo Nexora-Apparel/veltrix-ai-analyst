@@ -25,12 +25,12 @@ class FakeCursor:
             self.result=[{"version":v} for v in self.connection.migrations]
         elif "to_regclass" in sql:
             self.result=[self.connection.schema]
+        elif "linked_fixture_rows" in sql:
+            self.result=[self.connection.canonical_counts]
         elif "fixture_rows" in sql:
             self.result=[self.connection.fixture_counts]
         elif "referenced_team_ids" in sql:
             self.result=[self.connection.team_counts]
-        elif "linked_fixture_rows" in sql:
-            self.result=[self.connection.canonical_counts]
         elif "unresolved_cases" in sql:
             self.result=[{"unresolved_cases":2}]
         else:
@@ -90,5 +90,5 @@ def test_nonapproved_scope_is_reported_without_coverage_query():
     report=MODULE.inventory(connection)
     scope=report["approvals"][0]["competition_scopes"][0]
     assert scope["eligible"] is False
-    assert scope["reason"]=="APPROVAL_NOT_EFFECTIVELY_APPROVED"
+    assert scope["reason"]=="APPROVAL_NOT_EFFECTIVELY_APPROVED_OR_OUTSIDE_VALIDITY"
     assert not any("fixture_rows" in sql for sql,_ in connection.queries)
