@@ -285,6 +285,7 @@ def test_competition_import_persists_under_selected_provider_scope(
             boundary_end=end_at,
             request_budget=1,
             competition_id=competition_id,
+            import_type="historical_feature_backfill",
             window_days=365,
         )
     )
