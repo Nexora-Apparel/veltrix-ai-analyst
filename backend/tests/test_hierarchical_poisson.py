@@ -49,6 +49,7 @@ def test_one_unseen_team_uses_observed_competition_baseline():
     assert rates.competition_seen is True
     assert rates.home_team_history == 2
     assert rates.away_team_history == 0
+    assert rates.calculation_mode == "ONE_SIDED_TEAM_HISTORY"
 
 
 def test_both_unseen_teams_use_competition_context_not_fixed_probabilities():
@@ -58,6 +59,7 @@ def test_both_unseen_teams_use_competition_context_not_fixed_probabilities():
     assert rates.home_lambda > 0
     assert rates.away_lambda > 0
     assert rates.competition_seen is True
+    assert rates.calculation_mode == "COMPETITION_ONLY"
     assert (rates.home_lambda, rates.away_lambda) != (
         other_competition.home_lambda,
         other_competition.away_lambda,
@@ -70,6 +72,7 @@ def test_unknown_competition_falls_back_to_observed_global_goal_rate():
     assert rates.competition_seen is False
     assert rates.home_lambda > 0
     assert rates.away_lambda > 0
+    assert rates.calculation_mode == "GLOBAL_CONTEXT_ONLY"
 
 
 def test_sparse_team_history_is_retained_and_reported():
@@ -80,6 +83,7 @@ def test_sparse_team_history_is_retained_and_reported():
     rates = model.predict("NEW", "B", "league-a")
     assert rates.home_team_history == 1
     assert rates.away_team_history == 2
+    assert rates.calculation_mode == "TEAM_AND_COMPETITION_HISTORY"
 
 
 def test_fit_rejects_future_rows_and_duplicate_fixtures():
