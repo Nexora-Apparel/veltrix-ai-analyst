@@ -12,6 +12,7 @@ from app.canonicalization import (
     BRAZIL_SERIE_B_RUN_3,
     SUPPORTED_FIXTURE_STATUSES,
     CanonicalMaterializationScope,
+    _expected_fixture_identity_status,
     _identity_collision_fixture_ids,
     materialize_brazil_serie_b_canonical_entities,
 )
@@ -87,6 +88,23 @@ def test_identity_collision_detection_requires_exact_provider_ids_and_opponent()
         "known-america-mg",
         "known-america-mineiro",
     )
+
+
+@pytest.mark.parametrize(
+    ("conflict", "latest_decision", "expected"),
+    [
+        (False, None, "IDENTITY_REVIEW_REQUIRED"),
+        (True, None, "CONFLICT"),
+        (False, "SOURCE_FIXTURE_LINK_REVIEWED", "VERIFIED"),
+        (True, "SOURCE_FIXTURE_LINK_REVIEWED", "VERIFIED"),
+        (False, "CONFLICT", "CONFLICT"),
+        (False, "REJECTED", "CONFLICT"),
+    ],
+)
+def test_materializer_preserves_append_only_fixture_review_outcomes(
+    conflict: bool, latest_decision: str | None, expected: str
+) -> None:
+    assert _expected_fixture_identity_status(conflict, latest_decision) == expected
 
 
 def _record_response(
