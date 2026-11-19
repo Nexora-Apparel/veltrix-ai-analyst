@@ -488,3 +488,39 @@ After backfill:
 2. Mark all retrospective reconstructed feature rows non-PIT and validation-ineligible; never use them for Stage 7 certification.
 3. Train a research-only feature model on the reconstructed lagged covariates and compare against hierarchical goal-rate-only baseline on future prospectively captured and settled fixtures.
 4. Re-run the strict chronological tuning/stress suites and inspect the full CI run before merging PR #121.
+
+
+## Stage 8B continuation — retrospective lagged feature reconstruction
+
+**Date:** 2026-11-19  
+**Branch:** `stage-8b-sparse-inference-governance`
+
+### CI checkpoint before new feature module
+CI run **44624312572** on commit `62a53cd44ff1b79c19368318a21be3c843a911e3` completed successfully:
+- Backend tests and lint: success.
+- Android debug APK build: success.
+- Backfill workflow YAML validation: success; its collection job was skipped because the workflow defaults to preflight-only.
+
+### New research-only feature builder
+
+Added:
+- `backend/app/validation/retrospective_features.py`
+- `backend/tests/test_retrospective_features.py`
+
+The builder reconstructs lagged team covariates from strictly earlier fixtures in the same competition:
+- Goals for/against means.
+- Corners for/against means.
+- Cards for/against means where both yellow/red components exist.
+- Per-team prior match counts and exact source fixture IDs.
+
+Leakage controls:
+- A target fixture is not inserted into its own history until after its features are emitted.
+- Same-kickoff fixtures are simultaneous and cannot contribute to one another.
+- Competition boundaries are isolated.
+- Missing corners/cards remain null; no fabricated imputation.
+- All output rows are marked `validation_eligible=false`, `point_in_time_certifiable=false`, and `source_available_before_target_kickoff=false`.
+
+This is retrospective event-time reconstruction, not a claim that VELTRIX possessed the feature values before the target kickoff. It can support research model fitting, but never prospective certification or production PIT artifacts. It provides a way to research the 996-match outcome pool with available lagged goals/corners/cards before the 5Dollar stats/events backfill is available. Shots and possession still require recovered statistics payloads.
+
+### Verification pending
+New CI run is expected from commit `bc78d86b8ed404656a1869164d7c0fa2202f832c`; do not claim the new feature tests pass until its backend and Android jobs finish. Next integrate the retrospective rows into a separate training-only candidate dataset, compare against hierarchical goal-rate-only baseline, and keep prospective evaluator input strictly separate.
