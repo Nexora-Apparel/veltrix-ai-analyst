@@ -610,3 +610,43 @@ The retrospective feature builder sorted by kickoff and fixture ID, then added e
 ### Next Stage 8B task
 
 Connect the existing read-only seven-competition production source loader to `build_retrospective_lagged_features`. Persist the generated feature/outcome dataset as a content-addressed research-only artifact with per-row source observation IDs, retrieval timestamps, rights lineage and explicit non-PIT flags. Train a feature-aware Poisson candidate on this dataset and compare it with the goal-rate-only hierarchical baseline as development research only. Do not use retrospective rows for Stage 7 certification. Prospective snapshots must continue accumulating settled labels for valid chronological evaluation.
+
+
+## Stage 8B continuation — isolated retrospective research dataset assembly
+
+**Date:** 2026-11-19  
+**Branch:** `stage-8b-sparse-inference-governance`
+
+### Branch and CI re-verification
+- PR #121 remains open, unmerged, and mergeable.
+- Branch head at start of this continuation: `de89d61726b6c25394b8d999c816c69a0344bb43`.
+- Latest CI run on that exact head: **44625959262**, conclusion `success`.
+- Backend tests/lint job **135919744188**: success.
+- Android debug build job **135919744654**: success; APK upload step succeeded.
+- This CI predates the new dataset builder commits below and is not verification of those commits.
+
+### New separate dataset builder
+Added `backend/app/research/retrospective_feature_dataset.py`.
+- Loads provider-local finished fixtures from `provider_fixtures` with a read-only transaction and checks the exact database name.
+- Joins source observation, response, retrieval timestamp, rights approval, permitted uses and source payload hash.
+- Requires current rights status APPROVED, FEATURE_ENGINEERING and MODEL_TRAINING permissions, and approval validity at retrieval time; fails closed otherwise.
+- Uses `build_retrospective_lagged_features` to construct strictly earlier same-competition features.
+- Joins labels by fixture ID and carries source observation/response IDs, retrieval timestamp, availability basis, payload hash and rights lineage.
+- Writes a local content-addressed JSON artifact; it does not persist research rows to Neon.
+- Dataset envelope and every row are explicitly non-PIT, `validation_eligible=false`, `certification_eligible=false`; it declares no prospective dataset join.
+- No production DB writes, provider calls, Odds API calls, deployment, or Android UI changes.
+
+Added `backend/tests/test_retrospective_feature_dataset.py` for row-label joins, non-PIT flags, source lineage, simultaneous-kickoff isolation and content-addressed output.
+
+### Commits
+- `daaf714b4514b4a904f87e781004eefb82a0f242` — add isolated retrospective research dataset builder.
+- `73911609c4d920a3b993d7a2d4a6b6a988b7f2c1` — add dataset/provenance tests.
+- `5d79f5cd50e0122b6f6a11ce2cc5b7d62cf13b35` — enforce research rights lineage before dataset construction.
+
+### Verification status and next work
+- The dataset assembly implementation is committed but has not yet run against production Neon or passed CI on the new head.
+- Feature-enhanced candidate training and matched comparison against the hierarchical goal-rate-only baseline are NOT implemented or verified yet.
+- Competition, team-history-depth and feature-coverage slices are NOT yet computed.
+- Chronological stress/tuning suites have NOT yet been rerun after dataset integration.
+- Do not merge PR #121 until the new CI is green, dataset artifact is built and audited, candidate comparison is reproducible, and stress/tuning tests pass.
+- Prospective Stage 7 input remains completely separate. No retrospective row may enter prospective folds, label counts or certification.
