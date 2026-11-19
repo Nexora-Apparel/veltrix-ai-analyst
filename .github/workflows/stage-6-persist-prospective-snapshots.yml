@@ -88,18 +88,27 @@ jobs:
                   raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
               row = connection.execute(
                   """
-                  SELECT COUNT(*), COUNT(DISTINCT canonical_fixture_id),
-                         COUNT(*) FILTER (WHERE label IS NOT NULL)
+                  SELECT COUNT(*), COUNT(DISTINCT canonical_fixture_id)
                   FROM veltrix_ai_analyst.prospective_feature_snapshots
                   WHERE dataset_sha256 = %s
                   """,
                   (digest,),
               ).fetchone()
+              label_count = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM veltrix_ai_analyst.prospective_feature_snapshot_labels labels
+                  JOIN veltrix_ai_analyst.prospective_feature_snapshots snapshots
+                    ON snapshots.id=labels.snapshot_id
+                  WHERE snapshots.dataset_sha256 = %s
+                  """,
+                  (digest,),
+              ).fetchone()[0]
               if row[0] != expected or row[1] != expected:
                   raise SystemExit(
                       f"SNAPSHOT_PERSISTENCE_COUNT_MISMATCH: expected={expected}, actual={row[0]}, distinct={row[1]}"
                   )
-              if row[2] != report["settled_label_rows"]:
+              if label_count != report["settled_label_rows"]:
                   raise SystemExit("SNAPSHOT_LABEL_COUNT_MISMATCH")
               trigger = connection.execute(
                   """
@@ -120,7 +129,7 @@ jobs:
               "status": "PERSISTENCE_VERIFIED",
               "snapshots": row[0],
               "distinct_fixtures": row[1],
-              "settled_labels": row[2],
+              "settled_labels": label_count,
               "dataset_sha256": digest,
           }, sort_keys=True))
           PY
