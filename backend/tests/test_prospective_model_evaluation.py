@@ -107,9 +107,10 @@ def test_historical_database_insert_labels_are_training_only_not_validation():
             prediction_cutoff_at=None,
             label_lineage={
                 **row.label_lineage,
-                "availability_basis": "DATABASE_INSERTED_AT_TRAINING_ONLY",
+                "availability_basis": "IMPORT_RUN_COMPLETED_AT_TRAINING_ONLY",
                 "point_in_time_certifiable": False,
-                "database_inserted_at": row.label_observed_at.isoformat(),
+                "import_run_id": 7001,
+                "import_run_finished_at": row.label_observed_at.isoformat(),
             },
         )
         for row in rows[:30]
