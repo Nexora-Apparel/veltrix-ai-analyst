@@ -440,3 +440,51 @@ The next capture must therefore remain a capture-only evidence operation. It mus
 3. Verify that each training label was available by the fold's prediction cutoff before it enters a fit; preserve historical-only rows as training-only.
 4. Update the dated ledger with exact workflow run/job/test results.
 5. Keep the next scheduled Stage 4 capture enabled; inspect its artifact and inserted-row lineage after it runs, without using upcoming unlabeled snapshots as supervised training data.
+
+
+## Stage 8B continuation — cutoff-safe tuning and historical feature recovery
+
+**Date:** 2026-11-19  
+**Branch:** `stage-8b-sparse-inference-governance`
+
+### Production data audit (read-only)
+
+Neon project `young-wind-27772160`, production branch `br-jolly-darkness-balgmi2t`, database `veltrix_ai_analyst`:
+- Historical finished outcome pool: **996** fixtures.
+- Stored statistics objects: **6**.
+- Stored events arrays: **6**.
+- Fixtures with corners fields: **996**.
+- Seven approved competition scopes; per-scope finished rows: 122, 110, 90, 100, 113, 380 and 81.
+- No production rows changed.
+
+The existing provider adapter requests `include=stats,events` for fixture history, and the importer writes each response as a new immutable source observation. This creates a legitimate recovery route: re-fetch the already-approved historical competition windows with stats/events. New observations are captured at the actual retrieval time. They do not rewrite or backdate prior observations and cannot become historical PIT validation evidence.
+
+### Backfill path implemented (not executed)
+
+- Added `historical_feature_backfill` as a distinct import type in the existing importer and collection CLI.
+- Added `.github/workflows/historical-feature-evidence-backfill.yml`, manual-dispatch only. It serializes against the prospective capture workflow, checks the production database identity, probes safe 5Dollar entitlement/quota fields, and defaults to preflight-only. A separate explicit boolean input is required before any historical requests are sent.
+- The backfill command is bounded to the seven already-approved competition scopes and uses the existing durable request reservations, raw-response provenance, rights approval and append-only source observation path.
+- It has **not** been dispatched and no 5Dollar API requests were made by this work. Review the entitlement output before setting the execute input. The Odds API was not called.
+
+### Fold cutoff enforcement implemented
+
+- `hierarchical_tuning.select_hierarchical_hyperparameters` now accepts `label_available_at` and filters each fold's training pool by both kickoff and actual label availability. An optional `evaluation_as_of` prevents scoring labels not yet available by the research run.
+- Strict mode reports protocol `EXPANDING_WINDOW_LABEL_AVAILABILITY_AWARE_PAIRED_POISSON_NLL_V2`.
+- Outer and inner prospective evaluator folds now reject any training row whose label was observed after the recorded `train_cutoff_at`; training rights are evaluated at that cutoff; model fitting uses that exact cutoff for recency weights.
+- Added tests for delayed import labels, strict tuning, and an intentionally unsafe fold cutoff.
+
+### CI evidence
+
+- CI run **44622722383** on commit `02265a994489207354568f04a52f7919424e94bd`: Android debug build passed; backend suite had 432 passing and one failure caused by an incorrect expected validation count (actual 9, expected 10).
+- The expected count was corrected. New CI run **44623277785** on the subsequent branch head was in progress at the time of this ledger update; fetch its terminal job results before declaring the suites passed.
+- The earlier run's single failure was in the new synthetic test expectation, not a model convergence failure. No claim of final suite pass until the re-run is complete.
+
+### Remaining blocker and next work
+
+The historical outcome model can train now from the 996 approved results using actual import-completion availability. The missing supporting-feature pool is a source-payload coverage problem: only 6/996 observations currently contain statistics/events. Backfill is prepared but deliberately not run until the 5Dollar quota/entitlement preflight has been reviewed.
+
+After backfill:
+1. Build a separate retrospective *training-only* lagged feature dataset from each fixture's earlier same-competition matches, preserving actual source-observed timestamps and rights.
+2. Mark all retrospective reconstructed feature rows non-PIT and validation-ineligible; never use them for Stage 7 certification.
+3. Train a research-only feature model on the reconstructed lagged covariates and compare against hierarchical goal-rate-only baseline on future prospectively captured and settled fixtures.
+4. Re-run the strict chronological tuning/stress suites and inspect the full CI run before merging PR #121.
