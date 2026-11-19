@@ -53,70 +53,85 @@ def build_retrospective_lagged_features(
             raise ValueError("goal counts cannot be negative")
 
     ordered = sorted(fixtures, key=lambda row: (row.kickoff_at, row.fixture_id))
-    history: dict[tuple[str, str], list[tuple[str, float | None, float | None, float | None, float | None, float | None, float | None]]] = {}
+    history: dict[
+        tuple[str, str],
+        list[tuple[str, float | None, float | None, float | None, float | None, float | None, float | None]],
+    ] = {}
     output: list[dict[str, Any]] = []
 
-    for target in ordered:
-        home_history = history.get((target.competition_id, target.home_team_id), [])
-        away_history = history.get((target.competition_id, target.away_team_id), [])
+    def average(index: int, rows: list[tuple]) -> float | None:
+        return _mean([float(item[index]) for item in rows if item[index] is not None])
 
-        def average(index: int, rows: list[tuple]) -> float | None:
-            return _mean([float(item[index]) for item in rows if item[index] is not None])
+    # Process equal-kickoff fixtures as one atomic time block. No fixture in
+    # the block may become history for another fixture with the same kickoff.
+    cursor = 0
+    while cursor < len(ordered):
+        kickoff_at = ordered[cursor].kickoff_at
+        block_end = cursor
+        while block_end < len(ordered) and ordered[block_end].kickoff_at == kickoff_at:
+            block_end += 1
+        kickoff_block = ordered[cursor:block_end]
 
-        features = {
-            "home_prior_match_count": len(home_history),
-            "away_prior_match_count": len(away_history),
-            "home_goals_for_mean": average(1, home_history),
-            "home_goals_against_mean": average(2, home_history),
-            "away_goals_for_mean": average(1, away_history),
-            "away_goals_against_mean": average(2, away_history),
-            "home_corners_for_mean": average(3, home_history),
-            "home_corners_against_mean": average(4, home_history),
-            "away_corners_for_mean": average(3, away_history),
-            "away_corners_against_mean": average(4, away_history),
-            "home_cards_for_mean": average(5, home_history),
-            "home_cards_against_mean": average(6, home_history),
-            "away_cards_for_mean": average(5, away_history),
-            "away_cards_against_mean": average(6, away_history),
-        }
-        output.append({
-            "fixture_id": target.fixture_id,
-            "competition_id": target.competition_id,
-            "kickoff_at": target.kickoff_at.isoformat(),
-            "features": features,
-            "validation_eligible": False,
-            "feature_provenance": {
-                "mode": "RETROSPECTIVE_EVENT_TIME_RECONSTRUCTION",
-                "point_in_time_certifiable": False,
-                "source_available_before_target_kickoff": False,
-                "history_fixture_ids": sorted({
-                    item[0] for item in home_history + away_history
-                }),
-            },
-        })
+        for target in kickoff_block:
+            home_history = history.get((target.competition_id, target.home_team_id), [])
+            away_history = history.get((target.competition_id, target.away_team_id), [])
+            features = {
+                "home_prior_match_count": len(home_history),
+                "away_prior_match_count": len(away_history),
+                "home_goals_for_mean": average(1, home_history),
+                "home_goals_against_mean": average(2, home_history),
+                "away_goals_for_mean": average(1, away_history),
+                "away_goals_against_mean": average(2, away_history),
+                "home_corners_for_mean": average(3, home_history),
+                "home_corners_against_mean": average(4, home_history),
+                "away_corners_for_mean": average(3, away_history),
+                "away_corners_against_mean": average(4, away_history),
+                "home_cards_for_mean": average(5, home_history),
+                "home_cards_against_mean": average(6, home_history),
+                "away_cards_for_mean": average(5, away_history),
+                "away_cards_against_mean": average(6, away_history),
+            }
+            output.append({
+                "fixture_id": target.fixture_id,
+                "competition_id": target.competition_id,
+                "kickoff_at": target.kickoff_at.isoformat(),
+                "features": features,
+                "validation_eligible": False,
+                "feature_provenance": {
+                    "mode": "RETROSPECTIVE_EVENT_TIME_RECONSTRUCTION",
+                    "point_in_time_certifiable": False,
+                    "source_available_before_target_kickoff": False,
+                    "history_fixture_ids": sorted({
+                        item[0] for item in home_history + away_history
+                    }),
+                },
+            })
 
-        # Add the target only after its own feature row has been emitted.
-        home_cards = (
-            float(target.home_yellow_cards + target.home_red_cards)
-            if target.home_yellow_cards is not None and target.home_red_cards is not None
-            else None
-        )
-        away_cards = (
-            float(target.away_yellow_cards + target.away_red_cards)
-            if target.away_yellow_cards is not None and target.away_red_cards is not None
-            else None
-        )
-        history.setdefault((target.competition_id, target.home_team_id), []).append((
-            target.fixture_id, float(target.home_goals), float(target.away_goals),
-            float(target.home_corners) if target.home_corners is not None else None,
-            float(target.away_corners) if target.away_corners is not None else None,
-            home_cards, away_cards,
-        ))
-        history.setdefault((target.competition_id, target.away_team_id), []).append((
-            target.fixture_id, float(target.away_goals), float(target.home_goals),
-            float(target.away_corners) if target.away_corners is not None else None,
-            float(target.home_corners) if target.home_corners is not None else None,
-            away_cards, home_cards,
-        ))
+        # Commit the whole kickoff block to history only after every feature
+        # vector for that timestamp has been generated.
+        for target in kickoff_block:
+            home_cards = (
+                float(target.home_yellow_cards + target.home_red_cards)
+                if target.home_yellow_cards is not None and target.home_red_cards is not None
+                else None
+            )
+            away_cards = (
+                float(target.away_yellow_cards + target.away_red_cards)
+                if target.away_yellow_cards is not None and target.away_red_cards is not None
+                else None
+            )
+            history.setdefault((target.competition_id, target.home_team_id), []).append((
+                target.fixture_id, float(target.home_goals), float(target.away_goals),
+                float(target.home_corners) if target.home_corners is not None else None,
+                float(target.away_corners) if target.away_corners is not None else None,
+                home_cards, away_cards,
+            ))
+            history.setdefault((target.competition_id, target.away_team_id), []).append((
+                target.fixture_id, float(target.away_goals), float(target.home_goals),
+                float(target.away_corners) if target.away_corners is not None else None,
+                float(target.home_corners) if target.home_corners is not None else None,
+                away_cards, home_cards,
+            ))
+        cursor = block_end
 
     return tuple(output)
