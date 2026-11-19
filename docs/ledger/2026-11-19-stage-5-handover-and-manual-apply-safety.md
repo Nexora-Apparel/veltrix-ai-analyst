@@ -13,7 +13,7 @@
 - Stage 5 read-only inventory and materialization preview completed successfully: seven approved competition scopes, seven READY, zero BLOCKED.
 - Stage 5 production materialization has **not** been dispatched or verified. Do not describe Stage 5 as complete yet.
 - PRs #102, #104, #105 and #106 are merged. PR #106's actual workflow YAML contained an automatic `workflow_run` trigger that contradicted its stated manual-only safety design. This was detected during handover review.
-- A corrective PR #107 is being prepared to make production apply manual-dispatch-only and to record this checkpoint. Do not dispatch the Stage 5 apply workflow until PR #107 is reviewed, CI passes and the correction is merged.
+- A corrective PR #118 is being prepared to make production apply manual-dispatch-only and to record this checkpoint. Do not dispatch the Stage 5 apply workflow until PR #118 is reviewed, CI passes and the correction is merged.
 - Production Neon currently reports migrations 001–017 present, including 015 automated identity adjudication and 016–017 immutable prospective snapshot/label migrations. This was independently queried at handover time. The earlier Stage 5 preview artifact was generated before migration 015 was present in its required set and reported only migrations 001–014; it must not be used as proof of the later 015–017 state.
 - Stage 6 and Stage 7 workflow/code scaffolding exists in main. Their presence does not mean persistent snapshots or prospective model certification have completed.
 - No production predictions are certified or published by these milestones. Value betting remains locked.
@@ -131,7 +131,7 @@ It added `.github/workflows/stage-5-identity-apply-all.yml` with:
 
 **Critical code-review finding:** the merged YAML did not actually enforce the PR description's “manual dispatch only” guarantee. It also subscribed to a successful `workflow_run` event from the Stage 5 preview and synthesized the confirmation value for that event. Therefore a future successful preview could automatically trigger production writes without the user manually dispatching the apply workflow. The specific preview run 44471255485 completed before PR #106 was merged, so it did not trigger that newly merged workflow; however, the future-trigger defect remains real until corrected.
 
-### 4.4 PR #107 — manual-only production apply correction
+### 4.4 PR #118 — manual-only production apply correction
 
 A handover safety branch has been created:
 `stage-5-manual-apply-safety-and-handover-ledger`.
@@ -142,7 +142,7 @@ The branch changes `.github/workflows/stage-5-identity-apply-all.yml` to:
 - Pass only the user-entered confirmation into the job environment.
 - Preserve all existing target database, migration, exact-scope preflight, per-scope apply and post-apply checks.
 
-This is a safety correction, not an authorization to apply. The PR also adds this ledger record. PR #107 must be reviewed and CI checked before merge. No production apply has been dispatched.
+This is a safety correction, not an authorization to apply. The PR also adds this ledger record. PR #118 must be reviewed and CI checked before merge. No production apply has been dispatched.
 
 ## 5. Production database migration state at handover
 
@@ -185,10 +185,10 @@ Stage 7 is a read-only expanding-window prospective evaluation followed by indep
 
 ## 8. Exact next execution sequence
 
-1. Review PR #107 diff and CI. Confirm the workflow has only `workflow_dispatch`, the job condition checks exact typed confirmation, and there is no `workflow_run` path or implicit confirmation.
-2. Merge PR #107 only after checks pass.
+1. Review PR #118 diff and CI. Confirm the workflow has only `workflow_dispatch`, the job condition checks exact typed confirmation, and there is no `workflow_run` path or implicit confirmation.
+2. Merge PR #118 only after checks pass.
 3. Re-run the Stage 5 read-only preview against current main and current live migration ledger. Confirm all seven scopes remain READY and inspect updated conflict/review counts.
-4. Manually dispatch the Stage 5 apply workflow only after PR #107 is merged and the preview artifact is reviewed. The user must enter `APPLY_ALL_SEVEN_APPROVED_SCOPES`; this manual step is a genuine human authorization boundary.
+4. Manually dispatch the Stage 5 apply workflow only after PR #118 is merged and the preview artifact is reviewed. The user must enter `APPLY_ALL_SEVEN_APPROVED_SCOPES`; this manual step is a genuine human authorization boundary.
 5. Inspect every per-scope apply JSON, failure summary, post-apply inventory, fixture/team/competition links, identity conflicts, unresolved review cases and artifact. Do not declare Stage 5 complete from workflow conclusion alone.
 6. If apply fails for a scope, investigate that scope and retry only after understanding the failure. The materializer is intended to be idempotent; still verify before retry.
 7. Reconcile the resulting Stage 5 state with the automated identity adjudication ledger. Automated evidence dispositions do not authorize canonical merges or deletion.
@@ -206,4 +206,4 @@ Stage 7 is a read-only expanding-window prospective evaluation followed by indep
 - No Android UI redesign or Telegram integration was performed.
 - No historical source payloads or provider IDs were rewritten or deleted.
 
-**Next checkpoint:** PR #107 safety review/CI, then a fresh Stage 5 read-only preview, followed by explicitly authorized manual apply and post-apply verification.
+**Next checkpoint:** PR #118 safety review/CI, then a fresh Stage 5 read-only preview, followed by explicitly authorized manual apply and post-apply verification.
