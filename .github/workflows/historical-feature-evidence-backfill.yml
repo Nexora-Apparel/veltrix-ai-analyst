@@ -1,6 +1,9 @@
 name: VELTRIX historical feature evidence backfill
 
 on:
+  push:
+    paths:
+      - ".github/workflows/historical-feature-evidence-backfill.yml"
   workflow_dispatch:
     inputs:
       execute_backfill:
@@ -18,6 +21,7 @@ concurrency:
 
 jobs:
   backfill:
+    if: github.event_name == 'workflow_dispatch'
     environment: veltrix-historical-import
     runs-on: ubuntu-latest
     timeout-minutes: 180
@@ -56,7 +60,7 @@ jobs:
         working-directory: backend
         run: python ../scripts/probe_5dollar_entitlement.py
       - name: Backfill historical fixtures with stats and events
-        if: inputs.execute_backfill == true
+        if: ${{ inputs.execute_backfill == true }}
         run: |
           python scripts/collect_5dollar_all_approved_competitions.py \
             --start-at "2026-03-20T00:00:00+00:00" \
@@ -66,5 +70,5 @@ jobs:
             --import-type historical_feature_backfill \
             --execute
       - name: Report preflight-only mode
-        if: inputs.execute_backfill != true
+        if: ${{ inputs.execute_backfill != true }}
         run: echo "PREFLIGHT_ONLY: no historical feature backfill requests were sent."
