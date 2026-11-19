@@ -129,3 +129,52 @@ The next parallel work item is a coverage and rights audit of the current seven 
 
 The project is still in pre-launch validation. The merged PRs #119 and #120 improve the historical training pool and ensure evaluator code changes trigger Stage 7, respectively. They do not themselves certify the model or publish predictions. The next decisive evidence remains a successful prospective walk-forward evaluation and independent certification result, followed by the gated API/app release work.
 
+## Daily post-capture orchestration audit — prediction inference is not yet connected
+
+**User requirement clarified:** after daily capture, the system should calculate and deliver up to 25 eligible predictions per day. Twenty-five is a daily ceiling/target, not a quota to fill with unsupported fixtures.
+
+### Verified workflow chain on main
+
+1. **Stage 4 capture** — `.github/workflows/prospective-5dollar-daily-capture.yml`
+   - Scheduled at `0 3 * * *` UTC (04:00 WAT).
+   - Collects recent settlements and upcoming fixtures in a bounded rolling window.
+   - Uses the approved 5DollarFootball provider scopes and existing database PIT checks.
+
+2. **Stage 6 materialization** — `.github/workflows/stage-6-daily-snapshot-materialization.yml`
+   - Triggered by completion of the Stage 4 workflow.
+   - Runs only if the capture workflow conclusion is success.
+   - Builds the canonical strict-PIT prospective dataset, persists immutable pre-match snapshots and append-only post-kickoff outcome labels, and verifies persistence.
+   - Explicitly asserts that release eligibility is false, production promotion is LOCKED and value betting is LOCKED.
+
+3. **Stage 7 research evaluation** — `.github/workflows/stage-7-prospective-research-evaluation.yml`
+   - Triggered by successful Stage 6 completion (and relevant code pushes).
+   - Runs read-only expanding-window research evaluation and independent certification gates.
+   - It evaluates model evidence; it is not a daily upcoming-fixture prediction publisher.
+
+4. **Private model artifact training** — `.github/workflows/train-model-artifact.yml`
+   - Has manual dispatch and a training-branch/path trigger.
+   - It is not configured as an automatic post-capture inference/prediction workflow.
+
+### Finding
+
+**No verified workflow currently runs daily prediction inference after Stage 6 and publishes up to 25 predictions to the existing Android API.** The existing chain captures, materializes, and evaluates. It does not yet complete the daily inference/publication step.
+
+### Required Stage 8 implementation
+
+Build a gated daily prediction-generation and publication workflow that:
+
+- Runs after successful Stage 6 materialization and only after a certified, immutable production model artifact is available.
+- Loads the upcoming fixtures from the canonical approved dataset and enforces fixture identity, source rights, freshness and strict pre-kickoff PIT checks.
+- Scores eligible fixtures with the certified model for 1X2, BTTS and O/U 1.5, 2.5 and 3.5.
+- Applies the strict publication gate; excludes conflicts, stale/incomplete evidence and unsupported forecasts rather than using generic fallback probabilities.
+- Publishes at most 25 eligible fixtures per WAT prediction date through the existing prediction API/storage contract consumed by the current Android app. If fewer than 25 pass, publish fewer and record the shortfall.
+- Is idempotent by canonical fixture and prediction version, retains immutable prediction provenance, and does not overwrite prior predictions or settled history.
+- Keeps bookmaker value-bet functionality separately locked until its own certification requirements pass.
+- Does not redesign the Android UI or add Telegram delivery.
+
+### Important distinction
+
+Settled match results are needed to append prospective outcome labels and measure/validate model performance. They are not a prerequisite for scoring tomorrow's fixtures once a certified model artifact and valid pre-match inputs are available. The historical training-only pool can support training research but cannot substitute for prospective certification.
+
+**Status:** this is a verified architecture gap, not a claim that Stage 8 has already been implemented. No production predictions were generated or published during this audit.
+
