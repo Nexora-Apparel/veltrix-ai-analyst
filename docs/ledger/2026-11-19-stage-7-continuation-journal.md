@@ -178,3 +178,39 @@ Settled match results are needed to append prospective outcome labels and measur
 
 **Status:** this is a verified architecture gap, not a claim that Stage 8 has already been implemented. No production predictions were generated or published during this audit.
 
+## Android Menu requirement — human-readable daily prediction notifications
+
+**User-confirmed product requirement:** add a Notifications destination inside the existing Menu section. Notifications are the app's internal, user-facing daily publication updates. No Telegram or external messaging delivery is to be added.
+
+### UX/content requirements
+
+- Add a Notifications item within the existing Menu section and preserve the dashboard design, navigation and visual language.
+- Notify the user when daily predictions have been published, including the count (up to 25).
+- If fewer than 25 pass, explain briefly and naturally why the list is shorter; do not pad forecasts.
+- If zero predictions are published, give a clear, human-readable reason (for example, insufficient reliable information or publication checks not passing), without inventing a cause.
+- If daily processing is still underway, show a truthful pending update only if the state is useful; avoid unnecessary robotic/status clutter.
+- Notifications should be written as ordinary conversational English, not JSON, raw API output, machine-status codes or robotic templates.
+- Keep notifications persisted and dated so the user can review daily publication outcomes; mark/read state can be implemented if appropriate.
+- Notification creation must be driven by verified daily pipeline outcomes. Never report success or a specific count before publication is verified.
+- Do not create Android OS push notifications or Telegram delivery as part of this requirement unless explicitly requested later; this requirement is for the in-app Notifications destination.
+
+### Example copy (illustrative, not actual delivery)
+
+- Published: "Today's predictions are ready. I've found 23 matches that passed our checks and added them to your Prediction section."
+- Shortfall: "I could only find 16 matches worth publishing today. Some fixtures didn't have enough reliable data, so I left them out rather than force predictions."
+- Zero: "I couldn't publish predictions today. A few matches were missing the reliable data I needed, and I wasn't comfortable making guesses."
+
+### Verified current UI gap
+
+The main dashboard file `android/app/src/main/java/com/veltrix/aianalyst/VeltrixDashboard.kt` currently defines six tabs (Home, History, BTTS, Value Bet, Over/Under, Menu). Its MenuScreen currently shows Preferences (Odds format and App version) only. No Notifications destination, notification store or publication-notification integration was verified in the fetched main file.
+
+### Implementation sequence
+
+1. Add a notification model/API contract backed by the verified daily publication outcome.
+2. Persist notification records with publication date, publication status, published count and a concise, human-readable explanation; keep provenance/diagnostic detail internal.
+3. Add a Notifications screen reachable from Menu, retaining the current UI style and avoiding a dashboard redesign.
+4. Connect notification creation to the Stage 8 publication workflow only after publication succeeds or a verified no-publication outcome is recorded.
+5. Test published-count, shortfall, zero-published, pending and unavailable states, along with duplicate/idempotency and date grouping.
+
+**Status:** requirement and implementation plan documented. No notification UI or records have been implemented yet.
+
