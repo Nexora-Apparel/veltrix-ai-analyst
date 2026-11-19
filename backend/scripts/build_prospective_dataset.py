@@ -279,6 +279,9 @@ def build_report(
         "fixture_identity_rows": len(fixtures),
         "eligible_prospective_rows": len(rows),
         "settled_label_rows": sum(row.label is not None for row in rows),
+        "settled_distinct_kickoff_dates": len({
+            row.kickoff_at.date() for row in rows if row.label is not None
+        }),
         "unsettled_rows": sum(row.label is None for row in rows),
         "distinct_competitions": len({row.competition_id for row in rows}),
         "distinct_kickoff_dates": len({row.kickoff_at.date() for row in rows}),
