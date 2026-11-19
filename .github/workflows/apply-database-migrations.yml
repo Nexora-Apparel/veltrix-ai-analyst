@@ -692,7 +692,8 @@ jobs:
           print(f"MIGRATION_014_VERIFIED: {checksum}")
           print("PREDICTION_STORAGE_VERIFIED: 4 tables, 2 views, 4 functions, 8 triggers")
           print("HISTORICAL_EVIDENCE_PRESERVED: 1243+ observations, 2884+ sightings, 115+ responses")
-          print("PIT_HISTORY_PRESERVED: historical system_observed_at values remain NULL")
+          print("PIT_HISTORY_PRESERVED: historical import runs 1-11 retain NULL system_observed_at")
+          print("PROSPECTIVE_PIT_CAPTURE_VERIFIED: import runs 12+ have complete system_observed_at")
           print("PUBLICATION_GATE_VERIFIED: no prediction was published by schema migration")
           PY
 
