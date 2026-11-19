@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from dataclasses import replace
 
 from app.validation.prospective_dataset import (
     ProspectiveDatasetRow,
@@ -99,15 +100,20 @@ def test_prospective_evaluator_fails_closed_without_chronological_folds():
 
 def test_historical_database_insert_labels_are_training_only_not_validation():
     rows = _synthetic_rows(31)
-    for row in rows[:30]:
-        row.validation_eligible = False
-        row.prediction_cutoff_at = None
-        row.label_lineage = {
-            **row.label_lineage,
-            "availability_basis": "DATABASE_INSERTED_AT_TRAINING_ONLY",
-            "point_in_time_certifiable": False,
-            "database_inserted_at": row.label_observed_at.isoformat(),
-        }
+    rows[:30] = [
+        replace(
+            row,
+            validation_eligible=False,
+            prediction_cutoff_at=None,
+            label_lineage={
+                **row.label_lineage,
+                "availability_basis": "DATABASE_INSERTED_AT_TRAINING_ONLY",
+                "point_in_time_certifiable": False,
+                "database_inserted_at": row.label_observed_at.isoformat(),
+            },
+        )
+        for row in rows[:30]
+    ]
     folds = build_expanding_window_folds(
         rows,
         minimum_training_fixtures=30,
