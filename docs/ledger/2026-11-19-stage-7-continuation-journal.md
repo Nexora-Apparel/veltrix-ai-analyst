@@ -574,3 +574,39 @@ The 996 outcomes remain useful as a current retrospective training pool because 
 3. Run the separate historical feature backfill only after the workflow's 5Dollar entitlement/quota preflight is reviewed. The database audit showed only 6/996 historical observations currently have stats/events; all 996 have corners.
 4. Build lagged retrospective feature training rows separately and mark them non-PIT/validation-ineligible. Never use them to satisfy Stage 7 certification.
 5. Stage 7 certification and production promotion remain blocked until prospective labels, valid folds and all certification gates pass.
+
+
+## Stage 8B — retrospective feature builder correction and verified CI
+
+**Date:** 2026-11-19  
+**Branch:** `stage-8b-sparse-inference-governance`
+
+### Research model data recovery clarification
+
+The research path was not limited to stats/events. The repository already has `backend/app/validation/retrospective_features.py`, which reconstructs lagged training features from strictly earlier same-competition fixtures:
+- goals for/against rolling means;
+- corners for/against;
+- yellow/red-card aggregates;
+- prior-match counts and missingness preserved.
+
+All 996 current settled historical rows contain goals, corners, yellow cards and red cards. Only 6/996 have statistics objects/events arrays. Therefore the first feature-aware research model can use the existing 996 outcomes plus corners/cards now; a stats/events backfill can add shots, possession, attacks and event-derived features later.
+
+The retrospective feature builder explicitly sets `validation_eligible=false`, `point_in_time_certifiable=false`, and `source_available_before_target_kickoff=false`. It is training-only and must not be treated as a historical PIT replay or prospective validation dataset.
+
+### Defect fixed
+
+The retrospective feature builder sorted by kickoff and fixture ID, then added each fixture to history immediately. This allowed a simultaneous fixture with a lexically earlier ID to leak into another fixture's features at the same kickoff. Reworked it to process equal-kickoff fixtures as atomic blocks: compute all feature rows from strictly earlier kickoff blocks, then append the entire block to history. The previously failing regression now covers the exact scenario.
+
+### Final verification
+
+- CI run **44625656408** on branch commit `8d493797a9e43b3d8699a26cb071fe3baed32d37`.
+- Backend: **439 passed**, 1 warning, no failures.
+- Ruff: **All checks passed**.
+- Android debug build: assembled successfully; APK upload step passed.
+- Historical feature-backfill workflow YAML validation: run **44624298002** passed on push with no database/provider access.
+- PR #121: open, mergeable, not merged.
+- No production database rows changed, no migrations applied, no provider API or The Odds API requests sent, and no deployment attempted.
+
+### Next Stage 8B task
+
+Connect the existing read-only seven-competition production source loader to `build_retrospective_lagged_features`. Persist the generated feature/outcome dataset as a content-addressed research-only artifact with per-row source observation IDs, retrieval timestamps, rights lineage and explicit non-PIT flags. Train a feature-aware Poisson candidate on this dataset and compare it with the goal-rate-only hierarchical baseline as development research only. Do not use retrospective rows for Stage 7 certification. Prospective snapshots must continue accumulating settled labels for valid chronological evaluation.
