@@ -236,3 +236,22 @@ The main dashboard file `android/app/src/main/java/com/veltrix/aianalyst/Veltrix
 - **Low:** substantial data limitations or uncertainty; conservative estimates may be possible but must be explicitly flagged and must still pass the publication eligibility gate.
 
 These tiers are not certification substitutes, not guarantees of match outcomes, and must not be assigned solely by arbitrary probability cutoffs. This clarification expands the Stage 8 design requirements; it does not assert that sparse-data fallback inference or these tier labels already exist in production.
+
+
+## Stage roadmap consolidation — 2026-11-19
+
+**User direction:** update the project stages and document the remaining work properly, distinguishing already-built components from unfinished implementation and validation.
+
+- Created the canonical staged roadmap: [`docs/roadmap/VELTRIX-AI-ANALYST-IMPLEMENTATION-ROADMAP.md`](../roadmap/VELTRIX-AI-ANALYST-IMPLEMENTATION-ROADMAP.md).
+- Roadmap commit: `042d2009ec7d0a454607d34abe4f9b9b642ce55a`.
+- The roadmap consolidates Stages 1–9 and explicitly records status, exit criteria, dependencies, release blockers and immediate execution order.
+- Stages 1–3 are recorded complete/applied; Stage 4 active; Stage 5 applied with unresolved conflicts/restrictions; Stage 6 implemented and accumulating prospective labels; Stage 7 evaluator/gates implemented but certification evidence insufficient; Stage 8 model capability completion and production inference not complete; Stage 9 Android integration/runtime verification pending.
+- Stage 8 is split into model/feature inventory, governed calculation engine, reliability tiers, validation/artifact governance and daily inference/publication.
+- Stage 9 records integration into the existing Android UI only, including prediction updates, History/settlement and in-app Notifications in Menu. No redesign, Telegram or OS push requirement is introduced.
+- Explicitly retained the user's sparse-data requirement: missing data must remain explicit; governed hierarchical/shrinkage fallbacks may be used when tested; Strong/Medium/Low represent evidence reliability, not outcome probability.
+- The roadmap does not claim the post-PR119/120 Stage 7 run, certified model artifact, production publisher, or Android end-to-end integration has been verified.
+- No code, database records, workflows, production predictions, odds credits or Android UI were changed by this documentation update.
+
+### Next action
+
+Execute Stage 7 live verification, then Stage 8A source/test/workflow inventory. Record exact model paths, call sites, test coverage, and whether each intended model/feature is integrated, partial, missing or obsolete before implementing further calculations.
