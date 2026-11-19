@@ -28,8 +28,8 @@
 | 4 | Prospective provider capture | Active | Scheduled seven-scope capture remains healthy with auditable provider-response lineage |
 | 5 | Canonical identity linkage | Applied; reconciliation outstanding | All conflicts/restrictions resolved or safely excluded with evidence |
 | 6 | Immutable prospective snapshots and outcome labels | Implemented; accumulating evidence | Daily snapshots and strictly post-kickoff append-only labels verified |
-| 7 | Research evaluation and certification | Implemented; evidence insufficient | Post-PR119/120 live evaluation verified; prospective gates eventually pass |
-| 8 | Model capability completion and production inference | Not complete | Existing model inventory audited; feature and sparse-data pathways tested; certified immutable artifact; gated daily inference/publisher |
+| 7 | Research evaluation and certification | Evaluator verified live; certification blocked by prospective evidence | Keep accumulating strict prospective labels until walk-forward and certification gates pass |
+| 8 | Model capability completion and production inference | In progress; existing components partially complete | Complete model integration/feature/reliability audit; test sparse-data paths; certify immutable artifact; gated daily inference/publisher |
 | 9 | Android integration and release verification | Partial API/UI foundation; integration pending | Existing UI consumes real published predictions, history/settlement and in-app notifications; runtime checks pass |
 
 ## Stage 1 — Canonical scope inventory CLI
@@ -105,7 +105,55 @@ For value betting and any applicable model promotion gates, preserve the strict 
 
 ## Stage 8 — Model capability completion and production inference
 
-**Status: NOT COMPLETE. This is the next primary engineering stage.**
+**Status: IN PROGRESS. Existing model, feature and reliability components are present, but are not yet integrated into one certified production calculation path.**
+
+### 8A. Model and feature inventory audit
+
+**Initial source audit completed 2026-11-19; integration mapping remains in progress.** The live main branch contains the following components:
+
+| Component | Source | Verified position |
+|---|---|---|
+| Elo ratings | `backend/app/models/elo.py` | Implemented chronological Elo; retained as a retrospective research comparator, not selected in the current final training artifact |
+| Recency-weighted attack/defence Poisson | `backend/app/models/attack_defence.py` | Implemented and used by `prediction_engine.py` production inference contract |
+| Hierarchical Poisson | `backend/app/models/hierarchical_poisson.py` | Implemented competition/team partial pooling and unseen-team neutral effects |
+| Hierarchical scoreline adapter | `backend/app/models/hierarchical_scoreline.py` | Implemented adapter from hierarchical rates to scoreline/market probabilities |
+| Poisson scoreline + Dixon–Coles | `backend/app/models/scoreline.py` | Implemented five-market derivation and low-score dependence correction |
+| Hierarchical research orchestration | `backend/app/orchestration/hierarchical_predictions.py` | Implemented but inert until an approved validated release; no provider calls or production writes |
+| Production inference boundary | `backend/app/models/prediction_engine.py` | Implemented fail-closed artifact-based inference; requires a production-approved, PIT-certified artifact and verified team mappings; outputs `NOT_PUBLISHED` |
+| Retrospective historical rate model | `backend/app/models/retrospective.py` | Research-only, explicitly not PIT-certified; contains a hard-coded no-history rate and must not be reused as a production sparse fallback |
+| Evidence tiers | `backend/app/features/evidence.py` | Strong/Medium/Low scoring implemented from five weighted evidence signals and frozen policy inputs |
+| Tier calibration diagnostics | `backend/app/validation/evidence_tier_calibration.py` | Held-out Brier, log loss, entropy, mean maximum probability and ECE by tier/market implemented |
+| Feature admission/PIT checks | `backend/app/features/admission.py`, `eligibility.py` | Fail-closed source, rights, identity, response lineage and pre-match cutoff checks implemented; bookmaker odds explicitly forbidden as core prediction features |
+| Feature evidence model | `backend/app/features/evidence.py` | Signal schema/policy/scorer exists; automatic derivation of all signals from the canonical feature snapshot and production wiring still needs verification |
+
+### 8A.1 Confirmed integration gaps
+
+- The latest Stage 7 research artifact explicitly reports `HIERARCHICAL_GOAL_RATE_ONLY`; captured shot, possession, attack and event features are not used by that evaluator.
+- The latest dataset contains 59 eligible prospective snapshots. Several team-stat fields have values in only 5–6 rows per side; competition-rate features in 9 rows. Coverage indicators exist, but availability of a coverage indicator is not equivalent to availability of the underlying statistic.
+- The standalone production inference engine currently deserializes `AttackDefenceModel`, while the prospective research evaluator and hierarchical orchestration use `HierarchicalPoissonModel`. The intended canonical production model family and artifact schema must be reconciled before promotion.
+- Production inference sets uncertainty status to `NOT_YET_CALIBRATED` and emits empty coverage metadata. It must not be treated as Strong/Medium/Low-calibrated output.
+- The evidence tier scorer and tier-calibration evaluator exist, and tests exist, but the audit has not established a production snapshot-to-signal builder, frozen calibrated policy artifact, or end-to-end tier propagation into persisted/public API predictions.
+- Hierarchical orchestration requires `release.approved`; it creates in-memory audited predictions only and explicitly performs no provider calls or production persistence.
+- The production inference engine returns `publication_status=NOT_PUBLISHED`; daily scheduling, persistence, idempotent publication and API readback remain separate work.
+- The final retrospective training artifact deliberately marks itself `RESEARCH_ARTIFACT_ONLY` and `RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED`. It cannot be used for production inference or prospective certification.
+- Do not treat retrospective model hard-coded priors as the requested governed sparse-data fallback. The fallback path must be developed and validated separately.
+
+### 8A.2 Existing model test coverage found
+
+- `test_attack_defence.py`
+- `test_hierarchical_poisson.py`
+- `test_hierarchical_stress_validation.py`
+- `test_hierarchical_validation.py`
+- `test_model_engines.py`
+- `test_prediction_engine.py`
+- `test_hierarchical_orchestration.py`
+- `test_evidence_tier_calibration.py`
+- `test_feature_eligibility.py`
+- `test_final_model_training.py`
+
+Presence of tests is not proof of production integration or prospective model performance. The next audit pass must trace exact call sites, API routes, model artifact schema and workflow triggers, then add missing tests for sparse-data segments and reliability propagation.
+
+### 8B. Complete the governed calculation engine
 
 ### 8A. Model and feature inventory audit
 
