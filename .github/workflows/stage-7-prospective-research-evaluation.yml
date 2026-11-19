@@ -44,7 +44,7 @@ jobs:
       - name: Run read-only expanding-window research evaluation
         run: |
           mkdir -p artifacts
-          python scripts/evaluate_prospective_hierarchical.py \
+          PYTHONPATH=. python scripts/evaluate_prospective_hierarchical.py \
             --output artifacts/prospective-model-evaluation.json \
             --dataset-output artifacts/prospective-dataset.json \
             --bootstrap-replicates 200
