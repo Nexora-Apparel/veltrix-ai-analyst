@@ -86,3 +86,67 @@ def test_chronological_selection_scores_multiple_development_folds():
     assert selection.leaderboard[0].folds_scored == 3
     assert selection.leaderboard[0].scored_matches > 0
     assert all(item.mean_validation_nll > 0 for item in selection.leaderboard)
+
+
+
+def test_tuning_excludes_labels_not_available_at_the_fold_cutoff():
+    rows = _multi_competition_history((60,))
+    origin = datetime(2025, 1, 1, tzinfo=UTC)
+    cutoff = origin + timedelta(days=45)
+    folds = (ChronologicalFold(cutoff, origin + timedelta(days=60)),)
+    availability = {
+        row.fixture_id: (
+            origin + timedelta(days=50)
+            if row.kickoff_at <= origin + timedelta(days=20)
+            else row.kickoff_at + timedelta(hours=2)
+        )
+        for row in rows
+    }
+
+    # Forty-six matches have kicked off by the cutoff, but twenty-one results
+    # were not imported/observed until day 50. Only 25 labels are trainable.
+    import pytest
+
+    with pytest.raises(ValueError, match="no chronological fold"):
+        select_hierarchical_hyperparameters(
+            rows,
+            folds,
+            half_lives=(180.0,),
+            team_ridges=(0.5,),
+            competition_ridges=(1.0,),
+            min_training_fixtures=30,
+            label_available_at=availability,
+            evaluation_as_of=origin + timedelta(days=70),
+        )
+
+
+def test_tuning_accepts_labels_only_after_their_recorded_availability_time():
+    rows = _multi_competition_history((60,))
+    origin = datetime(2025, 1, 1, tzinfo=UTC)
+    cutoff = origin + timedelta(days=50)
+    folds = (ChronologicalFold(cutoff, origin + timedelta(days=60)),)
+    availability = {
+        row.fixture_id: (
+            origin + timedelta(days=50)
+            if row.kickoff_at <= origin + timedelta(days=20)
+            else row.kickoff_at + timedelta(hours=2)
+        )
+        for row in rows
+    }
+
+    selection = select_hierarchical_hyperparameters(
+        rows,
+        folds,
+        half_lives=(180.0,),
+        team_ridges=(0.5,),
+        competition_ridges=(1.0,),
+        min_training_fixtures=30,
+        label_available_at=availability,
+        evaluation_as_of=origin + timedelta(days=70),
+    )
+
+    assert selection.protocol == (
+        "EXPANDING_WINDOW_LABEL_AVAILABILITY_AWARE_PAIRED_POISSON_NLL_V2"
+    )
+    assert selection.leaderboard[0].scored_matches == 10
+    assert selection.leaderboard[0].folds_scored == 1
