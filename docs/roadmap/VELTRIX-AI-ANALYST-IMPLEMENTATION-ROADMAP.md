@@ -29,7 +29,7 @@
 | 5 | Canonical identity linkage | Applied; reconciliation outstanding | All conflicts/restrictions resolved or safely excluded with evidence |
 | 6 | Immutable prospective snapshots and outcome labels | Implemented; accumulating evidence | Daily snapshots and strictly post-kickoff append-only labels verified |
 | 7 | Research evaluation and certification | Evaluator verified live; certification blocked by prospective evidence | Keep accumulating strict prospective labels until walk-forward and certification gates pass |
-| 8 | Model capability completion and production inference | In progress; existing components partially complete | Complete model integration/feature/reliability audit; test sparse-data paths; certify immutable artifact; gated daily inference/publisher |
+| 8 | Model capability completion and production inference | In progress; Stage 8A inventory complete | Complete governed calculations and reliability integration; validate and certify immutable artifact; build gated daily inference/publisher |
 | 9 | Android integration and release verification | Partial API/UI foundation; integration pending | Existing UI consumes real published predictions, history/settlement and in-app notifications; runtime checks pass |
 
 ## Stage 1 — Canonical scope inventory CLI
@@ -109,7 +109,7 @@ For value betting and any applicable model promotion gates, preserve the strict 
 
 ### 8A. Model and feature inventory audit
 
-**Initial source audit completed 2026-11-19; integration mapping remains in progress.** The live main branch contains the following components:
+**Status: COMPLETE — source, tests, workflows, API contracts, database schema and production artifact state audited on 2026-11-19.** The live main branch contains the following components:
 
 | Component | Source | Verified position |
 |---|---|---|
@@ -151,7 +151,7 @@ For value betting and any applicable model promotion gates, preserve the strict 
 - `test_feature_eligibility.py`
 - `test_final_model_training.py`
 
-Presence of tests is not proof of production integration or prospective model performance. The next audit pass must trace exact call sites, API routes, model artifact schema and workflow triggers, then add missing tests for sparse-data segments and reliability propagation.
+Presence of tests is not proof of production integration or prospective model performance. Stage 8A exit criteria are met. The remaining items move to Stage 8B/8C: add tests for sparse-data segments, derive evidence signals from PIT-qualified snapshots, freeze a calibrated policy and propagate reliability into persisted/public API predictions.
 
 ### 8B. Complete the governed calculation engine
 
