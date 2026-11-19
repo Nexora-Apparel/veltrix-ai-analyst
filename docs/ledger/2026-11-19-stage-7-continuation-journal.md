@@ -337,3 +337,20 @@ A subsequent migration audit refined the publication gap:
 - Earlier observation that `backend/app/db/store.py` has no matching prediction insertion method remains true for that application module, but must not be interpreted as absence of database publication storage.
 
 Roadmap wording was corrected accordingly in commit `96b57eab50285a1f586c27e1766fad28f9cff40d`.
+
+
+### Stage 8A — production Neon artifact/publication state (read-only)
+
+Project `young-wind-27772160`, default production branch `br-jolly-darkness-balgmi2t`, database `veltrix_ai_analyst` was queried using read-only SELECT statements only.
+
+- `model_artifacts`: 2 rows.
+- Both artifacts are `RECENCY_WEIGHTED_ATTACK_DEFENCE_POISSON`, 380 training fixtures and 20 provider teams, cutoff 2026-11-14 19:30 UTC.
+- Both have `point_in_time_certified=false`, `deployment_status=RESEARCH_ARTIFACT_ONLY`, and `temporal_certification=RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED`.
+- `predictions`: 0 rows.
+- `prediction_publication_events`: 0 rows.
+- `published_predictions`: 0 rows.
+- `prediction_feature_snapshots` (production inference snapshots, distinct from Stage 6 prospective research snapshots): 0 rows.
+
+**Interpretation:** the repository has a production inference boundary and database publication schema/gates, but there is currently no production-approved model artifact and no published production predictions. This confirms Stage 8 must not be treated as a wiring-only release; model artifact PIT certification and application-level inference/persistence are both outstanding.
+
+No database rows were changed. No provider or odds API was called. No migration was applied.
