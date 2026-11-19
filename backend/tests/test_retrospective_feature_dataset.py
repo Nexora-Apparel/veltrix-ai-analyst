@@ -72,3 +72,16 @@ def test_content_addressed_artifact_is_stable(tmp_path):
     assert path.exists()
     assert digest in path.name
     assert path.read_text(encoding="utf-8").find('"validation_eligible": false') >= 0
+
+def test_dataset_fails_closed_when_research_rights_are_not_approved():
+    row = _row("1", datetime(2026, 1, 1, tzinfo=timezone.utc), "A", "B", 2, 0)
+    row["rights_status"] = "PROVISIONAL"
+    with pytest.raises(RuntimeError, match="RETROSPECTIVE_TRAINING_RIGHTS_NOT_VERIFIED"):
+        build_dataset([row])
+
+
+def test_dataset_fails_closed_when_model_training_use_is_missing():
+    row = _row("1", datetime(2026, 1, 1, tzinfo=timezone.utc), "A", "B", 2, 0)
+    row["permitted_uses"] = ["FEATURE_ENGINEERING"]
+    with pytest.raises(RuntimeError, match="RETROSPECTIVE_TRAINING_RIGHTS_NOT_VERIFIED"):
+        build_dataset([row])
