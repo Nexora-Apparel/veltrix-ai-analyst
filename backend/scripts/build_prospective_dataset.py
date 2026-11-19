@@ -14,6 +14,7 @@ import psycopg
 from app.validation.prospective_dataset import (
     FixtureIdentity,
     FixtureObservation,
+    ProspectiveDatasetRow,
     build_expanding_window_folds,
     build_prospective_dataset,
 )
