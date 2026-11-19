@@ -12,6 +12,7 @@ from app.canonicalization import (
     BRAZIL_SERIE_B_RUN_3,
     CanonicalMaterializationScope,
     _identity_collision_fixture_ids,
+    SUPPORTED_FIXTURE_STATUSES,
     materialize_brazil_serie_b_canonical_entities,
 )
 from app.db.migrations import apply_migrations
@@ -46,6 +47,17 @@ def test_materializer_defaults_to_read_only() -> None:
     assert inspect.signature(materialize_brazil_serie_b_canonical_entities).parameters[
         "execute"
     ].default is False
+
+def test_supported_fixture_statuses_match_database_contract() -> None:
+    assert SUPPORTED_FIXTURE_STATUSES == {
+        "SCHEDULED",
+        "LIVE",
+        "FINISHED",
+        "POSTPONED",
+        "CANCELLED",
+        "ABANDONED",
+        "UNKNOWN",
+    }
 
 
 def test_identity_collision_detection_requires_exact_provider_ids_and_opponent() -> None:
@@ -169,7 +181,11 @@ def test_dry_run_and_materialization_are_provenance_bound_and_idempotent(
         )
 
     for index, (status, goals) in enumerate(
-        (("finished", (2, 1)), ("unknown", (None, None))),
+        (
+            ("finished", (2, 1)),
+            ("scheduled", (None, None)),
+            ("unknown", (None, None)),
+        ),
         start=1,
     ):
         fixture_id = f"test-fixture-{index}"
@@ -219,7 +235,7 @@ def test_dry_run_and_materialization_are_provenance_bound_and_idempotent(
         competition_id="522514093",
         rights_approval_id=approval.approval_id,
         import_run_id=None,
-        expected_fixture_count=2,
+        expected_fixture_count=3,
         expected_team_count=2,
     )
 
@@ -230,10 +246,10 @@ def test_dry_run_and_materialization_are_provenance_bound_and_idempotent(
     assert preview["plan"]["ready"] is True
     assert preview["plan"]["team_count"] == 2
     assert preview["plan"]["competition_count"] == 1
-    assert preview["plan"]["fixture_count"] == 2
+    assert preview["plan"]["fixture_count"] == 3
     assert preview["plan"]["finished_fixture_count"] == 1
     assert preview["plan"]["unknown_fixture_count"] == 1
-    assert preview["plan"]["non_pit_observation_count"] == 5
+    assert preview["plan"]["non_pit_observation_count"] == 6
 
     first = materialize_brazil_serie_b_canonical_entities(
         connection, execute=True, scope=scope
@@ -241,7 +257,7 @@ def test_dry_run_and_materialization_are_provenance_bound_and_idempotent(
     assert first["mode"] == "APPLIED"
     assert first["competition_created"] is True
     assert first["teams_created"] == 2
-    assert first["fixtures_created"] == 2
+    assert first["fixtures_created"] == 3
     assert first["identity_reviews_created"] == 0
     assert first["pit_observations_promoted"] == 0
     assert first["provider_requests_made"] == 0
@@ -252,7 +268,7 @@ def test_dry_run_and_materialization_are_provenance_bound_and_idempotent(
     assert second["competition_created"] is False
     assert second["teams_created"] == 0
     assert second["fixtures_created"] == 0
-    assert second["fixtures_reused"] == 2
+    assert second["fixtures_reused"] == 3
 
     counts = connection.execute(
         """
@@ -266,7 +282,7 @@ def test_dry_run_and_materialization_are_provenance_bound_and_idempotent(
             (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_identity_review_events)
         """
     ).fetchone()
-    assert counts == (2, 1, 2, 2, 1, 2, 0)
+    assert counts == (2, 1, 3, 2, 1, 3, 0)
 
     unknown = connection.execute(
         """
