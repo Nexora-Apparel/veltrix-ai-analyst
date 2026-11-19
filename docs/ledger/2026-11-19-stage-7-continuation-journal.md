@@ -382,3 +382,13 @@ Canonical classification:
 | Android UI | Existing UI preserved; end-to-end live prediction integration remains pending |
 
 **Stage 8A is complete. Stage 7 certification remains blocked separately** by zero settled prospective labels/folds and must continue accumulating evidence. The next build work is Stage 8B: governed calculation and sparse-data inference; Stage 8C: reliability policy calibration and production propagation. No production code has been changed during this audit.
+
+
+## Stage 8B kickoff — feature/outcome pairing constraint
+
+- `backend/scripts/build_prospective_dataset.py` constructs historical training-only rows with `features={}` and `feature_lineage=()`. These 996 records are outcome/identity/competition training evidence, not historical PIT snapshots for the supporting match-stat features.
+- The 59 current upcoming prospective snapshots contain PIT feature values and lineage, but currently have zero settled labels.
+- Therefore, fitting feature coefficients for shots, possession, attacks, corners, cards, event metrics or other supporting features from the 996 rows would be invalid. Do not fabricate historical feature values, infer them from final scores, or use upcoming features without outcomes as supervised training examples.
+- The currently defensible near-term path is to develop and test the existing hierarchical goal-rate model using the eligible historical outcome pool for team/competition partial pooling, including its unseen-team neutral-effect behavior. Keep sparse supporting feature fields explicit and use them for measured coverage/evidence diagnostics only until paired PIT feature/outcome examples or a separately rights-cleared historical feature corpus exists.
+- Once prospective fixtures settle, the label materializer can pair each immutable snapshot with its append-only outcome label for feature-model development and later prospective validation. Historical training-only rows still cannot count as prospective certification.
+- This finding is recorded in the roadmap under Stage 8B. No model code or data was changed.
