@@ -133,6 +133,8 @@ def run(
     scopes = _select_scope(
         _approved_scopes(connection), provider, source_id, competition_id
     )
+    if execute and len(scopes) != 1:
+        raise ValueError("EXACT_SCOPE_MUST_RESOLVE_TO_ONE_EFFECTIVE_APPROVAL")
     reports: list[dict[str, Any]] = []
     for scope in scopes:
         if execute:
