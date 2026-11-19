@@ -106,3 +106,26 @@ The next meaningful Stage 7 checkpoint is a Stage 6 run that records one or more
 - The workflow remains read-only; no provider calls, odds calls, database writes or publication actions are introduced.
 - The Stage 7 run on the new main commit has not yet been independently observed in Actions at this journal update. The next check must verify the run and its artifact before claiming production-database execution of PR #119.
 
+## Continuation decision — keep progressing while prospective labels accumulate
+
+**User direction:** continue toward launch; do not treat the waiting period for settled prospective outcomes as a reason to stop engineering work.
+
+### Current operating decision
+
+- Keep the existing seven approved competition capture schedule active at 04:00 WAT.
+- Continue the Stage 6 materialization and Stage 7 evaluation chain when its scheduled/workflow triggers run.
+- Historical training-only outcomes may seed model training, but they do not replace prospective validation evidence or reduce certification thresholds.
+- Do not publish predictions until the production model and release gates explicitly pass.
+- Do not unlock value betting or spend The Odds API credits for this workstream.
+- Preserve the existing Android application UI; Android runtime release verification remains downstream of a valid prediction publication API.
+
+### Next engineering work identified
+
+The next parallel work item is a coverage and rights audit of the current seven competitions, followed by a shortlist of additional competitions that could be added without weakening source approval, canonical identity, point-in-time provenance or capture reliability. The purpose is to increase genuine eligible fixture volume toward the 25-per-day target, not to manufacture volume.
+
+**Execution status at this journal update:** this coverage/expansion audit has been identified as the next task but has not yet been run. No additional competition has been approved or added by this decision. Any proposed expansion must be checked against the provider's actual rights approval and the existing seven-scope governance process before implementation.
+
+### Launch state
+
+The project is still in pre-launch validation. The merged PRs #119 and #120 improve the historical training pool and ensure evaluator code changes trigger Stage 7, respectively. They do not themselves certify the model or publish predictions. The next decisive evidence remains a successful prospective walk-forward evaluation and independent certification result, followed by the gated API/app release work.
+
