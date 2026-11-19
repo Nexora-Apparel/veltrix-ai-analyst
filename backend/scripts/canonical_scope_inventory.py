@@ -381,7 +381,7 @@ def main() -> int:
                 fixtures=scope["fixture_coverage"]
                 teams=scope["team_coverage"]
                 links=scope["canonical_fixture_links"]
-                print(f"  competition {scope['competition_id']}: competition_provenance={competitions['provenance_complete']}/{competitions['competition_rows']}; fixtures={fixtures['fixture_rows']} provenance={fixtures['fixture_provenance_complete']}; teams={teams['referenced_team_ids']} provenance={teams['provenance_complete_teams']}; linked={links['linked_fixture_rows']} verified={links['identity_verified']} review={links['identity_review_required']} conflicts={links['identity_conflicts']}; unresolved_cases={scope['unresolved_linked_review_cases']}")
+                print(f"  competition {scope['competition_id']}: competition_provenance={competitions['provenance_complete']}/{competitions['competition_rows']} canonical={competitions['canonical_linked_competitions']}; fixtures={fixtures['fixture_rows']} provenance={fixtures['fixture_provenance_complete']}; teams={teams['referenced_team_ids']} provenance={teams['provenance_complete_teams']} canonical={teams['canonical_linked_teams']}; linked={links['linked_fixture_rows']} verified={links['identity_verified']} review={links['identity_review_required']} conflicts={links['identity_conflicts']}; unresolved_cases={scope['unresolved_linked_review_cases']}")
     return 0 if report["migration_readiness"] else 3
 
 
