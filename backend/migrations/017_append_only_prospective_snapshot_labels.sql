@@ -71,12 +71,24 @@ BEGIN
         RAISE EXCEPTION 'outcome label must be observed strictly after kickoff';
     END IF;
 
-    IF NEW.label_lineage->>'availability_basis' <> 'SYSTEM_OBSERVED_AT'
-       OR NEW.label_lineage->>'point_in_time_certifiable' <> 'true'
-       OR NEW.label_lineage->>'rights_status' <> 'APPROVED'
-       OR NEW.label_lineage->>'source_observation_id' <> NEW.source_observation_id::text
-       OR NEW.label_lineage->>'source_sighting_id' <> NEW.source_sighting_id::text
-       OR NEW.label_lineage->>'provider_response_id' <> NEW.provider_response_id::text THEN
+    IF (NEW.label_lineage->>'availability_basis') IS DISTINCT FROM 'SYSTEM_OBSERVED_AT'
+       OR (NEW.label_lineage->>'point_in_time_certifiable') IS DISTINCT FROM 'true'
+       OR (NEW.label_lineage->>'rights_status') IS DISTINCT FROM 'APPROVED'
+       OR COALESCE(NEW.label_lineage->>'rights_approval_id', '') = ''
+       OR NOT COALESCE(
+           NEW.label_lineage->'rights_permitted_uses',
+           '[]'::jsonb
+       ) @> '["MODEL_TRAINING","MODEL_VALIDATION"]'::jsonb
+       OR (NEW.label_lineage->>'source_observation_id') IS DISTINCT FROM NEW.source_observation_id::text
+       OR (NEW.label_lineage->>'source_sighting_id') IS DISTINCT FROM NEW.source_sighting_id::text
+       OR (NEW.label_lineage->>'provider_response_id') IS DISTINCT FROM NEW.provider_response_id::text
+       OR (NEW.label_lineage->>'system_observed_at')::timestamptz IS DISTINCT FROM NEW.label_observed_at
+       OR (NEW.label_lineage->>'retrieved_at')::timestamptz > NEW.label_observed_at
+       OR (NEW.label_lineage->>'rights_valid_from')::timestamptz > NEW.label_observed_at
+       OR (
+           NEW.label_lineage->>'rights_valid_until' IS NOT NULL
+           AND (NEW.label_lineage->>'rights_valid_until')::timestamptz <= NEW.label_observed_at
+       ) THEN
         RAISE EXCEPTION 'outcome label lineage is not PIT-certifiable or does not match source IDs';
     END IF;
 
