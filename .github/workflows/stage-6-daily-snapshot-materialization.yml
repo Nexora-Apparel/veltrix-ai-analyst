@@ -121,7 +121,7 @@ jobs:
                   WITH expected AS (
                       SELECT *
                       FROM jsonb_to_recordset(%s::jsonb) AS item(
-                          canonical_fixture_id BIGINT,
+                          canonical_fixture_id UUID,
                           prediction_cutoff_at TIMESTAMPTZ,
                           label_observation_id BIGINT
                       )
