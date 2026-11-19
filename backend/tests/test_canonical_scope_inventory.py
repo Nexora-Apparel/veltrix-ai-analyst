@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT = Path(__file__).parents[1] / "scripts" / "canonical_scope_inventory.py"
