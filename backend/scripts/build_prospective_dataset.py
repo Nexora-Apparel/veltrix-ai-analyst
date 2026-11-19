@@ -21,18 +21,20 @@ from app.validation.prospective_dataset import (
 
 
 def _jsonable_row(row) -> dict:
-    return {
+    result = {
         "fixture_id": row.fixture_id,
         "provider_fixture_id": row.fixture_id.split(":", 1)[1],
         "provider_competition_id": row.competition_id,
         "canonical_fixture_id": row.canonical_fixture_id,
         "canonical_competition_id": row.canonical_competition_id,
-        "validation_eligible": row.validation_eligible,
         "provider": row.provider,
         "source_id": row.source_id,
         "competition_id": row.competition_id,
         "kickoff_at": row.kickoff_at.isoformat(),
-        "prediction_cutoff_at": (row.prediction_cutoff_at.isoformat() if row.prediction_cutoff_at else None),
+        "prediction_cutoff_at": (
+            row.prediction_cutoff_at.isoformat()
+            if row.prediction_cutoff_at else None
+        ),
         "home_team_id": row.home_team_id,
         "away_team_id": row.away_team_id,
         "features": row.features,
@@ -44,6 +46,11 @@ def _jsonable_row(row) -> dict:
         "label_observation_id": row.label_observation_id,
         "label_lineage": row.label_lineage,
     }
+    # Keep the historical snapshot payload byte-for-byte compatible: this
+    # metadata exists only on the separate, non-persisted training pool.
+    if not row.validation_eligible:
+        result["validation_eligible"] = False
+    return result
 
 
 def build_report(
@@ -485,7 +492,6 @@ def build_report(
     canonical = json.dumps(
         {
             "rows": serialized_rows,
-        "training_only_rows": serialized_training_only_rows,
             "training_only_rows": serialized_training_only_rows,
             "folds": serialized_folds,
         },
