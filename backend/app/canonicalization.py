@@ -350,6 +350,17 @@ def _identity_collision_fixture_ids(
     return tuple(sorted(conflicts))
 
 
+def _expected_fixture_identity_status(
+    conflict: bool, latest_decision: str | None
+) -> str:
+    """Preserve append-only review outcomes when an applied scope is rerun."""
+    if latest_decision == "SOURCE_FIXTURE_LINK_REVIEWED":
+        return "VERIFIED"
+    if latest_decision in {"CONFLICT", "REJECTED"}:
+        return "CONFLICT"
+    return "CONFLICT" if conflict else "IDENTITY_REVIEW_REQUIRED"
+
+
 def build_brazil_serie_b_materialization_plan(
     connection: psycopg.Connection[Any],
     scope: CanonicalMaterializationScope = BRAZIL_SERIE_B_RUN_3,
@@ -639,7 +650,7 @@ def materialize_brazil_serie_b_canonical_entities(
             existing = _one(
                 connection,
                 """
-                SELECT source.canonical_fixture_id, canonical.kickoff_at, canonical.status,
+                SELECT source.id AS source_link_id, source.canonical_fixture_id, canonical.kickoff_at, canonical.status,
                        canonical.home_goals, canonical.away_goals,
                        canonical.canonical_competition_id, canonical.home_canonical_team_id,
                        canonical.away_canonical_team_id, canonical.identity_status,
@@ -656,11 +667,22 @@ def materialize_brazil_serie_b_canonical_entities(
             )
             expected_home = canonical_team_ids[fixture["home_team_provider_id"]]
             expected_away = canonical_team_ids[fixture["away_team_provider_id"]]
-            expected_identity = (
-                "CONFLICT" if fixture["provider_fixture_id"] in conflict_ids
-                else "IDENTITY_REVIEW_REQUIRED"
-            )
             if existing:
+                latest_review = _one(
+                    connection,
+                    """
+                    SELECT decision
+                    FROM veltrix_ai_analyst.canonical_identity_review_events
+                    WHERE fixture_source_link_id = %s
+                    ORDER BY reviewed_at DESC, id DESC
+                    LIMIT 1
+                    """,
+                    (existing["source_link_id"],),
+                )
+                expected_identity = _expected_fixture_identity_status(
+                    fixture["provider_fixture_id"] in conflict_ids,
+                    latest_review["decision"] if latest_review else None,
+                )
                 expected = (
                     fixture["kickoff_at"], fixture["status"], fixture["home_goals"],
                     fixture["away_goals"], canonical_competition_id, expected_home,
@@ -687,6 +709,9 @@ def materialize_brazil_serie_b_canonical_entities(
                 reused_fixtures += 1
                 continue
 
+            expected_identity = _expected_fixture_identity_status(
+                fixture["provider_fixture_id"] in conflict_ids, None
+            )
             canonical_fixture_id = connection.execute(
                 """
                 INSERT INTO veltrix_ai_analyst.canonical_fixtures (
