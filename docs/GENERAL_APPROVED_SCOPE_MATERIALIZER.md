@@ -43,7 +43,7 @@ A write is limited to one exact approved competition scope. It requires:
 3. Environment variable
    `CANONICAL_MATERIALIZATION_CONFIRMATION=APPLY_ONE_APPROVED_CANONICAL_SCOPE`.
 4. Database name exactly `veltrix_ai_analyst`.
-5. The complete migration set 007–009 and 012–014 is present in `public.schema_migrations`.
+5. The complete migration set 006–014 (including both 008 migrations) is present in `public.schema_migrations`.
 6. An effective, currently valid source approval and a fresh ready plan.
 
 Each scope is processed in a SERIALIZABLE transaction with a transaction-scoped
