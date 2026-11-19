@@ -395,3 +395,22 @@ This corrected a lifecycle flaw before prospective matches settled: storing futu
 The production migration workflow applied migration 017. The resulting Stage 6 persistence run confirms the existing 59 snapshots remained stable; the separate label table currently has zero rows because none of the 59 prospective fixtures had yet produced an eligible settled outcome at the time of the audit.
 
 **Trigger-chain finding:** PR #117's checksum-verified migration workflow completion caused the Stage 5 read-only preview to run (#44494406559). Under the then-current PR #106 workflow definition, that successful preview in turn automatically triggered Stage 5 apply (#44494508790). This is the concrete event chain that demonstrated the Stage 5 automatic-apply defect. PR #118 subsequently removed the apply workflow's `workflow_run` trigger. The read-only Stage 5 preview trigger remains safe.
+
+
+### 10.9 Prospective coverage distribution and current daily-volume constraint
+
+The persisted 59-row prospective dataset covers these actual kickoff dates:
+
+| Kickoff date (WAT calendar date) | Eligible fixtures |
+|---|---:|
+| 2026-11-19 | 2 |
+| 2026-11-20 | 4 |
+| 2026-11-21 | 28 |
+| 2026-11-22 | 20 |
+| 2026-11-23 | 4 |
+| 2026-11-24 | 1 |
+| **Total** | **59** |
+
+The seven approved competition scopes currently provide a highly uneven daily fixture volume. Only 28 fixtures fall on the busiest date; most dates are well below the 25-fixture target. This is an observed inventory constraint, not a reason to pad predictions. Before Stage 8, evaluate expansion to additional provider competitions only through explicit rights approval and the same canonical identity/provenance controls. If coverage is not expanded, publish only the smaller eligible count and report the shortfall.
+
+Current feature-coverage counts from the dataset artifact also show that richer team-form inputs are sparse: home goals-for-per-match last five appears in 6 rows, away goals-for-per-match last five in 5 rows, while event/stat coverage lineage is recorded for all 59 rows. Missing historical team-form values must remain absent; do not replace them with zeros or generic priors. The current Stage 7 evaluator uses hierarchical goal-rate training only and does not yet consume the captured shot, possession, attack or event-derived features.
