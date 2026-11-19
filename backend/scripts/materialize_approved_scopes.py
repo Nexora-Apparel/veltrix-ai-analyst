@@ -227,7 +227,7 @@ def main() -> int:
                         source_id=args.source_id,
                         competition_id=args.competition_id,
                     )
-    except Exception as exc:
+    except (psycopg.Error, OSError, ValueError, RuntimeError, KeyError, TypeError, AttributeError) as exc:
         print(f"CANONICAL_SCOPE_MATERIALIZATION_FAILED:{type(exc).__name__}", file=sys.stderr)
         return 2
 
