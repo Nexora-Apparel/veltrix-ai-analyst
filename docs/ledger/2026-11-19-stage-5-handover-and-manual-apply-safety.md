@@ -368,3 +368,30 @@ Important model limitation recorded from the latest Stage 7 artifact:
 - Do not describe those captured features as active model inputs until a separately tested model implementation consumes them and prospective evaluation demonstrates benefit.
 
 No evaluator code change was made in this review because the current data has zero settled labels and cannot yet support meaningful prospective model fitting or comparison. The correct next step is to continue prospective capture and label accumulation, then re-run the existing chronological evaluation when actual settled labels become available. This avoids tuning to empty or fabricated labels.
+
+
+### 10.8 PR #116 and PR #117 — Stage 6 persistence authorization and immutable outcome lifecycle
+
+These two merged changes explain how the first snapshot persistence was authorized and why outcome labels were separated from feature snapshots.
+
+**PR #116 — [Correct Stage 6 snapshot persistence authorization trigger](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/116)**  
+Merge commit: `49cf96cb5ee494014dda212821ec070e93dd9700`.
+
+The first Stage 6 persistence workflow push was skipped because GitHub's squash commit title used the source commit message rather than the PR title. PR #116 corrected the resulting squash commit message to contain the exact authorization marker `[PERSIST_STAGE6_SNAPSHOTS]`, while retaining the workflow's explicit marker check. The successful persistence run #44492260988 was triggered by that marked merge commit. The PR description explicitly states the PR itself performs no write unless the exact marker is present.
+
+**PR #117 — [Stage 6: separate immutable features from append-only result labels](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/117)**  
+Merge commit: `f23a092db8f2121da1b318c0eb344866c04b54d8`.
+
+This corrected a lifecycle flaw before prospective matches settled: storing future outcomes inline inside an immutable feature snapshot would mutate the feature record or cause later idempotent refreshes to conflict. PR #117:
+- Added migration 017 to remove unused nullable inline label columns, guarded to refuse if inline labels already existed.
+- Added `prospective_feature_snapshot_labels` as a separate append-only outcome event table.
+- Tied each label to its exact source observation, sighting and provider response.
+- Enforced label observation strictly after fixture kickoff, exact lineage, system-observed PIT basis, approved rights, permitted uses, effective approval windows and append-only protection.
+- Changed snapshot hashes to cover immutable feature content only.
+- Made label persistence idempotent by snapshot/source-observation ID.
+- Added tests for stable feature hashes and rejection of invalid label timing.
+- Updated verification to count label events separately.
+
+The production migration workflow applied migration 017. The resulting Stage 6 persistence run confirms the existing 59 snapshots remained stable; the separate label table currently has zero rows because none of the 59 prospective fixtures had yet produced an eligible settled outcome at the time of the audit.
+
+**Trigger-chain finding:** PR #117's checksum-verified migration workflow completion caused the Stage 5 read-only preview to run (#44494406559). Under the then-current PR #106 workflow definition, that successful preview in turn automatically triggered Stage 5 apply (#44494508790). This is the concrete event chain that demonstrated the Stage 5 automatic-apply defect. PR #118 subsequently removed the apply workflow's `workflow_run` trigger. The read-only Stage 5 preview trigger remains safe.
