@@ -91,6 +91,8 @@ def select_hierarchical_hyperparameters(
     if len({row.fixture_id for row in rows}) != len(rows):
         raise ValueError("duplicate fixture IDs are not allowed")
     if label_available_at is not None:
+        if evaluation_as_of is None:
+            raise ValueError("availability-aware tuning requires evaluation_as_of")
         if set(label_available_at) != {row.fixture_id for row in rows}:
             raise ValueError("label availability timestamps must cover every result exactly")
         for row in rows:
@@ -105,6 +107,9 @@ def select_hierarchical_hyperparameters(
         ):
             raise ValueError("evaluation_as_of must be timezone-aware")
     ordered = tuple(sorted(folds, key=lambda fold: fold.train_cutoff))
+    for fold in ordered:
+        if label_available_at is not None and fold.train_cutoff > evaluation_as_of:
+            raise ValueError("fold training cutoff cannot be later than evaluation_as_of")
     for previous, current in pairwise(ordered):
         if current.train_cutoff < previous.validation_end:
             raise ValueError("chronological validation windows overlap")
