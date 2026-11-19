@@ -771,6 +771,68 @@ jobs:
               if pit_status is None or pit_status[0] != "AUTOMATED_DEFERRED":
                   raise SystemExit("MIGRATION_015_PIT_CASE_NOT_DEFERRED")
 
+              pit_counts = connection.execute(
+                  """
+                  SELECT
+                    COUNT(DISTINCT observation.id),
+                    COUNT(DISTINCT observation.id) FILTER (
+                      WHERE observation.point_in_time_certifiable
+                    ),
+                    COUNT(DISTINCT observation.id) FILTER (
+                      WHERE observation.source_published_at IS NOT NULL
+                    ),
+                    COUNT(DISTINCT observation.id) FILTER (
+                      WHERE observation.available_at IS NOT NULL
+                    )
+                  FROM veltrix_ai_analyst.source_observations observation
+                  JOIN veltrix_ai_analyst.source_observation_sightings sighting
+                    ON sighting.source_observation_id=observation.id
+                  JOIN veltrix_ai_analyst.import_request_reservations reservation
+                    ON reservation.provider_response_id=sighting.provider_response_id
+                  WHERE reservation.import_run_id=3
+                    AND observation.provider='5DollarFootballAPI'
+                    AND observation.source_id='5dollarfootballapi'
+                    AND observation.data_type='fixtures_and_results'
+                  """
+              ).fetchone()
+              if pit_counts != (374, 0, 0, 0):
+                  raise SystemExit(f"HISTORICAL_PIT_GAP_SCOPE_CHANGED:{pit_counts}")
+
+              alias_conflict = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM veltrix_ai_analyst.canonical_team_identity_provenance_audit
+                  WHERE provider='5DollarFootballAPI'
+                    AND source_id='5dollarfootballapi'
+                    AND provider_team_id='3808811746'
+                    AND real_world_identity_status='CONFLICT'
+                  """
+              ).fetchone()[0]
+              if alias_conflict != 1:
+                  raise SystemExit(f"ALTERNATE_AMERICA_ALIAS_CONFLICT_NOT_PRESERVED:{alias_conflict}")
+
+              duplicate_conflicts = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM veltrix_ai_analyst.canonical_fixture_source_provenance_audit audit
+                  JOIN veltrix_ai_analyst.canonical_fixture_sources source_link
+                    ON source_link.id=audit.fixture_source_link_id
+                  JOIN veltrix_ai_analyst.provider_fixtures fixture
+                    ON fixture.id=source_link.provider_fixture_row_id
+                  JOIN veltrix_ai_analyst.canonical_fixtures canonical
+                    ON canonical.id=source_link.canonical_fixture_id
+                  WHERE fixture.provider='5DollarFootballAPI'
+                    AND fixture.source_id='5dollarfootballapi'
+                    AND fixture.provider_fixture_id IN (
+                      '2341822348','2336910968','933498248','1988139832','475377468'
+                    )
+                    AND audit.effective_review_status='CONFLICT'
+                    AND canonical.identity_status='CONFLICT'
+                  """
+              ).fetchone()[0]
+              if duplicate_conflicts != 5:
+                  raise SystemExit(f"OFFICIAL_DUPLICATE_CONFLICTS_NOT_PRESERVED:{duplicate_conflicts}")
+
               alias_view = connection.execute(
                   "SELECT pg_get_viewdef('veltrix_ai_analyst.effective_canonical_team_aliases'::regclass)"
               ).fetchone()[0]
