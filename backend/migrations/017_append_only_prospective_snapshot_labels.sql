@@ -75,10 +75,12 @@ BEGIN
        OR (NEW.label_lineage->>'point_in_time_certifiable') IS DISTINCT FROM 'true'
        OR (NEW.label_lineage->>'rights_status') IS DISTINCT FROM 'APPROVED'
        OR COALESCE(NEW.label_lineage->>'rights_approval_id', '') = ''
-       OR NOT COALESCE(
-           NEW.label_lineage->'rights_permitted_uses',
-           '[]'::jsonb
-       ) @> '["MODEL_TRAINING","MODEL_VALIDATION"]'::jsonb
+       OR NOT (
+           COALESCE(
+               NEW.label_lineage->'rights_permitted_uses',
+               '[]'::jsonb
+           ) @> '["MODEL_TRAINING","MODEL_VALIDATION"]'::jsonb
+       )
        OR (NEW.label_lineage->>'source_observation_id') IS DISTINCT FROM NEW.source_observation_id::text
        OR (NEW.label_lineage->>'source_sighting_id') IS DISTINCT FROM NEW.source_sighting_id::text
        OR (NEW.label_lineage->>'provider_response_id') IS DISTINCT FROM NEW.provider_response_id::text
