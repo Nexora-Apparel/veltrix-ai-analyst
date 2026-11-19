@@ -55,6 +55,44 @@ def parse_timestamp(value: object) -> datetime:
     return parsed
 
 
+def validate_rights_lineage(
+    lineage: dict,
+    effective_at: datetime,
+    required_uses: set[str],
+    error_code: str,
+) -> None:
+    if (
+        lineage.get("rights_status") != "APPROVED"
+        or not lineage.get("rights_approval_id")
+        or not required_uses.issubset(set(lineage.get("rights_permitted_uses", [])))
+    ):
+        raise ValueError(error_code)
+    valid_from = parse_timestamp(lineage.get("rights_valid_from"))
+    valid_until_value = lineage.get("rights_valid_until")
+    valid_until = (
+        parse_timestamp(valid_until_value) if valid_until_value is not None else None
+    )
+    if valid_from > effective_at or (
+        valid_until is not None and valid_until <= effective_at
+    ):
+        raise ValueError(error_code)
+    events = lineage.get("rights_status_events", [])
+    if not isinstance(events, list):
+        raise ValueError(error_code)
+    effective_events = []
+    for event in events:
+        if not isinstance(event, dict):
+            raise ValueError(error_code)
+        event_at = parse_timestamp(event.get("effective_at"))
+        if event_at <= effective_at:
+            event_id = event.get("id")
+            if isinstance(event_id, bool) or not isinstance(event_id, int):
+                raise ValueError(error_code)
+            effective_events.append((event_at, event_id, event.get("status")))
+    if effective_events and max(effective_events, key=lambda item: (item[0], item[1]))[2] != "APPROVED":
+        raise ValueError(error_code)
+
+
 def validate_report(report: dict) -> list[dict]:
     if report.get("report_type") != "VELTRIX_PROSPECTIVE_EXPANDING_DATASET":
         raise ValueError("UNRECOGNIZED_DATASET_REPORT")
@@ -86,12 +124,13 @@ def validate_report(report: dict) -> list[dict]:
             if (
                 item.get("availability_basis") != "SYSTEM_OBSERVED_AT"
                 or item.get("point_in_time_certifiable") is not True
-                or item.get("rights_status") != "APPROVED"
-                or not item.get("rights_approval_id")
-                or not required_uses.issubset(set(item.get("rights_permitted_uses", [])))
             ):
                 raise ValueError("FEATURE_LINEAGE_RIGHTS_OR_PIT_GATE_FAILED")
             observed_at = parse_timestamp(item["system_observed_at"])
+            validate_rights_lineage(
+                item, observed_at, required_uses,
+                "FEATURE_LINEAGE_RIGHTS_OR_PIT_GATE_FAILED",
+            )
             retrieved_at = parse_timestamp(item["retrieved_at"])
             if (
                 observed_at >= kickoff_at
@@ -114,16 +153,15 @@ def validate_report(report: dict) -> list[dict]:
                 label_observed_at <= kickoff_at
                 or label_lineage.get("availability_basis") != "SYSTEM_OBSERVED_AT"
                 or label_lineage.get("point_in_time_certifiable") is not True
-                or label_lineage.get("rights_status") != "APPROVED"
-                or not label_lineage.get("rights_approval_id")
-                or not required_label_uses.issubset(
-                    set(label_lineage.get("rights_permitted_uses", []))
-                )
                 or parse_timestamp(label_lineage.get("system_observed_at")) != label_observed_at
                 or parse_timestamp(label_lineage.get("retrieved_at")) > label_observed_at
                 or label_lineage.get("source_observation_id") != row.get("label_observation_id")
             ):
                 raise ValueError("LABEL_LINEAGE_GATE_FAILED")
+            validate_rights_lineage(
+                label_lineage, label_observed_at, required_label_uses,
+                "LABEL_LINEAGE_GATE_FAILED",
+            )
             for digest_key in ("payload_sha256", "raw_response_sha256"):
                 digest = label_lineage.get(digest_key, "")
                 if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
