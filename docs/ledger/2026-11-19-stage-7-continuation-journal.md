@@ -97,3 +97,12 @@ The next meaningful Stage 7 checkpoint is a Stage 6 run that records one or more
 4. Confirm Stage 7 forms folds using historical training-only rows and prospective validation rows, then inspect the independent certification gate. The prospective 300/90/1000 thresholds remain unchanged.
 5. Keep production prediction publication, value betting and Android runtime release locked until their respective evidence gates pass.
 
+## Stage 7 trigger correction — PR #120 merged
+
+- PR: [#120 — rerun Stage 7 when prospective evaluation code changes](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/120)
+- Merge commit: `ab5256c07667a42a726ea0c0649da6c08141502a`.
+- Added the prospective dataset builder, fold logic, model evaluator and evaluation entrypoint to the Stage 7 workflow's push-path filter.
+- Purpose: evaluation-code changes now trigger the read-only Stage 7 research workflow immediately rather than waiting for a later Stage 6 workflow_run.
+- The workflow remains read-only; no provider calls, odds calls, database writes or publication actions are introduced.
+- The Stage 7 run on the new main commit has not yet been independently observed in Actions at this journal update. The next check must verify the run and its artifact before claiming production-database execution of PR #119.
+
