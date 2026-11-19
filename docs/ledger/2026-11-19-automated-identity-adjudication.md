@@ -63,7 +63,7 @@ Evidence: [Manchester City official match record](https://www.mancity.com/matchd
 
 Provider competition ID `522514093` is Brazil Série B 2026. The CBF official schedule confirms the competition identity. The imported run-3 interval contains 370 FINISHED fixtures through 9 November 2026 (rounds 1–37); Round 38 is outside that interval. The full-season evidence ledger reconciles all 380 fixtures, ordered pairings, kickoff chronology and scorelines against CBF records. This confirms the declared run-3 coverage window; it does not grant PIT eligibility.
 
-Evidence: [CBF official 2026 Série B table and schedule](https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026/2009), [consolidated 2026 CBF qualification ledger](2026-11-18-cbf-consolidated-data-qualification.md).
+Evidence: [CBF official 2026 Série B table and schedule](https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026?doc=Tabela+Detalhada), [consolidated 2026 CBF qualification ledger](2026-11-18-cbf-consolidated-data-qualification.md).
 
 ## Historical PIT disposition
 
