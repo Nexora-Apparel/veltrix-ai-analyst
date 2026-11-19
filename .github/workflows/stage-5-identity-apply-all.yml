@@ -190,10 +190,12 @@ jobs:
                       raise SystemExit(f"SOURCE_LINK_COUNT_MISMATCH:{cid}")
                   if links["linked_fixture_rows"] != fixture_count:
                       raise SystemExit(f"CANONICAL_FIXTURE_LINK_COUNT_MISMATCH:{cid}")
-                  if links["identity_verified"] != 0:
-                      raise SystemExit(f"UNEXPECTED_IDENTITY_VERIFICATION:{cid}")
-                  if links["identity_review_required"] + links["identity_conflicts"] != fixture_count:
-                      raise SystemExit(f"IDENTITY_REVIEW_STATE_NOT_PRESERVED:{cid}")
+                  if links["identity_review_required"] != 0:
+                      raise SystemExit(f"UNREVIEWED_FIXTURE_IDENTITIES_REMAIN:{cid}")
+                  if links["identity_verified"] + links["identity_conflicts"] != fixture_count:
+                      raise SystemExit(f"FIXTURE_IDENTITY_COVERAGE_MISMATCH:{cid}")
+                  if links["source_link_review_required"] != links["identity_conflicts"]:
+                      raise SystemExit(f"SOURCE_LINK_REVIEW_STATE_MISMATCH:{cid}")
                   if links["source_link_conflicts"] != 0:
                       raise SystemExit(f"SOURCE_LINK_CONFLICT:{cid}")
                   teams = scope["team_coverage"]
