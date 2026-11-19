@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime
-from dataclasses import dataclass
 from math import isfinite, lgamma, log
 
 
