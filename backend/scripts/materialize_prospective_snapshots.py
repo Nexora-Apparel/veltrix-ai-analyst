@@ -24,12 +24,14 @@ def canonical_json(value: object) -> str:
 
 
 def snapshot_digest(row: dict) -> str:
-    immutable_features = {
-        key: value for key, value in row.items()
-        if key not in {
-            "label", "label_observed_at", "label_observation_id", "label_lineage"
-        }
+    label_keys = {
+        "label", "label_observed_at", "label_observation_id", "label_lineage"
     }
+    immutable_features = {
+        key: value for key, value in row.items() if key not in label_keys
+    }
+    if row.get("label") is None:
+        immutable_features.update({key: row.get(key) for key in label_keys})
     return hashlib.sha256(canonical_json(immutable_features).encode("utf-8")).hexdigest()
 
 
