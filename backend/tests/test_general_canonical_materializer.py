@@ -124,3 +124,15 @@ def test_identity_alias_rules_are_explicit_and_scope_local():
         "fixture-a",
         "fixture-b",
     )
+
+
+def test_write_gate_requires_every_canonical_and_prediction_migration():
+    applied = {
+        "007_canonical_entity_layer.sql",
+        "009_canonical_identity_review_cases.sql",
+        "012_database_observed_timestamps.sql",
+        "013_target_fixture_pre_match_gate.sql",
+    }
+    assert MODULE._missing_required_migrations(applied) == [
+        "014_prediction_publication_storage.sql"
+    ]
