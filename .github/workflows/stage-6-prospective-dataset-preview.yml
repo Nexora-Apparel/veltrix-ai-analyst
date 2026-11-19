@@ -1,0 +1,58 @@
+name: Stage 6 prospective dataset read-only preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_preview:
+        description: Type BUILD_READ_ONLY_PROSPECTIVE_DATASET to run the production preview
+        required: true
+        type: choice
+        options:
+          - NO
+          - BUILD_READ_ONLY_PROSPECTIVE_DATASET
+        default: NO
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-stage6-dataset-preview
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    if: inputs.confirm_preview == 'BUILD_READ_ONLY_PROSPECTIVE_DATASET'
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        run: python -m pip install -e .
+      - name: Build canonical-identity-gated PIT dataset (read only)
+        run: |
+          mkdir -p artifacts
+          python scripts/build_prospective_dataset.py \
+            --output artifacts/prospective-dataset.json
+      - name: Validate snapshot report without writing
+        run: |
+          python scripts/materialize_prospective_snapshots.py \
+            --input artifacts/prospective-dataset.json
+      - name: Upload read-only dataset and lineage audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-stage6-prospective-dataset-preview
+          path: backend/artifacts/prospective-dataset.json
+          if-no-files-found: error
+          retention-days: 90
