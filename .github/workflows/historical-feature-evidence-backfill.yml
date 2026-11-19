@@ -1,0 +1,83 @@
+name: VELTRIX historical feature evidence backfill
+
+on:
+  push:
+    paths:
+      - ".github/workflows/historical-feature-evidence-backfill.yml"
+  workflow_dispatch:
+    inputs:
+      execute_backfill:
+        description: "Set true to execute the bounded historical feature backfill"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-prospective-5dollar-capture
+  cancel-in-progress: false
+
+jobs:
+  workflow-validation:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate workflow file was parsed
+        run: echo "WORKFLOW_FILE_VALIDATED; no provider or database access on push."
+
+  backfill:
+    if: github.event_name == 'workflow_dispatch'
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      VELTRIX_AI_ANALYST_DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY: ${{ secrets.FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY || secrets.FIVEDOLLARFOOTBALL_API_KEY || secrets.FIVE_DOLLAR_FOOTBALL_API_KEY }}
+      VELTRIX_ENABLE_HISTORICAL_COLLECTION: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        working-directory: backend
+        run: python -m pip install -e .
+      - name: Verify production database identity
+        run: |
+          test -n "$DATABASE_URL"
+          python - <<'PY'
+          import os
+          import psycopg
+          from urllib.parse import urlsplit
+
+          expected = "veltrix_ai_analyst"
+          if urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/").split("?")[0] != expected:
+              raise SystemExit("DATABASE_IDENTITY_MISMATCH")
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != expected:
+                  raise SystemExit("DATABASE_IDENTITY_MISMATCH")
+          PY
+      - name: Probe 5Dollar plan and hourly rate limit
+        working-directory: backend
+        run: python ../scripts/probe_5dollar_entitlement.py
+      - name: Backfill historical fixtures with stats and events
+        if: ${{ inputs.execute_backfill == true }}
+        run: |
+          python scripts/collect_5dollar_all_approved_competitions.py \
+            --start-at "2026-03-20T00:00:00+00:00" \
+            --end-at "2026-11-20T00:00:00+00:00" \
+            --request-budget 10 \
+            --window-days 365 \
+            --import-type historical_feature_backfill \
+            --execute
+      - name: Report preflight-only mode
+        if: ${{ inputs.execute_backfill != true }}
+        run: echo "PREFLIGHT_ONLY - no historical feature backfill requests were sent."
