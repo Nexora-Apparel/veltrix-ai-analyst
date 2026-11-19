@@ -344,3 +344,10 @@ This gives the 996 historical outcomes a legitimate route to richer research fea
 ### Historical feature evidence preflight (2026-11-20)
 - A separate default-branch manual workflow is available at `.github/workflows/historical-feature-evidence-preflight.yml`; it performs only database identity/read-only and 5Dollar entitlement checks. Run `44636268137` passed.
 - Entitlement response reports Community plan and rate_limit 300, but daily_limit and daily_reset_at are null. Remaining quota is therefore unknown; historical collection remains blocked pending authoritative quota semantics/value. No collection or database writes occurred.
+
+
+### Historical feature backfill workflow available (2026-11-20)
+- Added `.github/workflows/historical-feature-evidence-backfill.yml` to `main` (commit `6b6c045a50572cf22f12d6ca95038fca81d91b36`) without merging PR #121.
+- Manual dispatch must select `stage-8b-sparse-inference-governance`; the workflow checks out the selected ref, where the feature-backfill importer exists.
+- Default is preflight-only. To run the bounded collection, set `execute_backfill=true`. Scope is 7 approved competitions × 10 requests maximum, 365-day window, 60-second request spacing (60/hour), under the user-confirmed 300/hour provider limit.
+- Workflow is exposed but has not been dispatched. User must perform the actual manual dispatch; inspect the resulting run before claiming collection success.
