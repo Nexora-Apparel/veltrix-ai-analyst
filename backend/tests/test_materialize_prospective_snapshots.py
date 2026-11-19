@@ -25,6 +25,8 @@ def valid_report():
                 "availability_basis": "SYSTEM_OBSERVED_AT",
                 "point_in_time_certifiable": True,
                 "rights_approval_id": "approval-1",
+                "rights_valid_from": "2025-12-01T00:00:00+00:00",
+                "rights_valid_until": None,
                 "rights_status": "APPROVED",
                 "rights_permitted_uses": [
                     "FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"
@@ -91,6 +93,9 @@ def test_label_requires_post_kickoff_approved_pit_lineage():
             "point_in_time_certifiable": True,
             "rights_status": "APPROVED",
             "rights_approval_id": "approval-1",
+            "rights_valid_from": "2025-12-01T00:00:00+00:00",
+            "rights_valid_until": None,
+            "rights_status_events": [],
             "rights_permitted_uses": ["MODEL_TRAINING", "MODEL_VALIDATION"],
             "system_observed_at": "2026-01-02T14:00:00+00:00",
             "retrieved_at": "2026-01-02T13:59:59+00:00",
