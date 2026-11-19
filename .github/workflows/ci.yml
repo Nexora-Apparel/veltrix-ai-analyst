@@ -44,6 +44,7 @@ on:
       - ".github/workflows/apply-database-migrations.yml"
       - ".github/workflows/materialize-canonical-entities.yml"
       - ".github/workflows/materialize-round38-canonical-incremental.yml"
+      - ".github/workflows/materialize-approved-canonical-scope.yml"
   pull_request:
     branches: [main]
     paths:
@@ -64,6 +65,7 @@ on:
       - ".github/workflows/apply-database-migrations.yml"
       - ".github/workflows/materialize-canonical-entities.yml"
       - ".github/workflows/materialize-round38-canonical-incremental.yml"
+      - ".github/workflows/materialize-approved-canonical-scope.yml"
 
 permissions:
   contents: read
@@ -104,7 +106,7 @@ jobs:
       - name: Run tests
         run: pytest
       - name: Run lint
-        run: ruff check app tests index.py ../scripts/verify_5dollar_access.py ../scripts/collect_aimidas_brazil_serie_b_snapshot.py ../scripts/apply_migrations.py ../scripts/collect_brazil_serie_b_history.py ../scripts/collect_5dollar_competition_history.py ../scripts/collect_5dollar_all_approved_competitions.py ../scripts/validate_brazil_serie_b_import.py ../scripts/probe_5dollar_odds_snapshot.py ../scripts/probe_the_odds_api_catalogue.py ../scripts/probe_the_odds_api_events.py ../scripts/probe_5dollar_scheduled_fixtures.py ../scripts/probe_5dollar_entitlement.py ../scripts/reconcile_odds_api_event_catalogue.py ../scripts/probe_the_odds_api_event_h2h.py scripts/preview_canonical_materialization.py scripts/materialize_canonical_entities.py scripts/materialize_round38_incremental.py scripts/evaluate_seven_competition_hierarchical.py scripts/verify_cbf_scores_rounds_1_29.py scripts/verify_cbf_round38_results.py scripts/verify_cbf_round30_results.py scripts/verify_cbf_rounds_33_36_results.py scripts/verify_cbf_remaining_results.py scripts/build_prospective_dataset.py scripts/evaluate_prospective_hierarchical.py
+        run: ruff check app tests index.py ../scripts/verify_5dollar_access.py ../scripts/collect_aimidas_brazil_serie_b_snapshot.py ../scripts/apply_migrations.py ../scripts/collect_brazil_serie_b_history.py ../scripts/collect_5dollar_competition_history.py ../scripts/collect_5dollar_all_approved_competitions.py ../scripts/validate_brazil_serie_b_import.py ../scripts/probe_5dollar_odds_snapshot.py ../scripts/probe_the_odds_api_catalogue.py ../scripts/probe_the_odds_api_events.py ../scripts/probe_5dollar_scheduled_fixtures.py ../scripts/probe_5dollar_entitlement.py ../scripts/reconcile_odds_api_event_catalogue.py ../scripts/probe_the_odds_api_event_h2h.py scripts/preview_canonical_materialization.py scripts/materialize_canonical_entities.py scripts/materialize_round38_incremental.py scripts/evaluate_seven_competition_hierarchical.py scripts/verify_cbf_scores_rounds_1_29.py scripts/verify_cbf_round38_results.py scripts/verify_cbf_round30_results.py scripts/verify_cbf_rounds_33_36_results.py scripts/verify_cbf_remaining_results.py scripts/build_prospective_dataset.py scripts/evaluate_prospective_hierarchical.py scripts/canonical_scope_inventory.py scripts/materialize_approved_scopes.py
 
   android:
     name: Android debug build

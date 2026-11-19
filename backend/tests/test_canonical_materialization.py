@@ -70,7 +70,7 @@ def test_identity_collision_detection_requires_exact_provider_ids_and_opponent()
             "kickoff_at": kickoff + timedelta(seconds=20),
         },
     ]
-    assert _identity_collision_fixture_ids(fixtures) == (
+    assert _identity_collision_fixture_ids(fixtures, (("1102583842", "3808811746"),)) == (
         "known-america-mg",
         "known-america-mineiro",
     )

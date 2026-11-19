@@ -1,0 +1,119 @@
+name: Materialize approved canonical scope
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Preview every effective approved scope or apply one exact scope
+        required: true
+        type: choice
+        options:
+          - preview
+          - apply
+        default: preview
+      provider:
+        description: Exact provider name (required for apply)
+        required: false
+        type: string
+      source_id:
+        description: Exact source ID (required for apply)
+        required: false
+        type: string
+      competition_id:
+        description: Exact provider competition ID (required for apply)
+        required: false
+        type: string
+      confirm_apply:
+        description: Type the exact confirmation only for an explicitly approved write
+        required: true
+        type: choice
+        options:
+          - NO
+          - APPLY_ONE_APPROVED_CANONICAL_SCOPE
+        default: NO
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-ai-analyst-approved-canonical-materialization
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    if: inputs.mode == 'preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: veltrix-historical-import
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      MODE: ${{ inputs.mode }}
+      PROVIDER: ${{ inputs.provider }}
+      SOURCE_ID: ${{ inputs.source_id }}
+      COMPETITION_ID: ${{ inputs.competition_id }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install materialization runner
+        run: python -m pip install -e .
+      - name: Run read-only approved-scope inventory and plans
+        shell: bash
+        run: |
+          args=()
+          if [[ -n "$PROVIDER" && -n "$SOURCE_ID" && -n "$COMPETITION_ID" ]]; then
+            args+=(--provider "$PROVIDER" --source-id "$SOURCE_ID" --competition-id "$COMPETITION_ID")
+          elif [[ -n "$PROVIDER" || -n "$SOURCE_ID" || -n "$COMPETITION_ID" ]]; then
+            echo "A scope filter requires provider, source_id, and competition_id together." >&2
+            exit 2
+          fi
+          python scripts/materialize_approved_scopes.py "${args[@]}"
+
+  apply:
+    if: inputs.mode == 'apply' && inputs.confirm_apply == 'APPLY_ONE_APPROVED_CANONICAL_SCOPE' && inputs.provider != '' && inputs.source_id != '' && inputs.competition_id != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: veltrix-historical-import
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      CANONICAL_MATERIALIZATION_CONFIRMATION: ${{ inputs.confirm_apply }}
+      PROVIDER: ${{ inputs.provider }}
+      SOURCE_ID: ${{ inputs.source_id }}
+      COMPETITION_ID: ${{ inputs.competition_id }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install materialization runner
+        run: python -m pip install -e .
+      - name: Verify exact scope and execute guarded materialization
+        shell: bash
+        run: |
+          test -n "$PROVIDER"
+          test -n "$SOURCE_ID"
+          test -n "$COMPETITION_ID"
+          python scripts/materialize_approved_scopes.py --execute \
+            --provider "$PROVIDER" --source-id "$SOURCE_ID" --competition-id "$COMPETITION_ID"
+
+  reject-invalid-apply:
+    if: inputs.mode == 'apply' && (inputs.confirm_apply != 'APPLY_ONE_APPROVED_CANONICAL_SCOPE' || inputs.provider == '' || inputs.source_id == '' || inputs.competition_id == '')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail closed on missing write confirmation or scope
+        run: |
+          echo "Apply requires exact provider, source_id, competition_id, and typed confirmation." >&2
+          exit 2
