@@ -55,7 +55,7 @@ class FakeConnection:
             "commercial_use_allowed":False,"evidence_uri":"e","evidence_sha256":"x",
             "effective_status":"APPROVED","effective_status_at":None,
         }]
-        self.migrations={"007_canonical_entity_layer.sql","008_canonical_identity_link_uniqueness.sql","009_canonical_identity_review_cases.sql","012_database_observed_timestamps.sql","013_target_fixture_pre_match_gate.sql","014_prediction_publication_storage.sql"}
+        self.migrations={"006_pre_match_feature_pit_gate.sql","007_canonical_entity_layer.sql","008_model_artifacts.sql","008_canonical_identity_link_uniqueness.sql","009_canonical_identity_review_cases.sql","010_system_observed_pit.sql","011_import_run_competition_scope.sql","012_database_observed_timestamps.sql","013_target_fixture_pre_match_gate.sql","014_prediction_publication_storage.sql"}
         self.schema={k:True for k in ("competitions","teams","fixtures","observations","sightings","fixture_links","team_identity_links","competition_identity_links","canonical_teams","canonical_competitions","canonical_fixtures","identity_review_cases","identity_review_events","canonical_identity_review_events","effective_team_links","effective_competition_links","effective_approvals","team_alias_case_audit","effective_team_aliases","team_provenance_audit","competition_provenance_audit","fixture_provenance_audit","duplicate_case_audit","effective_fixture_deduplication","effective_fixture_sources","review_cases")}
         self.competition_counts={"competition_rows":1,"observation_linked":1,"provenance_complete":1}
         self.review_case_breakdown=[{"case_type":"FIXTURE_DUPLICATE_CANDIDATE","effective_case_status":"OPEN","case_count":1}]
