@@ -267,3 +267,37 @@ Preserve the existing six-tab UI: Home, History, BTTS, Value Bet, Over/Under and
 - This change does not relax Stage 7 prospective certification, Stage 5 identity/rights restrictions, or the Stage 8 production artifact/publisher gates.
 
 **Remaining Stage 8B work:** run CI and model stress/chronological development validation; inspect the training-row cutoff/label-availability semantics; evaluate sparse cohorts and convergence; only then freeze a candidate calculation protocol. Stage 8B is not complete.
+
+
+### Stage 8B — label-cutoff enforcement and historical feature recovery (2026-11-19)
+
+**Status: IMPLEMENTATION IN PROGRESS; backend/Android CI re-run pending.**
+
+#### Training-label availability correction
+
+- Hierarchical chronological tuning now supports an explicit `label_available_at` map. A result is admitted to a training fold only when both its fixture kickoff and its recorded label-availability timestamp are at or before that fold's training cutoff.
+- Optional `evaluation_as_of` prevents scoring validation labels that had not yet been observed by the research run.
+- Prospective outer and inner evaluation now validate each training label against `fold.train_cutoff_at` (not merely the later validation kickoff) and validate training rights at that same cutoff.
+- The hierarchical model is fitted `as_of=fold.train_cutoff_at`, so its recency weights use the actual data-availability cutoff.
+- Stress/tuning tests now exercise delayed-import labels and strict availability-aware tuning. An evaluator regression test deliberately moves the recorded cutoff before a training label and expects a fail-closed rejection.
+
+#### Production data audit and recovery path
+
+Read-only production Neon inspection found 996 eligible historical finished fixtures across seven approved competitions. Only 6/996 stored observations currently contain a statistics object or events array; all 996 have corners fields. The shortage is therefore mainly missing historical source feature payloads, not a lack of historical outcomes.
+
+The existing 5Dollar provider adapter already requests `include=stats,events` on league fixture-history requests and the importer persists normalized fixture payloads as append-only source observations. A separate `historical_feature_backfill` import type and manually dispatched, quota-gated workflow were added. The workflow:
+- serializes against the regular prospective capture;
+- probes the 5Dollar account entitlement first and prints only safe plan/quota fields;
+- defaults to preflight-only mode;
+- requires an explicit workflow input to send backfill requests;
+- uses a separate import type so prior completed outcome-only imports do not suppress feature recovery;
+- uses the existing approval, durable per-run request reservations, raw response hashes and append-only ingestion path.
+
+The backfill is not yet executed. It must only run after the entitlement output is reviewed; it is not allowed to consume The Odds API credits. Refetched observations are captured now and are **retrospective training-only evidence**. They must not be represented as historical pre-match system snapshots or used as prospective validation labels.
+
+#### Remaining data/model work
+
+- Add a distinct retrospective event-time feature-row builder that derives each historical training fixture's inputs only from earlier fixtures in the same canonical competition, using the recovered statistics/events and marking every such row `validation_eligible=false` with non-PIT retrospective lineage.
+- Train a research-only feature model on those lagged historical covariates plus settled outcomes; compare it with the hierarchical goal-rate-only model using future prospective settled fixtures only.
+- Keep the 996 outcome-only records available to the hierarchical model now, but only at actual import-completion cutoffs. Never claim their match kickoff alone proves when VELTRIX knew the result.
+- Stage 7 certification, production promotion and value betting remain locked.
