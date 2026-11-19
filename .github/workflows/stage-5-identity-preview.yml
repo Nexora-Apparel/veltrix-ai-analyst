@@ -1,0 +1,104 @@
+name: VELTRIX Stage 5 identity reconciliation preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-stage-5-identity-preview
+  cancel-in-progress: false
+
+jobs:
+  identity-preview:
+    name: Read-only identity inventory and materialization preview
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: python -m pip install -e .
+
+      - name: Verify target database and required schema
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          test -n "$DATABASE_URL"
+          python - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+          import psycopg
+
+          expected = "veltrix_ai_analyst"
+          if os.environ.get("EXPECTED_DATABASE_NAME") != expected:
+              raise SystemExit("EXPECTED_DATABASE_NAME_MISMATCH")
+          if urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/").split("?")[0] != expected:
+              raise SystemExit("DATABASE_URL_TARGET_MISMATCH")
+          with psycopg.connect(
+              os.environ["DATABASE_URL"],
+              options="-c default_transaction_read_only=on",
+          ) as conn:
+              if conn.info.dbname != expected:
+                  raise SystemExit("CONNECTED_DATABASE_TARGET_MISMATCH")
+              with conn.transaction():
+                  conn.execute("SET TRANSACTION READ ONLY")
+                  required = {
+                      "006_pre_match_feature_pit_gate.sql",
+                      "007_canonical_entity_layer.sql",
+                      "008_model_artifacts.sql",
+                      "008_canonical_identity_link_uniqueness.sql",
+                      "009_canonical_identity_review_cases.sql",
+                      "010_system_observed_pit.sql",
+                      "011_import_run_competition_scope.sql",
+                      "012_database_observed_timestamps.sql",
+                      "013_target_fixture_pre_match_gate.sql",
+                      "014_prediction_publication_storage.sql",
+                  }
+                  applied = {
+                      row[0]
+                      for row in conn.execute(
+                          "SELECT version FROM public.schema_migrations"
+                      ).fetchall()
+                  }
+                  missing = sorted(required - applied)
+                  if missing:
+                      raise SystemExit("REQUIRED_MIGRATIONS_MISSING:" + ",".join(missing))
+          print("READ_ONLY_DATABASE_AND_MIGRATION_CHECK=PASS")
+          PY
+
+      - name: Run canonical scope inventory (read-only)
+        working-directory: backend
+        run: |
+          mkdir -p stage-5-report
+          python scripts/canonical_scope_inventory.py \
+            --format both \
+            --output stage-5-report/canonical-scope-inventory.json \
+            > stage-5-report/canonical-scope-inventory.txt
+
+      - name: Run approved-scope materialization preview (read-only)
+        working-directory: backend
+        run: |
+          python scripts/materialize_approved_scopes.py \
+            > stage-5-report/materialization-preview.json
+
+      - name: Upload Stage 5 preview reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-stage-5-identity-preview
+          path: backend/stage-5-report/
+          if-no-files-found: warn
+          retention-days: 14
