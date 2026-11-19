@@ -11,11 +11,11 @@
 - PR #71 is merged. Its official CBF kickoff correction remains mandatory research chronology evidence; the previous 380-fixture retrospective report is invalid for model selection because same-kickoff look-ahead leakage was confirmed.
 - Stage 4 first prospective capture completed successfully on 2026-11-19.
 - Stage 5 read-only inventory and materialization preview completed successfully: seven approved competition scopes, seven READY, zero BLOCKED.
-- Stage 5 production materialization has **not** been dispatched or verified. Do not describe Stage 5 as complete yet.
+- Stage 5 production materialization subsequently ran through pre-PR-118 automatic workflow triggers and was independently verified in run 44494508790. All 1,063 fixture source links across seven scopes are present; five fixture identity conflicts and one team identity conflict remain explicitly recorded, plus two global Brazil Série B review restrictions. See Section 10 for the correction and exact counts.
 - PRs #102, #104, #105 and #106 are merged. PR #106's actual workflow YAML contained an automatic `workflow_run` trigger that contradicted its stated manual-only safety design. This was detected during handover review.
-- Corrective PR #118 is merged as `c505844258c77de7d9e376838dc625101c965f1e`. The Stage 5 apply workflow is now manual-dispatch-only and requires the exact typed confirmation. Do not dispatch until a fresh read-only preview has been run and reviewed.
+- Corrective PR #118 is merged as `c505844258c77de7d9e376838dc625101c965f1e`. The Stage 5 apply workflow is now manual-dispatch-only and requires the exact typed confirmation. The previous automatic apply runs occurred before this safety correction; future applies require a manual dispatch.
 - Production Neon currently reports migrations 001–017 present, including 015 automated identity adjudication and 016–017 immutable prospective snapshot/label migrations. This was independently queried at handover time. The earlier Stage 5 preview artifact was generated before migration 015 was present in its required set and reported only migrations 001–014; it must not be used as proof of the later 015–017 state.
-- Stage 6 and Stage 7 workflow/code scaffolding exists in main. Their presence does not mean persistent snapshots or prospective model certification have completed.
+- Stage 6 has persisted and verified 59 immutable prospective feature snapshots, with zero settled labels so far. Stage 7 evaluation has run but is correctly blocked: zero settled labels, zero expanding folds, zero evaluated fixtures, and production certification remains locked.
 - No production predictions are certified or published by these milestones. Value betting remains locked.
 
 ## 2. PR #71 — official CBF chronology correction (historical context)
@@ -142,7 +142,7 @@ The branch changes `.github/workflows/stage-5-identity-apply-all.yml` to:
 - Pass only the user-entered confirmation into the job environment.
 - Preserve all existing target database, migration, exact-scope preflight, per-scope apply and post-apply checks.
 
-This is a safety correction, not an authorization to apply. PR #118 merged successfully. Its Vercel preview-feedback check completed successfully with zero unresolved feedback; no backend test workflow was triggered for this workflow/documentation-only change. The merged workflow was fetched from main and independently verified to contain only `workflow_dispatch`, with an exact confirmation condition and no `workflow_run` trigger. No production apply has been dispatched.
+This is a safety correction, not an authorization to apply. PR #118 merged successfully. Its Vercel preview-feedback check completed successfully with zero unresolved feedback; no backend test workflow was triggered for this workflow/documentation-only change. The merged workflow was fetched from main and independently verified to contain only `workflow_dispatch`, with an exact confirmation condition and no `workflow_run` trigger. Historical apply runs using the earlier automatic trigger were discovered afterward and are fully reconciled in Section 10.
 
 ## 5. Production database migration state at handover
 
