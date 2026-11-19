@@ -276,7 +276,14 @@ SELECT
         SELECT COUNT(*)
         FROM veltrix_ai_analyst.canonical_identity_review_cases review_case
         WHERE review_case.case_key='ENGLAND_PREMIER_LEAGUE_DUPLICATE_MAN_CITY_BRIGHTON_2026'
-    );
+    )
+WHERE EXISTS (
+    SELECT 1
+    FROM veltrix_ai_analyst.provider_fixtures fixture
+    WHERE fixture.provider='5DollarFootballAPI'
+      AND fixture.source_id='5dollarfootballapi'
+      AND fixture.provider_competition_id='522514093'
+);
 
 -- Upgrade the 20 active Brazil Série B provider-team links from source-local
 -- verification to real-world verification using the full 380/380 CBF schedule
