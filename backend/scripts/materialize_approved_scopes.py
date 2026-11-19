@@ -25,9 +25,13 @@ from app.canonicalization import (
 EXPECTED_DATABASE = "veltrix_ai_analyst"
 EXECUTE_CONFIRMATION = "APPLY_ONE_APPROVED_CANONICAL_SCOPE"
 REQUIRED_MIGRATIONS = {
+    "006_pre_match_feature_pit_gate.sql",
     "007_canonical_entity_layer.sql",
+    "008_model_artifacts.sql",
     "008_canonical_identity_link_uniqueness.sql",
     "009_canonical_identity_review_cases.sql",
+    "010_system_observed_pit.sql",
+    "011_import_run_competition_scope.sql",
     "012_database_observed_timestamps.sql",
     "013_target_fixture_pre_match_gate.sql",
     "014_prediction_publication_storage.sql",
