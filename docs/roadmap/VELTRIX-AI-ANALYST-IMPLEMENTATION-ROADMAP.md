@@ -155,6 +155,9 @@ Presence of tests is not proof of production integration or prospective model pe
 
 ### 8B. Complete the governed calculation engine
 
+**Stage 8B initial data-feasibility finding (2026-11-19):** the 996 historical training-only rows currently enter the prospective dataset with `features={}` and empty feature lineage. They contain verified training labels/identity/competition information, not historical PIT snapshots of the rich match-stat feature set. The 59 upcoming prospective snapshots do contain PIT feature values/lineage, but have no settled labels yet. Therefore, it is not statistically valid to fit coefficients for shots, possession, attacks, corners, cards or other supporting features from the 996 outcome-only rows. Those feature effects require prospectively paired feature/outcome examples or another separately rights- and PIT-qualified historical feature corpus. Until then, the existing hierarchical goal-rate model can use the historical labels for team/competition partial pooling, while sparse supporting features remain explicit evidence/coverage signals rather than invented model coefficients.
+
+
 ### 8A. Model and feature inventory audit
 
 Inspect the live default-branch source, tests and workflows and classify every intended model/calculation as:
