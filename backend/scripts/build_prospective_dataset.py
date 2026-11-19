@@ -468,6 +468,11 @@ def build_report(
         ))
 
     rows = build_prospective_dataset(fixtures, observations)
+    prospective_fixture_ids = {row.fixture_id for row in rows}
+    training_only_rows = [
+        row for row in training_only_rows
+        if row.fixture_id not in prospective_fixture_ids
+    ]
     fold_rows = [*rows, *training_only_rows]
     folds = build_expanding_window_folds(
         fold_rows,
