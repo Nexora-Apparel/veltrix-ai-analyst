@@ -16,6 +16,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.canonicalization import (
+    BRAZIL_SERIE_B_RUN_3,
     CanonicalMaterializationScope,
     build_canonical_materialization_plan,
     materialize_canonical_entities,
@@ -67,6 +68,15 @@ def _approved_scopes(connection: psycopg.Connection[Any]) -> list[CanonicalMater
                     competition_id=competition_id,
                     rights_approval_id=approval["approval_id"],
                     import_run_id=None,
+                    identity_collision_team_alias_pairs=(
+                        BRAZIL_SERIE_B_RUN_3.identity_collision_team_alias_pairs
+                        if (
+                            approval["provider"] == BRAZIL_SERIE_B_RUN_3.provider
+                            and approval["source_id"] == BRAZIL_SERIE_B_RUN_3.source_id
+                            and competition_id == BRAZIL_SERIE_B_RUN_3.competition_id
+                        )
+                        else ()
+                    ),
                 )
             )
     return scopes
@@ -202,7 +212,7 @@ def main() -> int:
     print(json.dumps(report, sort_keys=True, indent=2, default=str))
     if report["scope_count"] == 0:
         return 3
-    if report["blocked_count"]:
+    if report["mode"] == "APPLY" and report["blocked_count"]:
         return 3
     return 0
 
