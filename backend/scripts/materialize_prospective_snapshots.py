@@ -78,11 +78,11 @@ def validate_rights_lineage(
         raise ValueError(error_code)
     events = lineage.get("rights_status_events", [])
     if not isinstance(events, list):
-        raise ValueError(error_code)
+        raise TypeError(error_code)
     effective_events = []
     for event in events:
         if not isinstance(event, dict):
-            raise ValueError(error_code)
+            raise TypeError(error_code)
         event_at = parse_timestamp(event.get("effective_at"))
         if event_at <= effective_at:
             event_id = event.get("id")
