@@ -60,21 +60,37 @@ jobs:
           report = json.loads(report_path.read_text())
           dataset = json.loads(dataset_path.read_text())
 
+          markets = report.get("markets", {})
+          market_keys = (
+              "1X2",
+              "BTTS",
+              "OVER_UNDER_1_5",
+              "OVER_UNDER_2_5",
+              "OVER_UNDER_3_5",
+          )
+          market_fixture_counts = {
+              key: int((markets.get(key) or {}).get("fixtures", 0))
+              for key in market_keys
+          }
+          settled_dates = int(dataset.get("settled_distinct_kickoff_dates", 0))
+
           gates = {
               "walk_forward_fixtures_per_market": {
-                  "observed": report.get("fixtures", 0),
+                  "observed": market_fixture_counts,
                   "required": 1000,
-                  "passed": report.get("fixtures", 0) >= 1000,
+                  "passed": all(
+                      count >= 1000 for count in market_fixture_counts.values()
+                  ),
               },
               "settled_prospective_fixtures": {
                   "observed": dataset.get("settled_label_rows", 0),
                   "required": 300,
                   "passed": dataset.get("settled_label_rows", 0) >= 300,
               },
-              "distinct_kickoff_dates": {
-                  "observed": dataset.get("distinct_kickoff_dates", 0),
+              "distinct_kickoff_dates_with_settled_labels": {
+                  "observed": settled_dates,
                   "required": 90,
-                  "passed": dataset.get("distinct_kickoff_dates", 0) >= 90,
+                  "passed": settled_dates >= 90,
               },
               "timestamped_odds_coverage": {
                   "observed": None,
@@ -92,7 +108,7 @@ jobs:
                   "observed": None,
                   "required": "better than timestamped bookmaker baseline on both metrics",
                   "passed": False,
-                  "status": "BOOKMAKER_COMPARISON_NOT_YET_CERTIFIED",
+                  "status": "NOT_EVALUATED_CURRENT_RESEARCH_BASELINE_IS_NOT_BOOKMAKER_ODDS",
               },
           }
           core_passed = all(
@@ -122,7 +138,8 @@ jobs:
               "status": report["status"],
               "fixtures_evaluated": report.get("fixtures", 0),
               "settled_labels": dataset.get("settled_label_rows", 0),
-              "distinct_dates": dataset.get("distinct_kickoff_dates", 0),
+              "distinct_dates_with_settled_labels": settled_dates,
+              "walk_forward_market_fixtures": market_fixture_counts,
               "production_certification": report["production_certification"],
               "production_promotion": "LOCKED",
               "value_betting": "LOCKED",
