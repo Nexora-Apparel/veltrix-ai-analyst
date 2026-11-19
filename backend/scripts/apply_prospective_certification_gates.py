@@ -24,7 +24,7 @@ def main() -> int:
 
     report = apply_prospective_certification_gates(evaluation, dataset)
     evaluation_path.write_text(
-        json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\\n",
+        json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
     gates = report["certification_gates"]
