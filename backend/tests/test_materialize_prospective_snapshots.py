@@ -133,3 +133,17 @@ def test_label_rejects_observation_at_kickoff():
     })
     with pytest.raises(ValueError, match="LABEL_LINEAGE_GATE_FAILED"):
         validate_report(report)
+
+
+
+def test_feature_lineage_rejects_rights_revoked_before_observation():
+    report = valid_report()
+    report["rows"][0]["feature_lineage"][0]["rights_status_events"] = [{
+        "id": 1,
+        "status": "REVOKED",
+        "effective_at": "2026-01-02T08:30:00+00:00",
+    }]
+    with pytest.raises(
+        ValueError, match="FEATURE_LINEAGE_RIGHTS_OR_PIT_GATE_FAILED"
+    ):
+        validate_report(report)
