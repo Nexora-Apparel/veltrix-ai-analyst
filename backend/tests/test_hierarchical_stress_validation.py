@@ -156,3 +156,28 @@ def test_tuning_accepts_labels_only_after_their_recorded_availability_time():
     )
     assert selection.leaderboard[0].scored_matches == 9
     assert selection.leaderboard[0].folds_scored == 1
+
+
+
+def test_availability_aware_tuning_requires_an_evaluation_timestamp():
+    rows = _multi_competition_history((60,))
+    folds = (ChronologicalFold(
+        datetime(2025, 2, 15, tzinfo=UTC),
+        datetime(2025, 3, 2, tzinfo=UTC),
+    ),)
+    availability = {
+        row.fixture_id: row.kickoff_at + timedelta(hours=1)
+        for row in rows
+    }
+
+    import pytest
+
+    with pytest.raises(ValueError, match="requires evaluation_as_of"):
+        select_hierarchical_hyperparameters(
+            rows,
+            folds,
+            half_lives=(180.0,),
+            team_ridges=(0.5,),
+            competition_ridges=(1.0,),
+            label_available_at=availability,
+        )
