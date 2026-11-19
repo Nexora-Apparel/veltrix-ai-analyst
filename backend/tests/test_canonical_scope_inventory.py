@@ -45,7 +45,7 @@ class FakeConnection:
             "approval_id":"approval-x","provider":"P","source_id":"S",
             "scope_type":"competition_id","scope_values":["42"],
             "data_types":["fixtures_and_results"],"permitted_uses":["internal"],
-            "recorded_status":"APPROVED","valid_from":None,"valid_until":None,
+            "recorded_status":"APPROVED","valid_from":datetime.now(timezone.utc),"valid_until":None,\n            "approval_in_validity_interval":True,
             "commercial_use_allowed":False,"evidence_uri":"e","evidence_sha256":"x",
             "effective_status":"APPROVED","effective_status_at":None,
         }]
