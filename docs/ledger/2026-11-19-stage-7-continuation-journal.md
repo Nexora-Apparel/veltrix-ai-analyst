@@ -524,3 +524,53 @@ This is retrospective event-time reconstruction, not a claim that VELTRIX posses
 
 ### Verification pending
 New CI run is expected from commit `bc78d86b8ed404656a1869164d7c0fa2202f832c`; do not claim the new feature tests pass until its backend and Android jobs finish. Next integrate the retrospective rows into a separate training-only candidate dataset, compare against hierarchical goal-rate-only baseline, and keep prospective evaluator input strictly separate.
+
+
+## Stage 8B — actual fold availability audit and strict research tuning
+
+**Date:** 2026-11-19  
+**Branch:** `stage-8b-sparse-inference-governance`
+
+### Read-only production availability audit
+
+Database: `veltrix_ai_analyst`, production branch `br-jolly-darkness-balgmi2t`.
+
+The latest qualifying finished sighting per fixture was used. For non-PIT historical records, `retrieved_at` is used as the actual observed/retrieved availability time; it is never promoted to a PIT timestamp.
+
+- Settled historical results: **996**.
+- Available by the audit timestamp (2026-11-19 22:00 UTC): **996**.
+- `RETRIEVED_AT_ONLY`: **990** (non-PIT).
+- `SYSTEM_OBSERVED_AT`: **6**.
+- Availability range: 2026-11-16 21:12:28 UTC through 2026-11-19 05:38:39 UTC.
+
+Actual configured fold checks (training eligibility requires both kickoff and availability at/before the training cutoff):
+| Fold cutoff | Kickoff-prior rows | Labels available at cutoff | Validation labels known by evaluation time |
+|---|---:|---:|---:|
+| 2026-09-15 | 505 | 0 | 91 |
+| 2026-09-30 | 596 | 0 | 35 |
+| 2026-10-10 | 631 | 0 | 131 |
+
+**Result:** zero valid development folds. The old event-time split had treated historical match dates as if VELTRIX had known the results then. That assumption is false: the 996 labels were imported in November. The seven-competition hierarchical runner now checks actual label availability before tuning and writes `INSUFFICIENT_LABEL_AVAILABILITY_FOR_CHRONOLOGICAL_TUNING` without fitting or scoring a false holdout.
+
+The 996 outcomes remain useful as a current retrospective training pool because they are all available now. They cannot be used to claim September/October walk-forward performance or PIT certification. The 990 retrieval-only records remain explicitly non-PIT.
+
+### Strict tuning implementation
+
+- `hierarchical_tuning.py`: strict mode requires complete `label_available_at` coverage and `evaluation_as_of`; training labels must be available at the fold cutoff; validation labels must be available by evaluation time; future fold cutoffs are rejected.
+- `dixon_coles.py`: same availability checks for every inner OOF fit and scored label; strict protocol is `OOF_DIXON_COLES_PROFILE_NLL_LABEL_AVAILABILITY_AWARE_V2`.
+- `evaluate_seven_competition_hierarchical.py`: uses latest sighting system-observed time or, for explicitly non-PIT rows, retrieved time; records basis counts and fold audit; exits with an explicit insufficient-evidence report when no fold is eligible.
+- Added tests for delayed labels, missing evaluation-as-of, and Dixon–Coles OOF label filtering.
+
+### CI evidence
+
+- CI run **44623823396**, commit `d553cfd24b91d64f051c745db8e9219f28718cc3`: **433 tests passed**, lint passed, Android debug APK assembled and uploaded.
+- That run predates the latest Dixon–Coles strict-cutoff and seven-competition runner changes. Current branch-head CI run **44625309292** was interrupted by a subsequent branch update; the newest run **44625309292** is not a terminal verification for the final branch head. Fetch the latest run for commit `2214baaca9d7dd8ca70dea7f560cde0dc89d67fe` before merge.
+- Historical feature backfill workflow YAML was corrected after a push-validation failure caused by an unquoted colon in a `run:` scalar. The corrected workflow validation run **44624298002** succeeded. It performed no DB/provider operations.
+
+### Remaining research-data path
+
+1. The model may fit the 996 outcomes now as a current research-only candidate, using actual current training cutoff and no claim of historical fold validation.
+2. Keep prospective Stage 4 captures running. Once their target fixtures settle and labels are observed, use those immutable paired snapshots/outcomes for real chronological folds.
+3. Run the separate historical feature backfill only after the workflow's 5Dollar entitlement/quota preflight is reviewed. The database audit showed only 6/996 historical observations currently have stats/events; all 996 have corners.
+4. Build lagged retrospective feature training rows separately and mark them non-PIT/validation-ineligible. Never use them to satisfy Stage 7 certification.
+5. Stage 7 certification and production promotion remain blocked until prospective labels, valid folds and all certification gates pass.
