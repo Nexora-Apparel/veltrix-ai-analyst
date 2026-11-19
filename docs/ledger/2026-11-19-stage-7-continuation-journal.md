@@ -64,3 +64,36 @@ The latest successful seven-scope apply remains run [44494508790](https://github
 ## Next checkpoint trigger
 
 The next meaningful Stage 7 checkpoint is a Stage 6 run that records one or more valid settled label events, followed by a Stage 7 evaluation over those labels. Until then, continue daily capture/materialization and retain the fail-closed publication state.
+
+## Stage 7 acceleration — PR #119 merged
+
+- PR: [#119 — rights-checked historical training-only pool](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/119)
+- Squash merge commit: `8289c67d8d5e760c194414db449d415763ccfd85`.
+- Purpose: use historical match outcomes as model-training labels when their completed import run is proven to have finished before a prospective validation kickoff. This avoids waiting for 30 new prospective results before the first walk-forward fold can be formed.
+- Production Neon was queried read-only using the exact SQL embedded in the new dataset builder:
+  - 996 finished fixture rows eligible after source, response, score, canonical fixture/team/competition identity, and rights checks.
+  - 996/996 map to completed import runs; nine distinct import runs.
+  - Every import run completed after retrieval and after its fixture kickoff, and before the first currently snapshotted prospective kickoff (2026-11-19 22:30 UTC).
+  - Import completion range: 2026-11-16 22:04:43.996 UTC through 2026-11-19 05:40:39.619 UTC.
+  - The 996 rows include 990 legacy rows with no certified system-observed timestamp and six newer system-observed rows. All are represented as training-only rows using the completed import-run timestamp as the conservative label-availability time.
+- Safety:
+  - Historical training rows have no prediction cutoff or feature lineage and cannot enter pre-match feature construction.
+  - They are marked `validation_eligible=false`; the fold builder permits them only in training when import completion is strictly before validation kickoff.
+  - Only prospectively snapshotted fixtures can be validation rows.
+  - Historical training rows are not written to immutable prospective snapshots or append-only prospective label tables.
+  - Certification counts remain based only on prospective settled labels and prospective walk-forward validation fixtures. The 300 prospective-label, 90-date and 1,000-per-market thresholds are unchanged.
+  - Prospective row serialization remains compatible with existing immutable snapshot hashes.
+- CI run: [44611300127](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44611300127), conclusion success.
+  - Backend tests: 428 passed, 1 warning.
+  - Ruff: all checks passed.
+  - Android debug build: success.
+- Important verification boundary: CI and the exact SQL validate the implementation and eligible training pool. The new Stage 6 builder/evaluator has not yet been run against the production database after this merge. No new fold, prospective evaluation, certification, prediction publication, or value-bet release is claimed.
+
+## Immediate next checkpoint after PR #119
+
+1. Keep the existing 04:00 WAT prospective capture schedule active. The two 19 November Brazil Serie A fixtures in the current snapshot have 22:30 UTC kickoffs; no post-kickoff result observation exists yet at the latest database check.
+2. After the next capture, verify that Stage 6 records post-kickoff observations and append-only labels for any settled snapshot fixtures.
+3. Confirm the new builder returns the 996-row historical training pool plus any newly settled prospective labels, without persisting historical rows as prospective snapshots.
+4. Confirm Stage 7 forms folds using historical training-only rows and prospective validation rows, then inspect the independent certification gate. The prospective 300/90/1000 thresholds remain unchanged.
+5. Keep production prediction publication, value betting and Android runtime release locked until their respective evidence gates pass.
+
