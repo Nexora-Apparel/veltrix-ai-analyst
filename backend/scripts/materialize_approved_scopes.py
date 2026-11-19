@@ -126,7 +126,7 @@ def run(
                     "result": result,
                 })
         else:
-            plan = build_brazil_serie_b_materialization_plan(connection, scope)
+            plan = build_canonical_materialization_plan(connection, scope)
             reports.append({
                 "scope": scope.__dict__,
                 "status": "READY" if plan.ready else "BLOCKED",
