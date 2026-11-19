@@ -36,8 +36,6 @@ BRAZIL_SERIE_B_RUN_3 = CanonicalMaterializationScope(
     identity_collision_team_alias_pairs=(("1102583842", "3808811746"),),
 )
 
-AMERICA_MG_PROVIDER_ID = "1102583842"
-AMERICA_MINEIRO_PROVIDER_ID = "3808811746"
 IDENTITY_COLLISION_WINDOW = timedelta(minutes=2)
 
 
