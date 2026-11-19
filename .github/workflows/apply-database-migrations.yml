@@ -606,12 +606,35 @@ jobs:
                     (SELECT COUNT(*) FROM veltrix_ai_analyst.source_observations),
                     (SELECT COUNT(*) FROM veltrix_ai_analyst.source_observation_sightings),
                     (SELECT COUNT(*) FROM veltrix_ai_analyst.provider_responses),
-                    (SELECT COUNT(*) FROM veltrix_ai_analyst.source_observations
-                     WHERE system_observed_at IS NOT NULL),
-                    (SELECT COUNT(*) FROM veltrix_ai_analyst.source_observation_sightings
-                     WHERE system_observed_at IS NOT NULL),
-                    (SELECT COUNT(*) FROM veltrix_ai_analyst.provider_responses
-                     WHERE system_observed_at IS NOT NULL)
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.source_observations observation
+                      WHERE observation.system_observed_at IS NOT NULL
+                        AND EXISTS (
+                          SELECT 1
+                          FROM veltrix_ai_analyst.source_observation_sightings sighting
+                          JOIN veltrix_ai_analyst.import_request_reservations reservation
+                            ON reservation.provider_response_id=sighting.provider_response_id
+                          WHERE sighting.source_observation_id=observation.id
+                            AND reservation.import_run_id BETWEEN 1 AND 11
+                        )
+                    ),
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.source_observation_sightings sighting
+                      JOIN veltrix_ai_analyst.import_request_reservations reservation
+                        ON reservation.provider_response_id=sighting.provider_response_id
+                      WHERE reservation.import_run_id BETWEEN 1 AND 11
+                        AND sighting.system_observed_at IS NOT NULL
+                    ),
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.provider_responses response
+                      JOIN veltrix_ai_analyst.import_request_reservations reservation
+                        ON reservation.provider_response_id=response.id
+                      WHERE reservation.import_run_id BETWEEN 1 AND 11
+                        AND response.system_observed_at IS NOT NULL
+                    )
                   """
               ).fetchone()
               if any(actual < expected for actual, expected in zip(historical_counts[:3], (1243, 2884, 115))):
@@ -619,6 +642,45 @@ jobs:
               if historical_counts[3:] != (0, 0, 0):
                   raise SystemExit(
                       f"HISTORICAL_PIT_TIMESTAMPS_WERE_BACKFILLED:{historical_counts[3:]}"
+                  )
+
+              prospective_gaps = connection.execute(
+                  """
+                  SELECT
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.source_observations observation
+                      WHERE observation.system_observed_at IS NULL
+                        AND EXISTS (
+                          SELECT 1
+                          FROM veltrix_ai_analyst.source_observation_sightings sighting
+                          JOIN veltrix_ai_analyst.import_request_reservations reservation
+                            ON reservation.provider_response_id=sighting.provider_response_id
+                          WHERE sighting.source_observation_id=observation.id
+                            AND reservation.import_run_id >= 12
+                        )
+                    ),
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.source_observation_sightings sighting
+                      JOIN veltrix_ai_analyst.import_request_reservations reservation
+                        ON reservation.provider_response_id=sighting.provider_response_id
+                      WHERE reservation.import_run_id >= 12
+                        AND sighting.system_observed_at IS NULL
+                    ),
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.provider_responses response
+                      JOIN veltrix_ai_analyst.import_request_reservations reservation
+                        ON reservation.provider_response_id=response.id
+                      WHERE reservation.import_run_id >= 12
+                        AND response.system_observed_at IS NULL
+                    )
+                  """
+              ).fetchone()
+              if prospective_gaps != (0, 0, 0):
+                  raise SystemExit(
+                      f"PROSPECTIVE_PIT_SYSTEM_OBSERVED_AT_GAPS:{prospective_gaps}"
                   )
 
               published_count = connection.execute(
