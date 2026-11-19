@@ -34,7 +34,7 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                    approval.commercial_use_allowed, approval.evidence_uri,
                    approval.evidence_sha256,
                    COALESCE(latest.status, approval.status) AS effective_status,
-                   COALESCE(latest.effective_at, approval.valid_from) AS effective_status_at
+                   COALESCE(latest.effective_at, approval.valid_from) AS effective_status_at,\n                   (approval.valid_from <= statement_timestamp() AND (approval.valid_until IS NULL OR approval.valid_until > statement_timestamp())) AS approval_in_validity_interval
             FROM veltrix_ai_analyst.source_approvals approval
             LEFT JOIN LATERAL (
                 SELECT event.status, event.effective_at
@@ -68,10 +68,10 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
             values = approval["scope_values"]
             if isinstance(values, str):
                 values = json.loads(values)
-            if approval["effective_status"] != "APPROVED":
+            if approval["effective_status"] != "APPROVED" or not approval["approval_in_validity_interval"]:
                 scope_reports.append({
                     "approval": _jsonable(approval),
-                    "competition_scopes": [{"competition_id": str(v), "eligible": False, "reason": "APPROVAL_NOT_EFFECTIVELY_APPROVED"} for v in sorted(values)],
+                    "competition_scopes": [{"competition_id": str(v), "eligible": False, "reason": "APPROVAL_NOT_EFFECTIVELY_APPROVED_OR_OUTSIDE_VALIDITY"} for v in sorted(values)],
                 })
                 continue
             scopes = []
