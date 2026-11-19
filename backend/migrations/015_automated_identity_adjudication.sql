@@ -171,7 +171,7 @@ ON CONFLICT (case_key) DO NOTHING;
 
 -- Refuse to adjudicate if the production source graph no longer matches the
 -- evidence manifest. These checks are deliberately source-local and read-only.
-DO $
+DO $$
 DECLARE
     active_team_count INTEGER;
     mismatched_team_count INTEGER;
@@ -294,7 +294,7 @@ BEGIN
     IF england_case_count <> 1 THEN
         RAISE EXCEPTION 'ENGLAND_REVIEW_CASE_MISSING:%', england_case_count;
     END IF;
-END $;
+END $$;
 
 -- Upgrade the 20 active Brazil Série B provider-team links from source-local
 -- verification to real-world verification using the full 380/380 CBF schedule
