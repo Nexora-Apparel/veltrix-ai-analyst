@@ -34,6 +34,9 @@ def _rows(values: list[dict]) -> tuple[ProspectiveDatasetRow, ...]:
             label_observed_at=_datetime(row["label_observed_at"]),
             label_observation_id=row["label_observation_id"],
             label_lineage=row["label_lineage"],
+            canonical_fixture_id=row.get("canonical_fixture_id"),
+            canonical_competition_id=row.get("canonical_competition_id"),
+            validation_eligible=bool(row.get("validation_eligible", True)),
         )
         for row in values
     )
@@ -75,8 +78,11 @@ def main() -> int:
         minimum_training_fixtures=30,
         validation_block_fixtures=25,
     )
+    evaluation_rows = _rows(dataset["rows"]) + _rows(
+        dataset.get("training_only_rows", [])
+    )
     evaluation = evaluate_prospective_model(
-        _rows(dataset["rows"]),
+        evaluation_rows,
         _folds(dataset["expanding_folds"]),
         bootstrap_replicates=args.bootstrap_replicates,
     )
@@ -98,6 +104,8 @@ def main() -> int:
         "fixture_identity_rows": dataset["fixture_identity_rows"],
         "eligible_prospective_rows": dataset["eligible_prospective_rows"],
         "settled_label_rows": dataset["settled_label_rows"],
+        "training_only_label_rows": dataset.get("training_only_label_rows", 0),
+        "training_pool_sha256": dataset.get("training_pool_sha256"),
         "distinct_competitions": dataset["distinct_competitions"],
         "distinct_kickoff_dates": dataset["distinct_kickoff_dates"],
         "feature_lineage_records": dataset["feature_lineage_records"],
