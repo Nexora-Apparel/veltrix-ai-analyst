@@ -1,0 +1,103 @@
+name: VELTRIX Stage 5 guarded identity materialization
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Approved provider
+        required: true
+        type: choice
+        options:
+          - 5DollarFootballAPI
+      source_id:
+        description: Approved source ID
+        required: true
+        type: choice
+        options:
+          - 5dollarfootballapi
+      competition_id:
+        description: Apply exactly one approved competition scope
+        required: true
+        type: choice
+        options:
+          - "3118717965"
+          - "522514093"
+          - "4160026622"
+          - "3614399544"
+          - "686337048"
+          - "3405541143"
+          - "4212821298"
+      confirmation:
+        description: Type APPLY_ONE_APPROVED_CANONICAL_SCOPE exactly
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-stage-5-identity-apply-${{ inputs.competition_id }}
+  cancel-in-progress: false
+
+jobs:
+  apply-one-scope:
+    name: Guarded source-local canonical materialization
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      PROVIDER: ${{ inputs.provider }}
+      SOURCE_ID: ${{ inputs.source_id }}
+      COMPETITION_ID: ${{ inputs.competition_id }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate exact scope and explicit confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PROVIDER" = "5DollarFootballAPI"
+          test "$SOURCE_ID" = "5dollarfootballapi"
+          case "$COMPETITION_ID" in
+            3118717965|522514093|4160026622|3614399544|686337048|3405541143|4212821298) ;;
+            *) echo "COMPETITION_SCOPE_NOT_ALLOWLISTED"; exit 2 ;;
+          esac
+          test "$CONFIRMATION" = "APPLY_ONE_APPROVED_CANONICAL_SCOPE"
+          test -n "$DATABASE_URL"
+          echo "EXACT_SCOPE_AND_TYPED_CONFIRMATION=PASS"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: python -m pip install -e .
+
+      - name: Apply exactly one approved scope
+        working-directory: backend
+        env:
+          CANONICAL_MATERIALIZATION_CONFIRMATION: APPLY_ONE_APPROVED_CANONICAL_SCOPE
+        run: |
+          set -euo pipefail
+          mkdir -p stage-5-apply-report
+          python scripts/materialize_approved_scopes.py \
+            --execute \
+            --provider "$PROVIDER" \
+            --source-id "$SOURCE_ID" \
+            --competition-id "$COMPETITION_ID" \
+            | tee stage-5-apply-report/materialization-apply.json
+
+      - name: Upload Stage 5 apply report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-stage-5-apply-${{ inputs.competition_id }}
+          path: backend/stage-5-apply-report/
+          if-no-files-found: warn
+          retention-days: 30
