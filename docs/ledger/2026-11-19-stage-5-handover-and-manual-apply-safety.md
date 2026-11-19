@@ -341,3 +341,30 @@ This is the correct fail-closed outcome. Do not label Stage 7 certified or produ
 7. Once certified, integrate the prediction pipeline into the existing Android screens without redesign and perform physical-device verification.
 
 **No new provider calls or Odds API credits were used for this reconciliation.** Stage 5 writes happened in the earlier automatic apply runs documented above; Stage 6 persisted the 59 prospective snapshots. No predictions were published and no value betting was enabled.
+
+
+### 10.7 Stage 7 evaluator implementation review
+
+Reviewed current main implementations:
+- `backend/scripts/evaluate_prospective_hierarchical.py`
+- `backend/app/validation/prospective_model_evaluation.py`
+- `backend/app/validation/certification_gates.py`
+- `backend/tests/test_prospective_model_evaluation.py`
+- `backend/tests/test_certification_gates.py`
+
+Verified design properties:
+- Outer evaluation uses chronological expanding-window folds, not random splits.
+- Training labels must have been system-observed strictly before the validation start.
+- Validation fixtures require a strict pre-kickoff prediction cutoff and valid label rights.
+- Dixon–Coles rho is estimated from nested inner expanding-window out-of-fold predictions; when fewer than 20 inner OOF fixtures exist, rho is set to zero with an explicit insufficient-data status.
+- The research baseline is a competition-only Poisson rate model with a global prior; it does not use bookmaker odds.
+- Market evaluation covers 1X2, BTTS and O/U 1.5, 2.5 and 3.5 with paired bootstrap uncertainty.
+- Production promotion, release eligibility and value betting are hard-coded fail-closed in the evaluator output; formal certification review is not treated as deployment approval.
+- Certification gate tests explicitly prevent upcoming fixture dates from satisfying settled-date thresholds and prevent missing/invalid counts from passing.
+
+Important model limitation recorded from the latest Stage 7 artifact:
+- `model_feature_usage` is `HIERARCHICAL_GOAL_RATE_ONLY`.
+- Shot, possession, attack and event-derived features are captured and represented in the PIT dataset/lineage but are **not yet used by the current evaluator model**.
+- Do not describe those captured features as active model inputs until a separately tested model implementation consumes them and prospective evaluation demonstrates benefit.
+
+No evaluator code change was made in this review because the current data has zero settled labels and cannot yet support meaningful prospective model fitting or comparison. The correct next step is to continue prospective capture and label accumulation, then re-run the existing chronological evaluation when actual settled labels become available. This avoids tuning to empty or fabricated labels.
