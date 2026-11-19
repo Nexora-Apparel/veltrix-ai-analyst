@@ -105,7 +105,7 @@ def main() -> int:
     parser.add_argument("--window-days", type=int, default=7)
     parser.add_argument(
         "--import-type",
-        choices=("historical_backfill", "prospective_capture"),
+        choices=("historical_backfill", "prospective_capture", "historical_feature_backfill"),
         default="historical_backfill",
     )
     parser.add_argument("--execute", action="store_true")
