@@ -93,6 +93,8 @@ class ProspectiveDatasetRow:
     label_observed_at: datetime | None
     label_observation_id: int | None
     label_lineage: dict[str, Any] | None
+    canonical_fixture_id: str | None = None
+    canonical_competition_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -532,6 +534,8 @@ def build_prospective_dataset(
                 label_observed_at=label_observed_at,
                 label_observation_id=label_observation_id,
                 label_lineage=label_lineage,
+                canonical_fixture_id=fixture.canonical_fixture_id,
+                canonical_competition_id=(fixture.canonical_competition_id or fixture.competition_id),
             )
         )
     return tuple(rows)
