@@ -370,13 +370,14 @@ def test_historical_training_only_rows_seed_folds_but_never_validate():
             "rights_permitted_uses": ["MODEL_TRAINING", "MODEL_VALIDATION"],
             "rights_status_events": [],
             "availability_basis": (
-                "DATABASE_INSERTED_AT_TRAINING_ONLY"
+                "IMPORT_RUN_COMPLETED_AT_TRAINING_ONLY"
                 if training_only else "SYSTEM_OBSERVED_AT"
             ),
             "point_in_time_certifiable": not training_only,
         }
         if training_only:
-            lineage["database_inserted_at"] = observed.isoformat()
+            lineage["import_run_id"] = 7001
+            lineage["import_run_finished_at"] = observed.isoformat()
         else:
             lineage["system_observed_at"] = observed.isoformat()
         return ProspectiveDatasetRow(
