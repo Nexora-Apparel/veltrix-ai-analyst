@@ -1,0 +1,131 @@
+name: Stage 6 persist audited prospective snapshots
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage-6-persist-prospective-snapshots.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-stage6-snapshot-persistence
+  cancel-in-progress: false
+
+jobs:
+  persist:
+    if: contains(github.event.head_commit.message, '[PERSIST_STAGE6_SNAPSHOTS]')
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      VELTRIX_AI_ANALYST_DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend and database driver
+        run: python -m pip install -e .
+      - name: Rebuild canonical PIT dataset (read only)
+        run: |
+          mkdir -p artifacts
+          python scripts/build_prospective_dataset.py \
+            --output artifacts/prospective-dataset.json
+      - name: Re-audit dataset before any write
+        run: |
+          python scripts/materialize_prospective_snapshots.py \
+            --input artifacts/prospective-dataset.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("artifacts/prospective-dataset.json").read_text())
+          if report["eligible_prospective_rows"] < 1:
+              raise SystemExit("NO_ELIGIBLE_SNAPSHOTS")
+          if report["release_eligible"] is not False:
+              raise SystemExit("RELEASE_GATE_MUST_REMAIN_CLOSED")
+          if report["production_promotion"] != "LOCKED":
+              raise SystemExit("PRODUCTION_PROMOTION_MUST_REMAIN_LOCKED")
+          if report["value_betting"] != "LOCKED":
+              raise SystemExit("VALUE_BETTING_MUST_REMAIN_LOCKED")
+          print(json.dumps({
+              "rows": report["eligible_prospective_rows"],
+              "settled_labels": report["settled_label_rows"],
+              "competitions": report["distinct_competitions"],
+              "lineage_records": report["feature_lineage_records"],
+              "dataset_sha256": report["dataset_sha256"],
+          }, sort_keys=True))
+          PY
+      - name: Persist immutable snapshots (explicit merge-message gate)
+        run: |
+          python scripts/materialize_prospective_snapshots.py \
+            --input artifacts/prospective-dataset.json \
+            --confirm-persist
+      - name: Verify persisted snapshots and append-only protection
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import psycopg
+
+          report = json.loads(Path("artifacts/prospective-dataset.json").read_text())
+          expected = report["eligible_prospective_rows"]
+          digest = report["dataset_sha256"]
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != "veltrix_ai_analyst":
+                  raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
+              row = connection.execute(
+                  """
+                  SELECT COUNT(*), COUNT(DISTINCT canonical_fixture_id),
+                         COUNT(*) FILTER (WHERE label IS NOT NULL)
+                  FROM veltrix_ai_analyst.prospective_feature_snapshots
+                  WHERE dataset_sha256 = %s
+                  """,
+                  (digest,),
+              ).fetchone()
+              if row[0] != expected or row[1] != expected:
+                  raise SystemExit(
+                      f"SNAPSHOT_PERSISTENCE_COUNT_MISMATCH: expected={expected}, actual={row[0]}, distinct={row[1]}"
+                  )
+              if row[2] != report["settled_label_rows"]:
+                  raise SystemExit("SNAPSHOT_LABEL_COUNT_MISMATCH")
+              trigger = connection.execute(
+                  """
+                  SELECT t.tgenabled, p.proname
+                  FROM pg_trigger t
+                  JOIN pg_class c ON c.oid=t.tgrelid
+                  JOIN pg_namespace n ON n.oid=c.relnamespace
+                  JOIN pg_proc p ON p.oid=t.tgfoid
+                  WHERE n.nspname='veltrix_ai_analyst'
+                    AND c.relname='prospective_feature_snapshots'
+                    AND t.tgname='prospective_feature_snapshots_append_only'
+                    AND NOT t.tgisinternal
+                  """
+              ).fetchone()
+              if trigger is None or trigger[0] not in ("O", "A") or trigger[1] != "reject_prospective_snapshot_mutation":
+                  raise SystemExit("SNAPSHOT_APPEND_ONLY_TRIGGER_NOT_ACTIVE")
+          print(json.dumps({
+              "status": "PERSISTENCE_VERIFIED",
+              "snapshots": row[0],
+              "distinct_fixtures": row[1],
+              "settled_labels": row[2],
+              "dataset_sha256": digest,
+          }, sort_keys=True))
+          PY
+      - name: Upload persisted snapshot audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-stage6-persisted-snapshot-audit
+          path: backend/artifacts/prospective-dataset.json
+          if-no-files-found: error
+          retention-days: 90
