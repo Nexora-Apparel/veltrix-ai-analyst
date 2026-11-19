@@ -45,9 +45,43 @@ def validate_report(report: dict) -> list[dict]:
             raise ValueError("CANONICAL_SNAPSHOT_IDENTITY_MISSING")
         if row["prediction_cutoff_at"] >= row["kickoff_at"]:
             raise ValueError("PIT_CUTOFF_NOT_BEFORE_KICKOFF")
-        for item in row.get("feature_lineage", []):
-            if item["system_observed_at"] >= row["kickoff_at"]:
+        if not row.get("feature_lineage"):
+            raise ValueError("FEATURE_LINEAGE_MISSING")
+        required_uses = {
+            "FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"
+        }
+        for item in row["feature_lineage"]:
+            if (
+                item.get("availability_basis") != "SYSTEM_OBSERVED_AT"
+                or item.get("point_in_time_certifiable") is not True
+                or item.get("rights_status") != "APPROVED"
+                or not item.get("rights_approval_id")
+                or not required_uses.issubset(set(item.get("rights_permitted_uses", [])))
+            ):
+                raise ValueError("FEATURE_LINEAGE_RIGHTS_OR_PIT_GATE_FAILED")
+            if (
+                item["system_observed_at"] >= row["kickoff_at"]
+                or item["system_observed_at"] > row["prediction_cutoff_at"]
+                or item["retrieved_at"] > item["system_observed_at"]
+            ):
                 raise ValueError("FEATURE_LINEAGE_NOT_STRICTLY_PRE_KICKOFF")
+            for digest_key in ("payload_sha256", "raw_response_sha256"):
+                digest = item.get(digest_key, "")
+                if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
+                    raise ValueError("FEATURE_LINEAGE_HASH_INVALID")
+            for id_key in ("source_observation_id", "source_sighting_id", "provider_response_id"):
+                if not isinstance(item.get(id_key), int) or item[id_key] < 1:
+                    raise ValueError("FEATURE_LINEAGE_ID_INVALID")
+        if row.get("label") is not None:
+            label_lineage = row.get("label_lineage") or {}
+            if (
+                row.get("label_observed_at") is None
+                or row["label_observed_at"] <= row["kickoff_at"]
+                or label_lineage.get("availability_basis") != "SYSTEM_OBSERVED_AT"
+                or label_lineage.get("point_in_time_certifiable") is not True
+                or label_lineage.get("rights_status") != "APPROVED"
+            ):
+                raise ValueError("LABEL_LINEAGE_GATE_FAILED")
     return rows
 
 
