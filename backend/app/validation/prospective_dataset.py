@@ -85,7 +85,7 @@ class ProspectiveDatasetRow:
     source_id: str
     competition_id: str
     kickoff_at: datetime
-    prediction_cutoff_at: datetime
+    prediction_cutoff_at: datetime | None
     home_team_id: str
     away_team_id: str
     features: dict[str, float]
@@ -96,6 +96,7 @@ class ProspectiveDatasetRow:
     label_lineage: dict[str, Any] | None
     canonical_fixture_id: str | None = None
     canonical_competition_id: str | None = None
+    validation_eligible: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -548,65 +549,84 @@ def build_expanding_window_folds(
     minimum_training_fixtures: int = 30,
     validation_block_fixtures: int = 25,
 ) -> tuple[ExpandingFold, ...]:
-    """Create chronological folds with simultaneous kickoffs kept together.
+    """Build expanding folds with historical outcomes restricted to training.
 
-    Training labels must themselves have been observed before the first
-    validation kickoff. The validation block is selected by chronological
-    fixture order; no random split or post-kickoff feature is permitted.
+    Rows marked validation_eligible=False are an explicitly separate,
+    training-only outcome pool. They can seed a fold only when their outcome
+    was recorded before that fold's validation kickoff. They can never become
+    validation observations. Prospective rows remain the only validation set.
     """
     if minimum_training_fixtures < 1 or validation_block_fixtures < 1:
         raise ValueError("fold sizes must be positive")
-    labelled = [row for row in rows if row.label is not None and row.label_observed_at is not None]
-    labelled.sort(key=lambda row: (row.kickoff_at, row.fixture_id))
+    labelled = [
+        row for row in rows
+        if row.label is not None and row.label_observed_at is not None
+    ]
+    if len({row.fixture_id for row in labelled}) != len(labelled):
+        raise ValueError("duplicate labelled fixture IDs are not allowed")
+
+    historical_training = sorted(
+        (row for row in labelled if not row.validation_eligible),
+        key=lambda row: (row.kickoff_at, row.fixture_id),
+    )
+    prospective_validation = sorted(
+        (row for row in labelled if row.validation_eligible),
+        key=lambda row: (row.kickoff_at, row.fixture_id),
+    )
+
     groups: list[list[ProspectiveDatasetRow]] = []
-    for row in labelled:
+    for row in prospective_validation:
         if not groups or groups[-1][0].kickoff_at != row.kickoff_at:
             groups.append([row])
         else:
             groups[-1].append(row)
 
     folds: list[ExpandingFold] = []
-    train_groups: list[list[ProspectiveDatasetRow]] = []
+    prior_prospective: list[ProspectiveDatasetRow] = []
     group_index = 0
     fold_number = 1
     while group_index < len(groups):
-        train_rows = [row for group in train_groups for row in group]
-        if len(train_rows) >= minimum_training_fixtures:
-            validation_groups: list[list[ProspectiveDatasetRow]] = []
-            validation_count = 0
-            cursor = group_index
-            while cursor < len(groups) and validation_count < validation_block_fixtures:
-                validation_groups.append(groups[cursor])
-                validation_count += len(groups[cursor])
-                cursor += 1
-            validation_rows = [row for group in validation_groups for row in group]
-            validation_start = validation_rows[0].kickoff_at
-            validation_end = validation_rows[-1].kickoff_at
-            eligible_train = [
-                row for row in train_rows
-                if row.kickoff_at < validation_start
-                and row.label_observed_at is not None
-                and row.label_observed_at < validation_start
-            ]
-            if len(eligible_train) >= minimum_training_fixtures and validation_rows:
-                folds.append(
-                    ExpandingFold(
-                        fold_number=fold_number,
-                        train_fixture_ids=tuple(row.fixture_id for row in eligible_train),
-                        validation_fixture_ids=tuple(row.fixture_id for row in validation_rows),
-                        train_cutoff_at=max(
-                            row.label_observed_at
-                            for row in eligible_train
-                            if row.label_observed_at is not None
-                        ),
-                        validation_start_at=validation_start,
-                        validation_end_at=validation_end,
-                    )
+        validation_groups: list[list[ProspectiveDatasetRow]] = []
+        validation_count = 0
+        cursor = group_index
+        while cursor < len(groups) and validation_count < validation_block_fixtures:
+            validation_groups.append(groups[cursor])
+            validation_count += len(groups[cursor])
+            cursor += 1
+        validation_rows = [
+            row for group in validation_groups for row in group
+        ]
+        validation_start = validation_rows[0].kickoff_at
+        validation_end = validation_rows[-1].kickoff_at
+
+        candidate_training = [*historical_training, *prior_prospective]
+        eligible_train = [
+            row for row in candidate_training
+            if row.kickoff_at < validation_start
+            and row.label_observed_at is not None
+            and row.label_observed_at < validation_start
+        ]
+        if len(eligible_train) >= minimum_training_fixtures:
+            folds.append(
+                ExpandingFold(
+                    fold_number=fold_number,
+                    train_fixture_ids=tuple(
+                        row.fixture_id for row in eligible_train
+                    ),
+                    validation_fixture_ids=tuple(
+                        row.fixture_id for row in validation_rows
+                    ),
+                    train_cutoff_at=max(
+                        row.label_observed_at
+                        for row in eligible_train
+                        if row.label_observed_at is not None
+                    ),
+                    validation_start_at=validation_start,
+                    validation_end_at=validation_end,
                 )
-                fold_number += 1
-            train_groups.extend(validation_groups)
-            group_index = cursor
-        else:
-            train_groups.append(groups[group_index])
-            group_index += 1
+            )
+            fold_number += 1
+
+        prior_prospective.extend(validation_rows)
+        group_index = cursor
     return tuple(folds)
