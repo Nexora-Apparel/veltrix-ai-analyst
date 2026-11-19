@@ -724,3 +724,14 @@ PR #121 remains open and unmerged. No production deployment, production predicti
 1. Determine whether 5Dollar exposes a documented quota/usage endpoint or dashboard value that can establish remaining request budget; do not infer it from `rate_limit`.
 2. Preserve the backfill lock until remaining quota and request-cost semantics are verified and the bounded collection plan is reconciled with the provider limit.
 3. Continue Stage 8B research dataset execution/training comparison independently; do not merge PR #121 until its stated research and CI gates pass.
+
+
+## Provider dashboard rate-limit clarification
+
+**Date:** 2026-11-20  
+**User-verified dashboard value:** 300 requests per hour.
+
+- User checked the 5DollarFootballAPI dashboard and confirmed the displayed allowance is 300 requests/hour; this agrees with the preflight entitlement response `plan=community`, `rate_limit=300`.
+- The configured backfill bounds are seven approved competitions × ten requests per competition = 70 maximum reserved provider requests across the batch. The shared provider client enforces a 60-second minimum interval, i.e. at most 60 requests/hour from this job.
+- Therefore the configured batch is below the stated hourly rate limit. This does not establish a separate monthly/account-wide remaining-credit balance; do not describe 300/hour as 300 total credits.
+- No collection was started by this clarification. Keep actual execution behind the explicit workflow dispatch gate until the workflow is exposed on the default branch and the selected branch/code is verified. No Odds API calls.
