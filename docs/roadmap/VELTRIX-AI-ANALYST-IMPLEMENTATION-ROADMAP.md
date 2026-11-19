@@ -301,3 +301,14 @@ The backfill is not yet executed. It must only run after the entitlement output 
 - Train a research-only feature model on those lagged historical covariates plus settled outcomes; compare it with the hierarchical goal-rate-only model using future prospective settled fixtures only.
 - Keep the 996 outcome-only records available to the hierarchical model now, but only at actual import-completion cutoffs. Never claim their match kickoff alone proves when VELTRIX knew the result.
 - Stage 7 certification, production promotion and value betting remain locked.
+
+
+### Stage 8B — retrospective feature reconstruction implementation (2026-11-19)
+
+**Status: research-only feature builder implemented; CI pending.**
+
+Added `backend/app/validation/retrospective_features.py` and focused tests. The builder reconstructs team-level lagged goals-for/against, corners-for/against and cards-for/against means from strictly earlier fixtures in the same competition. It excludes simultaneous kickoffs, isolates competitions, preserves missing covariates as null, and records the exact historical fixture IDs used.
+
+Every emitted row is explicitly `validation_eligible=false`, `point_in_time_certifiable=false`, and `source_available_before_target_kickoff=false`. This is retrospective event-time reconstruction from later-retrieved historical data; it is a research-training candidate only, never Stage 7 prospective validation or production inference evidence. It is deliberately separate from the prospective snapshot dataset.
+
+This gives the 996 historical outcomes a legitimate route to richer research features using already stored corners (and goals/cards where present), even before any feature backfill. Shots, possession and detailed event-derived metrics remain unavailable until the quota-gated 5Dollar stats/events backfill has been run and audited. The new builder has not yet been wired into model training; integration and comparison against the goal-rate-only baseline are the next task.
