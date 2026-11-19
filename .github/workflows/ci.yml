@@ -1,5 +1,7 @@
 name: CI
 
+# Stage 6: lint and test the immutable prospective snapshot pipeline.
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
