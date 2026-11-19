@@ -255,3 +255,57 @@ These tiers are not certification substitutes, not guarantees of match outcomes,
 ### Next action
 
 Execute Stage 7 live verification, then Stage 8A source/test/workflow inventory. Record exact model paths, call sites, test coverage, and whether each intended model/feature is integrated, partial, missing or obsolete before implementing further calculations.
+
+
+## Execution checkpoint — Stage 7 live verification and Stage 8A source audit
+
+**Date:** 2026-11-19  
+**Main commit at Stage 7 evaluation:** `ab5256c07667a42a726ea0c0649da6c08141502a` (PR #120 merge)
+
+### Stage 7 — live evaluation verified; certification remains blocked
+
+- Confirmed PR #119 merged at `8289c67d8d5e760c194414db449d415763ccfd85`. Its reviewed production read-only query found 996 eligible historical training-only rows across nine completed import runs, with permitted rights and identity joins. The rows have no PIT pre-match feature lineage and are explicitly `validation_eligible=false`.
+- Confirmed PR #120 merged at `ab5256c07667a42a726ea0c0649da6c08141502a`, adding Stage 7 push-path triggers for evaluator and prospective dataset code.
+- Confirmed the post-merge Stage 7 Actions run: **44611934649**, job **135870539360**, completed successfully on main commit `ab5256c07667a42a726ea0c0649da6c08141502a`.
+- All seven workflow steps completed, including read-only expanding-window evaluation, independent certification gate application and artifact upload.
+- Artifact: `veltrix-stage7-prospective-research-evaluation`, ID **14574020008**, SHA-256 `115126b65634eb2f3f5b4a272ea09613c10fb1e890ff2c468d2418a1f0254c8f`; downloaded and inspected both JSON reports.
+- Evaluation result: `INSUFFICIENT_PROSPECTIVE_DATA`; 996 training-only historical labels were included, with training-pool hash `823fb3894d40153217cad1223808d059dd8ecaef548326b39ef19ceb1c01ecae`.
+- Prospective evidence: 59 eligible snapshots across 7 competitions and 6 kickoff dates; zero settled prospective labels; zero expanding folds; zero walk-forward validation fixtures in every market.
+- The evaluator confirms historical training rows are not counted as prospective validation. The prospective dataset hash is `3ce532aa731f9a9068e294fa415b1748fa187f76c44a55ada9b13fa3a6e48951`.
+- All production certification gates remain false; production promotion is `LOCKED`, release eligibility is false and value betting is `LOCKED`. No ROI or bookmaker comparison was evaluated. No odds were used.
+- Feature usage in this evaluation remains `HIERARCHICAL_GOAL_RATE_ONLY`; captured shot, possession, attack and event features are not yet consumed by this evaluator.
+
+**Stage 7 conclusion:** the post-PR119/120 execution path and training-only isolation are verified. Stage 7 is **not complete/certified** because prospective labels, validation fixtures and folds are still zero. Continue daily snapshots and post-kickoff label accumulation; do not relax gates.
+
+### Stage 8A — initial live source inventory findings
+
+Verified current main-branch source files and directory inventories:
+
+- Models: `elo.py`, `attack_defence.py`, `hierarchical_poisson.py`, `hierarchical_scoreline.py`, `scoreline.py`, `prediction_engine.py`, `retrospective.py`, `retrospective_report.py`, `chronology_adjudication.py`.
+- Features: `admission.py`, `eligibility.py`, `evidence.py`.
+- Orchestration: `hierarchical_predictions.py`.
+- Research: `compare_models.py`, `retrospective_run.py`, `train_final_model.py`.
+- Validation: includes hierarchical tuning, Dixon–Coles estimation, paired baselines/chronological metrics, calibration, prospective dataset/evaluator, evidence-tier calibration and certification gates.
+- Relevant tests exist for attack/defence, hierarchical Poisson, scoreline/model engines, prediction engine, hierarchical orchestration, feature eligibility, tier calibration and final training.
+
+**Confirmed status distinctions:**
+
+1. Elo is implemented chronologically and retained as a research comparator; the final retrospective artifact explicitly does not select it for an ensemble.
+2. Recency-weighted attack/defence Poisson is implemented and is the model deserialized by the separate production inference boundary.
+3. Hierarchical Poisson and its scoreline adapter are implemented and used by the prospective research evaluator and gated hierarchical orchestration.
+4. Poisson scoreline/Dixon–Coles market calculations exist for all five required market groups.
+5. Hierarchical orchestration is explicitly inert until an approved validated release; it does not call providers or write production predictions.
+6. Production inference is a fail-closed boundary requiring a production-approved PIT-certified artifact and verified team mappings. It currently returns `NOT_PUBLISHED`, uncertainty `NOT_YET_CALIBRATED`, and empty coverage metadata.
+7. Evidence Strong/Medium/Low scoring already exists in `features/evidence.py`; held-out market/tier calibration metrics already exist in `validation/evidence_tier_calibration.py`. Production derivation, calibrated frozen policy and propagation into published prediction records are not yet verified.
+8. The retrospective historical rate model is explicitly non-PIT research and contains a hard-coded no-history rate. It is not an acceptable production sparse-data fallback.
+9. The model-family mismatch between production inference (attack/defence artifact) and Stage 7 hierarchical research must be reconciled before model promotion.
+10. The Stage 7 report shows captured supporting statistics remain sparse: most team-stat value fields have only 5–6 populated rows per side, and competition rate fields have 9 populated rows, despite coverage metadata being present across more rows.
+
+### Documentation commits
+
+- Roadmap model inventory/integration-gap update: `03aa01a07c8eb3389aea5ec35d06bf48f2b90575`.
+- This ledger update records the exact Stage 7 run, artifact and source-audit findings.
+
+### Next action — continue Stage 8A
+
+Trace all production call sites, API routes, artifact creation/promotion schema and workflows. Establish the canonical model family and determine whether any existing model components are actually wired into the prediction API. Then finish the inventory with a precise implemented/partial/not-integrated/missing/test-only matrix before changing model code.
