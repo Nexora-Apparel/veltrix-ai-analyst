@@ -20,6 +20,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  workflow-validation:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate workflow file was parsed
+        run: echo "WORKFLOW_FILE_VALIDATED; no provider or database access on push."
+
   backfill:
     if: github.event_name == 'workflow_dispatch'
     environment: veltrix-historical-import
