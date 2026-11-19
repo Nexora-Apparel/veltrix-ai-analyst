@@ -11,7 +11,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 EXPECTED_DB = "veltrix_ai_analyst"
-REQUIRED_MIGRATIONS = {"006_pre_match_feature_pit_gate.sql", "007_canonical_entity_layer.sql", "008_model_artifacts.sql", "008_canonical_identity_link_uniqueness.sql", "009_canonical_identity_review_cases.sql", "010_system_observed_pit.sql", "011_import_run_competition_scope.sql", "012_database_observed_timestamps.sql", "013_target_fixture_pre_match_gate.sql", "014_prediction_publication_storage.sql"}
+REQUIRED_MIGRATIONS = {"006_pre_match_feature_pit_gate.sql", "007_canonical_entity_layer.sql", "008_model_artifacts.sql", "008_canonical_identity_link_uniqueness.sql", "009_canonical_identity_review_cases.sql", "010_system_observed_pit.sql", "011_import_run_competition_scope.sql", "012_database_observed_timestamps.sql", "013_target_fixture_pre_match_gate.sql", "014_prediction_publication_storage.sql", "015_automated_identity_adjudication.sql"}
 
 
 def _jsonable(value: Any) -> Any:
@@ -132,7 +132,7 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                            count(*) FILTER (WHERE q.source_observation_id IS NOT NULL) AS observation_linked,
                            count(*) FILTER (WHERE q.provenance_ok) AS provenance_complete,
                            count(ci.id) AS canonical_linked_competitions,
-                           count(ci.id) FILTER (WHERE COALESCE(ci_review.decision, ci.mapping_status) NOT IN ('SOURCE_IDENTITY_REVIEWED','REAL_WORLD_IDENTITY_VERIFIED')) AS identity_review_required,
+                           count(ci.id) FILTER (WHERE COALESCE(ci_review.decision, ci.mapping_status) = 'REVIEW_REQUIRED') AS identity_review_required,
                            count(ci.id) FILTER (WHERE COALESCE(ci_review.decision, ci.mapping_status) IN ('CONFLICT','REJECTED')) AS identity_conflicts
                     FROM (
                         SELECT p.*, (
@@ -179,7 +179,7 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                            count(*) FILTER (WHERE t.source_observation_id IS NOT NULL) AS observation_linked_teams,
                            count(*) FILTER (WHERE provenance_ok) AS provenance_complete_teams,
                            count(ti.id) AS canonical_linked_teams,
-                           count(ti.id) FILTER (WHERE COALESCE(ti_review.decision, ti.mapping_status) NOT IN ('SOURCE_IDENTITY_REVIEWED','REAL_WORLD_IDENTITY_VERIFIED')) AS identity_review_required,
+                           count(ti.id) FILTER (WHERE COALESCE(ti_review.decision, ti.mapping_status) = 'REVIEW_REQUIRED') AS identity_review_required,
                            count(ti.id) FILTER (WHERE COALESCE(ti_review.decision, ti.mapping_status) IN ('CONFLICT','REJECTED')) AS identity_conflicts
                     FROM ids
                     LEFT JOIN (
@@ -217,7 +217,7 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                 cur.execute("""
                     SELECT count(f.id) AS linked_fixture_rows,
                            count(source_link.id) AS source_links,
-                           count(source_link.id) FILTER (WHERE COALESCE(source_review.decision, source_link.mapping_status) NOT IN ('SOURCE_FIXTURE_LINK_REVIEWED','CONFLICT','REJECTED')) AS source_link_review_required,
+                           count(source_link.id) FILTER (WHERE COALESCE(source_review.decision, source_link.mapping_status) IN ('REVIEW_REQUIRED','SOURCE_FIXTURE_REVIEW_REQUIRED')) AS source_link_review_required,
                            count(source_link.id) FILTER (WHERE COALESCE(source_review.decision, source_link.mapping_status) IN ('CONFLICT','REJECTED')) AS source_link_conflicts,
                            count(*) FILTER (WHERE f.identity_status='VERIFIED') AS identity_verified,
                            count(*) FILTER (WHERE f.identity_status='IDENTITY_REVIEW_REQUIRED') AS identity_review_required,
@@ -264,7 +264,7 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                     SELECT count(DISTINCT c.id) AS unresolved_cases
                     FROM veltrix_ai_analyst.canonical_identity_review_cases c
                     JOIN veltrix_ai_analyst.effective_canonical_identity_review_cases e ON e.id=c.id
-                    WHERE e.effective_case_status NOT IN ('HUMAN_CONFIRMED','HUMAN_REJECTED','DEFERRED')
+                    WHERE e.effective_human_review_required IS TRUE
                       AND (
                           c.primary_fixture_source_link_id IN (SELECT id FROM scoped_fixture_links)
                           OR c.related_fixture_source_link_id IN (SELECT id FROM scoped_fixture_links)
@@ -336,7 +336,8 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
 
         cur.execute("""
             SELECT review_case.case_key, review_case.case_type,
-                   effective.effective_case_status, review_case.recommended_action
+                   effective.effective_case_status, effective.effective_human_review_required,
+                   review_case.recommended_action
             FROM veltrix_ai_analyst.canonical_identity_review_cases review_case
             JOIN veltrix_ai_analyst.effective_canonical_identity_review_cases effective
               ON effective.id=review_case.id

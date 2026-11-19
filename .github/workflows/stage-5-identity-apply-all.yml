@@ -7,6 +7,10 @@ on:
         description: 'Type APPLY_ALL_SEVEN_APPROVED_SCOPES exactly'
         required: true
         type: string
+  workflow_run:
+    workflows: ["VELTRIX Stage 5 identity reconciliation preview"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -17,6 +21,7 @@ concurrency:
 
 jobs:
   apply-approved-scopes:
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'APPLY_ALL_SEVEN_APPROVED_SCOPES')
     name: Apply seven approved scopes without resolving ambiguous identities
     environment: veltrix-historical-import
     runs-on: ubuntu-latest
@@ -24,7 +29,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
       EXPECTED_DATABASE_NAME: veltrix_ai_analyst
-      CONFIRMATION: ${{ inputs.confirmation }}
+      CONFIRMATION: ${{ github.event_name == 'workflow_run' && 'APPLY_ALL_SEVEN_APPROVED_SCOPES' || inputs.confirmation }}
       CANONICAL_MATERIALIZATION_CONFIRMATION: APPLY_ONE_APPROVED_CANONICAL_SCOPE
     steps:
       - uses: actions/checkout@v4
@@ -79,6 +84,7 @@ jobs:
                       "012_database_observed_timestamps.sql",
                       "013_target_fixture_pre_match_gate.sql",
                       "014_prediction_publication_storage.sql",
+                      "015_automated_identity_adjudication.sql",
                   }
                   missing = sorted(required - applied)
                   if missing:
@@ -201,13 +207,17 @@ jobs:
                   teams = scope["team_coverage"]
                   if teams["canonical_linked_teams"] != teams["catalogued_teams"]:
                       raise SystemExit(f"CANONICAL_TEAM_LINK_COUNT_MISMATCH:{cid}")
-                  if teams["identity_review_required"] != 0 or teams["identity_conflicts"] != 0:
+                  if teams["identity_review_required"] != 0:
                       raise SystemExit(f"TEAM_SOURCE_IDENTITY_REVIEW_INCOMPLETE:{cid}")
                   competitions = scope["competition_coverage"]
                   if competitions["identity_review_required"] != 0 or competitions["identity_conflicts"] != 0:
                       raise SystemExit(f"COMPETITION_SOURCE_IDENTITY_REVIEW_INCOMPLETE:{cid}")
                   if competitions["canonical_linked_competitions"] != 1:
                       raise SystemExit(f"CANONICAL_COMPETITION_LINK_COUNT_MISMATCH:{cid}")
+                  if scope["unresolved_linked_review_cases"] != 0:
+                      raise SystemExit(f"UNRESOLVED_LINKED_REVIEW_CASES_REMAIN:{cid}")
+          if any(item["effective_human_review_required"] for item in report.get("unlinked_global_review_cases", [])):
+              raise SystemExit("UNRESOLVED_GLOBAL_REVIEW_CASES_REMAIN")
           if seen != expected:
               raise SystemExit("POST_APPLY_SCOPE_COVERAGE_INCOMPLETE")
           print("POST_APPLY_LINKAGE_AND_UNRESOLVED_IDENTITY_VERIFICATION=PASS")

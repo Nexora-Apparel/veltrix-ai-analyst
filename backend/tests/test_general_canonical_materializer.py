@@ -139,7 +139,8 @@ def test_write_gate_requires_every_canonical_and_prediction_migration():
         "013_target_fixture_pre_match_gate.sql",
     }
     assert MODULE._missing_required_migrations(applied) == [
-        "014_prediction_publication_storage.sql"
+        "014_prediction_publication_storage.sql",
+        "015_automated_identity_adjudication.sql",
     ]
 
 

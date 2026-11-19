@@ -2,15 +2,10 @@ name: VELTRIX Stage 5 identity reconciliation preview
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'backend/app/canonicalization.py'
-      - 'backend/scripts/materialize_approved_scopes.py'
-      - 'backend/scripts/canonical_scope_inventory.py'
-      - 'backend/tests/test_canonical_materialization.py'
-      - '.github/workflows/stage-5-identity-preview.yml'
+  workflow_run:
+    workflows: ["Apply checksum-verified database migrations"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -21,6 +16,7 @@ concurrency:
 
 jobs:
   identity-preview:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     name: Read-only identity inventory and materialization preview
     environment: veltrix-historical-import
     runs-on: ubuntu-latest
@@ -75,6 +71,7 @@ jobs:
                       "012_database_observed_timestamps.sql",
                       "013_target_fixture_pre_match_gate.sql",
                       "014_prediction_publication_storage.sql",
+                      "015_automated_identity_adjudication.sql",
                   }
                   applied = {
                       row[0]
