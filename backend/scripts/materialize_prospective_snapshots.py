@@ -24,7 +24,23 @@ def canonical_json(value: object) -> str:
 
 
 def snapshot_digest(row: dict) -> str:
-    return hashlib.sha256(canonical_json(row).encode("utf-8")).hexdigest()
+    immutable_features = {
+        key: value for key, value in row.items()
+        if key not in {
+            "label", "label_observed_at", "label_observation_id", "label_lineage"
+        }
+    }
+    return hashlib.sha256(canonical_json(immutable_features).encode("utf-8")).hexdigest()
+
+
+def label_digest(row: dict) -> str:
+    label_payload = {
+        "label": row["label"],
+        "label_observed_at": row["label_observed_at"],
+        "label_observation_id": row["label_observation_id"],
+        "label_lineage": row["label_lineage"],
+    }
+    return hashlib.sha256(canonical_json(label_payload).encode("utf-8")).hexdigest()
 
 
 def parse_timestamp(value: object) -> datetime:
@@ -92,14 +108,29 @@ def validate_report(report: dict) -> list[dict]:
                     raise ValueError("FEATURE_LINEAGE_ID_INVALID")
         if row.get("label") is not None:
             label_lineage = row.get("label_lineage") or {}
+            label_observed_at = parse_timestamp(row["label_observed_at"])
+            required_label_uses = {"MODEL_TRAINING", "MODEL_VALIDATION"}
             if (
-                row.get("label_observed_at") is None
-                or parse_timestamp(row["label_observed_at"]) <= kickoff_at
+                label_observed_at <= kickoff_at
                 or label_lineage.get("availability_basis") != "SYSTEM_OBSERVED_AT"
                 or label_lineage.get("point_in_time_certifiable") is not True
                 or label_lineage.get("rights_status") != "APPROVED"
+                or not label_lineage.get("rights_approval_id")
+                or not required_label_uses.issubset(
+                    set(label_lineage.get("rights_permitted_uses", []))
+                )
+                or parse_timestamp(label_lineage.get("system_observed_at")) != label_observed_at
+                or parse_timestamp(label_lineage.get("retrieved_at")) > label_observed_at
+                or label_lineage.get("source_observation_id") != row.get("label_observation_id")
             ):
                 raise ValueError("LABEL_LINEAGE_GATE_FAILED")
+            for digest_key in ("payload_sha256", "raw_response_sha256"):
+                digest = label_lineage.get(digest_key, "")
+                if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
+                    raise ValueError("LABEL_LINEAGE_HASH_INVALID")
+            for id_key in ("source_observation_id", "source_sighting_id", "provider_response_id"):
+                if not isinstance(label_lineage.get(id_key), int) or label_lineage[id_key] < 1:
+                    raise ValueError("LABEL_LINEAGE_ID_INVALID")
     return rows
 
 
@@ -111,6 +142,8 @@ def persist_report(database_url: str, report: dict) -> dict:
 
     inserted = 0
     unchanged = 0
+    labels_inserted = 0
+    labels_unchanged = 0
     with psycopg.connect(database_url) as connection:
         if connection.info.dbname != expected_database:
             raise RuntimeError("DATABASE_NAME_MISMATCH")
@@ -132,10 +165,6 @@ def persist_report(database_url: str, report: dict) -> dict:
                     FEATURE_SCHEMA_VERSION,
                     Jsonb(row["features"]),
                     Jsonb(row["feature_lineage"]),
-                    Jsonb(row["label"]) if row.get("label") is not None else None,
-                    row.get("label_observed_at"),
-                    row.get("label_observation_id"),
-                    Jsonb(row["label_lineage"]) if row.get("label_lineage") is not None else None,
                     digest,
                     report["dataset_sha256"],
                 )
@@ -146,11 +175,10 @@ def persist_report(database_url: str, report: dict) -> dict:
                         home_canonical_team_id, away_canonical_team_id,
                         provider, source_id, provider_fixture_id, provider_competition_id,
                         kickoff_at, prediction_cutoff_at, feature_schema_version,
-                        features, feature_lineage, label, label_observed_at,
-                        label_observation_id, label_lineage, snapshot_sha256, dataset_sha256
+                        features, feature_lineage, snapshot_sha256, dataset_sha256
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s
                     )
                     ON CONFLICT (
                         canonical_fixture_id, prediction_cutoff_at, feature_schema_version
@@ -161,26 +189,70 @@ def persist_report(database_url: str, report: dict) -> dict:
                 )
                 inserted_id = cursor.fetchone()
                 if inserted_id:
+                    snapshot_id = inserted_id[0]
                     inserted += 1
+                else:
+                    cursor.execute(
+                        """
+                        SELECT id, snapshot_sha256
+                        FROM veltrix_ai_analyst.prospective_feature_snapshots
+                        WHERE canonical_fixture_id = %s
+                          AND prediction_cutoff_at = %s
+                          AND feature_schema_version = %s
+                        """,
+                        (
+                            row["canonical_fixture_id"],
+                            row["prediction_cutoff_at"],
+                            FEATURE_SCHEMA_VERSION,
+                        ),
+                    )
+                    existing = cursor.fetchone()
+                    if existing is None or existing[1].strip() != digest:
+                        raise RuntimeError("IMMUTABLE_SNAPSHOT_IDEMPOTENCY_CONFLICT")
+                    snapshot_id = existing[0]
+                    unchanged += 1
+
+                if row.get("label") is None:
                     continue
+                lineage = row["label_lineage"]
+                digest = label_digest(row)
                 cursor.execute(
                     """
-                    SELECT snapshot_sha256, dataset_sha256
-                    FROM veltrix_ai_analyst.prospective_feature_snapshots
-                    WHERE canonical_fixture_id = %s
-                      AND prediction_cutoff_at = %s
-                      AND feature_schema_version = %s
+                    INSERT INTO veltrix_ai_analyst.prospective_feature_snapshot_labels (
+                        snapshot_id, source_observation_id, source_sighting_id,
+                        provider_response_id, label, label_observed_at,
+                        label_lineage, label_sha256
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (snapshot_id, source_observation_id) DO NOTHING
+                    RETURNING id
                     """,
                     (
-                        row["canonical_fixture_id"],
-                        row["prediction_cutoff_at"],
-                        FEATURE_SCHEMA_VERSION,
+                        snapshot_id,
+                        lineage["source_observation_id"],
+                        lineage["source_sighting_id"],
+                        lineage["provider_response_id"],
+                        Jsonb(row["label"]),
+                        row["label_observed_at"],
+                        Jsonb(lineage),
+                        digest,
                     ),
                 )
-                existing = cursor.fetchone()
-                if existing is None or existing[0].strip() != digest:
-                    raise RuntimeError("IMMUTABLE_SNAPSHOT_IDEMPOTENCY_CONFLICT")
-                unchanged += 1
+                label_inserted_id = cursor.fetchone()
+                if label_inserted_id:
+                    labels_inserted += 1
+                else:
+                    cursor.execute(
+                        """
+                        SELECT label_sha256
+                        FROM veltrix_ai_analyst.prospective_feature_snapshot_labels
+                        WHERE snapshot_id = %s AND source_observation_id = %s
+                        """,
+                        (snapshot_id, lineage["source_observation_id"]),
+                    )
+                    existing_label = cursor.fetchone()
+                    if existing_label is None or existing_label[0].strip() != digest:
+                        raise RuntimeError("IMMUTABLE_LABEL_IDEMPOTENCY_CONFLICT")
+                    labels_unchanged += 1
         connection.commit()
 
     return {
@@ -188,10 +260,11 @@ def persist_report(database_url: str, report: dict) -> dict:
         "inserted": inserted,
         "unchanged": unchanged,
         "rows": len(rows),
+        "labels_inserted": labels_inserted,
+        "labels_unchanged": labels_unchanged,
         "dataset_sha256": report["dataset_sha256"],
         "feature_schema_version": FEATURE_SCHEMA_VERSION,
     }
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
