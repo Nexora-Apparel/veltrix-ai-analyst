@@ -115,17 +115,24 @@ def _label_evidence_valid(row: ProspectiveDatasetRow) -> bool:
         )
     if (
         not row.validation_eligible
-        and basis == "DATABASE_INSERTED_AT_TRAINING_ONLY"
+        and basis == "IMPORT_RUN_COMPLETED_AT_TRAINING_ONLY"
         and lineage.get("point_in_time_certifiable") is False
     ):
-        inserted = lineage.get("database_inserted_at")
+        inserted = lineage.get("import_run_finished_at")
+        import_run_id = lineage.get("import_run_id")
         if not isinstance(inserted, str):
             return False
         try:
             inserted_at = datetime.fromisoformat(inserted)
         except ValueError:
             return False
-        return inserted_at.utcoffset() is not None and inserted_at == row.label_observed_at
+        return (
+            inserted_at.utcoffset() is not None
+            and inserted_at == row.label_observed_at
+            and isinstance(import_run_id, int)
+            and not isinstance(import_run_id, bool)
+            and import_run_id > 0
+        )
     return False
 
 
