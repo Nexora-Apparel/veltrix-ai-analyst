@@ -36,7 +36,7 @@ def validate_competition_import(
         SELECT status, boundary_start, boundary_end, provider, source_id,
                request_budget, requests_used, records_seen, records_inserted,
                records_duplicate, records_rejected, records_quarantined,
-               rights_approval_id, scope_value
+               rights_approval_id, scope_value, importer_version
         FROM veltrix_ai_analyst.import_runs
         WHERE id = %s
         """,
@@ -60,6 +60,7 @@ def validate_competition_import(
         records_quarantined,
         approval_id,
         run_scope_value,
+        importer_version,
     ) = run
     failures: list[str] = []
     if status != "COMPLETED":
@@ -107,8 +108,19 @@ def validate_competition_import(
         if not currently_valid:
             failures.append("RIGHTS_APPROVAL_OUTSIDE_VALIDITY")
 
+    window_days = 7
+    version_suffix = str(importer_version or "").rsplit("-window-", 1)
+    if len(version_suffix) == 2 and version_suffix[1].endswith("d"):
+        try:
+            parsed_window_days = int(version_suffix[1][:-1])
+        except ValueError:
+            parsed_window_days = 0
+        if 1 <= parsed_window_days <= 365:
+            window_days = parsed_window_days
+        else:
+            failures.append("IMPORT_WINDOW_PROTOCOL_INVALID")
     expected_windows = (
-        build_date_windows(boundary_start, boundary_end, window_days=7)
+        build_date_windows(boundary_start, boundary_end, window_days=window_days)
         if boundary_start is not None and boundary_end is not None and boundary_end > boundary_start
         else ()
     )
