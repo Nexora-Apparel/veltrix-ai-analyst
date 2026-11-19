@@ -90,7 +90,7 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                             AND o.entity_type='fixture' AND o.data_type='fixtures_and_results'
                             AND o.provider_entity_id=f.provider_fixture_id
                             AND o.rights_approval_id=f.rights_approval_id
-                            AND o.payload_sha256=f.payload_sha256
+                            AND o.payload_sha256 IS NOT NULL
                             AND s.id IS NOT NULL AND s.payload_sha256=o.payload_sha256
                             AND s.provider_response_id=r.id AND r.http_status BETWEEN 200 AND 299
                             AND r.provider=f.provider AND r.source_id=f.source_id
@@ -127,7 +127,7 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                             AND o.entity_type='team' AND o.data_type='team_catalogue'
                             AND o.provider_entity_id=team.provider_team_id
                             AND o.rights_approval_id=team.rights_approval_id
-                            AND o.payload_sha256=team.payload_sha256
+                            AND o.payload_sha256 IS NOT NULL
                             AND s.id IS NOT NULL AND s.payload_sha256=o.payload_sha256
                             AND s.provider_response_id=r.id AND r.http_status BETWEEN 200 AND 299
                             AND r.provider=team.provider AND r.source_id=team.source_id
