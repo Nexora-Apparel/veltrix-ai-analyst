@@ -309,3 +309,18 @@ Verified current main-branch source files and directory inventories:
 ### Next action — continue Stage 8A
 
 Trace all production call sites, API routes, artifact creation/promotion schema and workflows. Establish the canonical model family and determine whether any existing model components are actually wired into the prediction API. Then finish the inventory with a precise implemented/partial/not-integrated/missing/test-only matrix before changing model code.
+
+
+### Stage 8A — second-pass API, artifact and workflow trace
+
+- API router inventory: `backend/app/routes/public_predictions.py` exposes only GET `/v1/predictions` and GET `/v1/predictions/{prediction_id}`. It reads from `published_predictions` and `published_prediction_markets`; it is not a publisher.
+- `backend/app/main.py` mounts the readiness and public-predictions routers. No inference or publish route is mounted.
+- `backend/app/models/prediction_engine.py` validates a production-approved, PIT-certified attack/defence artifact and verified canonical team mappings, calculates all five market groups, then returns `publication_status=NOT_PUBLISHED`. Its uncertainty status is `NOT_YET_CALIBRATED` and coverage is empty.
+- `backend/app/research/train_final_model.py` creates a retrospective attack/defence artifact with `deployment_status=RESEARCH_ARTIFACT_ONLY` and `temporal_certification=RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED`; it explicitly retains Elo only as a comparator. This artifact cannot satisfy the production inference gate.
+- `backend/app/orchestration/hierarchical_predictions.py` provides a separate in-memory hierarchical forecast/audit path, but is explicitly inert without an approved release and does not persist/publish.
+- Workflow inventory contains Stage 6 capture/materialization and Stage 7 evaluation, plus historical/retrospective training workflows; there is no dedicated Stage 8 daily inference/publisher workflow.
+- Inspected `backend/app/db/store.py` for published prediction/model artifact write methods; no matching prediction publication insertion method was found in that module. This is scoped to that file, not a full SQL migration audit.
+
+### Corrected Stage 8A position
+
+Stage 8A is **partially complete**: model, feature, tier, inference boundary, API read contract and workflow inventory have been mapped. Remaining audit work is to inspect migrations and all persistence interfaces, verify artifact registry/promotion semantics, trace actual model inference call sites and finish a source-to-API data-flow diagram. No prediction code has been changed.
