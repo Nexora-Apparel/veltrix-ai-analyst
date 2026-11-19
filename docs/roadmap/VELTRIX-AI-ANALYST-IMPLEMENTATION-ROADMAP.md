@@ -134,7 +134,7 @@ For value betting and any applicable model promotion gates, preserve the strict 
 - Production inference sets uncertainty status to `NOT_YET_CALIBRATED` and emits empty coverage metadata. It must not be treated as Strong/Medium/Low-calibrated output.
 - The evidence tier scorer and tier-calibration evaluator exist, and tests exist, but the audit has not established a production snapshot-to-signal builder, frozen calibrated policy artifact, or end-to-end tier propagation into persisted/public API predictions.
 - Hierarchical orchestration requires `release.approved`; it creates in-memory audited predictions only and explicitly performs no provider calls or production persistence.
-- The production inference engine returns `publication_status=NOT_PUBLISHED`; daily scheduling, persistence, idempotent publication and API readback remain separate work.
+- The production inference engine returns `publication_status=NOT_PUBLISHED`. The public API route is read-only and only reads already-published rows; the inspected DB store has no prediction insertion/publishing methods, and the workflow inventory has no Stage 8 publisher. Thus the read contract exists, but the production write/orchestration path is missing.
 - The final retrospective training artifact deliberately marks itself `RESEARCH_ARTIFACT_ONLY` and `RETROSPECTIVE_EVENT_TIME_NOT_PIT_CERTIFIED`. It cannot be used for production inference or prospective certification.
 - Do not treat retrospective model hard-coded priors as the requested governed sparse-data fallback. The fallback path must be developed and validated separately.
 
