@@ -24,6 +24,27 @@ from app.canonicalization import (
 
 EXPECTED_DATABASE = "veltrix_ai_analyst"
 EXECUTE_CONFIRMATION = "APPLY_ONE_APPROVED_CANONICAL_SCOPE"
+REQUIRED_MIGRATIONS = {
+    "007_canonical_entity_layer.sql",
+    "009_canonical_identity_review_cases.sql",
+    "012_database_observed_timestamps.sql",
+    "013_target_fixture_pre_match_gate.sql",
+    "014_prediction_publication_storage.sql",
+}
+
+
+def _missing_required_migrations(applied_versions: set[str]) -> list[str]:
+    return sorted(REQUIRED_MIGRATIONS - applied_versions)
+
+
+def _require_write_migrations(connection: psycopg.Connection[Any]) -> None:
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT version FROM public.schema_migrations")
+        applied = {row[0] for row in cursor.fetchall()}
+    missing = _missing_required_migrations(applied)
+    if missing:
+        raise ValueError("CANONICAL_SCOPE_REQUIRED_MIGRATIONS_MISSING:" + ",".join(missing))
+
 
 
 def _approved_scopes(connection: psycopg.Connection[Any]) -> list[CanonicalMaterializationScope]:
@@ -118,6 +139,7 @@ def run(
                 connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
                 connection.execute("SET LOCAL lock_timeout = '15s'")
                 connection.execute("SET LOCAL statement_timeout = '180s'")
+                _require_write_migrations(connection)
                 plan = build_canonical_materialization_plan(connection, scope)
                 if not plan.ready:
                     reports.append({
