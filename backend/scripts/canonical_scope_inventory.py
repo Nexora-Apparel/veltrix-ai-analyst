@@ -129,8 +129,11 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
 
                 cur.execute("""
                     SELECT count(*) AS competition_rows,
-                           count(*) FILTER (WHERE source_observation_id IS NOT NULL) AS observation_linked,
-                           count(*) FILTER (WHERE provenance_ok) AS provenance_complete
+                           count(*) FILTER (WHERE q.source_observation_id IS NOT NULL) AS observation_linked,
+                           count(*) FILTER (WHERE q.provenance_ok) AS provenance_complete,
+                           count(ci.id) AS canonical_linked_competitions,
+                           count(ci.id) FILTER (WHERE ci.mapping_status='REVIEW_REQUIRED') AS identity_review_required,
+                           count(ci.id) FILTER (WHERE ci.mapping_status='CONFLICT') AS identity_conflicts
                     FROM (
                         SELECT p.*, (
                             o.id IS NOT NULL AND o.provider=p.provider AND o.source_id=p.source_id
@@ -153,6 +156,9 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                         LEFT JOIN veltrix_ai_analyst.provider_responses r ON r.id=s.provider_response_id
                         WHERE p.provider=%s AND p.source_id=%s AND p.provider_competition_id=%s
                     ) q
+                    LEFT JOIN veltrix_ai_analyst.provider_competition_identity_links ci
+                      ON ci.provider=q.provider AND ci.source_id=q.source_id
+                     AND ci.provider_competition_id=q.provider_competition_id
                 """, (approval["provider"], approval["source_id"], comp_id))
                 competition_counts = dict(cur.fetchone())
 
@@ -166,7 +172,10 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                     SELECT count(*) AS referenced_team_ids,
                            count(t.provider_team_id) AS catalogued_teams,
                            count(*) FILTER (WHERE t.source_observation_id IS NOT NULL) AS observation_linked_teams,
-                           count(*) FILTER (WHERE provenance_ok) AS provenance_complete_teams
+                           count(*) FILTER (WHERE provenance_ok) AS provenance_complete_teams,
+                           count(ti.id) AS canonical_linked_teams,
+                           count(ti.id) FILTER (WHERE ti.mapping_status='REVIEW_REQUIRED') AS identity_review_required,
+                           count(ti.id) FILTER (WHERE ti.mapping_status='CONFLICT') AS identity_conflicts
                     FROM ids
                     LEFT JOIN (
                         SELECT team.*, (
@@ -189,11 +198,17 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                         ) s ON TRUE
                         LEFT JOIN veltrix_ai_analyst.provider_responses r ON r.id=s.provider_response_id
                     ) t ON t.provider=%s AND t.source_id=%s AND t.provider_team_id=ids.team_id
+                    LEFT JOIN veltrix_ai_analyst.provider_team_identity_links ti
+                      ON ti.provider=t.provider AND ti.source_id=t.source_id
+                     AND ti.provider_team_id=t.provider_team_id
                 """, (approval["provider"],approval["source_id"],comp_id,approval["provider"],approval["source_id"],comp_id,approval["provider"],approval["source_id"]))
                 team_counts = dict(cur.fetchone())
 
                 cur.execute("""
                     SELECT count(f.id) AS linked_fixture_rows,
+                           count(source_link.id) AS source_links,
+                           count(source_link.id) FILTER (WHERE source_link.mapping_status='REVIEW_REQUIRED') AS source_link_review_required,
+                           count(source_link.id) FILTER (WHERE source_link.mapping_status='CONFLICT') AS source_link_conflicts,
                            count(*) FILTER (WHERE f.identity_status='VERIFIED') AS identity_verified,
                            count(*) FILTER (WHERE f.identity_status='IDENTITY_REVIEW_REQUIRED') AS identity_review_required,
                            count(*) FILTER (WHERE f.identity_status='CONFLICT') AS identity_conflicts,
