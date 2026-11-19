@@ -29,8 +29,7 @@ def snapshot_digest(row: dict) -> str:
     }
     immutable_features = dict(row)
     for key in label_keys:
-        if key in immutable_features:
-            immutable_features[key] = None
+        immutable_features[key] = None
     return hashlib.sha256(canonical_json(immutable_features).encode("utf-8")).hexdigest()
 
 
