@@ -74,9 +74,15 @@ def test_chronological_selection_scores_multiple_development_folds():
         ChronologicalFold(origin + timedelta(days=76), origin + timedelta(days=105)),
         ChronologicalFold(origin + timedelta(days=106), origin + timedelta(days=145)),
     )
+    availability = {
+        row.fixture_id: row.kickoff_at + timedelta(hours=1)
+        for row in rows
+    }
     selection = select_hierarchical_hyperparameters(
         rows,
         folds,
+        label_available_at=availability,
+        evaluation_as_of=origin + timedelta(days=200),
         half_lives=(180.0, 365.0),
         team_ridges=(0.5, 2.0),
         competition_ridges=(1.0, 4.0),
@@ -103,7 +109,7 @@ def test_tuning_excludes_labels_not_available_at_the_fold_cutoff():
         for row in rows
     }
 
-    # Forty-six matches have kicked off by the cutoff, but twenty-one results
+    # Forty-five matches have kicked off by the cutoff, but twenty results
     # were not imported/observed until day 50. Only 25 labels are trainable.
     import pytest
 
