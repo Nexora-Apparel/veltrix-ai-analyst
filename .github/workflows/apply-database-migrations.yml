@@ -1,6 +1,10 @@
 name: Apply checksum-verified database migrations
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/migrations/*.sql'
   workflow_dispatch:
     inputs:
       confirm_migrations:
@@ -21,7 +25,7 @@ permissions:
 
 jobs:
   migrate:
-    if: inputs.confirm_migrations == 'APPLY_CHECKSUM_VERIFIED_MIGRATIONS'
+    if: github.event_name == 'push' || inputs.confirm_migrations == 'APPLY_CHECKSUM_VERIFIED_MIGRATIONS'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: veltrix-historical-import
@@ -596,4 +600,105 @@ jobs:
           print("HISTORICAL_EVIDENCE_PRESERVED: 1243+ observations, 2884+ sightings, 115+ responses")
           print("PIT_HISTORY_PRESERVED: historical system_observed_at values remain NULL")
           print("PUBLICATION_GATE_VERIFIED: no prediction was published by schema migration")
+          PY
+
+      - name: Verify automated identity adjudication migration 015
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import psycopg
+
+          migration = Path("migrations/015_automated_identity_adjudication.sql")
+          checksum = hashlib.sha256(migration.read_bytes()).hexdigest()
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != "veltrix_ai_analyst":
+                  raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
+              recorded = connection.execute(
+                  "SELECT checksum FROM public.schema_migrations WHERE version = %s",
+                  (migration.name,),
+              ).fetchone()
+              if recorded is None or recorded[0].strip() != checksum:
+                  raise SystemExit("MIGRATION_015_CHECKSUM_NOT_APPLIED")
+
+              required_columns = {
+                  "policy_version", "confidence", "decision_basis",
+              }
+              columns = {
+                  row[0] for row in connection.execute(
+                      """
+                      SELECT column_name
+                      FROM information_schema.columns
+                      WHERE table_schema='veltrix_ai_analyst'
+                        AND table_name='canonical_identity_review_case_events'
+                      """
+                  ).fetchall()
+              }
+              if not required_columns.issubset(columns):
+                  raise SystemExit("MIGRATION_015_CASE_EVENT_COLUMNS_MISSING")
+
+              required_relations = {
+                  "canonical_identity_review_cases",
+                  "canonical_identity_review_case_events",
+                  "effective_canonical_identity_review_cases",
+              }
+              relations = {
+                  row[0] for row in connection.execute(
+                      """
+                      SELECT c.relname
+                      FROM pg_class c
+                      JOIN pg_namespace n ON n.oid=c.relnamespace
+                      WHERE n.nspname='veltrix_ai_analyst'
+                      """
+                  ).fetchall()
+              }
+              if not required_relations.issubset(relations):
+                  raise SystemExit("MIGRATION_015_REVIEW_RELATIONS_MISSING")
+
+              decisions = connection.execute(
+                  """
+                  SELECT event_type, COUNT(*)
+                  FROM veltrix_ai_analyst.canonical_identity_review_case_events
+                  WHERE reviewer_id='VELTRIX_CBF_AUTOMATED_ADJUDICATION_V1'
+                    AND policy_version='cbf-2026-identity-adjudication-v1'
+                  GROUP BY event_type
+                  """
+              ).fetchall()
+              counts = dict(decisions)
+              if counts.get("AUTOMATED_CONFIRMED") != 28 or counts.get("AUTOMATED_DEFERRED") != 1:
+                  raise SystemExit(f"MIGRATION_015_AUTOMATED_DECISION_COUNTS_INVALID:{counts}")
+
+              unresolved = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM veltrix_ai_analyst.effective_canonical_identity_review_cases
+                  WHERE effective_human_review_required IS TRUE
+                  """
+              ).fetchone()[0]
+              if unresolved != 0:
+                  raise SystemExit(f"MIGRATION_015_HUMAN_REVIEW_QUEUE_NOT_CLOSED:{unresolved}")
+
+              pit_status = connection.execute(
+                  """
+                  SELECT effective_case_status
+                  FROM veltrix_ai_analyst.effective_canonical_identity_review_cases
+                  WHERE case_key='BRAZIL_SERIE_B_RUN_3_PIT_TIMESTAMP_GAP'
+                  """
+              ).fetchone()
+              if pit_status is None or pit_status[0] != "AUTOMATED_DEFERRED":
+                  raise SystemExit("MIGRATION_015_PIT_CASE_NOT_DEFERRED")
+
+              alias_view = connection.execute(
+                  "SELECT pg_get_viewdef('veltrix_ai_analyst.effective_canonical_team_aliases'::regclass)"
+              ).fetchone()[0]
+              dedup_view = connection.execute(
+                  "SELECT pg_get_viewdef('veltrix_ai_analyst.effective_canonical_fixture_deduplication'::regclass)"
+              ).fetchone()[0]
+              if "HUMAN_CONFIRMED" not in alias_view or "HUMAN_CONFIRMED" not in dedup_view:
+                  raise SystemExit("AUTOMATED_DECISION_MUST_NOT_AUTHORIZE_CANONICAL_MERGES")
+
+          print(f"MIGRATION_015_VERIFIED: {checksum}")
+          print("AUTOMATED_CASES: 28 confirmed, 1 deferred; zero human-action cases")
+          print("PIT_GAP: deferred and excluded; canonical merge/dedup views remain human-confirmed-only")
           PY
