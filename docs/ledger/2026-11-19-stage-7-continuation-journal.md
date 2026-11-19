@@ -354,3 +354,31 @@ Project `young-wind-27772160`, default production branch `br-jolly-darkness-balg
 **Interpretation:** the repository has a production inference boundary and database publication schema/gates, but there is currently no production-approved model artifact and no published production predictions. This confirms Stage 8 must not be treated as a wiring-only release; model artifact PIT certification and application-level inference/persistence are both outstanding.
 
 No database rows were changed. No provider or odds API was called. No migration was applied.
+
+
+### Stage 8A — source-to-production inventory closed
+
+**Status: COMPLETE.** The audit covered model modules, feature modules, research and validation code, test inventory, API routes/contracts, application entrypoint, workflows, migrations and production Neon artifact/publication state.
+
+Canonical classification:
+
+| Capability | Classification |
+|---|---|
+| Elo | Implemented; retrospective comparator only |
+| Attack/defence Poisson | Implemented; production inference boundary supports it, but only research artifacts currently exist |
+| Hierarchical Poisson | Implemented; used by Stage 7 research evaluator and separate gated in-memory orchestration |
+| Poisson scoreline/Dixon–Coles | Implemented; derives all five market groups |
+| Competition/global pooling for unseen teams | Implemented in hierarchical model as zero-centered unseen team effects with retained competition/global context; not connected to production inference artifact |
+| Hard-coded retrospective no-history rates | Exists, but research-only and not approved as production fallback |
+| Strong/Medium/Low evidence scoring | Implemented as a policy-driven scorer |
+| Tier-by-market calibration diagnostics | Implemented; no production-calibrated policy/propagation verified |
+| PIT feature admission and rights/identity checks | Implemented |
+| Production inference contract | Implemented fail-closed; no qualifying production artifact exists |
+| Prediction/publication database schema and triggers | Implemented in migrations 008 and 014 |
+| Public prediction read API | Implemented; GET-only over published views |
+| Application inference/persistence writer and daily publisher | Missing |
+| Production-approved PIT model artifact | Missing; both production artifacts are research-only |
+| Production prediction rows/publications | None at audit time |
+| Android UI | Existing UI preserved; end-to-end live prediction integration remains pending |
+
+**Stage 8A is complete. Stage 7 certification remains blocked separately** by zero settled prospective labels/folds and must continue accumulating evidence. The next build work is Stage 8B: governed calculation and sparse-data inference; Stage 8C: reliability policy calibration and production propagation. No production code has been changed during this audit.
