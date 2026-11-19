@@ -203,38 +203,88 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                 canonical_counts=dict(cur.fetchone())
 
                 cur.execute("""
-                    WITH scoped_links AS (
+                    WITH scoped_fixture_links AS (
                         SELECT source_link.id
                         FROM veltrix_ai_analyst.canonical_fixture_sources source_link
                         JOIN veltrix_ai_analyst.provider_fixtures p
                           ON p.id=source_link.provider_fixture_row_id
                         WHERE p.provider=%s AND p.source_id=%s AND p.provider_competition_id=%s
+                    ),
+                    scoped_team_links AS (
+                        SELECT link.id
+                        FROM veltrix_ai_analyst.provider_team_identity_links link
+                        WHERE link.provider=%s AND link.source_id=%s
+                          AND EXISTS (
+                              SELECT 1 FROM veltrix_ai_analyst.provider_fixtures p
+                              WHERE p.provider=%s AND p.source_id=%s AND p.provider_competition_id=%s
+                                AND (p.home_team_provider_id=link.provider_team_id
+                                     OR p.away_team_provider_id=link.provider_team_id)
+                          )
+                    ),
+                    scoped_competition_links AS (
+                        SELECT id FROM veltrix_ai_analyst.provider_competition_identity_links
+                        WHERE provider=%s AND source_id=%s AND provider_competition_id=%s
                     )
                     SELECT count(DISTINCT c.id) AS unresolved_cases
                     FROM veltrix_ai_analyst.canonical_identity_review_cases c
                     JOIN veltrix_ai_analyst.effective_canonical_identity_review_cases e ON e.id=c.id
                     WHERE e.effective_case_status NOT IN ('HUMAN_CONFIRMED','HUMAN_REJECTED','DEFERRED')
-                      AND (c.primary_fixture_source_link_id IN (SELECT id FROM scoped_links)
-                           OR c.related_fixture_source_link_id IN (SELECT id FROM scoped_links))
-                """, (approval["provider"],approval["source_id"],comp_id))
+                      AND (
+                          c.primary_fixture_source_link_id IN (SELECT id FROM scoped_fixture_links)
+                          OR c.related_fixture_source_link_id IN (SELECT id FROM scoped_fixture_links)
+                          OR c.primary_team_identity_link_id IN (SELECT id FROM scoped_team_links)
+                          OR c.related_team_identity_link_id IN (SELECT id FROM scoped_team_links)
+                          OR c.competition_identity_link_id IN (SELECT id FROM scoped_competition_links)
+                      )
+                """, (
+                    approval["provider"], approval["source_id"], comp_id,
+                    approval["provider"], approval["source_id"],
+                    approval["provider"], approval["source_id"], comp_id,
+                    approval["provider"], approval["source_id"], comp_id,
+                ))
                 unresolved=int(cur.fetchone()["unresolved_cases"])
                 cur.execute("""
-                    WITH scoped_links AS (
+                    WITH scoped_fixture_links AS (
                         SELECT source_link.id
                         FROM veltrix_ai_analyst.canonical_fixture_sources source_link
                         JOIN veltrix_ai_analyst.provider_fixtures p
                           ON p.id=source_link.provider_fixture_row_id
                         WHERE p.provider=%s AND p.source_id=%s AND p.provider_competition_id=%s
+                    ),
+                    scoped_team_links AS (
+                        SELECT link.id
+                        FROM veltrix_ai_analyst.provider_team_identity_links link
+                        WHERE link.provider=%s AND link.source_id=%s
+                          AND EXISTS (
+                              SELECT 1 FROM veltrix_ai_analyst.provider_fixtures p
+                              WHERE p.provider=%s AND p.source_id=%s AND p.provider_competition_id=%s
+                                AND (p.home_team_provider_id=link.provider_team_id
+                                     OR p.away_team_provider_id=link.provider_team_id)
+                          )
+                    ),
+                    scoped_competition_links AS (
+                        SELECT id FROM veltrix_ai_analyst.provider_competition_identity_links
+                        WHERE provider=%s AND source_id=%s AND provider_competition_id=%s
                     )
                     SELECT c.case_type, e.effective_case_status,
                            count(DISTINCT c.id) AS case_count
                     FROM veltrix_ai_analyst.canonical_identity_review_cases c
                     JOIN veltrix_ai_analyst.effective_canonical_identity_review_cases e ON e.id=c.id
-                    WHERE c.primary_fixture_source_link_id IN (SELECT id FROM scoped_links)
-                       OR c.related_fixture_source_link_id IN (SELECT id FROM scoped_links)
+                    WHERE (
+                        c.primary_fixture_source_link_id IN (SELECT id FROM scoped_fixture_links)
+                        OR c.related_fixture_source_link_id IN (SELECT id FROM scoped_fixture_links)
+                        OR c.primary_team_identity_link_id IN (SELECT id FROM scoped_team_links)
+                        OR c.related_team_identity_link_id IN (SELECT id FROM scoped_team_links)
+                        OR c.competition_identity_link_id IN (SELECT id FROM scoped_competition_links)
+                    )
                     GROUP BY c.case_type, e.effective_case_status
                     ORDER BY c.case_type, e.effective_case_status
-                """, (approval["provider"], approval["source_id"], comp_id))
+                """, (
+                    approval["provider"], approval["source_id"], comp_id,
+                    approval["provider"], approval["source_id"],
+                    approval["provider"], approval["source_id"], comp_id,
+                    approval["provider"], approval["source_id"], comp_id,
+                ))
                 review_case_breakdown = [dict(row) for row in cur.fetchall()]
                 scopes.append({
                     "competition_id": comp_id,
