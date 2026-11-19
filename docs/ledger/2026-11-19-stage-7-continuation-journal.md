@@ -392,3 +392,51 @@ Canonical classification:
 - The currently defensible near-term path is to develop and test the existing hierarchical goal-rate model using the eligible historical outcome pool for team/competition partial pooling, including its unseen-team neutral-effect behavior. Keep sparse supporting feature fields explicit and use them for measured coverage/evidence diagnostics only until paired PIT feature/outcome examples or a separately rights-cleared historical feature corpus exists.
 - Once prospective fixtures settle, the label materializer can pair each immutable snapshot with its append-only outcome label for feature-model development and later prospective validation. Historical training-only rows still cannot count as prospective certification.
 - This finding is recorded in the roadmap under Stage 8B. No model code or data was changed.
+
+
+## Stage 8B implementation checkpoint — sparse calculation provenance
+
+**Date:** 2026-11-19  
+**Branch:** `stage-8b-sparse-inference-governance`
+
+### Implemented on branch
+
+- Updated `backend/app/models/hierarchical_poisson.py` so each forecast rate reports an explicit calculation mode based on actual fitted history counts and competition membership:
+  - `TEAM_AND_COMPETITION_HISTORY`
+  - `ONE_SIDED_TEAM_HISTORY`
+  - `COMPETITION_ONLY`
+  - `TEAM_HISTORY_GLOBAL_CONTEXT`
+  - `GLOBAL_CONTEXT_ONLY`
+- The calculation continues to use the existing hierarchical attack/defence effects, competition effect and global intercept. Unseen team effects remain zero-centered under the existing ridge-regularized model; no fabricated team observations or arbitrary minimum-count thresholds were introduced.
+- Updated `backend/app/orchestration/hierarchical_predictions.py` to carry calculation mode, per-side training history counts and competition-seen status into `PredictionAuditRecord`. The audit provenance is computed independently of scoreline construction so it remains available when market calculation fails.
+- Extended `backend/tests/test_hierarchical_poisson.py` to assert the explicit mode for one-sided, competition-only, global-only, team-plus-competition and known-team/unseen-competition cases.
+- Extended `backend/tests/test_hierarchical_orchestration.py` to assert provenance is carried into the audit record.
+
+### Capture and dataset integrity review
+
+Inspected `backend/app/validation/prospective_dataset.py` and `backend/tests/test_prospective_dataset.py`.
+
+Verified source behavior in code:
+- Target rows require a system-observed, PIT-certifiable scheduled snapshot before kickoff with valid feature-engineering/training/validation rights.
+- Prior-match features are sourced only from earlier finished fixtures whose qualifying observations were observed by the target snapshot cutoff and pass rights checks.
+- Missing rolling features remain absent; explicit coverage counters remain available.
+- Target labels are attached only from a qualifying finished observation observed after the target kickoff.
+- Existing tests exercise pre-cutoff filtering, post-kickoff schedule exclusion, retrieval-only exclusion, no-history missingness, one-sided history and rolling-stat/event derivation.
+
+The next capture must therefore remain a capture-only evidence operation. It must not train or validate from a snapshot whose own fixture has not settled and must not backfill supporting statistics from the historical outcome-only import pool.
+
+### Verification status and limits
+
+- Changes are committed to the feature branch; no production branch changes have been made.
+- GitHub Actions/CI has not yet been inspected for this branch. Do not describe these tests as passing until the workflow result is fetched.
+- No provider API, The Odds API, Neon write, production migration, artifact promotion or prediction publication was performed.
+- Stage 7 certification remains blocked until prospective settled labels and walk-forward evidence accumulate.
+- Stage 8B remains in progress; this checkpoint adds auditable sparse-path provenance but does not yet complete hyperparameter selection, stress validation, feature model training or production integration.
+
+### Next actions
+
+1. Finish the sparse-mode test matrix and run CI on the branch.
+2. Run existing hierarchical stress/validation suites and chronological tuning against eligible historical outcomes only.
+3. Verify that each training label was available by the fold's prediction cutoff before it enters a fit; preserve historical-only rows as training-only.
+4. Update the dated ledger with exact workflow run/job/test results.
+5. Keep the next scheduled Stage 4 capture enabled; inspect its artifact and inserted-row lineage after it runs, without using upcoming unlabeled snapshots as supervised training data.
