@@ -89,7 +89,8 @@ def validate_rights_lineage(
             if isinstance(event_id, bool) or not isinstance(event_id, int):
                 raise ValueError(error_code)
             effective_events.append((event_at, event_id, event.get("status")))
-    if effective_events and max(effective_events, key=lambda item: (item[0], item[1]))[2] != "APPROVED":
+    latest_event = max(effective_events, key=lambda item: (item[0], item[1])) if effective_events else None
+    if latest_event is not None and latest_event[2] != "APPROVED":
         raise ValueError(error_code)
 
 
