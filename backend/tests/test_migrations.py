@@ -133,6 +133,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "012_database_observed_timestamps.sql",
             "013_target_fixture_pre_match_gate.sql",
             "014_prediction_publication_storage.sql",
+            "015_automated_identity_adjudication.sql",
         }
     )
 
@@ -175,6 +176,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "012_database_observed_timestamps.sql",
             "013_target_fixture_pre_match_gate.sql",
             "014_prediction_publication_storage.sql",
+            "015_automated_identity_adjudication.sql",
         }.issubset(migration_versions)
 
         timestamp_columns = {
