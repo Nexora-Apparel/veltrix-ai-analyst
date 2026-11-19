@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import os
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import psycopg
@@ -75,9 +75,8 @@ def test_automated_deferred_disposition_closes_human_action_queue(connection) ->
 
 def test_automated_confirmation_requires_policy_and_evidence(connection) -> None:
     case_id = _insert_pit_case(connection, "INVALID")
-    with pytest.raises(psycopg.errors.CheckViolation):
-        with connection.transaction():
-            connection.execute(
+    with pytest.raises(psycopg.errors.CheckViolation), connection.transaction():
+        connection.execute(
                 """
                 INSERT INTO veltrix_ai_analyst.canonical_identity_review_case_events (
                     case_id, event_type, reviewer_type, reviewer_id, reviewed_at,
