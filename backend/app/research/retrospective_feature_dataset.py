@@ -10,7 +10,7 @@ import argparse
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -84,7 +84,7 @@ def load_historical_rows(dsn: str) -> list[dict[str, Any]]:
 
 def _json_value(value: Any) -> Any:
     if isinstance(value, datetime):
-        return value.astimezone(timezone.utc).isoformat()
+        return value.astimezone(UTC).isoformat()
     if isinstance(value, (list, tuple)):
         return [_json_value(item) for item in value]
     if isinstance(value, dict):
@@ -137,7 +137,7 @@ def build_dataset(rows: list[dict[str, Any]]) -> dict[str, Any]:
         output_rows.append({
             "fixture_id": source["fixture_id"],
             "competition_id": source["competition_id"],
-            "kickoff_at": source["kickoff_at"].astimezone(timezone.utc).isoformat(),
+            "kickoff_at": source["kickoff_at"].astimezone(UTC).isoformat(),
             "home_team_id": source["home_team_id"],
             "away_team_id": source["away_team_id"],
             "label": {
@@ -152,7 +152,7 @@ def build_dataset(rows: list[dict[str, Any]]) -> dict[str, Any]:
                     int(source["provider_response_id"])
                     if source["provider_response_id"] is not None else None
                 ),
-                "retrieved_at": source["retrieved_at"].astimezone(timezone.utc).isoformat(),
+                "retrieved_at": source["retrieved_at"].astimezone(UTC).isoformat(),
                 "availability_basis": source["availability_basis"],
                 "point_in_time_certifiable": bool(source["point_in_time_certifiable"]),
                 "payload_sha256": str(source["payload_sha256"]).strip(),
@@ -172,7 +172,7 @@ def build_dataset(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "provider": PROVIDER,
         "source_id": SOURCE_ID,
         "provenance_mode": PROVENANCE_MODE,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "row_count": len(output_rows),
         "competition_count": len({row["competition_id"] for row in output_rows}),
         "validation_eligible": False,
