@@ -17,6 +17,10 @@ class FixtureIdentity:
     home_team_id: str
     away_team_id: str
     kickoff_at: datetime
+    canonical_competition_id: str | None = None
+    canonical_fixture_id: str | None = None
+    provider_home_team_id: str | None = None
+    provider_away_team_id: str | None = None
 
     def __post_init__(self) -> None:
         for name in (
@@ -90,6 +94,8 @@ class ProspectiveDatasetRow:
     label_observed_at: datetime | None
     label_observation_id: int | None
     label_lineage: dict[str, Any] | None
+    canonical_fixture_id: str | None = None
+    canonical_competition_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,8 +134,8 @@ def _validate_observation_fixture_identity(
     payload = observation.payload
     expected = {
         "competition_id": fixture.competition_id,
-        "home_team_id": fixture.home_team_id,
-        "away_team_id": fixture.away_team_id,
+        "home_team_id": fixture.provider_home_team_id or fixture.home_team_id,
+        "away_team_id": fixture.provider_away_team_id or fixture.away_team_id,
     }
     for field, value in expected.items():
         supplied = payload.get(field)
@@ -417,7 +423,7 @@ def build_prospective_dataset(
             result = _finished_result(observation)
             if result is not None and observation.observed_at > fixture.kickoff_at:
                 finished_matches_by_competition[
-                    (fixture.provider, fixture.source_id, fixture.competition_id)
+                    (fixture.provider, fixture.source_id, fixture.canonical_competition_id or fixture.competition_id)
                 ].append((fixture, observation, result[0], result[1]))
 
     rows: list[ProspectiveDatasetRow] = []
@@ -436,7 +442,7 @@ def build_prospective_dataset(
         snapshot = max(pre_match_snapshots, key=lambda row: (row.observed_at, row.sighting_id))
         cutoff = snapshot.observed_at
         competition_matches = finished_matches_by_competition[
-            (fixture.provider, fixture.source_id, fixture.competition_id)
+            (fixture.provider, fixture.source_id, fixture.canonical_competition_id or fixture.competition_id)
         ]
         eligible_by_fixture: dict[str, tuple[FixtureIdentity, FixtureObservation, int, int]] = {}
         for item in competition_matches:
@@ -529,6 +535,8 @@ def build_prospective_dataset(
                 label_observed_at=label_observed_at,
                 label_observation_id=label_observation_id,
                 label_lineage=label_lineage,
+                canonical_fixture_id=fixture.canonical_fixture_id,
+                canonical_competition_id=(fixture.canonical_competition_id or fixture.competition_id),
             )
         )
     return tuple(rows)

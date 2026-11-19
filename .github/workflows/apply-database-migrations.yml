@@ -916,3 +916,52 @@ jobs:
           print("AUTOMATED_CASES: 28 confirmed, 1 deferred; zero human-action cases")
           print("PIT_GAP: deferred and excluded; canonical merge/dedup views remain human-confirmed-only")
           PY
+
+
+      - name: Verify immutable prospective feature snapshot migration 016
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import psycopg
+
+          migration = Path("migrations/016_immutable_prospective_feature_snapshots.sql")
+          checksum = hashlib.sha256(migration.read_bytes()).hexdigest()
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != "veltrix_ai_analyst":
+                  raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
+              recorded = connection.execute(
+                  "SELECT checksum FROM public.schema_migrations WHERE version = %s",
+                  (migration.name,),
+              ).fetchone()
+              if recorded is None or recorded[0].strip() != checksum:
+                  raise SystemExit("MIGRATION_016_CHECKSUM_NOT_APPLIED")
+              relation = connection.execute(
+                  """
+                  SELECT c.relkind
+                  FROM pg_class c
+                  JOIN pg_namespace n ON n.oid=c.relnamespace
+                  WHERE n.nspname='veltrix_ai_analyst'
+                    AND c.relname='prospective_feature_snapshots'
+                  """
+              ).fetchone()
+              if relation != ("r",):
+                  raise SystemExit("MIGRATION_016_SNAPSHOT_TABLE_MISSING")
+              trigger = connection.execute(
+                  """
+                  SELECT t.tgenabled, p.proname
+                  FROM pg_trigger t
+                  JOIN pg_class c ON c.oid=t.tgrelid
+                  JOIN pg_namespace n ON n.oid=c.relnamespace
+                  JOIN pg_proc p ON p.oid=t.tgfoid
+                  WHERE n.nspname='veltrix_ai_analyst'
+                    AND c.relname='prospective_feature_snapshots'
+                    AND t.tgname='prospective_feature_snapshots_append_only'
+                    AND NOT t.tgisinternal
+                  """
+              ).fetchone()
+              if trigger is None or trigger[0] not in ('O', 'A') or trigger[1] != 'reject_prospective_snapshot_mutation':
+                  raise SystemExit("MIGRATION_016_APPEND_ONLY_TRIGGER_MISSING")
+          print(f"MIGRATION_016_VERIFIED: {checksum}")
+          PY

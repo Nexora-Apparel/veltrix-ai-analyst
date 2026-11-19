@@ -299,3 +299,58 @@ def test_one_sided_sparse_history_does_not_fill_missing_team_with_zero_rates():
     assert features["away_matches_last5"] == 0.0
     assert "away_goals_for_per_match_last5" not in features
     assert "away_goals_against_per_match_last5" not in features
+
+
+def test_canonical_competition_key_unifies_provider_scope_for_team_history():
+    past = FixtureIdentity(
+        fixture_id="provider-league-a:past",
+        provider="5DollarFootballAPI",
+        source_id="5dollarfootballapi",
+        competition_id="provider-league-a",
+        home_team_id="canonical-team-a",
+        away_team_id="canonical-team-c",
+        kickoff_at=BASE + timedelta(days=1),
+        canonical_competition_id="canonical-league",
+        provider_home_team_id="provider-team-a",
+        provider_away_team_id="provider-team-c",
+    )
+    target = FixtureIdentity(
+        fixture_id="provider-league-b:target",
+        provider="5DollarFootballAPI",
+        source_id="5dollarfootballapi",
+        competition_id="provider-league-b",
+        home_team_id="canonical-team-a",
+        away_team_id="canonical-team-b",
+        kickoff_at=BASE + timedelta(days=5),
+        canonical_competition_id="canonical-league",
+        provider_home_team_id="provider-team-a",
+        provider_away_team_id="provider-team-b",
+    )
+    past_result = observation(
+        past.fixture_id, 201, 201, BASE + timedelta(days=2), "finished", 2, 1
+    )
+    past_result.payload.update({
+        "competition_id": "provider-league-a",
+        "home_team_id": "provider-team-a",
+        "away_team_id": "provider-team-c",
+        "kickoff_at": past.kickoff_at.isoformat(),
+        "provenance": {"provider_record_id": "past"},
+    })
+    target_schedule = observation(
+        target.fixture_id, 202, 202, BASE + timedelta(days=4), "scheduled"
+    )
+    target_schedule.payload.update({
+        "competition_id": "provider-league-b",
+        "home_team_id": "provider-team-a",
+        "away_team_id": "provider-team-b",
+        "kickoff_at": target.kickoff_at.isoformat(),
+        "provenance": {"provider_record_id": "target"},
+    })
+
+    rows = build_prospective_dataset(
+        [past, target], [past_result, target_schedule]
+    )
+    target_row = next(row for row in rows if row.fixture_id == target.fixture_id)
+
+    assert target_row.features["home_matches_last5"] == 1.0
+    assert target_row.canonical_competition_id == "canonical-league"
