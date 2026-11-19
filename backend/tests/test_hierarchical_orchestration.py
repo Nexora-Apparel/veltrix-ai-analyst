@@ -85,6 +85,10 @@ def test_orchestration_emits_market_results_and_audit_for_approved_release():
     assert result.evidence.tier.value == "STRONG"
     assert result.audit.release_id == "test-release"
     assert result.audit.training_cutoff_at <= result.audit.generated_at
+    assert result.audit.calculation_mode == "TEAM_AND_COMPETITION_HISTORY"
+    assert result.audit.home_team_history > 0
+    assert result.audit.away_team_history > 0
+    assert result.audit.competition_seen is True
     assert result.audit.generated_at == datetime(2026, 3, 1, tzinfo=UTC)
     assert result.markets["1X2"].available
     assert result.markets["BTTS"].available
