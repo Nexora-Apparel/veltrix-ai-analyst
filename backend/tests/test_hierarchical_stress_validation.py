@@ -109,7 +109,7 @@ def test_tuning_excludes_labels_not_available_at_the_fold_cutoff():
         for row in rows
     }
 
-    # Forty-five matches have kicked off by the cutoff, but twenty results
+    # Forty-six matches have kicked off by the cutoff, but twenty-one results
     # were not imported/observed until day 50. Only 25 labels are trainable.
     import pytest
 
@@ -154,5 +154,5 @@ def test_tuning_accepts_labels_only_after_their_recorded_availability_time():
     assert selection.protocol == (
         "EXPANDING_WINDOW_LABEL_AVAILABILITY_AWARE_PAIRED_POISSON_NLL_V2"
     )
-    assert selection.leaderboard[0].scored_matches == 10
+    assert selection.leaderboard[0].scored_matches == 9
     assert selection.leaderboard[0].folds_scored == 1
