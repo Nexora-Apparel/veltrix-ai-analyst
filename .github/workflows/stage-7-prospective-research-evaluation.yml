@@ -1,0 +1,140 @@
+name: Stage 7 prospective research evaluation and certification gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/stage-7-prospective-research-evaluation.yml'
+  workflow_run:
+    workflows: ["Stage 6 daily immutable snapshot and outcome materialization"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-stage7-prospective-research
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    if: >-
+      github.event_name == 'push' ||
+      github.event.workflow_run.conclusion == 'success'
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend
+        run: python -m pip install -e .
+
+      - name: Run read-only expanding-window research evaluation
+        run: |
+          mkdir -p artifacts
+          python scripts/evaluate_prospective_hierarchical.py \
+            --output artifacts/prospective-model-evaluation.json \
+            --dataset-output artifacts/prospective-dataset.json \
+            --bootstrap-replicates 200
+
+      - name: Apply independent production certification gates
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report_path = Path("artifacts/prospective-model-evaluation.json")
+          dataset_path = Path("artifacts/prospective-dataset.json")
+          report = json.loads(report_path.read_text())
+          dataset = json.loads(dataset_path.read_text())
+
+          gates = {
+              "walk_forward_fixtures_per_market": {
+                  "observed": report.get("fixtures", 0),
+                  "required": 1000,
+                  "passed": report.get("fixtures", 0) >= 1000,
+              },
+              "settled_prospective_fixtures": {
+                  "observed": dataset.get("settled_label_rows", 0),
+                  "required": 300,
+                  "passed": dataset.get("settled_label_rows", 0) >= 300,
+              },
+              "distinct_kickoff_dates": {
+                  "observed": dataset.get("distinct_kickoff_dates", 0),
+                  "required": 90,
+                  "passed": dataset.get("distinct_kickoff_dates", 0) >= 90,
+              },
+              "timestamped_odds_coverage": {
+                  "observed": None,
+                  "required": 0.98,
+                  "passed": False,
+                  "status": "NOT_EVALUATED_VALUE_BETTING_REMAINS_LOCKED",
+              },
+              "positive_net_roi_and_positive_lower_95_percent_bound": {
+                  "observed": None,
+                  "required": "net ROI > 0 and lower 95% bound > 0",
+                  "passed": False,
+                  "status": "NOT_EVALUATED_VALUE_BETTING_REMAINS_LOCKED",
+              },
+              "1x2_beats_bookmaker_brier_and_log_loss": {
+                  "observed": None,
+                  "required": "better than timestamped bookmaker baseline on both metrics",
+                  "passed": False,
+                  "status": "BOOKMAKER_COMPARISON_NOT_YET_CERTIFIED",
+              },
+          }
+          core_passed = all(
+              gates[key]["passed"]
+              for key in (
+                  "walk_forward_fixtures_per_market",
+                  "settled_prospective_fixtures",
+                  "distinct_kickoff_dates",
+              )
+          )
+          report["certification_gates"] = gates
+          report["production_certification"] = (
+              "ELIGIBLE_FOR_FORMAL_REVIEW"
+              if core_passed and all(
+                  gate["passed"] for gate in gates.values()
+              )
+              else "BLOCKED_INSUFFICIENT_OR_UNCERTIFIED_EVIDENCE"
+          )
+          report["production_promotion"] = "LOCKED"
+          report["value_betting"] = "LOCKED"
+          report["release_eligible"] = False
+          report["certification_is_approval"] = False
+          report_path.write_text(
+              json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n"
+          )
+          print(json.dumps({
+              "status": report["status"],
+              "fixtures_evaluated": report.get("fixtures", 0),
+              "settled_labels": dataset.get("settled_label_rows", 0),
+              "distinct_dates": dataset.get("distinct_kickoff_dates", 0),
+              "production_certification": report["production_certification"],
+              "production_promotion": "LOCKED",
+              "value_betting": "LOCKED",
+          }, sort_keys=True))
+          PY
+
+      - name: Upload chronological evaluation and certification gate
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-stage7-prospective-research-evaluation
+          path: |
+            backend/artifacts/prospective-model-evaluation.json
+            backend/artifacts/prospective-dataset.json
+          if-no-files-found: error
+          retention-days: 90
