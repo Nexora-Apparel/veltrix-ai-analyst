@@ -399,7 +399,7 @@ The production migration workflow applied migration 017. The resulting Stage 6 p
 
 ### 10.9 Prospective coverage distribution and current daily-volume constraint
 
-The persisted 59-row prospective dataset covers these actual kickoff dates:
+The persisted 59-row prospective dataset stores kickoff timestamps in UTC. The following distribution converts each timestamp to WAT (UTC+1) before grouping:
 
 | Kickoff date (WAT calendar date) | Eligible fixtures |
 |---|---:|
@@ -407,8 +407,8 @@ The persisted 59-row prospective dataset covers these actual kickoff dates:
 | 2026-11-20 | 4 |
 | 2026-11-21 | 28 |
 | 2026-11-22 | 20 |
-| 2026-11-23 | 4 |
-| 2026-11-24 | 1 |
+| 2026-11-23 | 3 |
+| 2026-11-24 | 2 |
 | **Total** | **59** |
 
 The seven approved competition scopes currently provide a highly uneven daily fixture volume. Only 28 fixtures fall on the busiest date; most dates are well below the 25-fixture target. This is an observed inventory constraint, not a reason to pad predictions. Before Stage 8, evaluate expansion to additional provider competitions only through explicit rights approval and the same canonical identity/provenance controls. If coverage is not expanded, publish only the smaller eligible count and report the shortfall.
