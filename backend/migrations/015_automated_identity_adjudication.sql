@@ -189,7 +189,7 @@ SELECT
     'VELTRIX_CBF_AUTOMATED_ADJUDICATION_V1',
     statement_timestamp(),
     'https://github.com/Nexora-Apparel/veltrix-ai-analyst/blob/main/docs/ledger/2026-11-19-automated-identity-adjudication.md',
-    '04fa83e4338ca839760a4ad2e6d3e804bd191de6a60bc96ac7a7417aca8f38d1',
+    '5fd13c8bb8da8e18b739d5f063e8105f129e87623e9a2b5dd12808b169bf5d2f',
     latest.id,
     'Policy cbf-2026-identity-adjudication-v1: this active provider team ID appears in exactly 38 FINISHED fixtures (19 home, 19 away); all ordered home/away pairings reconcile to the official CBF 2026 Série B schedule (380/380). Provider ID and raw labels remain unchanged; no canonical merge.'
 FROM veltrix_ai_analyst.provider_team_identity_links link
@@ -236,7 +236,7 @@ SELECT
     'VELTRIX_CBF_AUTOMATED_ADJUDICATION_V1',
     statement_timestamp(),
     'https://github.com/Nexora-Apparel/veltrix-ai-analyst/blob/main/docs/ledger/2026-11-19-automated-identity-adjudication.md',
-    '04fa83e4338ca839760a4ad2e6d3e804bd191de6a60bc96ac7a7417aca8f38d1',
+    '5fd13c8bb8da8e18b739d5f063e8105f129e87623e9a2b5dd12808b169bf5d2f',
     latest.id,
     'Provider ID 3808811746 appears only in the UNKNOWN duplicate Goiás-América row and has zero FINISHED appearances; ID 1102583842 has 38 FINISHED appearances and matches the official CBF América-MG schedule. Preserve both source IDs; no alias merge.'
 FROM veltrix_ai_analyst.provider_team_identity_links link
@@ -277,7 +277,7 @@ SELECT
     'VELTRIX_CBF_AUTOMATED_ADJUDICATION_V1',
     statement_timestamp(),
     'https://github.com/Nexora-Apparel/veltrix-ai-analyst/blob/main/docs/ledger/2026-11-19-automated-identity-adjudication.md',
-    '04fa83e4338ca839760a4ad2e6d3e804bd191de6a60bc96ac7a7417aca8f38d1',
+    '5fd13c8bb8da8e18b739d5f063e8105f129e87623e9a2b5dd12808b169bf5d2f',
     latest.id,
     'Provider competition 522514093 is Brazil Série B 2026; official CBF schedule and the reconciled 380-fixture corpus confirm the competition and season context.'
 FROM veltrix_ai_analyst.provider_competition_identity_links link
@@ -395,7 +395,7 @@ SELECT
     'VELTRIX_CBF_AUTOMATED_ADJUDICATION_V1',
     statement_timestamp(),
     'https://github.com/Nexora-Apparel/veltrix-ai-analyst/blob/main/docs/ledger/2026-11-19-automated-identity-adjudication.md',
-    '04fa83e4338ca839760a4ad2e6d3e804bd191de6a60bc96ac7a7417aca8f38d1',
+    '5fd13c8bb8da8e18b739d5f063e8105f129e87623e9a2b5dd12808b169bf5d2f',
     decisions.notes,
     'cbf-2026-identity-adjudication-v1',
     decisions.confidence,
