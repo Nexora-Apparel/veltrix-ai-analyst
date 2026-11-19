@@ -137,3 +137,23 @@ def test_write_gate_requires_every_canonical_and_prediction_migration():
     assert MODULE._missing_required_migrations(applied) == [
         "014_prediction_publication_storage.sql"
     ]
+
+
+def test_apply_requires_one_effective_approval_for_exact_scope():
+    connection = FakeConnection()
+    connection.approvals.append({
+        **connection.approvals[0],
+        "approval_id": "approval-b",
+    })
+    try:
+        MODULE.run(
+            connection,
+            execute=True,
+            provider="ProviderA",
+            source_id="provider-a",
+            competition_id="league-1",
+        )
+    except ValueError as exc:
+        assert str(exc) == "EXACT_SCOPE_MUST_RESOLVE_TO_ONE_EFFECTIVE_APPROVAL"
+    else:
+        raise AssertionError("ambiguous active approvals must block writes")
