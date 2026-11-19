@@ -152,6 +152,9 @@ def estimate_rho_from_development_folds(
             evaluation_as_of.tzinfo is None or evaluation_as_of.utcoffset() is None
         ):
             raise ValueError("availability-aware rho estimation requires evaluation_as_of")
+    for fold in ordered_folds:
+        if label_available_at is not None and fold.train_cutoff > evaluation_as_of:
+            raise ValueError("fold training cutoff cannot be later than evaluation_as_of")
     for previous, current in pairwise(ordered_folds):
         if current.train_cutoff < previous.validation_end:
             raise ValueError("chronological validation windows overlap")
