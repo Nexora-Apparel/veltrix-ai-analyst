@@ -78,4 +78,4 @@ jobs:
             --execute
       - name: Report preflight-only mode
         if: ${{ inputs.execute_backfill != true }}
-        run: echo "PREFLIGHT_ONLY: no historical feature backfill requests were sent."
+        run: echo "PREFLIGHT_ONLY - no historical feature backfill requests were sent."
