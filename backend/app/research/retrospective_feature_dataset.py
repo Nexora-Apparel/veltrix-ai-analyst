@@ -94,6 +94,23 @@ def _json_value(value: Any) -> Any:
 
 def build_dataset(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Join feature vectors to labels while preserving source and rights lineage."""
+    required_uses = {"FEATURE_ENGINEERING", "MODEL_TRAINING"}
+    for source in rows:
+        permitted = set(source.get("permitted_uses") or ())
+        retrieved_at = source.get("retrieved_at")
+        if (
+            source.get("rights_status") != "APPROVED"
+            or not required_uses.issubset(permitted)
+            or retrieved_at is None
+            or source.get("rights_valid_from") is None
+            or source["rights_valid_from"] > retrieved_at
+            or (
+                source.get("rights_valid_until") is not None
+                and source["rights_valid_until"] <= retrieved_at
+            )
+        ):
+            raise RuntimeError("RETROSPECTIVE_TRAINING_RIGHTS_NOT_VERIFIED")
+
     fixtures = [
         HistoricalFixture(
             fixture_id=row["fixture_id"],
