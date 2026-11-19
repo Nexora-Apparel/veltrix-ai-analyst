@@ -250,7 +250,7 @@ BEGIN
     WHERE fixture.provider='5DollarFootballAPI'
       AND fixture.source_id='5dollarfootballapi'
       AND fixture.provider_competition_id='522514093'
-      AND fixture.home_team_provider_id='3808811746'
+      AND (fixture.home_team_provider_id='3808811746' OR fixture.away_team_provider_id='3808811746')
       AND fixture.status='UNKNOWN';
     IF alternate_america_count <> 1 THEN
         RAISE EXCEPTION 'ALTERNATE_AMERICA_UNKNOWN_ROW_COUNT_MISMATCH:%', alternate_america_count;
