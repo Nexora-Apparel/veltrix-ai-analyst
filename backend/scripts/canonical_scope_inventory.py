@@ -11,7 +11,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 EXPECTED_DB = "veltrix_ai_analyst"
-REQUIRED_MIGRATIONS = {"007_canonical_entity_layer.sql", "009_canonical_identity_review_cases.sql", "012_database_observed_timestamps.sql", "013_target_fixture_pre_match_gate.sql", "014_prediction_publication_storage.sql"}
+REQUIRED_MIGRATIONS = {"007_canonical_entity_layer.sql", "008_canonical_identity_link_uniqueness.sql", "009_canonical_identity_review_cases.sql", "012_database_observed_timestamps.sql", "013_target_fixture_pre_match_gate.sql", "014_prediction_publication_storage.sql"}
 
 
 def _jsonable(value: Any) -> Any:
@@ -60,6 +60,17 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                    to_regclass('veltrix_ai_analyst.canonical_fixture_sources') IS NOT NULL AS fixture_links,
                    to_regclass('veltrix_ai_analyst.provider_team_identity_links') IS NOT NULL AS team_identity_links,
                    to_regclass('veltrix_ai_analyst.provider_competition_identity_links') IS NOT NULL AS competition_identity_links,
+                   to_regclass('veltrix_ai_analyst.canonical_teams') IS NOT NULL AS canonical_teams,
+                   to_regclass('veltrix_ai_analyst.canonical_competitions') IS NOT NULL AS canonical_competitions,
+                   to_regclass('veltrix_ai_analyst.canonical_fixtures') IS NOT NULL AS canonical_fixtures,
+                   to_regclass('veltrix_ai_analyst.canonical_identity_review_cases') IS NOT NULL AS identity_review_cases,
+                   to_regclass('veltrix_ai_analyst.canonical_identity_review_case_events') IS NOT NULL AS identity_review_events,
+                   to_regclass('veltrix_ai_analyst.canonical_team_identity_provenance_audit') IS NOT NULL AS team_provenance_audit,
+                   to_regclass('veltrix_ai_analyst.canonical_competition_identity_provenance_audit') IS NOT NULL AS competition_provenance_audit,
+                   to_regclass('veltrix_ai_analyst.canonical_fixture_source_provenance_audit') IS NOT NULL AS fixture_provenance_audit,
+                   to_regclass('veltrix_ai_analyst.canonical_fixture_duplicate_case_audit') IS NOT NULL AS duplicate_case_audit,
+                   to_regclass('veltrix_ai_analyst.effective_canonical_fixture_deduplication') IS NOT NULL AS effective_fixture_deduplication,
+                   to_regclass('veltrix_ai_analyst.effective_canonical_fixture_sources') IS NOT NULL AS effective_fixture_sources,
                    to_regclass('veltrix_ai_analyst.effective_canonical_identity_review_cases') IS NOT NULL AS review_cases
         """)
         schema_objects = dict(cur.fetchone())
@@ -109,6 +120,35 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                     ) q
                 """, (approval["provider"], approval["source_id"], comp_id))
                 fixture_counts = dict(cur.fetchone())
+
+                cur.execute("""
+                    SELECT count(*) AS competition_rows,
+                           count(*) FILTER (WHERE source_observation_id IS NOT NULL) AS observation_linked,
+                           count(*) FILTER (WHERE provenance_ok) AS provenance_complete
+                    FROM (
+                        SELECT p.*, (
+                            o.id IS NOT NULL AND o.provider=p.provider AND o.source_id=p.source_id
+                            AND o.entity_type='competition' AND o.data_type='competition_catalogue'
+                            AND o.provider_entity_id=p.provider_competition_id
+                            AND o.rights_approval_id=p.rights_approval_id
+                            AND o.payload_sha256 IS NOT NULL
+                            AND s.id IS NOT NULL AND s.payload_sha256=o.payload_sha256
+                            AND s.provider_response_id=r.id AND r.http_status BETWEEN 200 AND 299
+                            AND r.provider=p.provider AND r.source_id=p.source_id
+                            AND r.rights_approval_id=p.rights_approval_id
+                        ) AS provenance_ok
+                        FROM veltrix_ai_analyst.provider_competitions p
+                        LEFT JOIN veltrix_ai_analyst.source_observations o ON o.id=p.source_observation_id
+                        LEFT JOIN LATERAL (
+                            SELECT sighting.* FROM veltrix_ai_analyst.source_observation_sightings sighting
+                            WHERE sighting.source_observation_id=o.id AND sighting.payload_sha256=o.payload_sha256
+                            ORDER BY sighting.retrieved_at, sighting.id LIMIT 1
+                        ) s ON TRUE
+                        LEFT JOIN veltrix_ai_analyst.provider_responses r ON r.id=s.provider_response_id
+                        WHERE p.provider=%s AND p.source_id=%s AND p.provider_competition_id=%s
+                    ) q
+                """, (approval["provider"], approval["source_id"], comp_id))
+                competition_counts = dict(cur.fetchone())
 
                 cur.execute("""
                     WITH ids AS (
@@ -178,10 +218,30 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                            OR c.related_fixture_source_link_id IN (SELECT id FROM scoped_links))
                 """, (approval["provider"],approval["source_id"],comp_id))
                 unresolved=int(cur.fetchone()["unresolved_cases"])
+                cur.execute("""
+                    WITH scoped_links AS (
+                        SELECT source_link.id
+                        FROM veltrix_ai_analyst.canonical_fixture_sources source_link
+                        JOIN veltrix_ai_analyst.provider_fixtures p
+                          ON p.id=source_link.provider_fixture_row_id
+                        WHERE p.provider=%s AND p.source_id=%s AND p.provider_competition_id=%s
+                    )
+                    SELECT c.case_type, e.effective_case_status,
+                           count(DISTINCT c.id) AS case_count
+                    FROM veltrix_ai_analyst.canonical_identity_review_cases c
+                    JOIN veltrix_ai_analyst.effective_canonical_identity_review_cases e ON e.id=c.id
+                    WHERE c.primary_fixture_source_link_id IN (SELECT id FROM scoped_links)
+                       OR c.related_fixture_source_link_id IN (SELECT id FROM scoped_links)
+                    GROUP BY c.case_type, e.effective_case_status
+                    ORDER BY c.case_type, e.effective_case_status
+                """, (approval["provider"], approval["source_id"], comp_id))
+                review_case_breakdown = [dict(row) for row in cur.fetchall()]
                 scopes.append({
                     "competition_id": comp_id,
+                    "competition_coverage": _jsonable(competition_counts),
                     "fixture_coverage": _jsonable(fixture_counts),
                     "team_coverage": _jsonable(team_counts),
+                    "review_case_breakdown": _jsonable(review_case_breakdown),
                     "canonical_fixture_links": _jsonable(canonical_counts),
                     "unresolved_linked_review_cases": unresolved,
                     "inventory_only": True,
@@ -246,10 +306,11 @@ def main() -> int:
                 if "fixture_coverage" not in scope:
                     print(f"  competition {scope['competition_id']}: BLOCKED ({scope['reason']})")
                     continue
+                competitions=scope["competition_coverage"]
                 fixtures=scope["fixture_coverage"]
                 teams=scope["team_coverage"]
                 links=scope["canonical_fixture_links"]
-                print(f"  competition {scope['competition_id']}: fixtures={fixtures['fixture_rows']} provenance={fixtures['fixture_provenance_complete']}; teams={teams['referenced_team_ids']} provenance={teams['provenance_complete_teams']}; linked={links['linked_fixture_rows']} verified={links['identity_verified']} review={links['identity_review_required']} conflicts={links['identity_conflicts']}; unresolved_cases={scope['unresolved_linked_review_cases']}")
+                print(f"  competition {scope['competition_id']}: competition_provenance={competitions['provenance_complete']}/{competitions['competition_rows']}; fixtures={fixtures['fixture_rows']} provenance={fixtures['fixture_provenance_complete']}; teams={teams['referenced_team_ids']} provenance={teams['provenance_complete_teams']}; linked={links['linked_fixture_rows']} verified={links['identity_verified']} review={links['identity_review_required']} conflicts={links['identity_conflicts']}; unresolved_cases={scope['unresolved_linked_review_cases']}")
     return 0 if report["migration_readiness"] else 3
 
 
