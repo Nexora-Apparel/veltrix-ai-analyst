@@ -1,6 +1,6 @@
 # VELTRIX AI ANALYST — Implementation Roadmap
 
-**Last updated:** 2026-11-19  
+**Last updated:** 2026-11-19 (Stage 8B implementation checkpoint)  
 **Repository:** `Nexora-Apparel/veltrix-ai-analyst`  
 **Roadmap status:** engineering baseline; statuses below distinguish implemented infrastructure from validated production capability.
 
@@ -252,3 +252,18 @@ Preserve the existing six-tab UI: Home, History, BTTS, Value Bet, Over/Under and
 6. Build Stage 8D artifact governance and Stage 8E gated publisher.
 7. Implement Stage 9 API integration, History and Menu Notifications while preserving UI.
 8. Complete runtime verification and release only after all applicable gates pass.
+
+
+### Stage 8B implementation checkpoint — 2026-11-19
+
+**Status: IN PROGRESS; first governed sparse-path implementation committed on the Stage 8B work branch.**
+
+- The hierarchical Poisson predictor now exposes an explicit `calculation_mode` with five provenance states: `TEAM_AND_COMPETITION_HISTORY`, `ONE_SIDED_TEAM_HISTORY`, `COMPETITION_ONLY`, `TEAM_HISTORY_GLOBAL_CONTEXT` and `GLOBAL_CONTEXT_ONLY`.
+- The classification is derived from observed training-history counts and whether the competition was represented in the fitted model. It introduces no arbitrary minimum-match threshold and does not convert missing feature fields into zeros.
+- The hierarchical orchestration audit now carries the calculation mode, home/away history counts and competition-seen flag alongside its market calculations. These fields remain research/audit outputs; they do not authorize production publication.
+- Unit tests were extended for one-sided team history, both unseen teams in a known competition, known team history in an unseen competition, fully unseen teams/competition, and orchestration audit propagation.
+- Existing prospective dataset logic was inspected: it requires a genuine pre-kickoff scheduled snapshot, filters feature observations by observed-at cutoff and rights, derives rolling features only from eligible earlier finished matches, and attaches a label only from a finished observation observed after kickoff. Existing tests cover no-history and one-sided missing-feature behavior.
+- The 996 historical training-only rows still have no feature snapshots and cannot train supporting-feature coefficients. Upcoming snapshots remain unlabeled until a verified post-kickoff finished observation is captured. No synthetic features or labels were added.
+- This change does not relax Stage 7 prospective certification, Stage 5 identity/rights restrictions, or the Stage 8 production artifact/publisher gates.
+
+**Remaining Stage 8B work:** run CI and model stress/chronological development validation; inspect the training-row cutoff/label-availability semantics; evaluate sparse cohorts and convergence; only then freeze a candidate calculation protocol. Stage 8B is not complete.
