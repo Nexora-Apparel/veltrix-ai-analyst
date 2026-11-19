@@ -14,13 +14,14 @@ import psycopg
 from app.validation.prospective_dataset import (
     FixtureIdentity,
     FixtureObservation,
+    ProspectiveDatasetRow,
     build_expanding_window_folds,
     build_prospective_dataset,
 )
 
 
 def _jsonable_row(row) -> dict:
-    return {
+    result = {
         "fixture_id": row.fixture_id,
         "provider_fixture_id": row.fixture_id.split(":", 1)[1],
         "provider_competition_id": row.competition_id,
@@ -30,7 +31,10 @@ def _jsonable_row(row) -> dict:
         "source_id": row.source_id,
         "competition_id": row.competition_id,
         "kickoff_at": row.kickoff_at.isoformat(),
-        "prediction_cutoff_at": row.prediction_cutoff_at.isoformat(),
+        "prediction_cutoff_at": (
+            row.prediction_cutoff_at.isoformat()
+            if row.prediction_cutoff_at else None
+        ),
         "home_team_id": row.home_team_id,
         "away_team_id": row.away_team_id,
         "features": row.features,
@@ -42,6 +46,11 @@ def _jsonable_row(row) -> dict:
         "label_observation_id": row.label_observation_id,
         "label_lineage": row.label_lineage,
     }
+    # Keep the historical snapshot payload byte-for-byte compatible: this
+    # metadata exists only on the separate, non-persisted training pool.
+    if not row.validation_eligible:
+        result["validation_eligible"] = False
+    return result
 
 
 def build_report(
@@ -207,6 +216,129 @@ def build_report(
             """
         ).fetchall()
 
+        historical_training_rows_raw = connection.execute(
+            """
+            SELECT DISTINCT ON (pf.id)
+                   pf.provider_competition_id, pf.provider_fixture_id,
+                   cc.canonical_competition_id::text, cf.id::text,
+                   ht.canonical_team_id::text, at.canonical_team_id::text,
+                   pf.kickoff_at, pf.home_goals, pf.away_goals,
+                   o.id, s.id, s.provider_response_id, s.retrieved_at,
+                   ir.id AS import_run_id, ir.finished_at AS label_observed_at,
+                   o.payload_sha256, r.response_sha256,
+                   o.rights_approval_id, a.status, a.valid_from, a.valid_until,
+                   a.permitted_uses, approval_events.status_events,
+                   s.system_observed_at
+            FROM veltrix_ai_analyst.provider_fixtures pf
+            JOIN veltrix_ai_analyst.source_observations o
+              ON o.id = pf.source_observation_id
+             AND o.provider = pf.provider AND o.source_id = pf.source_id
+             AND o.provider_entity_id = pf.provider_fixture_id
+             AND o.data_type = 'fixtures_and_results'
+             AND o.entity_type = 'fixture'
+            JOIN veltrix_ai_analyst.source_observation_sightings s
+              ON s.source_observation_id = o.id
+             AND s.provider_response_id IS NOT NULL
+             AND s.payload_sha256 = o.payload_sha256
+            JOIN veltrix_ai_analyst.provider_responses r
+              ON r.id = s.provider_response_id
+             AND r.provider = o.provider AND r.source_id = o.source_id
+             AND r.http_status BETWEEN 200 AND 299
+             AND r.fetched_at = s.retrieved_at
+             AND length(r.response_sha256) = 64
+             AND (
+               (s.availability_basis = 'SYSTEM_OBSERVED_AT'
+                AND s.point_in_time_certifiable IS TRUE
+                AND s.system_observed_at IS NOT NULL
+                AND s.system_observed_at >= s.retrieved_at
+                AND r.system_observed_at = s.system_observed_at)
+               OR (s.system_observed_at IS NULL AND r.system_observed_at IS NULL)
+             )
+            JOIN veltrix_ai_analyst.import_request_reservations irr
+              ON irr.provider_response_id = r.id
+            JOIN veltrix_ai_analyst.import_runs ir
+              ON ir.id = irr.import_run_id
+             AND ir.provider = pf.provider
+             AND ir.source_id = pf.source_id
+             AND ir.status = 'COMPLETED'
+             AND ir.finished_at IS NOT NULL
+             AND ir.finished_at >= s.retrieved_at
+             AND ir.finished_at > pf.kickoff_at
+            JOIN veltrix_ai_analyst.source_approvals a
+              ON a.approval_id = o.rights_approval_id
+             AND a.status = 'APPROVED'
+             AND a.valid_from <= ir.finished_at
+             AND (a.valid_until IS NULL OR a.valid_until > ir.finished_at)
+             AND a.permitted_uses @> '["MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb
+            JOIN veltrix_ai_analyst.effective_canonical_fixture_sources link
+              ON link.provider_fixture_row_id = pf.id
+             AND link.provider = pf.provider
+             AND link.source_id = pf.source_id
+             AND link.effective_mapping_status = 'SOURCE_FIXTURE_LINK_REVIEWED'
+            JOIN veltrix_ai_analyst.canonical_fixture_source_provenance_audit provenance
+              ON provenance.fixture_source_link_id = link.id
+             AND provenance.source_fixture_provenance_status = 'PROVENANCE_VERIFIED'
+             AND provenance.effective_review_status = 'SOURCE_FIXTURE_LINK_REVIEWED'
+            JOIN veltrix_ai_analyst.canonical_fixtures cf
+              ON cf.id = link.canonical_fixture_id
+             AND cf.identity_status = 'VERIFIED'
+            JOIN veltrix_ai_analyst.effective_provider_team_identity_links ht
+              ON ht.provider = pf.provider AND ht.source_id = pf.source_id
+             AND ht.provider_team_id = pf.home_team_provider_id
+             AND ht.effective_mapping_status IN (
+                 'SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED'
+             )
+            JOIN veltrix_ai_analyst.effective_provider_team_identity_links at
+              ON at.provider = pf.provider AND at.source_id = pf.source_id
+             AND at.provider_team_id = pf.away_team_provider_id
+             AND at.effective_mapping_status IN (
+                 'SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED'
+             )
+            JOIN veltrix_ai_analyst.effective_provider_competition_identity_links cc
+              ON cc.provider = pf.provider AND cc.source_id = pf.source_id
+             AND cc.provider_competition_id = pf.provider_competition_id
+             AND cc.effective_mapping_status IN (
+                 'SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED'
+             )
+             AND cc.canonical_competition_id = cf.canonical_competition_id
+            LEFT JOIN LATERAL (
+                SELECT COALESCE(
+                    jsonb_agg(
+                        jsonb_build_object(
+                            'id', e.id,
+                            'status', e.status,
+                            'effective_at', e.effective_at
+                        ) ORDER BY e.effective_at, e.id
+                    ),
+                    '[]'::jsonb
+                ) AS status_events
+                FROM veltrix_ai_analyst.source_approval_status_events e
+                WHERE e.approval_id = a.approval_id
+            ) approval_events ON TRUE
+            WHERE pf.provider = '5DollarFootballAPI'
+              AND pf.source_id = '5dollarfootballapi'
+              AND lower(pf.status) = 'finished'
+              AND pf.home_goals IS NOT NULL AND pf.away_goals IS NOT NULL
+              AND lower(o.payload->>'status') = 'finished'
+              AND jsonb_typeof(o.payload->'home_goals') = 'number'
+              AND jsonb_typeof(o.payload->'away_goals') = 'number'
+              AND (o.payload->>'home_goals')::integer = pf.home_goals
+              AND (o.payload->>'away_goals')::integer = pf.away_goals
+              AND o.payload->>'competition_id' = pf.provider_competition_id
+              AND o.payload->>'home_team_id' = pf.home_team_provider_id
+              AND o.payload->>'away_team_id' = pf.away_team_provider_id
+              AND o.payload->>'kickoff_at' IS NOT NULL
+              AND (o.payload->>'kickoff_at')::timestamptz = pf.kickoff_at
+              AND o.payload #>> '{provenance,provider_record_id}' = pf.provider_fixture_id
+              AND length(o.payload_sha256) = 64
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM veltrix_ai_analyst.prospective_feature_snapshots existing
+                  WHERE existing.canonical_fixture_id = cf.id
+              )
+            ORDER BY pf.id, ir.finished_at ASC, s.id DESC
+            """
+        ).fetchall()
     fixtures = [
         FixtureIdentity(
             fixture_id=f"{row[3]}:{row[2]}",
@@ -247,13 +379,78 @@ def build_report(
         )
         for row in observation_rows
     ]
+    training_only_rows = []
+    for row in historical_training_rows_raw:
+        label_observed_at = row[14]
+        label_lineage = {
+            "fixture_id": f"{row[0]}:{row[1]}",
+            "provider": "5DollarFootballAPI",
+            "source_id": "5dollarfootballapi",
+            "source_observation_id": int(row[9]),
+            "source_sighting_id": int(row[10]),
+            "provider_response_id": int(row[11]),
+            "payload_sha256": str(row[15]).strip(),
+            "raw_response_sha256": str(row[16]).strip(),
+            "rights_approval_id": str(row[17]),
+            "rights_status": str(row[18]),
+            "rights_valid_from": row[19].isoformat(),
+            "rights_valid_until": row[20].isoformat() if row[20] else None,
+            "rights_permitted_uses": list(row[21] or ()),
+            "rights_status_events": list(row[22] or ()),
+            "availability_basis": "IMPORT_RUN_COMPLETED_AT_TRAINING_ONLY",
+            "point_in_time_certifiable": False,
+            "retrieved_at": row[12].isoformat(),
+            "import_run_id": int(row[13]),
+            "import_run_finished_at": label_observed_at.isoformat(),
+            "source_system_observed_at": (
+                row[23].isoformat() if row[23] else None
+            ),
+        }
+        home_goals, away_goals = int(row[7]), int(row[8])
+        training_only_rows.append(ProspectiveDatasetRow(
+            fixture_id=f"{row[0]}:{row[1]}",
+            provider="5DollarFootballAPI",
+            source_id="5dollarfootballapi",
+            competition_id=str(row[0]),
+            kickoff_at=row[6],
+            prediction_cutoff_at=None,
+            home_team_id=str(row[4]),
+            away_team_id=str(row[5]),
+            features={},
+            feature_lineage=(),
+            label={
+                "home_goals": home_goals,
+                "away_goals": away_goals,
+                "home_win": home_goals > away_goals,
+                "draw": home_goals == away_goals,
+                "away_win": home_goals < away_goals,
+                "btts": home_goals > 0 and away_goals > 0,
+                "over_25": home_goals + away_goals > 2,
+            },
+            label_observed_at=label_observed_at,
+            label_observation_id=int(row[9]),
+            label_lineage=label_lineage,
+            canonical_fixture_id=str(row[3]),
+            canonical_competition_id=str(row[2]),
+            validation_eligible=False,
+        ))
+
     rows = build_prospective_dataset(fixtures, observations)
+    prospective_fixture_ids = {row.fixture_id for row in rows}
+    training_only_rows = [
+        row for row in training_only_rows
+        if row.fixture_id not in prospective_fixture_ids
+    ]
+    fold_rows = [*rows, *training_only_rows]
     folds = build_expanding_window_folds(
-        rows,
+        fold_rows,
         minimum_training_fixtures=minimum_training_fixtures,
         validation_block_fixtures=validation_block_fixtures,
     )
     serialized_rows = [_jsonable_row(row) for row in rows]
+    serialized_training_only_rows = [
+        _jsonable_row(row) for row in training_only_rows
+    ]
     serialized_folds = [
         {
             "fold_number": fold.fold_number,
@@ -266,7 +463,11 @@ def build_report(
         for fold in folds
     ]
     canonical = json.dumps(
-        {"rows": serialized_rows, "folds": serialized_folds},
+        {
+            "rows": serialized_rows,
+            "training_only_rows": serialized_training_only_rows,
+            "folds": serialized_folds,
+        },
         sort_keys=True,
         separators=(",", ":"),
         allow_nan=False,
@@ -279,6 +480,18 @@ def build_report(
         "fixture_identity_rows": len(fixtures),
         "eligible_prospective_rows": len(rows),
         "settled_label_rows": sum(row.label is not None for row in rows),
+        "training_only_label_rows": len(training_only_rows),
+        "training_only_distinct_kickoff_dates": len({
+            row.kickoff_at.date() for row in training_only_rows
+        }),
+        "training_pool_sha256": hashlib.sha256(
+            json.dumps(
+                serialized_training_only_rows,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest(),
         "settled_distinct_kickoff_dates": len({
             row.kickoff_at.date() for row in rows if row.label is not None
         }),

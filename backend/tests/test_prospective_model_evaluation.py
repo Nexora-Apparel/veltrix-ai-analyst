@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from app.validation.prospective_dataset import (
@@ -52,6 +53,9 @@ def _synthetic_rows(count: int = 120) -> list[ProspectiveDatasetRow]:
                     "MODEL_VALIDATION",
                 ],
                 "rights_status_events": [],
+                "availability_basis": "SYSTEM_OBSERVED_AT",
+                "point_in_time_certifiable": True,
+                "system_observed_at": (kickoff + timedelta(hours=3)).isoformat(),
             },
         ))
     return rows
@@ -92,3 +96,43 @@ def test_prospective_evaluator_fails_closed_without_chronological_folds():
     assert report["status"] == "INSUFFICIENT_PROSPECTIVE_DATA"
     assert report["fixtures"] == 0
     assert report["release_eligible"] is False
+
+
+def test_historical_database_insert_labels_are_training_only_not_validation():
+    rows = _synthetic_rows(31)
+    rows[:30] = [
+        replace(
+            row,
+            validation_eligible=False,
+            prediction_cutoff_at=None,
+            label_lineage={
+                **row.label_lineage,
+                "availability_basis": "IMPORT_RUN_COMPLETED_AT_TRAINING_ONLY",
+                "point_in_time_certifiable": False,
+                "import_run_id": 7001,
+                "import_run_finished_at": row.label_observed_at.isoformat(),
+            },
+        )
+        for row in rows[:30]
+    ]
+    folds = build_expanding_window_folds(
+        rows,
+        minimum_training_fixtures=30,
+        validation_block_fixtures=25,
+    )
+    assert len(folds) == 1
+    assert len(folds[0].train_fixture_ids) == 30
+    assert folds[0].validation_fixture_ids == (rows[30].fixture_id,)
+
+    report = evaluate_prospective_model(
+        rows,
+        folds,
+        bootstrap_replicates=200,
+        seed=23,
+    )
+    assert report["status"] == "RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL"
+    assert report["fixtures"] == 1
+    assert report["historical_training_only_rows"] == 30
+    assert report["production_promotion"] == "LOCKED"
+    assert report["value_betting"] == "LOCKED"
+
