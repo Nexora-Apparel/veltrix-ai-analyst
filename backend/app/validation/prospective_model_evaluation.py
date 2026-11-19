@@ -90,6 +90,45 @@ def _lineage_rights_valid(
     )[2] == "APPROVED"
 
 
+def _label_evidence_valid(row: ProspectiveDatasetRow) -> bool:
+    """Validate label availability without treating history as pre-match data."""
+    if row.label is None or row.label_observed_at is None:
+        return False
+    lineage = row.label_lineage
+    if not isinstance(lineage, dict):
+        return False
+    if row.label_observed_at <= row.kickoff_at:
+        return False
+    basis = lineage.get("availability_basis")
+    if basis == "SYSTEM_OBSERVED_AT":
+        observed = lineage.get("system_observed_at")
+        if not isinstance(observed, str):
+            return False
+        try:
+            observed_at = datetime.fromisoformat(observed)
+        except ValueError:
+            return False
+        return (
+            observed_at.utcoffset() is not None
+            and observed_at == row.label_observed_at
+            and lineage.get("point_in_time_certifiable") is True
+        )
+    if (
+        not row.validation_eligible
+        and basis == "DATABASE_INSERTED_AT_TRAINING_ONLY"
+        and lineage.get("point_in_time_certifiable") is False
+    ):
+        inserted = lineage.get("database_inserted_at")
+        if not isinstance(inserted, str):
+            return False
+        try:
+            inserted_at = datetime.fromisoformat(inserted)
+        except ValueError:
+            return False
+        return inserted_at.utcoffset() is not None and inserted_at == row.label_observed_at
+    return False
+
+
 def _goal_result(row: ProspectiveDatasetRow) -> HierarchicalGoalResult:
     if row.label is None or row.label_observed_at is None:
         raise ValueError("settled prospective label is required")
@@ -242,7 +281,7 @@ def evaluate_prospective_model(
         if not training or not validation:
             raise ValueError("prospective fold cannot have empty training or validation rows")
         if any(
-            row.label is None
+            not _label_evidence_valid(row)
             or row.label_observed_at is None
             or row.label_observed_at >= fold.validation_start_at
             or row.kickoff_at >= fold.validation_start_at
@@ -253,8 +292,10 @@ def evaluate_prospective_model(
         ):
             raise ValueError("training labels are not available or rights-valid before validation")
         if any(
-            row.label is None
+            not row.validation_eligible
+            or row.prediction_cutoff_at is None
             or row.prediction_cutoff_at >= row.kickoff_at
+            or not _label_evidence_valid(row)
             or not _lineage_rights_valid(
                 row.label_lineage, evaluation_time, ("MODEL_VALIDATION",)
             )
@@ -398,6 +439,9 @@ def evaluate_prospective_model(
         "status": "RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL",
         "evaluation_time": evaluation_time.isoformat(),
         "fixtures": len(model_btts),
+        "historical_training_only_rows": sum(
+            1 for row in rows if not row.validation_eligible
+        ),
         "folds": fold_reports,
         "markets": {
             "1X2": multiclass_report,
@@ -413,6 +457,7 @@ def evaluate_prospective_model(
             "inner_rho": "INNER_EXPANDING_WINDOW_OUT_OF_FOLD",
             "label_availability": "SYSTEM_OBSERVED_AT_STRICTLY_BEFORE_OUTER_VALIDATION_START",
             "pre_match_features": "STRICTLY_BEFORE_TARGET_KICKOFF",
+            "historical_training_labels": "DATABASE_INSERTED_AT_TRAINING_ONLY; NEVER_USED_AS_PRE_MATCH_FEATURES_OR_VALIDATION_ROWS",
             "hyperparameters": {
                 "half_life_days": HALF_LIFE_DAYS,
                 "team_ridge": TEAM_RIDGE,
