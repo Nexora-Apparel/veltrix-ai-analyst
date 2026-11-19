@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.materialize_prospective_snapshots import validate_report
+from scripts.materialize_prospective_snapshots import snapshot_digest, validate_report
 
 
 def valid_report():
@@ -63,4 +63,68 @@ def test_snapshot_report_rejects_cutoff_at_kickoff():
     report = valid_report()
     report["rows"][0]["prediction_cutoff_at"] = report["rows"][0]["kickoff_at"]
     with pytest.raises(ValueError, match="PIT_CUTOFF_NOT_BEFORE_KICKOFF"):
+        validate_report(report)
+
+
+
+def test_snapshot_digest_is_independent_of_later_outcome_label():
+    row = valid_report()["rows"][0]
+    original = snapshot_digest(row)
+    row.update({
+        "label": {"home_goals": 2, "away_goals": 1},
+        "label_observed_at": "2026-01-02T14:00:00+00:00",
+        "label_observation_id": 44,
+        "label_lineage": {"source_observation_id": 44},
+    })
+    assert snapshot_digest(row) == original
+
+
+def test_label_requires_post_kickoff_approved_pit_lineage():
+    report = valid_report()
+    row = report["rows"][0]
+    row.update({
+        "label": {"home_goals": 2, "away_goals": 1},
+        "label_observed_at": "2026-01-02T14:00:00+00:00",
+        "label_observation_id": 44,
+        "label_lineage": {
+            "availability_basis": "SYSTEM_OBSERVED_AT",
+            "point_in_time_certifiable": True,
+            "rights_status": "APPROVED",
+            "rights_approval_id": "approval-1",
+            "rights_permitted_uses": ["MODEL_TRAINING", "MODEL_VALIDATION"],
+            "system_observed_at": "2026-01-02T14:00:00+00:00",
+            "retrieved_at": "2026-01-02T13:59:59+00:00",
+            "source_observation_id": 44,
+            "source_sighting_id": 45,
+            "provider_response_id": 46,
+            "payload_sha256": "d" * 64,
+            "raw_response_sha256": "e" * 64,
+        },
+    })
+    assert len(validate_report(report)) == 1
+
+
+def test_label_rejects_observation_at_kickoff():
+    report = valid_report()
+    row = report["rows"][0]
+    row.update({
+        "label": {"home_goals": 2, "away_goals": 1},
+        "label_observed_at": row["kickoff_at"],
+        "label_observation_id": 44,
+        "label_lineage": {
+            "availability_basis": "SYSTEM_OBSERVED_AT",
+            "point_in_time_certifiable": True,
+            "rights_status": "APPROVED",
+            "rights_approval_id": "approval-1",
+            "rights_permitted_uses": ["MODEL_TRAINING", "MODEL_VALIDATION"],
+            "system_observed_at": row["kickoff_at"],
+            "retrieved_at": "2026-01-02T11:59:59+00:00",
+            "source_observation_id": 44,
+            "source_sighting_id": 45,
+            "provider_response_id": 46,
+            "payload_sha256": "d" * 64,
+            "raw_response_sha256": "e" * 64,
+        },
+    })
+    with pytest.raises(ValueError, match="LABEL_LINEAGE_GATE_FAILED"):
         validate_report(report)
