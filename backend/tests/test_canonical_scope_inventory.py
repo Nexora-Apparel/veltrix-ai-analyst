@@ -95,10 +95,10 @@ def test_inventory_is_read_only_and_reports_scope_coverage():
 
 def test_missing_migration_fails_readiness():
     connection=FakeConnection()
-    connection.migrations.remove("014_prediction_publication_storage.sql")
+    connection.migrations.remove("015_automated_identity_adjudication.sql")
     report=MODULE.inventory(connection)
     assert report["migration_readiness"] is False
-    assert "014_prediction_publication_storage.sql" in report["missing_required_migrations"]
+    assert "015_automated_identity_adjudication.sql" in report["missing_required_migrations"]
 
 
 def test_nonapproved_scope_is_reported_without_coverage_query():
