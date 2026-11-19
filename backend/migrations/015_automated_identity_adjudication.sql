@@ -192,6 +192,10 @@ BEGIN
           '3007875643', '3126624865', '3219034225', '3250670103', '3324195045',
           '4227927162', '4267737771', '559667509', '744720326', '844813267'
       );
+    IF active_team_count = 0 THEN
+        RAISE NOTICE 'No production 5DollarFootballAPI source graph present; skip data-specific adjudication in an empty migration test database.';
+        RETURN;
+    END IF;
     IF active_team_count <> 20 THEN
         RAISE EXCEPTION 'CBF_EVIDENCE_TEAM_LINK_COUNT_MISMATCH:%', active_team_count;
     END IF;
