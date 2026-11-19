@@ -44,6 +44,7 @@ on:
       - ".github/workflows/apply-database-migrations.yml"
       - ".github/workflows/materialize-canonical-entities.yml"
       - ".github/workflows/materialize-round38-canonical-incremental.yml"
+      - ".github/workflows/materialize-approved-canonical-scope.yml"
   pull_request:
     branches: [main]
     paths:
@@ -64,6 +65,7 @@ on:
       - ".github/workflows/apply-database-migrations.yml"
       - ".github/workflows/materialize-canonical-entities.yml"
       - ".github/workflows/materialize-round38-canonical-incremental.yml"
+      - ".github/workflows/materialize-approved-canonical-scope.yml"
 
 permissions:
   contents: read
