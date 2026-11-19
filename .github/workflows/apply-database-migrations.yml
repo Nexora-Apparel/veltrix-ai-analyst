@@ -616,9 +616,58 @@ jobs:
               ).fetchone()
               if any(actual < expected for actual, expected in zip(historical_counts[:3], (1243, 2884, 115))):
                   raise SystemExit(f"HISTORICAL_EVIDENCE_COUNT_REGRESSION:{historical_counts[:3]}")
-              if historical_counts[3:] != (0, 0, 0):
+              if historical_counts[3:] != (72, 190, 14):
                   raise SystemExit(
-                      f"HISTORICAL_PIT_TIMESTAMPS_WERE_BACKFILLED:{historical_counts[3:]}"
+                      f"PROSPECTIVE_PIT_TIMESTAMP_COUNTS_MISMATCH:{historical_counts[3:]}"
+                  )
+
+              prospective_lineage = connection.execute(
+                  """
+                  SELECT
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.provider_responses response
+                      WHERE response.system_observed_at IS NOT NULL
+                        AND NOT EXISTS (
+                          SELECT 1
+                          FROM veltrix_ai_analyst.import_request_reservations reservation
+                          WHERE reservation.provider_response_id=response.id
+                            AND reservation.import_run_id BETWEEN 12 AND 18
+                        )
+                    ),
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.source_observations observation
+                      WHERE observation.system_observed_at IS NOT NULL
+                        AND NOT EXISTS (
+                          SELECT 1
+                          FROM veltrix_ai_analyst.import_request_reservations reservation
+                          WHERE reservation.provider_response_id=observation.provider_response_id
+                            AND reservation.import_run_id BETWEEN 12 AND 18
+                        )
+                    ),
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.source_observation_sightings sighting
+                      WHERE sighting.system_observed_at IS NOT NULL
+                        AND NOT EXISTS (
+                          SELECT 1
+                          FROM veltrix_ai_analyst.import_request_reservations reservation
+                          WHERE reservation.provider_response_id=sighting.provider_response_id
+                            AND reservation.import_run_id BETWEEN 12 AND 18
+                        )
+                    ),
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.import_runs
+                      WHERE id BETWEEN 12 AND 18
+                        AND status='COMPLETED'
+                    )
+                  """
+              ).fetchone()
+              if prospective_lineage != (0, 0, 0, 7):
+                  raise SystemExit(
+                      f"PROSPECTIVE_PIT_CAPTURE_LINEAGE_MISMATCH:{prospective_lineage}"
                   )
 
               published_count = connection.execute(
@@ -630,7 +679,8 @@ jobs:
           print(f"MIGRATION_014_VERIFIED: {checksum}")
           print("PREDICTION_STORAGE_VERIFIED: 4 tables, 2 views, 4 functions, 8 triggers")
           print("HISTORICAL_EVIDENCE_PRESERVED: 1243+ observations, 2884+ sightings, 115+ responses")
-          print("PIT_HISTORY_PRESERVED: historical system_observed_at values remain NULL")
+          print("PIT_HISTORY_PRESERVED: no timestamps backfilled outside prospective import runs 12-18")
+          print("PROSPECTIVE_PIT_LINEAGE_VERIFIED: 14 responses, 72 observations, 190 sightings across 7 completed runs")
           print("PUBLICATION_GATE_VERIFIED: no prediction was published by schema migration")
           PY
 
