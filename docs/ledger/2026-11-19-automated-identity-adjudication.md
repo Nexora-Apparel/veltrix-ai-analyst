@@ -34,7 +34,7 @@ The 20 active 5DollarFootballAPI provider team IDs each appear in exactly 38 FIN
 | 744720326 | Fortaleza | Fortaleza |
 | 844813267 | Sao Bernardo | São Bernardo |
 
-Evidence: [CBF official 2026 Série B table and schedule](https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026/2009), [CBF detailed schedule](https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026/2010), and the [full-season identity evidence audit](2026-11-18-cbf-team-identity-evidence-audit.md). Provider spelling variants are preserved; no provider ID is rewritten.
+Evidence: [CBF official 2026 Série B table and schedule](https://www.cbf.com.br/futebol-brasileiro/tabelas/campeonato-brasileiro/serie-b/2026?doc=Tabela+Detalhada), [CBF detailed schedule](https://stcbfsiteprdimgbrs.blob.core.windows.net/img-site/cdn/Tabela_Detalhada_Brasileiro_Serie_B_2026_23_09_378b396600.pdf), and the [full-season identity evidence audit](2026-11-18-cbf-team-identity-evidence-audit.md). Provider spelling variants are preserved; no provider ID is rewritten.
 
 ## América-MG alias candidate
 
