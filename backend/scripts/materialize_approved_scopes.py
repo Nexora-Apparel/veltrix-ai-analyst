@@ -17,8 +17,8 @@ from psycopg.rows import dict_row
 
 from app.canonicalization import (
     CanonicalMaterializationScope,
-    build_brazil_serie_b_materialization_plan,
-    materialize_brazil_serie_b_canonical_entities,
+    build_canonical_materialization_plan,
+    materialize_canonical_entities,
 )
 
 EXPECTED_DATABASE = "veltrix_ai_analyst"
@@ -108,7 +108,7 @@ def run(
                 connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
                 connection.execute("SET LOCAL lock_timeout = '15s'")
                 connection.execute("SET LOCAL statement_timeout = '180s'")
-                plan = build_brazil_serie_b_materialization_plan(connection, scope)
+                plan = build_canonical_materialization_plan(connection, scope)
                 if not plan.ready:
                     reports.append({
                         "scope": scope.__dict__,
@@ -116,7 +116,7 @@ def run(
                         "plan": plan.as_dict(),
                     })
                     continue
-                result = materialize_brazil_serie_b_canonical_entities(
+                result = materialize_canonical_entities(
                     connection, execute=True, scope=scope
                 )
                 reports.append({
