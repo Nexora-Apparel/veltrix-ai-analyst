@@ -55,13 +55,47 @@ def build_report(
         connection.execute("SET default_transaction_read_only = on")
         fixture_rows = connection.execute(
             """
-            SELECT provider, source_id, provider_fixture_id,
-                   provider_competition_id, home_team_provider_id,
-                   away_team_provider_id, kickoff_at
-            FROM veltrix_ai_analyst.provider_fixtures
-            WHERE provider = '5DollarFootballAPI'
-              AND source_id = '5dollarfootballapi'
-            ORDER BY kickoff_at, provider_fixture_id
+            SELECT pf.provider, pf.source_id, pf.provider_fixture_id,
+                   pf.provider_competition_id, ht.canonical_team_id::text,
+                   at.canonical_team_id::text, pf.kickoff_at,
+                   cf.id::text AS canonical_fixture_id,
+                   cc.canonical_competition_id::text AS canonical_competition_id,
+                   pf.home_team_provider_id, pf.away_team_provider_id
+            FROM veltrix_ai_analyst.provider_fixtures pf
+            JOIN veltrix_ai_analyst.effective_canonical_fixture_sources link
+              ON link.provider_fixture_row_id = pf.id
+             AND link.provider = pf.provider
+             AND link.source_id = pf.source_id
+             AND link.effective_mapping_status = 'SOURCE_FIXTURE_LINK_REVIEWED'
+            JOIN veltrix_ai_analyst.canonical_fixture_source_provenance_audit provenance
+              ON provenance.fixture_source_link_id = link.id
+             AND provenance.source_fixture_provenance_status = 'PROVENANCE_VERIFIED'
+             AND provenance.effective_review_status = 'SOURCE_FIXTURE_LINK_REVIEWED'
+            JOIN veltrix_ai_analyst.canonical_fixtures cf
+              ON cf.id = link.canonical_fixture_id
+             AND cf.identity_status = 'VERIFIED'
+            JOIN veltrix_ai_analyst.effective_provider_team_identity_links ht
+              ON ht.provider = pf.provider AND ht.source_id = pf.source_id
+             AND ht.provider_team_id = pf.home_team_provider_id
+             AND ht.effective_mapping_status IN (
+                 'SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED'
+             )
+            JOIN veltrix_ai_analyst.effective_provider_team_identity_links at
+              ON at.provider = pf.provider AND at.source_id = pf.source_id
+             AND at.provider_team_id = pf.away_team_provider_id
+             AND at.effective_mapping_status IN (
+                 'SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED'
+             )
+            JOIN veltrix_ai_analyst.effective_provider_competition_identity_links cc
+              ON cc.provider = pf.provider AND cc.source_id = pf.source_id
+             AND cc.provider_competition_id = pf.provider_competition_id
+             AND cc.effective_mapping_status IN (
+                 'SOURCE_IDENTITY_REVIEWED', 'REAL_WORLD_IDENTITY_VERIFIED'
+             )
+             AND cc.canonical_competition_id = cf.canonical_competition_id
+            WHERE pf.provider = '5DollarFootballAPI'
+              AND pf.source_id = '5dollarfootballapi'
+            ORDER BY pf.kickoff_at, pf.provider_fixture_id
             """
         ).fetchall()
         invalid_system_observed = connection.execute(
@@ -178,6 +212,9 @@ def build_report(
             home_team_id=str(row[4]),
             away_team_id=str(row[5]),
             kickoff_at=row[6],
+            canonical_competition_id=str(row[8]),
+            provider_home_team_id=str(row[9]),
+            provider_away_team_id=str(row[10]),
         )
         for row in fixture_rows
     ]
