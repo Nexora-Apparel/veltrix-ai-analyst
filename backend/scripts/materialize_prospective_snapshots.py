@@ -1,4 +1,5 @@
 """Persist an audited prospective dataset as immutable PIT feature snapshots."""
+# ruff: noqa: I001
 from __future__ import annotations
 
 import argparse
@@ -28,9 +29,9 @@ def snapshot_digest(row: dict) -> str:
 
 def parse_timestamp(value: object) -> datetime:
     if not isinstance(value, str):
-        raise ValueError("PIT_TIMESTAMP_MISSING")
+        raise TypeError("PIT_TIMESTAMP_MISSING")
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         raise ValueError("PIT_TIMESTAMP_INVALID") from None
     if parsed.tzinfo is None or parsed.utcoffset() is None:
@@ -48,7 +49,7 @@ def validate_report(report: dict) -> list[dict]:
         raise ValueError("DATASET_HASH_MISSING")
     rows = report.get("rows")
     if not isinstance(rows, list):
-        raise ValueError("DATASET_ROWS_MISSING")
+        raise TypeError("DATASET_ROWS_MISSING")
     for row in rows:
         if not all(row.get(key) for key in (
             "canonical_fixture_id", "canonical_competition_id",
