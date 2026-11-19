@@ -20,7 +20,20 @@ def valid_report():
             "kickoff_at": "2026-01-02T12:00:00+00:00",
             "prediction_cutoff_at": "2026-01-02T10:00:00+00:00",
             "feature_lineage": [{
-                "system_observed_at": "2026-01-02T09:00:00+00:00"
+                "system_observed_at": "2026-01-02T09:00:00+00:00",
+                "retrieved_at": "2026-01-02T08:59:59+00:00",
+                "availability_basis": "SYSTEM_OBSERVED_AT",
+                "point_in_time_certifiable": True,
+                "rights_approval_id": "approval-1",
+                "rights_status": "APPROVED",
+                "rights_permitted_uses": [
+                    "FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"
+                ],
+                "payload_sha256": "b" * 64,
+                "raw_response_sha256": "c" * 64,
+                "source_observation_id": 1,
+                "source_sighting_id": 2,
+                "provider_response_id": 3,
             }],
         }],
     }
