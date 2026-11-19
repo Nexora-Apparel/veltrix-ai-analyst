@@ -214,3 +214,25 @@ The main dashboard file `android/app/src/main/java/com/veltrix/aianalyst/Veltrix
 
 **Status:** requirement and implementation plan documented. No notification UI or records have been implemented yet.
 
+
+
+## Sparse-data inference and prediction reliability tiers — user clarification
+
+**User clarification:** do not interpret missing or sparse data as an automatic fixture rejection. The intended prediction architecture includes sophisticated, governed calculations to generate forecasts where evidence is limited; the Strong / Medium / Low reliability classification is intended to communicate the strength of the supporting evidence and calculation.
+
+### Design requirements (not yet verified as implemented)
+
+- Use a data-adaptive, hierarchical calculation path when team-specific data is sparse: appropriately weighted available team evidence, competition/league baselines, shrinkage and the governed goal-probability framework may be used where technically justified and tested.
+- Never silently impute missing features as zero or fabricate observations. Missingness must remain explicit and influence the calculation and its reliability tier.
+- **Strong / Medium / Low** must describe evidence quality, input completeness, freshness, sample size, uncertainty and validation/reliability—not simply the forecast probability or the popularity of a favourite.
+- Sparse data may still produce a publishable prediction if the fallback method is scientifically defensible, adequately tested and within the release gate. A fallback is not permission to use arbitrary/generic probabilities or bypass model certification.
+- Exclude fixtures when even the fallback cannot produce a defensible forecast, or where identity, rights, freshness, PIT or other mandatory gates fail.
+- Natural-language daily notifications use the collective voice **“the models”** rather than first-person singular/plural, with non-robotic phrasing. Illustrative copy: “The models have finished today's analysis. 23 matches passed the checks and are now available in Predictions.”
+
+### Reliability-tier semantics (proposed governance; requires implementation/validation)
+
+- **Strong:** sufficiently rich, reliable, consistent inputs and a calculation path whose reliability is supported by validation.
+- **Medium:** meaningful evidence remains, but notable gaps or uncertainty reduce reliability; a tested fallback/robust calculation may apply.
+- **Low:** substantial data limitations or uncertainty; conservative estimates may be possible but must be explicitly flagged and must still pass the publication eligibility gate.
+
+These tiers are not certification substitutes, not guarantees of match outcomes, and must not be assigned solely by arbitrary probability cutoffs. This clarification expands the Stage 8 design requirements; it does not assert that sparse-data fallback inference or these tier labels already exist in production.
