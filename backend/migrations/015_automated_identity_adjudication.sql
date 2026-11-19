@@ -169,6 +169,113 @@ WHERE finished_link.provider = '5DollarFootballAPI'
   AND unknown_link.provider_fixture_id = '475377468'
 ON CONFLICT (case_key) DO NOTHING;
 
+-- Refuse to adjudicate if the production source graph no longer matches the
+-- evidence manifest. These checks are deliberately source-local and read-only.
+DO $
+DECLARE
+    active_team_count INTEGER;
+    mismatched_team_count INTEGER;
+    alternate_america_count INTEGER;
+    brazil_duplicate_rows INTEGER;
+    england_duplicate_rows INTEGER;
+    brazil_case_count INTEGER;
+    england_case_count INTEGER;
+BEGIN
+    SELECT COUNT(*)
+      INTO active_team_count
+    FROM veltrix_ai_analyst.provider_team_identity_links link
+    WHERE link.provider='5DollarFootballAPI'
+      AND link.source_id='5dollarfootballapi'
+      AND link.provider_team_id IN (
+          '1102583842', '1446563615', '1548718709', '1620921678', '1657329649',
+          '1684426968', '2016651568', '2434042650', '2651466053', '2672186301',
+          '3007875643', '3126624865', '3219034225', '3250670103', '3324195045',
+          '4227927162', '4267737771', '559667509', '744720326', '844813267'
+      );
+    IF active_team_count <> 20 THEN
+        RAISE EXCEPTION 'CBF_EVIDENCE_TEAM_LINK_COUNT_MISMATCH:%', active_team_count;
+    END IF;
+
+    SELECT COUNT(*)
+      INTO mismatched_team_count
+    FROM veltrix_ai_analyst.provider_team_identity_links link
+    WHERE link.provider='5DollarFootballAPI'
+      AND link.source_id='5dollarfootballapi'
+      AND link.provider_team_id IN (
+          '1102583842', '1446563615', '1548718709', '1620921678', '1657329649',
+          '1684426968', '2016651568', '2434042650', '2651466053', '2672186301',
+          '3007875643', '3126624865', '3219034225', '3250670103', '3324195045',
+          '4227927162', '4267737771', '559667509', '744720326', '844813267'
+      )
+      AND (
+          SELECT COUNT(*)
+          FROM veltrix_ai_analyst.provider_fixtures fixture
+          WHERE fixture.provider=link.provider
+            AND fixture.source_id=link.source_id
+            AND fixture.provider_competition_id='522514093'
+            AND fixture.status='FINISHED'
+            AND (
+                fixture.home_team_provider_id=link.provider_team_id
+                OR fixture.away_team_provider_id=link.provider_team_id
+            )
+      ) <> 38
+      OR FALSE;
+    IF mismatched_team_count <> 0 THEN
+        RAISE EXCEPTION 'CBF_EVIDENCE_TEAM_APPEARANCE_COUNTS_MISMATCH:%', mismatched_team_count;
+    END IF;
+
+    SELECT COUNT(*)
+      INTO alternate_america_count
+    FROM veltrix_ai_analyst.provider_fixtures fixture
+    WHERE fixture.provider='5DollarFootballAPI'
+      AND fixture.source_id='5dollarfootballapi'
+      AND fixture.provider_competition_id='522514093'
+      AND fixture.home_team_provider_id='3808811746'
+      AND fixture.status='FINISHED';
+    IF alternate_america_count <> 0 THEN
+        RAISE EXCEPTION 'ALTERNATE_AMERICA_ID_HAS_FINISHED_APPEARANCES:%', alternate_america_count;
+    END IF;
+
+    SELECT COUNT(*)
+      INTO brazil_duplicate_rows
+    FROM veltrix_ai_analyst.provider_fixtures fixture
+    WHERE fixture.provider='5DollarFootballAPI'
+      AND fixture.source_id='5dollarfootballapi'
+      AND fixture.provider_fixture_id IN (
+          '3116209225','2341822348','1587564237','2336910968',
+          '236839304','933498248','553958702','1988139832'
+      );
+    IF brazil_duplicate_rows <> 8 THEN
+        RAISE EXCEPTION 'BRAZIL_DUPLICATE_EVIDENCE_ROWS_MISSING:%', brazil_duplicate_rows;
+    END IF;
+
+    SELECT COUNT(*)
+      INTO england_duplicate_rows
+    FROM veltrix_ai_analyst.provider_fixtures fixture
+    WHERE fixture.provider='5DollarFootballAPI'
+      AND fixture.source_id='5dollarfootballapi'
+      AND fixture.provider_fixture_id IN ('1990703256','475377468');
+    IF england_duplicate_rows <> 2 THEN
+        RAISE EXCEPTION 'ENGLAND_DUPLICATE_EVIDENCE_ROWS_MISSING:%', england_duplicate_rows;
+    END IF;
+
+    SELECT COUNT(*)
+      INTO brazil_case_count
+    FROM veltrix_ai_analyst.canonical_identity_review_cases review_case
+    WHERE review_case.case_key LIKE 'BRAZIL_SERIE_B_RUN_3_%';
+    IF brazil_case_count <> 28 THEN
+        RAISE EXCEPTION 'BRAZIL_REVIEW_CASE_SET_MISMATCH:%', brazil_case_count;
+    END IF;
+
+    SELECT COUNT(*)
+      INTO england_case_count
+    FROM veltrix_ai_analyst.canonical_identity_review_cases review_case
+    WHERE review_case.case_key='ENGLAND_PREMIER_LEAGUE_DUPLICATE_MAN_CITY_BRIGHTON_2026';
+    IF england_case_count <> 1 THEN
+        RAISE EXCEPTION 'ENGLAND_REVIEW_CASE_MISSING:%', england_case_count;
+    END IF;
+END $;
+
 -- Upgrade the 20 active Brazil Série B provider-team links from source-local
 -- verification to real-world verification using the full 380/380 CBF schedule
 -- pairing audit. The América Mineiro alternate provider ID is deliberately not
