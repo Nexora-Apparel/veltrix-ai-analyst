@@ -206,3 +206,138 @@ Stage 7 is a read-only expanding-window prospective evaluation followed by indep
 - No historical source payloads or provider IDs were rewritten or deleted.
 
 **Next checkpoint:** fresh Stage 5 read-only preview against the current main branch and live migrations 001–017, followed by explicitly authorized manual apply and post-apply verification.
+
+
+---
+
+## 10. Post-handover reconciliation — later workflow runs discovered (2026-11-19)
+
+**This section supersedes earlier statements in this ledger that Stage 5 production materialization had not yet run.** The earlier handover was prepared from a partial view of the workflow history. A subsequent full Actions run inventory showed that the pre-PR-118 automatic `workflow_run` trigger had already started Stage 5 apply jobs. The latest successful run and its uploaded artifact were inspected.
+
+### 10.1 Stage 5 production apply did run before PR #118
+
+Relevant successful runs discovered from the repository Actions history:
+
+| Run | Event | Result | Interpretation |
+|---|---|---|---|
+| [44472105659](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44472105659) | workflow_dispatch | success | Earlier manually dispatched apply |
+| [44476589584](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44476589584) | workflow_run | success | Automatic apply before safety correction |
+| [44477076919](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44477076919) | workflow_run | success | Automatic repeat |
+| [44491882486](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44491882486) | workflow_run | success | Automatic repeat |
+| [44494508790](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44494508790) | workflow_run | success | Latest successful apply before PR #118 |
+
+The latest run #44494508790 was triggered by `workflow_run`, not by a fresh manual dispatch. Its log explicitly shows the workflow synthesized `CONFIRMATION=APPLY_ALL_SEVEN_APPROVED_SCOPES` for the automatic event. This confirms the defect PR #118 corrected was exercised. Do not describe those automatic apply executions as user-manually authorized.
+
+The later repeated runs were idempotent: their reports show zero new fixtures/teams/competitions created and all existing scoped fixture rows reused. No provider requests were made.
+
+### 10.2 Latest Stage 5 apply artifact independently inspected
+
+Run: [44494508790](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44494508790)  
+Job: `135458165390` — success  
+Artifact: `14514996120`, `veltrix-stage-5-identity-apply-all`  
+Artifact SHA-256: inspect from downloaded ZIP if regenerated; the repository Actions artifact is the primary evidence.
+
+All seven exact scopes passed the read-only preflight and each per-scope apply report returned `APPLIED`. The job then passed its post-apply inventory/linkage verification. No provider requests were made.
+
+| Competition ID | Fixture rows | Linked rows | Verified identities | Identity conflicts | Review required |
+|---|---:|---:|---:|---:|---:|
+| Brazil Série A — 3118717965 | 131 | 131 | 131 | 0 | 0 |
+| Brazil Série B — 522514093 | 386 | 386 | 382 | 4 | 0 |
+| England Premier League — 4160026622 | 111 | 111 | 110 | 1 | 0 |
+| France Ligue 1 — 3614399544 | 100 | 100 | 100 | 0 | 0 |
+| Germany Bundesliga I — 686337048 | 90 | 90 | 90 | 0 | 0 |
+| Italy Serie A — 3405541143 | 120 | 120 | 120 | 0 | 0 |
+| Spain La Liga — 4212821298 | 125 | 125 | 125 | 0 | 0 |
+| **Total** | **1,063** | **1,063** | **1,058** | **5** | **0** |
+
+Additional post-apply verification:
+- All seven source competition links exist.
+- All catalogued team source links exist.
+- Brazil Série B has one team identity conflict, zero team review-required links.
+- Fixture conflicts remain explicitly visible: four in Brazil Série B and one in England Premier League.
+- No unresolved linked review cases remain.
+- Two unlinked global review cases remain recorded:
+  - `BRAZIL_SERIE_B_RUN_3_PIT_TIMESTAMP_GAP`: `AUTOMATED_DEFERRED`; keep 374 observations out of pre-match features until source publication/availability timestamps are verified.
+  - `BRAZIL_SERIE_B_RUN_3_COVERAGE_2026`: `AUTOMATED_CONFIRMED`; reconcile all 370 finished rows to CBF rounds 1–37 before certifying coverage.
+- The final inventory reported no missing required migrations.
+
+**Corrected Stage 5 status:** production source-local/canonical linkage materialization for all seven approved scopes has been executed and independently verified by the successful apply artifact. Stage 5 is complete as a materialization milestone, with five fixture identity conflicts, one team identity conflict and the two global Brazil Série B review cases retained as explicit unresolved/restricted evidence. It is not a claim that every fixture identity is verified or that historical PIT is certified.
+
+PR #118 remains important: it prevents future automatic apply executions. Its merge occurred after the runs above. The merged workflow on main now accepts only manual `workflow_dispatch` with exact typed confirmation. The earlier automatic runs are historical and cannot be retroactively converted into manual approvals.
+
+### 10.3 Stage 6 — persistent prospective snapshots have been written and verified
+
+Successful run: [44492260988](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44492260988)  
+Job: `135450607753` — success  
+Artifact: `14513342300`, `veltrix-stage6-persisted-snapshot-audit`.
+
+The artifact and job log show:
+- Dataset status: `READY_FOR_RESEARCH`.
+- Eligible prospective rows: 59.
+- Distinct competitions: 7.
+- Distinct kickoff dates: 6.
+- Feature-lineage records: 113.
+- Invalid system-observed sightings: 0.
+- Settled label rows: 0.
+- Unsettled rows: 59.
+- Dataset SHA-256: `60cf113db9ea055e5cbbd72c7dbbb0a26cbbad2dca2f5ca76e9eba2a41fbc91c`.
+- Persistence verification: 59 snapshots, 59 distinct fixtures, 0 settled labels.
+- Release eligibility: false; production promotion: LOCKED; value betting: LOCKED.
+
+A later daily materialization run [44494939469](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44494939469) also succeeded. It rebuilt the same dataset and reported 59 snapshots verified, zero labels, with all 59 existing snapshots unchanged. This confirms idempotent daily persistence for the current dataset.
+
+A direct read-only Neon query independently returned:
+- `prospective_feature_snapshots`: 59 rows, 59 distinct canonical fixtures.
+- `prospective_feature_snapshot_labels`: 0 rows.
+
+**Corrected Stage 6 status:** initial immutable prospective snapshot persistence is complete and verified for 59 fixtures. Outcome labels have not yet accumulated. Continue daily capture/materialization so fixtures settle and append-only label records are recorded. This is not a model-training or certification milestone.
+
+### 10.4 Stage 7 — evaluation executed, correctly blocked for insufficient settled data
+
+Latest inspected run: [44497523416](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44497523416)  
+Job: `135468422888` — workflow success  
+Artifact: `14515921681`, `veltrix-stage7-prospective-research-evaluation`.
+
+The workflow succeeded technically because the evaluation and certification-gate scripts completed and uploaded their reports. The report outcome is not a certification pass:
+
+- Evaluation status: `INSUFFICIENT_PROSPECTIVE_DATA`.
+- Prospective rows: 59.
+- Settled labels: 0.
+- Fixtures evaluated: 0.
+- Expanding folds: 0.
+- Distinct settled kickoff dates: 0 (requirement 90).
+- Settled prospective fixtures: 0 (requirement 300).
+- Walk-forward fixtures per market: 0 (requirement 1,000 each).
+- 1X2 bookmaker Brier/log-loss comparison: not evaluated.
+- Timestamped odds coverage and ROI confidence: not evaluated; value betting remains locked.
+- Production certification: `BLOCKED_INSUFFICIENT_OR_UNCERTIFIED_EVIDENCE`.
+- Production promotion: `LOCKED`.
+- Release eligible: false.
+
+This is the correct fail-closed outcome. Do not label Stage 7 certified or production-ready because the GitHub workflow itself has a green conclusion.
+
+### 10.5 Current stage table (supersedes earlier table)
+
+| Stage | Correct status | Evidence / remaining work |
+|---|---|---|
+| 1. Canonical scope inventory | Complete | PR #99 |
+| 2. Approved-scope materializer | Complete | PR #100 |
+| 3. Production migrations | Applied through 017 | Live Neon migration ledger |
+| 4. Prospective daily capture | First run verified; continue daily | Run #44466519770 and subsequent capture chain |
+| 5. Seven-scope canonical linkage materialization | **Applied and verified with retained conflicts/review restrictions** | Run #44494508790, artifact #14514996120 |
+| 6. Immutable prospective snapshots | **59 persisted and verified; labels pending** | Runs #44492260988 and #44494939469 |
+| 7. Prospective model evaluation/certification | **Executed; certification blocked by zero settled labels** | Run #44497523416, artifact #14515921681 |
+| 8. Prediction publication | Locked | Requires prospective labels, validated model and all release gates |
+| 9. Android physical runtime verification | Pending | After certified prediction API integration |
+
+### 10.6 Next execution sequence — revised
+
+1. Preserve the corrected Stage 5 state; do not rerun bulk materialization unnecessarily. Any future re-run must be deliberate, manually dispatched and idempotency-verified.
+2. Keep the five fixture conflicts and one team conflict explicitly quarantined from any identity-dependent feature/prediction path. Never auto-merge them merely because Stage 5 completed.
+3. Keep the 374 Brazil Série B observations with the PIT timestamp gap excluded from pre-match features. Reconcile the 370 finished rows against official CBF rounds before certifying coverage.
+4. Continue the approved daily 5DollarFootballAPI capture and Stage 6 daily snapshot/label materialization. Monitor the 59 existing snapshots and append settled labels only when actual source-observed result evidence becomes available.
+5. Each time new labels arrive, run chronological expanding-window evaluation. Do not count 59 snapshots as 59 settled evaluation examples.
+6. Revisit model certification only when the strict sample and date gates can actually be evaluated. Keep production publication and value betting locked.
+7. Once certified, integrate the prediction pipeline into the existing Android screens without redesign and perform physical-device verification.
+
+**No new provider calls or Odds API credits were used for this reconciliation.** Stage 5 writes happened in the earlier automatic apply runs documented above; Stage 6 persisted the 59 prospective snapshots. No predictions were published and no value betting was enabled.
