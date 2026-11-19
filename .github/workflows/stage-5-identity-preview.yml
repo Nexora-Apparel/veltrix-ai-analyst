@@ -10,6 +10,7 @@ on:
       - 'backend/scripts/materialize_approved_scopes.py'
       - 'backend/scripts/canonical_scope_inventory.py'
       - 'backend/tests/test_canonical_materialization.py'
+      - 'backend/migrations/015_automated_identity_adjudication.sql'
       - '.github/workflows/stage-5-identity-preview.yml'
 
 permissions:
