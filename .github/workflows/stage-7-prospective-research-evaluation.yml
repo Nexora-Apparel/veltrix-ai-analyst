@@ -6,6 +6,10 @@ on:
     paths:
       - '.github/workflows/stage-7-prospective-research-evaluation.yml'
       - 'backend/app/validation/certification_gates.py'
+      - 'backend/app/validation/prospective_dataset.py'
+      - 'backend/app/validation/prospective_model_evaluation.py'
+      - 'backend/scripts/build_prospective_dataset.py'
+      - 'backend/scripts/evaluate_prospective_hierarchical.py'
       - 'backend/scripts/apply_prospective_certification_gates.py'
   workflow_run:
     workflows: ["Stage 6 daily immutable snapshot and outcome materialization"]
