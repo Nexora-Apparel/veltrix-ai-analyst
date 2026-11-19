@@ -162,16 +162,20 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                 canonical_counts=dict(cur.fetchone())
 
                 cur.execute("""
-                    SELECT count(*) AS unresolved_cases
+                    WITH scoped_links AS (
+                        SELECT source_link.id
+                        FROM veltrix_ai_analyst.canonical_fixture_sources source_link
+                        JOIN veltrix_ai_analyst.provider_fixtures p
+                          ON p.id=source_link.provider_fixture_row_id
+                        WHERE p.provider=%s AND p.source_id=%s AND p.provider_competition_id=%s
+                    )
+                    SELECT count(DISTINCT c.id) AS unresolved_cases
                     FROM veltrix_ai_analyst.canonical_identity_review_cases c
                     JOIN veltrix_ai_analyst.effective_canonical_identity_review_cases e ON e.id=c.id
                     WHERE e.effective_case_status NOT IN ('HUMAN_CONFIRMED','HUMAN_REJECTED','DEFERRED')
-                      AND (c.primary_fixture_source_link_id IN (
-                          SELECT id FROM veltrix_ai_analyst.canonical_fixture_sources WHERE provider=%s AND source_id=%s
-                      ) OR c.related_fixture_source_link_id IN (
-                          SELECT id FROM veltrix_ai_analyst.canonical_fixture_sources WHERE provider=%s AND source_id=%s
-                      ))
-                """, (approval["provider"],approval["source_id"],approval["provider"],approval["source_id"]))
+                      AND (c.primary_fixture_source_link_id IN (SELECT id FROM scoped_links)
+                           OR c.related_fixture_source_link_id IN (SELECT id FROM scoped_links))
+                """, (approval["provider"],approval["source_id"],comp_id))
                 unresolved=int(cur.fetchone()["unresolved_cases"])
                 scopes.append({
                     "competition_id": comp_id,
