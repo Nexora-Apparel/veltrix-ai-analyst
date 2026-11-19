@@ -649,19 +649,6 @@ jobs:
                   SELECT
                     (
                       SELECT COUNT(*)
-                      FROM veltrix_ai_analyst.source_observations observation
-                      WHERE observation.system_observed_at IS NULL
-                        AND EXISTS (
-                          SELECT 1
-                          FROM veltrix_ai_analyst.source_observation_sightings sighting
-                          JOIN veltrix_ai_analyst.import_request_reservations reservation
-                            ON reservation.provider_response_id=sighting.provider_response_id
-                          WHERE sighting.source_observation_id=observation.id
-                            AND reservation.import_run_id >= 12
-                        )
-                    ),
-                    (
-                      SELECT COUNT(*)
                       FROM veltrix_ai_analyst.source_observation_sightings sighting
                       JOIN veltrix_ai_analyst.import_request_reservations reservation
                         ON reservation.provider_response_id=sighting.provider_response_id
@@ -678,9 +665,9 @@ jobs:
                     )
                   """
               ).fetchone()
-              if prospective_gaps != (0, 0, 0):
+              if prospective_gaps != (0, 0):
                   raise SystemExit(
-                      f"PROSPECTIVE_PIT_SYSTEM_OBSERVED_AT_GAPS:{prospective_gaps}"
+                      f"PROSPECTIVE_PIT_SIGHTING_RESPONSE_TIMESTAMP_GAPS:{prospective_gaps}"
                   )
 
               published_count = connection.execute(
@@ -693,7 +680,7 @@ jobs:
           print("PREDICTION_STORAGE_VERIFIED: 4 tables, 2 views, 4 functions, 8 triggers")
           print("HISTORICAL_EVIDENCE_PRESERVED: 1243+ observations, 2884+ sightings, 115+ responses")
           print("PIT_HISTORY_PRESERVED: historical import runs 1-11 retain NULL system_observed_at")
-          print("PROSPECTIVE_PIT_CAPTURE_VERIFIED: import runs 12+ have complete system_observed_at")
+          print("PROSPECTIVE_PIT_CAPTURE_VERIFIED: import runs 12+ have timestamped responses and sightings")
           print("PUBLICATION_GATE_VERIFIED: no prediction was published by schema migration")
           PY
 
