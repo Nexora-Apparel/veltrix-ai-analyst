@@ -75,6 +75,79 @@ BEGIN
        OR (NEW.label_lineage->>'point_in_time_certifiable') IS DISTINCT FROM 'true'
        OR (NEW.label_lineage->>'rights_status') IS DISTINCT FROM 'APPROVED'
        OR COALESCE(NEW.label_lineage->>'rights_approval_id', '') = ''
+       OR COALESCE(NEW.label_lineage->>'system_observed_at', '') = ''
+       OR COALESCE(NEW.label_lineage->>'retrieved_at', '') = ''
+       OR COALESCE(NEW.label_lineage->>'rights_valid_from', '') = ''
+       OR COALESCE(NEW.label_lineage->>'payload_sha256', '') !~ '^[0-9a-f]{64}
+           COALESCE(
+               NEW.label_lineage->'rights_permitted_uses',
+               '[]'::jsonb
+           ) @> '["MODEL_TRAINING","MODEL_VALIDATION"]'::jsonb
+       )
+       OR (NEW.label_lineage->>'source_observation_id') IS DISTINCT FROM NEW.source_observation_id::text
+       OR (NEW.label_lineage->>'source_sighting_id') IS DISTINCT FROM NEW.source_sighting_id::text
+       OR (NEW.label_lineage->>'provider_response_id') IS DISTINCT FROM NEW.provider_response_id::text
+       OR (NEW.label_lineage->>'system_observed_at')::timestamptz IS DISTINCT FROM NEW.label_observed_at
+       OR (NEW.label_lineage->>'retrieved_at')::timestamptz > NEW.label_observed_at
+       OR (NEW.label_lineage->>'rights_valid_from')::timestamptz > NEW.label_observed_at
+       OR (
+           NEW.label_lineage->>'rights_valid_until' IS NOT NULL
+           AND (NEW.label_lineage->>'rights_valid_until')::timestamptz <= NEW.label_observed_at
+       ) THEN
+        RAISE EXCEPTION 'outcome label lineage is not PIT-certifiable or does not match source IDs';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER prospective_snapshot_label_pit_guard
+    BEFORE INSERT
+    ON veltrix_ai_analyst.prospective_feature_snapshot_labels
+    FOR EACH ROW
+    EXECUTE FUNCTION veltrix_ai_analyst.enforce_prospective_snapshot_label_timing();
+
+CREATE TRIGGER prospective_snapshot_labels_append_only
+    BEFORE UPDATE OR DELETE
+    ON veltrix_ai_analyst.prospective_feature_snapshot_labels
+    FOR EACH ROW
+    EXECUTE FUNCTION veltrix_ai_analyst.reject_prospective_snapshot_mutation();
+
+       OR COALESCE(NEW.label_lineage->>'raw_response_sha256', '') !~ '^[0-9a-f]{64}
+           COALESCE(
+               NEW.label_lineage->'rights_permitted_uses',
+               '[]'::jsonb
+           ) @> '["MODEL_TRAINING","MODEL_VALIDATION"]'::jsonb
+       )
+       OR (NEW.label_lineage->>'source_observation_id') IS DISTINCT FROM NEW.source_observation_id::text
+       OR (NEW.label_lineage->>'source_sighting_id') IS DISTINCT FROM NEW.source_sighting_id::text
+       OR (NEW.label_lineage->>'provider_response_id') IS DISTINCT FROM NEW.provider_response_id::text
+       OR (NEW.label_lineage->>'system_observed_at')::timestamptz IS DISTINCT FROM NEW.label_observed_at
+       OR (NEW.label_lineage->>'retrieved_at')::timestamptz > NEW.label_observed_at
+       OR (NEW.label_lineage->>'rights_valid_from')::timestamptz > NEW.label_observed_at
+       OR (
+           NEW.label_lineage->>'rights_valid_until' IS NOT NULL
+           AND (NEW.label_lineage->>'rights_valid_until')::timestamptz <= NEW.label_observed_at
+       ) THEN
+        RAISE EXCEPTION 'outcome label lineage is not PIT-certifiable or does not match source IDs';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER prospective_snapshot_label_pit_guard
+    BEFORE INSERT
+    ON veltrix_ai_analyst.prospective_feature_snapshot_labels
+    FOR EACH ROW
+    EXECUTE FUNCTION veltrix_ai_analyst.enforce_prospective_snapshot_label_timing();
+
+CREATE TRIGGER prospective_snapshot_labels_append_only
+    BEFORE UPDATE OR DELETE
+    ON veltrix_ai_analyst.prospective_feature_snapshot_labels
+    FOR EACH ROW
+    EXECUTE FUNCTION veltrix_ai_analyst.reject_prospective_snapshot_mutation();
+
        OR NOT (
            COALESCE(
                NEW.label_lineage->'rights_permitted_uses',
