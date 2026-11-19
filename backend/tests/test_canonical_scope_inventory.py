@@ -37,6 +37,8 @@ class FakeCursor:
             self.result=[{"unresolved_cases":2}]
         elif "GROUP BY c.case_type" in sql:
             self.result=self.connection.review_case_breakdown
+        elif "review_case.case_key" in sql:
+            self.result=self.connection.unlinked_global_review_cases
         else:
             raise AssertionError("Unexpected query")
     def fetchall(self): return self.result
@@ -59,6 +61,7 @@ class FakeConnection:
         self.schema={k:True for k in ("competitions","teams","fixtures","observations","sightings","fixture_links","team_identity_links","competition_identity_links","canonical_teams","canonical_competitions","canonical_fixtures","identity_review_cases","identity_review_events","canonical_identity_review_events","effective_team_links","effective_competition_links","effective_approvals","team_alias_case_audit","effective_team_aliases","team_provenance_audit","competition_provenance_audit","fixture_provenance_audit","duplicate_case_audit","effective_fixture_deduplication","effective_fixture_sources","review_cases")}
         self.competition_counts={"competition_rows":1,"observation_linked":1,"provenance_complete":1,"canonical_linked_competitions":1,"identity_review_required":1,"identity_conflicts":0}
         self.review_case_breakdown=[{"case_type":"FIXTURE_DUPLICATE_CANDIDATE","effective_case_status":"OPEN","case_count":1}]
+        self.unlinked_global_review_cases=[{"case_key":"PIT_GAP","case_type":"PIT_TIMESTAMP_GAP","effective_case_status":"HUMAN_REVIEW_REQUIRED","recommended_action":"KEEP_OUT_OF_FEATURES"}]
         self.fixture_counts={"fixture_rows":3,"finished":2,"scheduled":1,"live":0,"unknown_status":0,"fixture_observation_linked":3,"fixture_provenance_complete":2}
         self.team_counts={"referenced_team_ids":2,"catalogued_teams":2,"observation_linked_teams":2,"provenance_complete_teams":2,"canonical_linked_teams":2,"identity_review_required":2,"identity_conflicts":0}
         self.canonical_counts={"linked_fixture_rows":1,"source_links":1,"source_link_review_required":1,"source_link_conflicts":0,"identity_verified":0,"identity_review_required":1,"identity_conflicts":0,"completeness_reconciled":0,"incomplete":0,"completeness_conflicts":0}
@@ -84,6 +87,7 @@ def test_inventory_is_read_only_and_reports_scope_coverage():
     assert scope["canonical_fixture_links"]["source_link_review_required"]==1
     assert scope["unresolved_linked_review_cases"]==2
     assert scope["review_case_breakdown"][0]["case_type"]=="FIXTURE_DUPLICATE_CANDIDATE"
+    assert report["unlinked_global_review_cases"][0]["case_type"]=="PIT_TIMESTAMP_GAP"
     assert any("competition_rows" in sql for sql,_ in connection.queries)
     assert any("primary_team_identity_link_id" in sql and "competition_identity_link_id" in sql for sql,_ in connection.queries)
     assert all("INSERT" not in sql.upper() and "UPDATE " not in sql.upper() and "DELETE " not in sql.upper() for sql,_ in connection.queries)
