@@ -323,3 +323,14 @@ This gives the 996 historical outcomes a legitimate route to richer research fea
 - This does not mean the 996 results are useless: all are available now as a retrospective training pool for a current research fit. They cannot validate predictions as of September/October, and the 990 retrieval-only records cannot support PIT certification.
 - The manual feature-backfill workflow now passes its push validation check and remains preflight-only by default. It has not made provider requests. Its execution remains gated on the entitlement/quota report.
 - Full backend stress/tuning tests and Android build passed on CI run 44623823396 (433 tests, lint clean, APK assembled) before the latest strict Dixon-Coles and real-data runner refinements. CI for the current branch head must complete before merge.
+
+
+### Stage 8B — retrospective feature path and final CI checkpoint (2026-11-19)
+
+- Confirmed the repository already contains `backend/app/validation/retrospective_features.py`, a research-only lagged feature builder using earlier same-competition outcomes, corners and cards. Its output is explicitly non-PIT and `validation_eligible=false`.
+- Fixed a same-kickoff leakage defect: fixtures sharing an identical kickoff timestamp are now processed atomically. Every feature vector for that timestamp is generated before any fixture in the block is added to team history.
+- Production coverage audit: all 996 settled historical rows contain goals, corners, yellow cards and red cards; only 6/996 contain statistics objects/events arrays. Thus a useful retrospective lagged feature matrix can be built now from the existing outcome/corners/cards corpus; historical stats/events backfill is an enhancement, not a prerequisite for the first research feature model.
+- Remaining Stage 8B work is to wire the read-only production loader to this builder, persist an immutable training-only research dataset artifact with source lineage/fingerprint, and fit/compare a feature-aware candidate against the hierarchical goal-rate baseline. These rows must remain non-PIT and validation-ineligible.
+- Prospective Stage 4 snapshots/outcomes remain the only valid route to chronological prospective validation and Stage 7 certification.
+
+**Verification:** CI run 44625656408 on commit `8d493797a9e43b3d8699a26cb071fe3baed32d37`: 439 backend tests passed, Ruff lint passed, Android debug APK assembled and uploaded. PR #121 is open and mergeable, not merged. No production DB writes, provider requests or deployment occurred.
