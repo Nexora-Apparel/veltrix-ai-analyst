@@ -28,7 +28,7 @@ jobs:
       - name: Install backend
         working-directory: backend
         run: python -m pip install -e .
-      - name: Verify production database identity (read-only)
+      - name: Verify production database identity in a read-only transaction
         run: |
           test -n "$DATABASE_URL"
           python - <<'PY'
@@ -40,12 +40,14 @@ jobs:
           if urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/").split("?")[0] != expected:
               raise SystemExit("DATABASE_IDENTITY_MISMATCH")
           with psycopg.connect(os.environ["DATABASE_URL"], connect_timeout=10) as connection:
-              if connection.info.dbname != expected:
-                  raise SystemExit("DATABASE_IDENTITY_MISMATCH")
-              with connection.cursor() as cursor:
-                  cursor.execute("SELECT current_database(), current_setting('transaction_read_only')")
-                  database_name, read_only = cursor.fetchone()
-                  if database_name != expected or read_only != "off":
+              with connection.transaction():
+                  connection.execute("SET TRANSACTION READ ONLY")
+                  if connection.info.dbname != expected:
+                      raise SystemExit("DATABASE_IDENTITY_MISMATCH")
+                  row = connection.execute(
+                      "SELECT current_database(), current_setting('transaction_read_only')"
+                  ).fetchone()
+                  if row != (expected, "on"):
                       raise SystemExit("DATABASE_IDENTITY_MISMATCH")
           PY
       - name: Probe 5Dollar plan and remaining quota (safe fields only)
