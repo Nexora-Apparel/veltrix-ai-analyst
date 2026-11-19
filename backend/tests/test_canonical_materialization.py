@@ -11,8 +11,8 @@ import pytest
 from app.canonicalization import (
     BRAZIL_SERIE_B_RUN_3,
     CanonicalMaterializationScope,
-    _identity_collision_fixture_ids,
     SUPPORTED_FIXTURE_STATUSES,
+    _identity_collision_fixture_ids,
     materialize_brazil_serie_b_canonical_entities,
 )
 from app.db.migrations import apply_migrations
@@ -47,6 +47,7 @@ def test_materializer_defaults_to_read_only() -> None:
     assert inspect.signature(materialize_brazil_serie_b_canonical_entities).parameters[
         "execute"
     ].default is False
+
 
 def test_supported_fixture_statuses_match_database_contract() -> None:
     assert SUPPORTED_FIXTURE_STATUSES == {
