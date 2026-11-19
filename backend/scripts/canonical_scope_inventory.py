@@ -34,7 +34,8 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                    approval.commercial_use_allowed, approval.evidence_uri,
                    approval.evidence_sha256,
                    COALESCE(latest.status, approval.status) AS effective_status,
-                   COALESCE(latest.effective_at, approval.valid_from) AS effective_status_at,\n                   (approval.valid_from <= statement_timestamp() AND (approval.valid_until IS NULL OR approval.valid_until > statement_timestamp())) AS approval_in_validity_interval
+                   COALESCE(latest.effective_at, approval.valid_from) AS effective_status_at,
+                   (approval.valid_from <= statement_timestamp() AND (approval.valid_until IS NULL OR approval.valid_until > statement_timestamp())) AS approval_in_validity_interval
             FROM veltrix_ai_analyst.source_approvals approval
             LEFT JOIN LATERAL (
                 SELECT event.status, event.effective_at
