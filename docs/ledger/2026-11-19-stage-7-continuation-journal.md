@@ -324,3 +324,16 @@ Trace all production call sites, API routes, artifact creation/promotion schema 
 ### Corrected Stage 8A position
 
 Stage 8A is **partially complete**: model, feature, tier, inference boundary, API read contract and workflow inventory have been mapped. Remaining audit work is to inspect migrations and all persistence interfaces, verify artifact registry/promotion semantics, trace actual model inference call sites and finish a source-to-API data-flow diagram. No prediction code has been changed.
+
+
+### Stage 8A — migration/storage audit correction
+
+A subsequent migration audit refined the publication gap:
+
+- `backend/migrations/008_model_artifacts.sql` defines immutable model-artifact registry storage with dataset fingerprint, training cutoff and PIT-certification flag.
+- `backend/migrations/014_prediction_publication_storage.sql` already defines feature snapshots, predictions, per-market probabilities and append-only publication events, with database triggers enforcing PIT chronology, approved PIT-certified model artifact, verified/reconciled fixture identity, all 11 market outcomes and immutable publication history.
+- Migration 014 also defines `published_predictions` and `published_prediction_markets` views consumed by the public GET API.
+- Therefore prediction/publication **database storage and enforcement are already built**. The missing component is the application-level inference orchestration/persistence writer and its scheduled workflow/API integration—not the underlying schema.
+- Earlier observation that `backend/app/db/store.py` has no matching prediction insertion method remains true for that application module, but must not be interpreted as absence of database publication storage.
+
+Roadmap wording was corrected accordingly in commit `96b57eab50285a1f586c27e1766fad28f9cff40d`.
