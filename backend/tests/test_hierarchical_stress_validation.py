@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from app.models.hierarchical_poisson import (
     HierarchicalGoalResult,
     fit_hierarchical_poisson,
@@ -111,8 +113,6 @@ def test_tuning_excludes_labels_not_available_at_the_fold_cutoff():
 
     # Forty-six matches have kicked off by the cutoff, but twenty-one results
     # were not imported/observed until day 50. Only 25 labels are trainable.
-    import pytest
-
     with pytest.raises(ValueError, match="no chronological fold"):
         select_hierarchical_hyperparameters(
             rows,
