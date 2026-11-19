@@ -35,6 +35,7 @@ REQUIRED_MIGRATIONS = {
     "012_database_observed_timestamps.sql",
     "013_target_fixture_pre_match_gate.sql",
     "014_prediction_publication_storage.sql",
+    "015_automated_identity_adjudication.sql",
 }
 
 
