@@ -2,6 +2,15 @@ name: VELTRIX Stage 5 identity reconciliation preview
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/app/canonicalization.py'
+      - 'backend/scripts/materialize_approved_scopes.py'
+      - 'backend/scripts/canonical_scope_inventory.py'
+      - 'backend/tests/test_canonical_materialization.py'
+      - '.github/workflows/stage-5-identity-preview.yml'
 
 permissions:
   contents: read
