@@ -702,3 +702,25 @@ The manual workflow `.github/workflows/historical-feature-evidence-backfill.yml`
 ### Release boundary
 
 PR #121 remains open and unmerged. No production deployment, production prediction publication, model promotion, certification, or value-bet unlock is authorized by this research work.
+
+
+## Default-branch historical entitlement preflight — verified
+
+**Date:** 2026-11-20 (workflow run timestamp: 2026-11-19 23:17 UTC)  
+**Default-branch workflow commit:** `7291c90c3cbf89fe0e5f13bbcb129c3a2c9152a9`  
+**Workflow:** `.github/workflows/historical-feature-evidence-preflight.yml`  
+**Run:** [44636268137](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44636268137)  
+**Job:** `135955473604`
+
+- Added a separate `workflow_dispatch`-only, preflight-only workflow directly on `main`, so the user can access the manual trigger without merging PR #121.
+- Workflow file was fetched back from `main` after commit; SHA `5803b990d670cb629a48ab809b0c2c7938d25212`.
+- Job conclusion: SUCCESS. Backend installation, database identity verification, explicit read-only transaction, provider entitlement probe and no-collection confirmation all passed.
+- Provider response: plan `community`; `limits.rate_limit=300`; `daily_limit=null`; `daily_reset_at=null`.
+- Interpretation: 300 is a rate-limit field, not verified remaining quota. The response does not establish daily remaining requests or a safe historical collection budget. Do not launch historical backfill based on this result alone.
+- No historical fixture collection was run. No production database writes occurred. The Odds API was not called.
+- The separate workflow has no collection input or collection step; it is strictly an entitlement preflight.
+
+### Next actions
+1. Determine whether 5Dollar exposes a documented quota/usage endpoint or dashboard value that can establish remaining request budget; do not infer it from `rate_limit`.
+2. Preserve the backfill lock until remaining quota and request-cost semantics are verified and the bounded collection plan is reconciled with the provider limit.
+3. Continue Stage 8B research dataset execution/training comparison independently; do not merge PR #121 until its stated research and CI gates pass.
