@@ -21,7 +21,7 @@ def _nonnegative_int(value: Any) -> int:
         parsed = int(value)
     except (TypeError, ValueError, OverflowError):
         return 0
-    return parsed if parsed >= 0 else 0
+    return max(parsed, 0)
 
 
 def apply_prospective_certification_gates(
