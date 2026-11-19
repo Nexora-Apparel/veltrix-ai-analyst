@@ -177,17 +177,25 @@ def main() -> int:
             if connection.info.dbname != EXPECTED_DATABASE:
                 print("CANONICAL_SCOPE_DATABASE_TARGET_MISMATCH", file=sys.stderr)
                 return 2
-            with connection.transaction():
-                if not args.execute:
-                    connection.execute("SET TRANSACTION READ ONLY")
+            if args.execute:
                 report = run(
                     connection,
-                    execute=args.execute,
+                    execute=True,
                     provider=args.provider,
                     source_id=args.source_id,
                     competition_id=args.competition_id,
                 )
-    except (ValueError, psycopg.Error) as exc:
+            else:
+                with connection.transaction():
+                    connection.execute("SET TRANSACTION READ ONLY")
+                    report = run(
+                        connection,
+                        execute=False,
+                        provider=args.provider,
+                        source_id=args.source_id,
+                        competition_id=args.competition_id,
+                    )
+    except Exception as exc:
         print(f"CANONICAL_SCOPE_MATERIALIZATION_FAILED:{type(exc).__name__}", file=sys.stderr)
         return 2
 
