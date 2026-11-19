@@ -26,6 +26,7 @@ EXPECTED_DATABASE = "veltrix_ai_analyst"
 EXECUTE_CONFIRMATION = "APPLY_ONE_APPROVED_CANONICAL_SCOPE"
 REQUIRED_MIGRATIONS = {
     "007_canonical_entity_layer.sql",
+    "008_canonical_identity_link_uniqueness.sql",
     "009_canonical_identity_review_cases.sql",
     "012_database_observed_timestamps.sql",
     "013_target_fixture_pre_match_gate.sql",
