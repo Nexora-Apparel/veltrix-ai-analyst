@@ -39,7 +39,7 @@ closed.
 
 A write is limited to one exact approved competition scope. It requires:
 1. `--execute`.
-2. All three exact scope selectors.
+2. All three exact scope selectors, resolving to exactly one effective approval record.
 3. Environment variable
    `CANONICAL_MATERIALIZATION_CONFIRMATION=APPLY_ONE_APPROVED_CANONICAL_SCOPE`.
 4. Database name exactly `veltrix_ai_analyst`.
