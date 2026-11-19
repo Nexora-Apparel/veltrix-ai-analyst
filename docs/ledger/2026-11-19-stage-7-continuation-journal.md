@@ -650,3 +650,55 @@ Added `backend/tests/test_retrospective_feature_dataset.py` for row-label joins,
 - Chronological stress/tuning suites have NOT yet been rerun after dataset integration.
 - Do not merge PR #121 until the new CI is green, dataset artifact is built and audited, candidate comparison is reproducible, and stress/tuning tests pass.
 - Prospective Stage 7 input remains completely separate. No retrospective row may enter prospective folds, label counts or certification.
+
+
+## Stage 8B continuation — retrospective dataset integration and lint correction
+
+**Checkpoint:** 2026-11-19 23:57 WAT  
+**Branch:** `stage-8b-sparse-inference-governance`  
+**PR:** [#121](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/121)
+
+### Live CI verification
+
+- Re-fetched PR #121 and Actions run `44629918283` from GitHub.
+- Run `44629918283` concluded `failure`.
+- Backend tests: **444 passed**, 1 warning.
+- Android debug build and APK upload: **passed**.
+- Ruff lint: failed with 12 `UP017` findings in the newly added retrospective feature dataset builder and its tests. The earlier conversational checkpoint incorrectly described this run as green; this ledger corrects that status.
+
+### Lint correction commits
+
+- `db2d28181b4385ae7d4e699fc58fa4c987b6ee7c` — replace `timezone.utc` with `datetime.UTC` in `backend/app/research/retrospective_feature_dataset.py`.
+- `cb6458b35556f889afdd40c82c694f58018d460d` — apply the same lint correction in `backend/tests/test_retrospective_feature_dataset.py`.
+
+These commits correct the 12 reported Ruff findings. A new CI run must verify the correction; no green result is claimed yet.
+
+### Research dataset boundary
+
+The retrospective dataset builder and tests are present on the branch. The builder:
+- Reads provider-local completed fixture rows using a read-only transaction.
+- Requires approved rights for both feature engineering and model training.
+- Joins reconstructed lagged features to fixture outcome labels.
+- Preserves source observation, provider response, retrieval time, rights and payload-hash lineage.
+- Writes a local content-addressed artifact; it does not write production database rows.
+- Marks the dataset and every row ineligible for prospective validation/certification and records non-PIT provenance.
+
+The builder has **not** yet been executed against production Neon. No row count or dataset artifact is claimed.
+
+### Remaining Stage 8B work
+
+1. Verify the new CI run after the two lint-fix commits.
+2. Audit the complete dataset builder against the existing query schema and execute it read-only against the approved production corpus.
+3. Implement a separate feature-enhanced research candidate and matched chronological comparison against the hierarchical goal-rate-only baseline.
+4. Report results by competition, team-history depth and feature coverage.
+5. Keep retrospective rows entirely outside the prospective validation/certification pool.
+6. Rerun chronological stress tests and nested tuning after candidate integration.
+7. Review the full PR diff and latest CI before any merge decision.
+
+### Manual historical backfill
+
+The manual workflow `.github/workflows/historical-feature-evidence-backfill.yml` remains undispatched. The first user dispatch must use `execute_backfill=false` (preflight-only). No provider request or The Odds API request was made in this checkpoint. Do not notify the user to dispatch until engineering integration, research comparison, chronological tests and CI prerequisites are verified.
+
+### Release boundary
+
+PR #121 remains open and unmerged. No production deployment, production prediction publication, model promotion, certification, or value-bet unlock is authorized by this research work.
