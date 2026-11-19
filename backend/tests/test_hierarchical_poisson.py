@@ -101,3 +101,26 @@ def test_no_positive_goal_signal_is_not_replaced_with_a_fabricated_rate():
     rows = [result("zero", 1, "league-a", "A", "B", 0, 0)]
     with pytest.raises(ValueError, match="positive weighted goal signal"):
         fit_hierarchical_poisson(rows)
+
+
+
+def test_known_team_with_unseen_competition_uses_global_context_and_reports_mode():
+    model = fit_hierarchical_poisson(sample_results())
+    rates = model.predict("A", "NEW", "unseen-league")
+
+    assert rates.competition_seen is False
+    assert rates.home_team_history == 2
+    assert rates.away_team_history == 0
+    assert rates.home_lambda > 0
+    assert rates.away_lambda > 0
+    assert rates.calculation_mode == "TEAM_HISTORY_GLOBAL_CONTEXT"
+
+
+def test_no_team_or_competition_history_is_explicit_global_context_only():
+    model = fit_hierarchical_poisson(sample_results())
+    rates = model.predict("UNKNOWN-HOME", "UNKNOWN-AWAY", "unknown-league")
+
+    assert rates.home_team_history == 0
+    assert rates.away_team_history == 0
+    assert rates.competition_seen is False
+    assert rates.calculation_mode == "GLOBAL_CONTEXT_ONLY"
