@@ -1,10 +1,24 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import os
 from uuid import uuid4
 
 import psycopg
 import pytest
+
+from app.db.migrations import apply_migrations
+
+
+@pytest.fixture
+def connection():
+    database_url = os.getenv("DATABASE_URL", "")
+    expected_database = os.getenv("EXPECTED_DATABASE_NAME", "")
+    if not database_url or not expected_database:
+        pytest.skip("PostgreSQL integration service is not configured")
+    apply_migrations(database_url, expected_database=expected_database)
+    with psycopg.connect(database_url) as conn:
+        yield conn
 
 
 def _insert_pit_case(connection: psycopg.Connection, label: str) -> int:
