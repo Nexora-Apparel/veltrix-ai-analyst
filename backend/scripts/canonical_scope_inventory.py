@@ -132,8 +132,8 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                            count(*) FILTER (WHERE q.source_observation_id IS NOT NULL) AS observation_linked,
                            count(*) FILTER (WHERE q.provenance_ok) AS provenance_complete,
                            count(ci.id) AS canonical_linked_competitions,
-                           count(ci.id) FILTER (WHERE ci.mapping_status='REVIEW_REQUIRED') AS identity_review_required,
-                           count(ci.id) FILTER (WHERE ci.mapping_status='CONFLICT') AS identity_conflicts
+                           count(ci.id) FILTER (WHERE COALESCE(ci_review.decision, ci.mapping_status) NOT IN ('SOURCE_IDENTITY_REVIEWED','REAL_WORLD_IDENTITY_VERIFIED')) AS identity_review_required,
+                           count(ci.id) FILTER (WHERE COALESCE(ci_review.decision, ci.mapping_status) IN ('CONFLICT','REJECTED')) AS identity_conflicts
                     FROM (
                         SELECT p.*, (
                             o.id IS NOT NULL AND o.provider=p.provider AND o.source_id=p.source_id
@@ -159,6 +159,11 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                     LEFT JOIN veltrix_ai_analyst.provider_competition_identity_links ci
                       ON ci.provider=q.provider AND ci.source_id=q.source_id
                      AND ci.provider_competition_id=q.provider_competition_id
+                    LEFT JOIN LATERAL (
+                        SELECT decision FROM veltrix_ai_analyst.canonical_identity_review_events event
+                        WHERE event.competition_identity_link_id=ci.id
+                        ORDER BY event.reviewed_at DESC,event.id DESC LIMIT 1
+                    ) ci_review ON TRUE
                 """, (approval["provider"], approval["source_id"], comp_id))
                 competition_counts = dict(cur.fetchone())
 
@@ -174,8 +179,8 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                            count(*) FILTER (WHERE t.source_observation_id IS NOT NULL) AS observation_linked_teams,
                            count(*) FILTER (WHERE provenance_ok) AS provenance_complete_teams,
                            count(ti.id) AS canonical_linked_teams,
-                           count(ti.id) FILTER (WHERE ti.mapping_status='REVIEW_REQUIRED') AS identity_review_required,
-                           count(ti.id) FILTER (WHERE ti.mapping_status='CONFLICT') AS identity_conflicts
+                           count(ti.id) FILTER (WHERE COALESCE(ti_review.decision, ti.mapping_status) NOT IN ('SOURCE_IDENTITY_REVIEWED','REAL_WORLD_IDENTITY_VERIFIED')) AS identity_review_required,
+                           count(ti.id) FILTER (WHERE COALESCE(ti_review.decision, ti.mapping_status) IN ('CONFLICT','REJECTED')) AS identity_conflicts
                     FROM ids
                     LEFT JOIN (
                         SELECT team.*, (
@@ -201,14 +206,19 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                     LEFT JOIN veltrix_ai_analyst.provider_team_identity_links ti
                       ON ti.provider=t.provider AND ti.source_id=t.source_id
                      AND ti.provider_team_id=t.provider_team_id
+                    LEFT JOIN LATERAL (
+                        SELECT decision FROM veltrix_ai_analyst.canonical_identity_review_events event
+                        WHERE event.team_identity_link_id=ti.id
+                        ORDER BY event.reviewed_at DESC,event.id DESC LIMIT 1
+                    ) ti_review ON TRUE
                 """, (approval["provider"],approval["source_id"],comp_id,approval["provider"],approval["source_id"],comp_id,approval["provider"],approval["source_id"]))
                 team_counts = dict(cur.fetchone())
 
                 cur.execute("""
                     SELECT count(f.id) AS linked_fixture_rows,
                            count(source_link.id) AS source_links,
-                           count(source_link.id) FILTER (WHERE source_link.mapping_status='REVIEW_REQUIRED') AS source_link_review_required,
-                           count(source_link.id) FILTER (WHERE source_link.mapping_status='CONFLICT') AS source_link_conflicts,
+                           count(source_link.id) FILTER (WHERE COALESCE(source_review.decision, source_link.mapping_status) NOT IN ('SOURCE_FIXTURE_LINK_REVIEWED','CONFLICT','REJECTED')) AS source_link_review_required,
+                           count(source_link.id) FILTER (WHERE COALESCE(source_review.decision, source_link.mapping_status) IN ('CONFLICT','REJECTED')) AS source_link_conflicts,
                            count(*) FILTER (WHERE f.identity_status='VERIFIED') AS identity_verified,
                            count(*) FILTER (WHERE f.identity_status='IDENTITY_REVIEW_REQUIRED') AS identity_review_required,
                            count(*) FILTER (WHERE f.identity_status='CONFLICT') AS identity_conflicts,
@@ -219,6 +229,11 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                     LEFT JOIN veltrix_ai_analyst.canonical_fixture_sources source_link
                       ON source_link.provider_fixture_row_id=p.id
                     LEFT JOIN veltrix_ai_analyst.canonical_fixtures f ON f.id=source_link.canonical_fixture_id
+                    LEFT JOIN LATERAL (
+                        SELECT decision FROM veltrix_ai_analyst.canonical_identity_review_events event
+                        WHERE event.fixture_source_link_id=source_link.id
+                        ORDER BY event.reviewed_at DESC,event.id DESC LIMIT 1
+                    ) source_review ON TRUE
                     WHERE p.provider=%s AND p.source_id=%s AND p.provider_competition_id=%s
                 """, (approval["provider"],approval["source_id"],comp_id))
                 canonical_counts=dict(cur.fetchone())
