@@ -18,6 +18,7 @@ class FixtureIdentity:
     away_team_id: str
     kickoff_at: datetime
     canonical_competition_id: str | None = None
+    canonical_fixture_id: str | None = None
     provider_home_team_id: str | None = None
     provider_away_team_id: str | None = None
 
