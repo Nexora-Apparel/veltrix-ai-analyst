@@ -735,3 +735,21 @@ PR #121 remains open and unmerged. No production deployment, production predicti
 - The configured backfill bounds are seven approved competitions × ten requests per competition = 70 maximum reserved provider requests across the batch. The shared provider client enforces a 60-second minimum interval, i.e. at most 60 requests/hour from this job.
 - Therefore the configured batch is below the stated hourly rate limit. This does not establish a separate monthly/account-wide remaining-credit balance; do not describe 300/hour as 300 total credits.
 - No collection was started by this clarification. Keep actual execution behind the explicit workflow dispatch gate until the workflow is exposed on the default branch and the selected branch/code is verified. No Odds API calls.
+
+
+## Default-branch backfill workflow exposure
+
+**Date:** 2026-11-20  
+**Main commit:** `6b6c045a50572cf22f12d6ca95038fca81d91b36`  
+**Workflow:** `.github/workflows/historical-feature-evidence-backfill.yml`
+
+- Added the bounded manual backfill workflow to `main` so GitHub exposes the workflow dispatch UI without merging unfinished PR #121.
+- Fetched the committed workflow back from `main`; file blob SHA `4171c195d0871fb0f36cfac2c373b10085afc69c`.
+- Dispatch must select branch `stage-8b-sparse-inference-governance`. The workflow checks out `github.ref`, so the importer implementation and workflow-dispatch run both use the selected Stage 8B branch, not the older main importer. The workflow definition itself is present on default branch for discoverability.
+- Default input `execute_backfill=false` remains preflight-only. Actual collection requires explicitly setting it to true.
+- Execution scope: seven approved competitions; 10-request per-competition cap (70 total maximum); one request per 60 seconds; 365-day window; import type `historical_feature_backfill`; existing reservation/checkpoint/resume controls remain active.
+- Provider dashboard allowance was confirmed by user as 300 requests/hour with hourly reset. The configured 60-second interval is 60 requests/hour, below that rate limit.
+- PR #121 remains open and unmerged. No dispatch has been performed; no historical provider collection has started; no Odds API calls were made.
+
+### Manual step now available
+Open [the workflow page](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/historical-feature-evidence-backfill.yml), choose branch `stage-8b-sparse-inference-governance`, set `execute_backfill=true` to launch the bounded collection, then click Run workflow. The workflow will first verify database identity and probe provider entitlement before collection. Send the resulting run URL for monitoring and validation.
