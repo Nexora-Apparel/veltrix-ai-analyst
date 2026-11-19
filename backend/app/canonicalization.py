@@ -22,6 +22,7 @@ class CanonicalMaterializationScope:
     import_run_id: int | None
     expected_fixture_count: int | None = None
     expected_team_count: int | None = None
+    identity_collision_team_alias_pairs: tuple[tuple[str, str], ...] = ()
 
 
 BRAZIL_SERIE_B_RUN_3 = CanonicalMaterializationScope(
@@ -32,6 +33,7 @@ BRAZIL_SERIE_B_RUN_3 = CanonicalMaterializationScope(
     import_run_id=3,
     expected_fixture_count=374,
     expected_team_count=21,
+    identity_collision_team_alias_pairs=(("1102583842", "3808811746"),),
 )
 
 AMERICA_MG_PROVIDER_ID = "1102583842"
@@ -298,48 +300,40 @@ def _fixture_run_predicate(scope: CanonicalMaterializationScope) -> str:
     """
 
 
-def _identity_collision_fixture_ids(fixtures: list[dict[str, Any]]) -> tuple[str, ...]:
-    candidates: list[dict[str, Any]] = []
-    for fixture in fixtures:
-        teams = {
-            fixture["home_team_provider_id"],
-            fixture["away_team_provider_id"],
-        }
-        if AMERICA_MG_PROVIDER_ID in teams or AMERICA_MINEIRO_PROVIDER_ID in teams:
-            candidates.append(fixture)
+def _identity_collision_fixture_ids(
+    fixtures: list[dict[str, Any]],
+    alias_pairs: tuple[tuple[str, str], ...] = (),
+) -> tuple[str, ...]:
+    """Flag exact repeated pairings or explicitly evidenced provider-ID aliases."""
     conflicts: set[str] = set()
-    for left in candidates:
-        left_america = (
-            AMERICA_MG_PROVIDER_ID
-            if AMERICA_MG_PROVIDER_ID in {
-                left["home_team_provider_id"], left["away_team_provider_id"]
+    for index, left in enumerate(fixtures):
+        left_teams = {
+            str(left["home_team_provider_id"]),
+            str(left["away_team_provider_id"]),
+        }
+        for right in fixtures[index + 1:]:
+            right_teams = {
+                str(right["home_team_provider_id"]),
+                str(right["away_team_provider_id"]),
             }
-            else AMERICA_MINEIRO_PROVIDER_ID
-        )
-        left_opponent = (
-            left["away_team_provider_id"]
-            if left["home_team_provider_id"] == left_america
-            else left["home_team_provider_id"]
-        )
-        for right in candidates:
-            right_america = (
-                AMERICA_MG_PROVIDER_ID
-                if AMERICA_MG_PROVIDER_ID in {
-                    right["home_team_provider_id"], right["away_team_provider_id"]
-                }
-                else AMERICA_MINEIRO_PROVIDER_ID
+            close_in_time = abs(left["kickoff_at"] - right["kickoff_at"]) <= IDENTITY_COLLISION_WINDOW
+            same_ordered_pair = (
+                left["home_team_provider_id"] == right["home_team_provider_id"]
+                and left["away_team_provider_id"] == right["away_team_provider_id"]
             )
-            right_opponent = (
-                right["away_team_provider_id"]
-                if right["home_team_provider_id"] == right_america
-                else right["home_team_provider_id"]
-            )
-            if (
-                left_america != right_america
-                and left_opponent == right_opponent
-                and abs(left["kickoff_at"] - right["kickoff_at"])
-                <= IDENTITY_COLLISION_WINDOW
-            ):
+            alias_collision = False
+            if close_in_time:
+                for alias_a, alias_b in alias_pairs:
+                    for first, second in ((alias_a, alias_b), (alias_b, alias_a)):
+                        if first in left_teams and second in right_teams:
+                            left_opponent = next(iter(left_teams - {first}), None)
+                            right_opponent = next(iter(right_teams - {second}), None)
+                            if left_opponent is not None and left_opponent == right_opponent:
+                                alias_collision = True
+                                break
+                    if alias_collision:
+                        break
+            if close_in_time and (same_ordered_pair or alias_collision):
                 conflicts.add(str(left["provider_fixture_id"]))
                 conflicts.add(str(right["provider_fixture_id"]))
     return tuple(sorted(conflicts))
@@ -461,7 +455,7 @@ def build_brazil_serie_b_materialization_plan(
     ):
         blockers.append("UNSETTLED_FIXTURE_HAS_SCORE")
 
-    conflict_ids = _identity_collision_fixture_ids(fixtures)
+    conflict_ids = _identity_collision_fixture_ids(fixtures, scope.identity_collision_team_alias_pairs)
     return CanonicalMaterializationPlan(
         provider=scope.provider,
         source_id=scope.source_id,
@@ -729,3 +723,23 @@ def materialize_brazil_serie_b_canonical_entities(
         "provider_requests_made": 0,
         "plan": plan.as_dict(),
     }
+
+
+def build_canonical_materialization_plan(
+    connection: psycopg.Connection[Any],
+    scope: CanonicalMaterializationScope,
+) -> CanonicalMaterializationPlan:
+    """Generic approved-source planner; historical function retained for compatibility."""
+    return build_brazil_serie_b_materialization_plan(connection, scope)
+
+
+def materialize_canonical_entities(
+    connection: psycopg.Connection[Any],
+    *,
+    execute: bool = False,
+    scope: CanonicalMaterializationScope,
+) -> dict[str, Any]:
+    """Generic approved-source materializer; dry-run remains the default."""
+    return materialize_brazil_serie_b_canonical_entities(
+        connection, execute=execute, scope=scope
+    )
