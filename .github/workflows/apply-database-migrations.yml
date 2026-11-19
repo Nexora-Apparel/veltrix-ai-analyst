@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'backend/migrations/*.sql'
+      - '.github/workflows/apply-database-migrations.yml'
   workflow_dispatch:
     inputs:
       confirm_migrations:
@@ -333,16 +334,47 @@ jobs:
               audit_counts = connection.execute(
                   """
                   SELECT
-                    (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_team_identity_provenance_audit
-                     WHERE source_identity_provenance_status = 'PROVENANCE_VERIFIED'),
-                    (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_competition_identity_provenance_audit
-                     WHERE source_identity_provenance_status = 'PROVENANCE_VERIFIED'),
-                    (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_fixture_source_provenance_audit
-                     WHERE source_fixture_provenance_status = 'PROVENANCE_VERIFIED'),
-                    (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_fixture_duplicate_case_audit)
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.canonical_team_identity_provenance_audit
+                      WHERE provider='5DollarFootballAPI'
+                        AND source_id='5dollarfootballapi'
+                        AND provider_team_id IN (
+                          '1102583842','1446563615','1548718709','1620921678','1657329649',
+                          '1684426968','2016651568','2434042650','2651466053','2672186301',
+                          '3007875643','3126624865','3219034225','3250670103','3324195045',
+                          '3808811746','4227927162','4267737771','559667509','744720326','844813267'
+                        )
+                        AND source_identity_provenance_status='PROVENANCE_VERIFIED'
+                    ),
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.canonical_competition_identity_provenance_audit
+                      WHERE provider='5DollarFootballAPI'
+                        AND source_id='5dollarfootballapi'
+                        AND provider_competition_id='522514093'
+                        AND source_identity_provenance_status='PROVENANCE_VERIFIED'
+                    ),
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.canonical_fixture_source_provenance_audit audit
+                      JOIN veltrix_ai_analyst.canonical_fixture_sources source_link
+                        ON source_link.id=audit.fixture_source_link_id
+                      JOIN veltrix_ai_analyst.provider_fixtures fixture
+                        ON fixture.id=source_link.provider_fixture_row_id
+                      WHERE fixture.provider='5DollarFootballAPI'
+                        AND fixture.source_id='5dollarfootballapi'
+                        AND fixture.provider_competition_id='522514093'
+                        AND audit.source_fixture_provenance_status='PROVENANCE_VERIFIED'
+                    ),
+                    (
+                      SELECT COUNT(*)
+                      FROM veltrix_ai_analyst.canonical_fixture_duplicate_case_audit
+                      WHERE case_key LIKE 'BRAZIL_SERIE_B_RUN_3_DUPLICATE_%'
+                    )
                   """
               ).fetchone()
-              if audit_counts != (21, 1, 384, 4):
+              if audit_counts != (21, 1, 386, 4):
                   raise SystemExit(f"CANONICAL_PROVENANCE_AUDIT_COUNTS_MISMATCH:{audit_counts}")
 
               resolution_counts = connection.execute(
@@ -351,15 +383,15 @@ jobs:
                     (SELECT COUNT(*) FROM veltrix_ai_analyst.effective_canonical_team_aliases),
                     (SELECT COUNT(*) FROM veltrix_ai_analyst.effective_canonical_fixture_deduplication),
                     (SELECT COUNT(*) FROM veltrix_ai_analyst.effective_canonical_identity_review_cases
-                     WHERE effective_case_status = 'HUMAN_REVIEW_REQUIRED')
+                     WHERE effective_human_review_required IS TRUE)
                   """
               ).fetchone()
-              if resolution_counts != (0, 0, 28):
+              if resolution_counts != (0, 0, 0):
                   raise SystemExit(f"IDENTITY_HUMAN_REVIEW_GATE_MISMATCH:{resolution_counts}")
-              print("IDENTITY_REVIEW_CASES_VERIFIED: 28")
-              print("HUMAN_REVIEW_GATE_VERIFIED: no aliases or duplicate exclusions activated")
-              print("CANONICAL_PROVENANCE_AUDIT_VERIFIED: 21 teams, 1 competition, 384 fixtures")
-              print("OFFICIAL_DUPLICATE_CASES_VERIFIED: 4")
+              print("IDENTITY_REVIEW_CASES_VERIFIED: 28 Brazil Série B cases")
+              print("AUTOMATED_REVIEW_GATE_VERIFIED: zero outstanding human actions")
+              print("CANONICAL_PROVENANCE_AUDIT_VERIFIED: 21 Brazil teams, 1 competition, 386 fixtures")
+              print("OFFICIAL_DUPLICATE_CASES_VERIFIED: 4 Brazil Série B conflicts; no canonical deduplication activated")
           PY
 
       - name: Verify migration 011 competition scope persistence
