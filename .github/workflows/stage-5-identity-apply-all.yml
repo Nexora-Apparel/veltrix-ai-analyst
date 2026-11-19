@@ -7,11 +7,6 @@ on:
         description: 'Type APPLY_ALL_SEVEN_APPROVED_SCOPES exactly'
         required: true
         type: string
-  workflow_run:
-    workflows: ["VELTRIX Stage 5 identity reconciliation preview"]
-    types: [completed]
-    branches: [main]
-
 permissions:
   contents: read
 
@@ -21,7 +16,7 @@ concurrency:
 
 jobs:
   apply-approved-scopes:
-    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'APPLY_ALL_SEVEN_APPROVED_SCOPES')
+    if: github.event_name == 'workflow_dispatch' && inputs.confirmation == 'APPLY_ALL_SEVEN_APPROVED_SCOPES'
     name: Apply seven approved scopes without resolving ambiguous identities
     environment: veltrix-historical-import
     runs-on: ubuntu-latest
@@ -29,7 +24,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
       EXPECTED_DATABASE_NAME: veltrix_ai_analyst
-      CONFIRMATION: ${{ github.event_name == 'workflow_run' && 'APPLY_ALL_SEVEN_APPROVED_SCOPES' || inputs.confirmation }}
+      CONFIRMATION: ${{ inputs.confirmation }}
       CANONICAL_MATERIALIZATION_CONFIRMATION: APPLY_ONE_APPROVED_CANONICAL_SCOPE
     steps:
       - uses: actions/checkout@v4
