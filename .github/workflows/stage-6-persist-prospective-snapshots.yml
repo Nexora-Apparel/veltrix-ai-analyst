@@ -13,6 +13,8 @@ concurrency:
   group: veltrix-stage6-snapshot-persistence
   cancel-in-progress: false
 
+# The marker is checked against the actual squash commit message, not the PR title.
+# [PERSIST_STAGE6_SNAPSHOTS] is the one-time write authorization gate.
 jobs:
   persist:
     if: contains(github.event.head_commit.message, '[PERSIST_STAGE6_SNAPSHOTS]')
