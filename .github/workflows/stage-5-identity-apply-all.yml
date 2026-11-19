@@ -1,0 +1,217 @@
+name: VELTRIX Stage 5 guarded seven-scope apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type APPLY_ALL_SEVEN_APPROVED_SCOPES exactly'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-stage-5-identity-apply-all
+  cancel-in-progress: false
+
+jobs:
+  apply-approved-scopes:
+    name: Apply seven approved scopes without resolving ambiguous identities
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      CONFIRMATION: ${{ inputs.confirmation }}
+      CANONICAL_MATERIALIZATION_CONFIRMATION: APPLY_ONE_APPROVED_CANONICAL_SCOPE
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: python -m pip install -e .
+
+      - name: Validate explicit authorization and production database
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = "APPLY_ALL_SEVEN_APPROVED_SCOPES"
+          test -n "$DATABASE_URL"
+          python - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+          import psycopg
+
+          expected = "veltrix_ai_analyst"
+          if os.environ.get("EXPECTED_DATABASE_NAME") != expected:
+              raise SystemExit("EXPECTED_DATABASE_NAME_MISMATCH")
+          if urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/").split("?")[0] != expected:
+              raise SystemExit("DATABASE_URL_TARGET_MISMATCH")
+          with psycopg.connect(
+              os.environ["DATABASE_URL"],
+              options="-c default_transaction_read_only=on",
+          ) as conn:
+              if conn.info.dbname != expected:
+                  raise SystemExit("CONNECTED_DATABASE_TARGET_MISMATCH")
+              with conn.transaction():
+                  conn.execute("SET TRANSACTION READ ONLY")
+                  applied = {
+                      row[0] for row in conn.execute(
+                          "SELECT version FROM public.schema_migrations"
+                      ).fetchall()
+                  }
+                  required = {
+                      "006_pre_match_feature_pit_gate.sql",
+                      "007_canonical_entity_layer.sql",
+                      "008_model_artifacts.sql",
+                      "008_canonical_identity_link_uniqueness.sql",
+                      "009_canonical_identity_review_cases.sql",
+                      "010_system_observed_pit.sql",
+                      "011_import_run_competition_scope.sql",
+                      "012_database_observed_timestamps.sql",
+                      "013_target_fixture_pre_match_gate.sql",
+                      "014_prediction_publication_storage.sql",
+                  }
+                  missing = sorted(required - applied)
+                  if missing:
+                      raise SystemExit("REQUIRED_MIGRATIONS_MISSING:" + ",".join(missing))
+          print("EXPLICIT_AUTHORIZATION_AND_DATABASE_TARGET=PASS")
+          PY
+
+      - name: Preflight all seven scopes read-only before any write
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          mkdir -p stage-5-apply-report
+          python scripts/materialize_approved_scopes.py > stage-5-apply-report/preflight.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          expected = {
+              "3118717965", "522514093", "4160026622",
+              "3614399544", "686337048", "3405541143", "4212821298",
+          }
+          report = json.loads(Path("stage-5-apply-report/preflight.json").read_text())
+          actual = {item["scope"]["competition_id"] for item in report["scopes"]}
+          if report["mode"] != "DRY_RUN" or report["database"] != "veltrix_ai_analyst":
+              raise SystemExit("PREFLIGHT_MODE_OR_DATABASE_INVALID")
+          if report["scope_count"] != 7 or actual != expected:
+              raise SystemExit("PREFLIGHT_APPROVED_SCOPE_SET_MISMATCH")
+          if report["ready_count"] != 7 or report["blocked_count"] != 0:
+              raise SystemExit("PREFLIGHT_SCOPE_NOT_READY")
+          print("PREFLIGHT_ALL_SEVEN_EXACT_SCOPES=READY")
+          PY
+
+      - name: Apply each scope with exact provider and competition selectors
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          failures=0
+          while IFS='|' read -r competition_id label; do
+            report="stage-5-apply-report/apply-${competition_id}.json"
+            echo "Applying ${label} (${competition_id})"
+            if python scripts/materialize_approved_scopes.py \
+              --execute \
+              --provider "5DollarFootballAPI" \
+              --source-id "5dollarfootballapi" \
+              --competition-id "${competition_id}" > "${report}"; then
+              python - "${report}" "${competition_id}" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          report = json.loads(Path(sys.argv[1]).read_text())
+          expected_id = sys.argv[2]
+          if report["mode"] != "APPLY" or report["scope_count"] != 1:
+              raise SystemExit("APPLY_REPORT_SHAPE_INVALID")
+          item = report["scopes"][0]
+          if item["scope"]["competition_id"] != expected_id or item["status"] != "APPLIED":
+              raise SystemExit("EXACT_SCOPE_NOT_APPLIED")
+          if report["provider_requests_made"] != 0:
+              raise SystemExit("UNEXPECTED_PROVIDER_REQUEST")
+          print("APPLIED", expected_id, item["result"])
+          PY
+            else
+              rc=$?
+              echo "SCOPE_APPLY_FAILED=${competition_id}; exit=${rc}"
+              failures=$((failures + 1))
+            fi
+          done <<'SCOPES'
+          3118717965|Brazil Serie A
+          522514093|Brazil Serie B
+          4160026622|England Premier League
+          3614399544|France Ligue 1
+          686337048|Germany Bundesliga I
+          3405541143|Italy Serie A
+          4212821298|Spain La Liga
+          SCOPES
+          printf '{"failed_scope_count":%s}\n' "$failures" > stage-5-apply-report/apply-summary.json
+          if [ "$failures" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Verify all source links and preserve unresolved identity states
+        if: always()
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          python scripts/canonical_scope_inventory.py \
+            --format both \
+            --output stage-5-apply-report/post-apply-inventory.json \
+            > stage-5-apply-report/post-apply-inventory.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          expected = {
+              "3118717965", "522514093", "4160026622",
+              "3614399544", "686337048", "3405541143", "4212821298",
+          }
+          report = json.loads(Path("stage-5-apply-report/post-apply-inventory.json").read_text())
+          seen = set()
+          for approval in report["approvals"]:
+              for scope in approval["competition_scopes"]:
+                  cid = scope["competition_id"]
+                  if cid not in expected:
+                      continue
+                  seen.add(cid)
+                  fixture_count = scope["fixture_coverage"]["fixture_rows"]
+                  links = scope["canonical_fixture_links"]
+                  if links["source_links"] != fixture_count:
+                      raise SystemExit(f"SOURCE_LINK_COUNT_MISMATCH:{cid}")
+                  if links["linked_fixture_rows"] != fixture_count:
+                      raise SystemExit(f"CANONICAL_FIXTURE_LINK_COUNT_MISMATCH:{cid}")
+                  if links["identity_verified"] != 0:
+                      raise SystemExit(f"UNEXPECTED_IDENTITY_VERIFICATION:{cid}")
+                  if links["identity_review_required"] + links["identity_conflicts"] != fixture_count:
+                      raise SystemExit(f"IDENTITY_REVIEW_STATE_NOT_PRESERVED:{cid}")
+                  if links["source_link_conflicts"] != 0:
+                      raise SystemExit(f"SOURCE_LINK_CONFLICT:{cid}")
+                  teams = scope["team_coverage"]
+                  if teams["canonical_linked_teams"] != teams["catalogued_teams"]:
+                      raise SystemExit(f"CANONICAL_TEAM_LINK_COUNT_MISMATCH:{cid}")
+                  competitions = scope["competition_coverage"]
+                  if competitions["canonical_linked_competitions"] != 1:
+                      raise SystemExit(f"CANONICAL_COMPETITION_LINK_COUNT_MISMATCH:{cid}")
+          if seen != expected:
+              raise SystemExit("POST_APPLY_SCOPE_COVERAGE_INCOMPLETE")
+          print("POST_APPLY_LINKAGE_AND_UNRESOLVED_IDENTITY_VERIFICATION=PASS")
+          PY
+
+      - name: Upload Stage 5 apply and verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-stage-5-identity-apply-all
+          path: backend/stage-5-apply-report/
+          if-no-files-found: warn
+          retention-days: 30
