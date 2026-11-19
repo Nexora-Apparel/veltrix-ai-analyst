@@ -965,3 +965,67 @@ jobs:
                   raise SystemExit("MIGRATION_016_APPEND_ONLY_TRIGGER_MISSING")
           print(f"MIGRATION_016_VERIFIED: {checksum}")
           PY
+
+
+      - name: Verify append-only prospective snapshot labels migration 017
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import psycopg
+
+          migration = Path("migrations/017_append_only_prospective_snapshot_labels.sql")
+          checksum = hashlib.sha256(migration.read_bytes()).hexdigest()
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != "veltrix_ai_analyst":
+                  raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
+              recorded = connection.execute(
+                  "SELECT checksum FROM public.schema_migrations WHERE version = %s",
+                  (migration.name,),
+              ).fetchone()
+              if recorded is None or recorded[0].strip() != checksum:
+                  raise SystemExit("MIGRATION_017_CHECKSUM_NOT_APPLIED")
+              table = connection.execute(
+                  "SELECT to_regclass(%s)",
+                  ("veltrix_ai_analyst.prospective_feature_snapshot_labels",),
+              ).fetchone()[0]
+              if table is None:
+                  raise SystemExit("MIGRATION_017_LABEL_TABLE_MISSING")
+              function = connection.execute(
+                  "SELECT to_regprocedure(%s)",
+                  ("veltrix_ai_analyst.enforce_prospective_snapshot_label_timing()",),
+              ).fetchone()[0]
+              if function is None:
+                  raise SystemExit("MIGRATION_017_PIT_FUNCTION_MISSING")
+              triggers = connection.execute(
+                  """
+                  SELECT t.tgname, t.tgenabled
+                  FROM pg_trigger t
+                  JOIN pg_class c ON c.oid=t.tgrelid
+                  JOIN pg_namespace n ON n.oid=c.relnamespace
+                  WHERE n.nspname='veltrix_ai_analyst'
+                    AND c.relname='prospective_feature_snapshot_labels'
+                    AND NOT t.tgisinternal
+                  """
+              ).fetchall()
+              enabled = {name for name, state in triggers if state in ('O', 'A')}
+              if not {
+                  "prospective_snapshot_label_pit_guard",
+                  "prospective_snapshot_labels_append_only",
+              }.issubset(enabled):
+                  raise SystemExit("MIGRATION_017_REQUIRED_TRIGGERS_MISSING")
+              inline_columns = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM information_schema.columns
+                  WHERE table_schema='veltrix_ai_analyst'
+                    AND table_name='prospective_feature_snapshots'
+                    AND column_name = ANY(%s)
+                  """,
+                  (["label", "label_observed_at", "label_observation_id", "label_lineage"],),
+              ).fetchone()[0]
+              if inline_columns != 0:
+                  raise SystemExit("MIGRATION_017_INLINE_LABEL_COLUMNS_REMAIN")
+          print(f"MIGRATION_017_VERIFIED: {checksum}")
+          PY

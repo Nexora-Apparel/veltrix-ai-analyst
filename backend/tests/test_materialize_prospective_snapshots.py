@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import hashlib
+
 import pytest
 
-from scripts.materialize_prospective_snapshots import validate_report
+from scripts.materialize_prospective_snapshots import (
+    canonical_json,
+    snapshot_digest,
+    validate_report,
+)
 
 
 def valid_report():
@@ -25,6 +31,8 @@ def valid_report():
                 "availability_basis": "SYSTEM_OBSERVED_AT",
                 "point_in_time_certifiable": True,
                 "rights_approval_id": "approval-1",
+                "rights_valid_from": "2025-12-01T00:00:00+00:00",
+                "rights_valid_until": None,
                 "rights_status": "APPROVED",
                 "rights_permitted_uses": [
                     "FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"
@@ -64,3 +72,98 @@ def test_snapshot_report_rejects_cutoff_at_kickoff():
     report["rows"][0]["prediction_cutoff_at"] = report["rows"][0]["kickoff_at"]
     with pytest.raises(ValueError, match="PIT_CUTOFF_NOT_BEFORE_KICKOFF"):
         validate_report(report)
+
+
+
+def test_snapshot_digest_is_independent_of_later_outcome_label():
+    row = valid_report()["rows"][0]
+    original = snapshot_digest(row)
+    row.update({
+        "label": {"home_goals": 2, "away_goals": 1},
+        "label_observed_at": "2026-01-02T14:00:00+00:00",
+        "label_observation_id": 44,
+        "label_lineage": {"source_observation_id": 44},
+    })
+    assert snapshot_digest(row) == original
+
+
+def test_label_requires_post_kickoff_approved_pit_lineage():
+    report = valid_report()
+    row = report["rows"][0]
+    row.update({
+        "label": {"home_goals": 2, "away_goals": 1},
+        "label_observed_at": "2026-01-02T14:00:00+00:00",
+        "label_observation_id": 44,
+        "label_lineage": {
+            "availability_basis": "SYSTEM_OBSERVED_AT",
+            "point_in_time_certifiable": True,
+            "rights_status": "APPROVED",
+            "rights_approval_id": "approval-1",
+            "rights_valid_from": "2025-12-01T00:00:00+00:00",
+            "rights_valid_until": None,
+            "rights_status_events": [],
+            "rights_permitted_uses": ["MODEL_TRAINING", "MODEL_VALIDATION"],
+            "system_observed_at": "2026-01-02T14:00:00+00:00",
+            "retrieved_at": "2026-01-02T13:59:59+00:00",
+            "source_observation_id": 44,
+            "source_sighting_id": 45,
+            "provider_response_id": 46,
+            "payload_sha256": "d" * 64,
+            "raw_response_sha256": "e" * 64,
+        },
+    })
+    assert len(validate_report(report)) == 1
+
+
+def test_label_rejects_observation_at_kickoff():
+    report = valid_report()
+    row = report["rows"][0]
+    row.update({
+        "label": {"home_goals": 2, "away_goals": 1},
+        "label_observed_at": row["kickoff_at"],
+        "label_observation_id": 44,
+        "label_lineage": {
+            "availability_basis": "SYSTEM_OBSERVED_AT",
+            "point_in_time_certifiable": True,
+            "rights_status": "APPROVED",
+            "rights_approval_id": "approval-1",
+            "rights_permitted_uses": ["MODEL_TRAINING", "MODEL_VALIDATION"],
+            "system_observed_at": row["kickoff_at"],
+            "retrieved_at": "2026-01-02T11:59:59+00:00",
+            "source_observation_id": 44,
+            "source_sighting_id": 45,
+            "provider_response_id": 46,
+            "payload_sha256": "d" * 64,
+            "raw_response_sha256": "e" * 64,
+        },
+    })
+    with pytest.raises(ValueError, match="LABEL_LINEAGE_GATE_FAILED"):
+        validate_report(report)
+
+
+
+def test_feature_lineage_rejects_rights_revoked_before_observation():
+    report = valid_report()
+    report["rows"][0]["feature_lineage"][0]["rights_status_events"] = [{
+        "id": 1,
+        "status": "REVOKED",
+        "effective_at": "2026-01-02T08:30:00+00:00",
+    }]
+    with pytest.raises(
+        ValueError, match="FEATURE_LINEAGE_RIGHTS_OR_PIT_GATE_FAILED"
+    ):
+        validate_report(report)
+
+
+
+def test_snapshot_digest_preserves_existing_null_label_hash():
+    row = valid_report()["rows"][0]
+    legacy_row = {
+        **row,
+        "label": None,
+        "label_observed_at": None,
+        "label_observation_id": None,
+        "label_lineage": None,
+    }
+    expected = hashlib.sha256(canonical_json(legacy_row).encode("utf-8")).hexdigest()
+    assert snapshot_digest(row) == expected

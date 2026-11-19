@@ -86,20 +86,43 @@ jobs:
           with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
               if connection.info.dbname != "veltrix_ai_analyst":
                   raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
+              expected_rows = json.dumps([
+                  {
+                      "canonical_fixture_id": item["canonical_fixture_id"],
+                      "prediction_cutoff_at": item["prediction_cutoff_at"],
+                      "label_observation_id": item.get("label_observation_id"),
+                  }
+                  for item in report["rows"]
+              ])
               row = connection.execute(
                   """
-                  SELECT COUNT(*), COUNT(DISTINCT canonical_fixture_id),
-                         COUNT(*) FILTER (WHERE label IS NOT NULL)
-                  FROM veltrix_ai_analyst.prospective_feature_snapshots
-                  WHERE dataset_sha256 = %s
+                  WITH expected AS (
+                      SELECT *
+                      FROM jsonb_to_recordset(%s::jsonb) AS item(
+                          canonical_fixture_id BIGINT,
+                          prediction_cutoff_at TIMESTAMPTZ,
+                          label_observation_id BIGINT
+                      )
+                  )
+                  SELECT COUNT(s.id), COUNT(DISTINCT s.canonical_fixture_id),
+                         COUNT(l.id)
+                  FROM expected e
+                  LEFT JOIN veltrix_ai_analyst.prospective_feature_snapshots s
+                    ON s.canonical_fixture_id=e.canonical_fixture_id
+                   AND s.prediction_cutoff_at=e.prediction_cutoff_at
+                   AND s.feature_schema_version='veltrix-pit-features-v1'
+                  LEFT JOIN veltrix_ai_analyst.prospective_feature_snapshot_labels l
+                    ON l.snapshot_id=s.id
+                   AND l.source_observation_id=e.label_observation_id
                   """,
-                  (digest,),
+                  (expected_rows,),
               ).fetchone()
+              label_count = row[2]
               if row[0] != expected or row[1] != expected:
                   raise SystemExit(
                       f"SNAPSHOT_PERSISTENCE_COUNT_MISMATCH: expected={expected}, actual={row[0]}, distinct={row[1]}"
                   )
-              if row[2] != report["settled_label_rows"]:
+              if label_count != report["settled_label_rows"]:
                   raise SystemExit("SNAPSHOT_LABEL_COUNT_MISMATCH")
               trigger = connection.execute(
                   """
@@ -120,7 +143,7 @@ jobs:
               "status": "PERSISTENCE_VERIFIED",
               "snapshots": row[0],
               "distinct_fixtures": row[1],
-              "settled_labels": row[2],
+              "settled_labels": label_count,
               "dataset_sha256": digest,
           }, sort_keys=True))
           PY
