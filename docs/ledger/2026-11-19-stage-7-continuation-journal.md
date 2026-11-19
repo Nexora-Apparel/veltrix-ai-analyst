@@ -428,7 +428,7 @@ The next capture must therefore remain a capture-only evidence operation. It mus
 ### Verification status and limits
 
 - Changes are committed to the feature branch; no production branch changes have been made.
-- GitHub Actions/CI has not yet been inspected for this branch. Do not describe these tests as passing until the workflow result is fetched.
+- PR #121 triggered GitHub Actions run **44621336631**. At the latest inspection, both jobs were still in progress: Backend tests and lint (dependency installation) and Android debug build (APK assembly). No test result is yet available; do not describe the tests as passing until the run completes. The Vercel status check separately reported a deployment rate limit with a 24-hour retry window; no deployment was attempted by this work.
 - No provider API, The Odds API, Neon write, production migration, artifact promotion or prediction publication was performed.
 - Stage 7 certification remains blocked until prospective settled labels and walk-forward evidence accumulate.
 - Stage 8B remains in progress; this checkpoint adds auditable sparse-path provenance but does not yet complete hyperparameter selection, stress validation, feature model training or production integration.
