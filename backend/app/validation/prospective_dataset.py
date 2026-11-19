@@ -586,6 +586,19 @@ def build_expanding_window_folds(
     group_index = 0
     fold_number = 1
     while group_index < len(groups):
+        validation_start = groups[group_index][0].kickoff_at
+        candidate_training = [*historical_training, *prior_prospective]
+        eligible_train = [
+            row for row in candidate_training
+            if row.kickoff_at < validation_start
+            and row.label_observed_at is not None
+            and row.label_observed_at < validation_start
+        ]
+        if len(eligible_train) < minimum_training_fixtures:
+            prior_prospective.extend(groups[group_index])
+            group_index += 1
+            continue
+
         validation_groups: list[list[ProspectiveDatasetRow]] = []
         validation_count = 0
         cursor = group_index
@@ -598,8 +611,6 @@ def build_expanding_window_folds(
         ]
         validation_start = validation_rows[0].kickoff_at
         validation_end = validation_rows[-1].kickoff_at
-
-        candidate_training = [*historical_training, *prior_prospective]
         eligible_train = [
             row for row in candidate_training
             if row.kickoff_at < validation_start
