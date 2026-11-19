@@ -222,7 +222,7 @@ def main() -> int:
             with connection.transaction():
                 connection.execute("SET TRANSACTION READ ONLY")
                 report=inventory(connection)
-    except Exception as exc:
+    except (psycopg.Error, OSError, ValueError, RuntimeError, KeyError, TypeError, AttributeError) as exc:
         print(f"CANONICAL_SCOPE_INVENTORY_FAILED: {type(exc).__name__}",file=sys.stderr)
         return 2
     encoded=json.dumps(report,sort_keys=True,indent=2,default=str)
