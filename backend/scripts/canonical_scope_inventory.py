@@ -319,6 +319,21 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                 })
             scope_reports.append({"approval": _jsonable(approval), "competition_scopes": scopes})
 
+        cur.execute("""
+            SELECT review_case.case_key, review_case.case_type,
+                   effective.effective_case_status, review_case.recommended_action
+            FROM veltrix_ai_analyst.canonical_identity_review_cases review_case
+            JOIN veltrix_ai_analyst.effective_canonical_identity_review_cases effective
+              ON effective.id=review_case.id
+            WHERE review_case.primary_team_identity_link_id IS NULL
+              AND review_case.related_team_identity_link_id IS NULL
+              AND review_case.competition_identity_link_id IS NULL
+              AND review_case.primary_fixture_source_link_id IS NULL
+              AND review_case.related_fixture_source_link_id IS NULL
+            ORDER BY review_case.case_type, review_case.case_key
+        """)
+        unlinked_global_review_cases = [dict(row) for row in cur.fetchall()]
+
     missing_objects=[name for name,exists in schema_objects.items() if not exists]
     missing_migrations=sorted(REQUIRED_MIGRATIONS-applied)
     return {
@@ -332,6 +347,7 @@ def inventory(connection: psycopg.Connection[Any]) -> dict[str, Any]:
         "missing_required_migrations": missing_migrations,
         "migration_readiness": not missing_migrations and not missing_objects,
         "approvals": scope_reports,
+        "unlinked_global_review_cases": _jsonable(unlinked_global_review_cases),
     }
 
 
