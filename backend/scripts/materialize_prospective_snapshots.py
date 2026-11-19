@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -25,6 +26,18 @@ def snapshot_digest(row: dict) -> str:
     return hashlib.sha256(canonical_json(row).encode("utf-8")).hexdigest()
 
 
+def parse_timestamp(value: object) -> datetime:
+    if not isinstance(value, str):
+        raise ValueError("PIT_TIMESTAMP_MISSING")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError("PIT_TIMESTAMP_INVALID") from None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("PIT_TIMESTAMP_MUST_BE_TIMEZONE_AWARE")
+    return parsed
+
+
 def validate_report(report: dict) -> list[dict]:
     if report.get("report_type") != "VELTRIX_PROSPECTIVE_EXPANDING_DATASET":
         raise ValueError("UNRECOGNIZED_DATASET_REPORT")
@@ -43,7 +56,9 @@ def validate_report(report: dict) -> list[dict]:
             "prediction_cutoff_at", "provider_fixture_id",
         )):
             raise ValueError("CANONICAL_SNAPSHOT_IDENTITY_MISSING")
-        if row["prediction_cutoff_at"] >= row["kickoff_at"]:
+        kickoff_at = parse_timestamp(row["kickoff_at"])
+        cutoff_at = parse_timestamp(row["prediction_cutoff_at"])
+        if cutoff_at >= kickoff_at:
             raise ValueError("PIT_CUTOFF_NOT_BEFORE_KICKOFF")
         if not row.get("feature_lineage"):
             raise ValueError("FEATURE_LINEAGE_MISSING")
@@ -59,10 +74,12 @@ def validate_report(report: dict) -> list[dict]:
                 or not required_uses.issubset(set(item.get("rights_permitted_uses", [])))
             ):
                 raise ValueError("FEATURE_LINEAGE_RIGHTS_OR_PIT_GATE_FAILED")
+            observed_at = parse_timestamp(item["system_observed_at"])
+            retrieved_at = parse_timestamp(item["retrieved_at"])
             if (
-                item["system_observed_at"] >= row["kickoff_at"]
-                or item["system_observed_at"] > row["prediction_cutoff_at"]
-                or item["retrieved_at"] > item["system_observed_at"]
+                observed_at >= kickoff_at
+                or observed_at > cutoff_at
+                or retrieved_at > observed_at
             ):
                 raise ValueError("FEATURE_LINEAGE_NOT_STRICTLY_PRE_KICKOFF")
             for digest_key in ("payload_sha256", "raw_response_sha256"):
@@ -76,7 +93,7 @@ def validate_report(report: dict) -> list[dict]:
             label_lineage = row.get("label_lineage") or {}
             if (
                 row.get("label_observed_at") is None
-                or row["label_observed_at"] <= row["kickoff_at"]
+                or parse_timestamp(row["label_observed_at"]) <= kickoff_at
                 or label_lineage.get("availability_basis") != "SYSTEM_OBSERVED_AT"
                 or label_lineage.get("point_in_time_certifiable") is not True
                 or label_lineage.get("rights_status") != "APPROVED"
