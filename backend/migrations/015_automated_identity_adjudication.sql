@@ -208,18 +208,26 @@ BEGIN
           '4227927162', '4267737771', '559667509', '744720326', '844813267'
       )
       AND (
-          SELECT COUNT(*)
-          FROM veltrix_ai_analyst.provider_fixtures fixture
-          WHERE fixture.provider=link.provider
-            AND fixture.source_id=link.source_id
-            AND fixture.provider_competition_id='522514093'
-            AND fixture.status='FINISHED'
-            AND (
-                fixture.home_team_provider_id=link.provider_team_id
-                OR fixture.away_team_provider_id=link.provider_team_id
-            )
-      ) <> 38
-      OR FALSE;
+          (
+              SELECT COUNT(*)
+              FROM veltrix_ai_analyst.provider_fixtures fixture
+              WHERE fixture.provider=link.provider
+                AND fixture.source_id=link.source_id
+                AND fixture.provider_competition_id='522514093'
+                AND fixture.status='FINISHED'
+                AND fixture.home_team_provider_id=link.provider_team_id
+          ) <> 19
+          OR
+          (
+              SELECT COUNT(*)
+              FROM veltrix_ai_analyst.provider_fixtures fixture
+              WHERE fixture.provider=link.provider
+                AND fixture.source_id=link.source_id
+                AND fixture.provider_competition_id='522514093'
+                AND fixture.status='FINISHED'
+                AND fixture.away_team_provider_id=link.provider_team_id
+          ) <> 19
+      );
     IF mismatched_team_count <> 0 THEN
         RAISE EXCEPTION 'CBF_EVIDENCE_TEAM_APPEARANCE_COUNTS_MISMATCH:%', mismatched_team_count;
     END IF;
@@ -234,6 +242,18 @@ BEGIN
       AND fixture.status='FINISHED';
     IF alternate_america_count <> 0 THEN
         RAISE EXCEPTION 'ALTERNATE_AMERICA_ID_HAS_FINISHED_APPEARANCES:%', alternate_america_count;
+    END IF;
+
+    SELECT COUNT(*)
+      INTO alternate_america_count
+    FROM veltrix_ai_analyst.provider_fixtures fixture
+    WHERE fixture.provider='5DollarFootballAPI'
+      AND fixture.source_id='5dollarfootballapi'
+      AND fixture.provider_competition_id='522514093'
+      AND fixture.home_team_provider_id='3808811746'
+      AND fixture.status='UNKNOWN';
+    IF alternate_america_count <> 1 THEN
+        RAISE EXCEPTION 'ALTERNATE_AMERICA_UNKNOWN_ROW_COUNT_MISMATCH:%', alternate_america_count;
     END IF;
 
     SELECT COUNT(*)
