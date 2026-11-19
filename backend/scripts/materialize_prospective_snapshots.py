@@ -155,6 +155,10 @@ def validate_report(report: dict) -> list[dict]:
             required_label_uses = {"MODEL_TRAINING", "MODEL_VALIDATION"}
             if (
                 label_observed_at <= kickoff_at
+                or isinstance(row.get("label_observation_id"), bool)
+                or not isinstance(row.get("label_observation_id"), int)
+                or row["label_observation_id"] < 1
+                or not isinstance(row.get("label"), dict)
                 or label_lineage.get("availability_basis") != "SYSTEM_OBSERVED_AT"
                 or label_lineage.get("point_in_time_certifiable") is not True
                 or parse_timestamp(label_lineage.get("system_observed_at")) != label_observed_at
