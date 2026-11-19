@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import hashlib
+
 import pytest
 
-from scripts.materialize_prospective_snapshots import snapshot_digest, validate_report
+from scripts.materialize_prospective_snapshots import (
+    canonical_json,
+    snapshot_digest,
+    validate_report,
+)
 
 
 def valid_report():
@@ -147,3 +153,17 @@ def test_feature_lineage_rejects_rights_revoked_before_observation():
         ValueError, match="FEATURE_LINEAGE_RIGHTS_OR_PIT_GATE_FAILED"
     ):
         validate_report(report)
+
+
+
+def test_snapshot_digest_preserves_existing_null_label_hash():
+    row = valid_report()["rows"][0]
+    legacy_row = {
+        **row,
+        "label": None,
+        "label_observed_at": None,
+        "label_observation_id": None,
+        "label_lineage": None,
+    }
+    expected = hashlib.sha256(canonical_json(legacy_row).encode("utf-8")).hexdigest()
+    assert snapshot_digest(row) == expected
