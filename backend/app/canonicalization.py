@@ -38,6 +38,19 @@ BRAZIL_SERIE_B_RUN_3 = CanonicalMaterializationScope(
 
 IDENTITY_COLLISION_WINDOW = timedelta(minutes=2)
 
+# Keep this aligned with the provider_fixtures and canonical_fixtures status
+# constraints. Non-finished statuses are valid source records, but never carry
+# settled goal labels.
+SUPPORTED_FIXTURE_STATUSES = frozenset({
+    "SCHEDULED",
+    "LIVE",
+    "FINISHED",
+    "POSTPONED",
+    "CANCELLED",
+    "ABANDONED",
+    "UNKNOWN",
+})
+
 
 @dataclass(frozen=True)
 class CanonicalMaterializationPlan:
@@ -438,7 +451,7 @@ def build_brazil_serie_b_materialization_plan(
         blockers.append("NO_SOURCE_FIXTURES_FOUND")
     if scope.expected_fixture_count is not None and len(fixtures) != scope.expected_fixture_count:
         blockers.append("FIXTURE_SCOPE_COUNT_MISMATCH")
-    if finished_count + unknown_count != len(fixtures):
+    if any(fixture["status"] not in SUPPORTED_FIXTURE_STATUSES for fixture in fixtures):
         blockers.append("UNEXPECTED_FIXTURE_STATUS_PRESENT")
     if any(
         fixture["status"] == "FINISHED"
