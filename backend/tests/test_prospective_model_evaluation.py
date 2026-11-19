@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import replace
+
+import pytest
 from datetime import UTC, datetime, timedelta
 
 from app.validation.prospective_dataset import (
@@ -136,3 +138,26 @@ def test_historical_database_insert_labels_are_training_only_not_validation():
     assert report["production_promotion"] == "LOCKED"
     assert report["value_betting"] == "LOCKED"
 
+
+
+
+def test_evaluator_rejects_training_label_after_recorded_fold_cutoff():
+    rows = _synthetic_rows()
+    folds = build_expanding_window_folds(
+        rows,
+        minimum_training_fixtures=30,
+        validation_block_fixtures=25,
+    )
+    assert folds
+    unsafe_fold = replace(
+        folds[0],
+        train_cutoff_at=folds[0].train_cutoff_at - timedelta(days=1),
+    )
+
+    with pytest.raises(ValueError, match="recorded fold cutoff"):
+        evaluate_prospective_model(
+            rows,
+            [unsafe_fold],
+            bootstrap_replicates=200,
+            seed=31,
+        )
