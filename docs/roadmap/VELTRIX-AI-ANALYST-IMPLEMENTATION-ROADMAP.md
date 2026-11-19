@@ -335,6 +335,12 @@ This gives the 996 historical outcomes a legitimate route to richer research fea
 
 **Verification:** CI run 44625656408 on commit `8d493797a9e43b3d8699a26cb071fe3baed32d37`: 439 backend tests passed, Ruff lint passed, Android debug APK assembled and uploaded. PR #121 is open and mergeable, not merged. No production DB writes, provider requests or deployment occurred.
 
+### 5DollarFootballAPI rate-limit confirmation (2026-11-20)
+- User independently checked the provider dashboard: 300 requests/hour, matching the entitlement preflight response.
+- Current batch guardrails: seven approved competitions × ten requests maximum = 70 total request reservations; provider client throttle is one request per 60 seconds. This is within the reported hourly rate cap, but is not evidence of a separate monthly credit balance.
+- No historical collection was launched from this clarification. Actual dispatch remains gated until default-branch workflow and selected branch execution path are verified.
+
+
 ### Historical feature evidence preflight (2026-11-20)
 - A separate default-branch manual workflow is available at `.github/workflows/historical-feature-evidence-preflight.yml`; it performs only database identity/read-only and 5Dollar entitlement checks. Run `44636268137` passed.
 - Entitlement response reports Community plan and rate_limit 300, but daily_limit and daily_reset_at are null. Remaining quota is therefore unknown; historical collection remains blocked pending authoritative quota semantics/value. No collection or database writes occurred.
