@@ -65,8 +65,18 @@ def load_historical_rows(dsn: str) -> list[dict[str, Any]]:
                 approval.valid_from AS rights_valid_from,
                 approval.valid_until AS rights_valid_until
             FROM veltrix_ai_analyst.provider_fixtures AS fixture
-            JOIN veltrix_ai_analyst.source_observations AS observation
-              ON observation.id = fixture.source_observation_id
+            JOIN LATERAL (
+                SELECT source_observation.*
+                FROM veltrix_ai_analyst.source_observation_sightings AS sighting
+                JOIN veltrix_ai_analyst.source_observations AS source_observation
+                  ON source_observation.id = sighting.source_observation_id
+                WHERE source_observation.data_type = 'fixtures_and_results'
+                  AND source_observation.entity_type = 'fixture'
+                  AND source_observation.provider_entity_id = fixture.provider_fixture_id
+                  AND sighting.retrieved_at <= now()
+                ORDER BY sighting.retrieved_at DESC, sighting.id DESC
+                LIMIT 1
+            ) AS observation ON TRUE
             JOIN veltrix_ai_analyst.source_approvals AS approval
               ON approval.approval_id = observation.rights_approval_id
             WHERE fixture.provider = %s
