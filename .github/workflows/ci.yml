@@ -9,7 +9,7 @@ concurrency:
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, stage-8b-statistics-ci-release]
     paths:
       - "backend/**"
       - "backend/tests/test_the_odds_api_markets.py"
