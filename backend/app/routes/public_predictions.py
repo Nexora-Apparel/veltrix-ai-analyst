@@ -216,6 +216,31 @@ _HISTORY_QUERY = """
 """
 
 
+def _public_prediction_history_item(
+    fixture_row: dict[str, Any],
+    market_rows: Iterable[dict[str, Any]],
+) -> PublicPredictionHistoryItem:
+    base = _public_prediction(fixture_row, market_rows)
+    settled_at = fixture_row["settled_at"]
+    final_score = (
+        PublicFinalScore(
+            home_goals=fixture_row["settled_home_goals"],
+            away_goals=fixture_row["settled_away_goals"],
+        )
+        if settled_at is not None
+        else None
+    )
+    return PublicPredictionHistoryItem(
+        **base.model_dump(),
+        generated_at=fixture_row["generated_at"],
+        published_at=fixture_row["published_at"],
+        publication_status=fixture_row["publication_status"],
+        settlement_status="SETTLED" if settled_at is not None else "PENDING_RESULT",
+        final_score=final_score,
+        settled_at=settled_at,
+    )
+
+
 def _load_prediction_history() -> tuple[PublicPredictionHistoryItem, ...]:
     connection = _database_connection()
     try:
@@ -241,32 +266,12 @@ def _load_prediction_history() -> tuple[PublicPredictionHistoryItem, ...]:
             for row in market_rows:
                 grouped.setdefault(row["prediction_id"], []).append(row)
 
-            history = []
-            for row in fixtures:
-                base = _public_prediction(
+            return tuple(
+                _public_prediction_history_item(
                     row, grouped.get(row["prediction_id"], [])
                 )
-                settled_at = row["settled_at"]
-                final_score = (
-                    PublicFinalScore(
-                        home_goals=row["settled_home_goals"],
-                        away_goals=row["settled_away_goals"],
-                    )
-                    if settled_at is not None
-                    else None
-                )
-                history.append(PublicPredictionHistoryItem(
-                    **base.model_dump(),
-                    generated_at=row["generated_at"],
-                    published_at=row["published_at"],
-                    publication_status=row["publication_status"],
-                    settlement_status=(
-                        "SETTLED" if settled_at is not None else "PENDING_RESULT"
-                    ),
-                    final_score=final_score,
-                    settled_at=settled_at,
-                ))
-            return tuple(history)
+                for row in fixtures
+            )
     except (psycopg.Error, ValueError):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
