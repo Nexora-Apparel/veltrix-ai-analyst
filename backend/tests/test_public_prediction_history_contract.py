@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.contracts.public_prediction import PublicPredictionHistoryItem
-from app.main import app
+from app.routes.public_predictions import router as public_predictions_router
 
 
 def _history_payload() -> dict:
@@ -75,5 +75,6 @@ def test_public_history_contract_rejects_unsettled_status_with_score():
 
 
 def test_prediction_history_endpoint_is_registered():
-    paths = {route.path for route in app.routes}
-    assert "/v1/predictions/history" in paths
+    paths = {route.path for route in public_predictions_router.routes}
+    assert public_predictions_router.prefix == "/v1/predictions"
+    assert "/history" in paths
