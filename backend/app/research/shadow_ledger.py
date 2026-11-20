@@ -38,7 +38,7 @@ def canonical_json(value: Any) -> str:
 
 def _timestamp(value: Any, field: str) -> datetime:
     if not isinstance(value, str):
-        raise ValueError(f"{field}_MISSING")
+        raise TypeError(f"{field}_MISSING")
     try:
         parsed = datetime.fromisoformat(value)
     except ValueError:
@@ -76,7 +76,7 @@ def validate_shadow_report(report: dict, *, code_commit: str) -> dict:
     predictions = report.get("predictions")
     abstentions = report.get("abstentions")
     if not isinstance(predictions, list) or not isinstance(abstentions, list):
-        raise ValueError("SHADOW_REPORT_COLLECTIONS_INVALID")
+        raise TypeError("SHADOW_REPORT_COLLECTIONS_INVALID")
     if len(predictions) > 25:
         raise ValueError("SHADOW_FORECAST_LIMIT_EXCEEDED")
     if report.get("forecast_count", len(predictions)) != len(predictions):
@@ -110,7 +110,7 @@ def validate_shadow_report(report: dict, *, code_commit: str) -> dict:
 
     for prediction in predictions:
         if not isinstance(prediction, dict):
-            raise ValueError("FORECAST_RECORD_INVALID")
+            raise TypeError("FORECAST_RECORD_INVALID")
         if prediction.get("publication_status") != "NOT_PUBLISHED":
             raise ValueError("SHADOW_FORECAST_MUST_NOT_BE_PUBLISHED")
         if prediction.get("value_betting_status") != "LOCKED":
