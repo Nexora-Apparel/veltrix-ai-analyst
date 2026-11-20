@@ -524,3 +524,35 @@ The three commits present on `main` but absent from the candidate's ancestry wer
 3. Continue daily append-only outcome labels; evaluate only with the corrected prediction-cutoff folds.
 4. Build reliability calibration and the certified inference/publisher path only after enough prospective outcomes exist.
 5. Integrate published predictions into the existing Android screens without redesign.
+
+
+## 2026-11-20 — Shadow inference, settlement ledger and Android history
+
+### Stage 8B — research engine
+- Implemented a read-only shadow inference path using cutoff-valid historical goal-result labels, up to 25 fresh upcoming fixtures, six-hour snapshot freshness and a deterministic training-data hash.
+- Snapshot statistics/events are surfaced as coverage audits only until prospective feature validation proves their predictive value.
+- Shadow inference is not production publication and does not unlock value betting.
+
+### Stage 8C / settlement infrastructure
+- Added migration 018 for an append-only settlement event ledger with strict source, rights, PIT timestamp, canonical identity, publication and monotonic-correction checks.
+- Added a latest-settlement view, public history contract and `GET /v1/predictions/history`.
+- Added a dry-run-first settlement worker and a daily 06:00 UTC settlement workflow. Manual execution defaults to dry-run; scheduled execution uses the database trigger as a second independent evidence gate.
+- CI PostgreSQL tests successfully applied migration 018 on an ephemeral database. Production Neon remains at migration 017; no production migration or settlement writes have occurred.
+
+### Stage 9 — Android integration
+- Existing Android UI preserved.
+- Existing History tab now consumes the history API and displays prior published fixtures, full-time scores when evidence-backed, pending-result state and 1X2 probabilities.
+- Android debug build passed in CI. Runtime integration remains pending production API deployment and migration 018 application.
+
+### Current operational evidence
+- CI run 44724562661: 475 backend tests passed, Ruff passed, Android debug APK built and uploaded (artifact 14623626293).
+- Candidate Vercel preview deployment is READY. Its health endpoint returns 200, but preview readiness is blocked by missing preview `DATABASE_URL`; production API readiness is healthy.
+- Production API currently returns an empty prediction list. Neon has 59 prospective snapshots, 0 prospective labels, 0 prediction rows and 0 published prediction events.
+- No 20 November prospective capture run was found. Next scheduled capture is 21 November 03:00 UTC; Stage 6 triggers automatically after a successful capture.
+- PR #123 is 189 commits ahead, 0 behind, mergeable and clean, but remains unmerged. No production deploy, migration, publication or value betting unlock occurred.
+
+### Next execution
+1. Verify 21 November capture and Stage 6 materialization.
+2. Inspect shadow forecasts from fresh snapshots; maintain abstention on stale or invalid inputs.
+3. After the release path applies migration 018, verify production history and dry-run settlement against real source evidence.
+4. Continue prospective calibration and certification; keep publication and value betting locked until their full evidence gates pass.

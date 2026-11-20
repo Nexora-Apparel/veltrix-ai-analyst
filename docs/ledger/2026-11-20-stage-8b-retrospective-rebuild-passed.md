@@ -141,3 +141,62 @@ Only the 380 FINISHED rows were used as retrospective labels. The two valid upco
 3. Continue prospective labels and cutoff-correct walk-forward evaluation. Build reliability calibration only from eligible prospective outcomes.
 4. Keep production publication, value betting and Android live prediction integration locked until model, reliability and certification gates pass. Preserve the existing Android UI.
 5. Recheck Vercel quota/status after the 24-hour retry window before any deployment or PR merge.
+
+
+## 2026-11-20 — Published history and evidence-backed settlement integration
+
+### Research shadow inference
+- Added `backend/app/research/prospective_shadow.py` and `backend/scripts/build_prospective_shadow_predictions.py`.
+- Shadow training selects only canonical, rights-qualified result labels observed strictly before the earliest target prediction cutoff. Rights are rechecked at the target cutoff and the actual training cutoff.
+- It trains from historical goal outcomes only, records a deterministic training-data SHA-256, caps forecasts at 25, rejects snapshots older than six hours, and records feature coverage without using unvalidated snapshot features as probability inputs.
+- No provider requests, odds requests, database writes, publication or Telegram messages.
+- All forecasts remain `NOT_PUBLISHED`; production promotion and value betting remain LOCKED.
+- The daily shadow workflow runs at 05:00 UTC and also triggers after successful Stage 6 materialization, so a long-running capture cannot permanently race the shadow job. A stale scheduled run safely reports no fresh snapshots.
+
+### Append-only settlement ledger and public history
+- Added migration `018_prediction_settlement_ledger.sql`:
+  - append-only `prediction_settlement_events`;
+  - unique prediction/source-observation key for idempotency;
+  - source observation, sighting, provider response, rights approval, payload hash and response hash retained;
+  - insert trigger rechecks publication state, verified canonical fixture/source link, exact final score and fixture identity, system-observed timestamps, source response provenance, rights scope/validity and monotonic correction ordering;
+  - `latest_prediction_settlements` view exposes the newest evidence-backed result per prediction.
+- Migration 018 was applied successfully by the CI PostgreSQL migration test on an ephemeral test database. It has **not** been applied to production Neon.
+- Added `GET /v1/predictions/history`, returning only previously published past fixtures, their market probabilities, latest verified final score, settlement timestamp and publication state. Pending results remain score-null.
+- Added a dry-run-first `backend/scripts/settle_published_predictions.py`. It uses only 5DollarFootballAPI observations already in the database; `--execute` inserts only new, current, rights-qualified results. Scheduled execution is set for 06:00 UTC; manual dispatch defaults to read-only dry-run.
+- Added the settlement workflow and regression/contract tests.
+- Updated the existing Android History tab and API client to display published predictions, verified full-time scores and pending-result states. Existing screen design was preserved; no redesign.
+
+### CI and preview deployment — verified
+- CI run 44724562661 passed on commit `3708b13cdd74e0f723483f46c92bd3c4b2357675`.
+- Backend: 475 tests passed; Ruff: all checks passed.
+- Android debug build: BUILD SUCCESSFUL.
+- APK artifact ID `14623626293`, size 16,453,448 bytes; uploaded ZIP SHA-256 `7003c9dc745ceda25c9bcb4d6f92bd2c664ba195ed7cce08fb65da3e84ae99d7`.
+- Vercel preview deployment `dpl_F8o1xVqgDanA322EXziK2v5xxSSc` is READY for the candidate branch at `https://veltrix-ai-analyst-4dmsp61up-nexora-apparel.vercel.app`.
+- Preview `/health` returned HTTP 200. Preview `/ready` reports `database=not_configured`; preview environment has no `DATABASE_URL`, so its prediction endpoints cannot be end-to-end tested there without preview database configuration.
+- Production `https://veltrix-ai-analyst-api.vercel.app/ready` returned HTTP 200 with database connected, migrations current and prediction storage available. Production `/v1/predictions` returned an empty list.
+
+### Production Neon state — read-only verified
+- Latest applied migration remains `017_append_only_prospective_snapshot_labels.sql`; migration 018 is not yet applied.
+- Prediction rows: 0. Published prediction events: 0.
+- Prospective snapshots: 59. Prospective snapshot labels: 0.
+- `prediction_settlement_events` does not yet exist in production.
+- No production DB writes, migration application, publication or settlement insertion occurred in this checkpoint.
+
+### Prospective capture exception
+- Read-only import-run query found **zero** `prospective_capture` runs started on 20 November UTC.
+- Latest scheduled capture remains run 44514389412 on 19 November 11:23 UTC; Stage 6 materialization run 44514513198 completed successfully after it.
+- Next expected capture is 21 November 03:00 UTC. The capture workflow supports manual dispatch, but the connected GitHub toolset does not expose a workflow-dispatch action; if the next schedule is missed, dispatch it from GitHub Actions UI. Do not fabricate or backdate snapshots.
+- The 1,576 statistics/event observations remain eligible only for future target snapshots whose cutoffs follow their database-observed times.
+
+### PR and release boundary
+- PR #123 candidate head at CI verification: `3708b13cdd74e0f723483f46c92bd3c4b2357675`.
+- GitHub compare: 189 commits ahead, 0 behind; PR mergeable=true, mergeable_state=`clean`.
+- Vercel preview status is success. PR #123 remains open and unmerged; no production deployment was made.
+- The 90-day prospective certification requirement remains independent of historical training. Value betting and production publication remain LOCKED.
+
+### Next actions
+1. Verify the 21 November 03:00 UTC capture and the automatic Stage 6 materialization; require fresh, immutable snapshots.
+2. Inspect the resulting shadow artifact and confirm cutoff-valid training count/hash, model convergence, fixture cap, feature coverage and abstentions.
+3. Once migration 018 is applied through the approved release path, verify the production history endpoint and run the settlement worker in dry-run mode before enabling scheduled inserts.
+4. Continue prospective settled labels and corrected prediction-cutoff walk-forward evaluation; build reliability calibration only from prospective evidence.
+5. Preserve the existing Android UI and connect it to production history only after the production API deployment and migration are both verified.
