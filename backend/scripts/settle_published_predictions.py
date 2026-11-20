@@ -69,8 +69,6 @@ CANDIDATE_QUERY = """
      AND observation.point_in_time_certifiable IS TRUE
      AND observation.system_observed_at IS NOT NULL
      AND observation.available_at = observation.system_observed_at
-     AND observation.system_observed_at <= fixture.kickoff_at
-         + (SELECT interval '100 years')
      AND lower(observation.payload->>'status') = 'finished'
      AND jsonb_typeof(observation.payload->'home_goals') = 'number'
      AND jsonb_typeof(observation.payload->'away_goals') = 'number'
@@ -91,6 +89,8 @@ CANDIDATE_QUERY = """
      AND sighting.system_observed_at IS NOT NULL
      AND sighting.available_at = sighting.system_observed_at
      AND sighting.system_observed_at >= sighting.retrieved_at
+     AND observation.system_observed_at <= sighting.system_observed_at
+     AND observation.retrieved_at <= sighting.system_observed_at
      AND sighting.system_observed_at > fixture.kickoff_at
     JOIN veltrix_ai_analyst.provider_responses response
       ON response.id = sighting.provider_response_id
