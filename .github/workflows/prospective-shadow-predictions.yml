@@ -3,6 +3,9 @@ name: VELTRIX daily prospective shadow forecasts
 on:
   schedule:
     - cron: "0 5 * * *"
+  workflow_run:
+    workflows: ["Stage 6 daily immutable snapshot and outcome materialization"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -14,6 +17,7 @@ concurrency:
 
 jobs:
   shadow-forecasts:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     environment: veltrix-historical-import
     runs-on: ubuntu-latest
     timeout-minutes: 20
