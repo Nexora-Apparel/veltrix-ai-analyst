@@ -46,6 +46,13 @@ def select_training_rows(
         if row.kickoff_at < prediction_cutoff_at
         and row.label_observed_at is not None
         and row.label_observed_at < prediction_cutoff_at
+        and (
+            not row.validation_eligible
+            or (
+                row.prediction_cutoff_at is not None
+                and row.prediction_cutoff_at < row.kickoff_at
+            )
+        )
         and row.canonical_fixture_id is not None
         and row.canonical_competition_id is not None
         and _label_evidence_valid(row)
@@ -91,7 +98,7 @@ def _training_data_sha256(rows: tuple[ProspectiveDatasetRow, ...]) -> str:
             "away_goals": int(row.label["away_goals"]),
             "label_observed_at": row.label_observed_at.isoformat(),
             "label_observation_id": row.label_observation_id,
-            "import_run_id": (row.label_lineage or {}).get("import_run_id"),
+            "label_lineage": row.label_lineage,
         }
         for row in rows
     ]
@@ -132,6 +139,7 @@ def build_shadow_predictions(
         and row.canonical_fixture_id is not None
         and row.canonical_competition_id is not None
         and row.prediction_cutoff_at <= generated
+        and row.prediction_cutoff_at < row.kickoff_at
         and row.kickoff_at > generated
         and generated - row.prediction_cutoff_at
             <= timedelta(hours=max_snapshot_age_hours)
