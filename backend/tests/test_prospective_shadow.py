@@ -1,4 +1,7 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+
+import pytest
 
 from app.research.prospective_shadow import (
     build_shadow_predictions,
@@ -181,3 +184,56 @@ def test_shadow_builder_refuses_to_fit_without_cutoff_valid_training_labels():
     assert report["status"] == "INSUFFICIENT_CUTOFF_VALID_TRAINING_LABELS"
     assert report["training_fixture_count"] == 0
     assert report["predictions"] == []
+
+
+def test_shadow_builder_produces_auditable_forecast_from_cutoff_valid_labels():
+    generated_at = BASE + timedelta(days=45)
+    training_rows = []
+    for index in range(40):
+        kickoff = BASE + timedelta(days=index + 1)
+        observed = kickoff + timedelta(hours=3)
+        row = _labelled_row(
+            f"training-{index:02d}",
+            kickoff_at=kickoff,
+            observed_at=observed,
+            validation_eligible=False,
+            import_run_id=1000 + index,
+        )
+        home_index = index % 8
+        away_index = (home_index + 1) % 8
+        training_rows.append(replace(
+            row,
+            home_team_id=f"team-{home_index}",
+            away_team_id=f"team-{away_index}",
+        ))
+
+    target = _target_row(
+        "future-target",
+        kickoff_at=generated_at + timedelta(days=1),
+        prediction_cutoff_at=generated_at - timedelta(hours=1),
+    )
+    report = build_shadow_predictions(
+        {
+            "rows": [target],
+            "training_only_rows": training_rows,
+            "dataset_sha256": "c" * 64,
+            "feature_schema_version": "test-v1",
+        },
+        generated_at=generated_at,
+        minimum_training_fixtures=30,
+    )
+
+    assert report["status"] == "SHADOW_FORECASTS_READY"
+    assert report["training_fixture_count"] == 40
+    assert report["training_cutoff_at"] == (
+        BASE + timedelta(days=40, hours=3)
+    ).isoformat()
+    assert report["forecast_count"] == 1
+    prediction = report["predictions"][0]
+    assert prediction["canonical_fixture_id"] == "canonical-future-target"
+    assert prediction["publication_status"] == "NOT_PUBLISHED"
+    assert prediction["value_betting_status"] == "LOCKED"
+    assert prediction["snapshot_feature_audit"]["field_count"] == 1
+    assert sum(prediction["markets"]["1X2"].values()) == pytest.approx(1.0)
+    assert report["production_promotion"] == "LOCKED"
+    assert report["value_betting"] == "LOCKED"
