@@ -1,0 +1,49 @@
+name: VELTRIX published prediction settlement
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      execute_settlements:
+        description: Insert verified append-only settlement events (default is read-only dry-run)
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-published-prediction-settlement
+  cancel-in-progress: false
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: veltrix-historical-import
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      VELTRIX_AI_ANALYST_DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+      EXECUTE_SETTLEMENTS: ${{ inputs.execute_settlements }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        run: python -m pip install -e .
+      - name: Settle published predictions from verified results
+        run: |
+          ARGS=(--limit 250)
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" || "$EXECUTE_SETTLEMENTS" == "true" ]]; then
+            ARGS+=(--execute)
+          fi
+          python scripts/settle_published_predictions.py "${ARGS[@]}"
