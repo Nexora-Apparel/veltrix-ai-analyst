@@ -171,6 +171,8 @@ BEGIN
        OR evidence.observation_availability_basis <> 'SYSTEM_OBSERVED_AT'
        OR evidence.observation_pit_certifiable IS NOT TRUE
        OR evidence.observation_system_observed_at > NEW.settled_at
+       OR evidence.observation_system_observed_at < evidence.observation_retrieved_at
+       OR evidence.observation_system_observed_at > evidence.sighting_system_observed_at
        OR evidence.observation_available_at IS DISTINCT FROM evidence.observation_system_observed_at
        OR evidence.observation_retrieved_at > NEW.settled_at
        OR evidence.sighting_observation_id <> NEW.source_observation_id
@@ -178,6 +180,7 @@ BEGIN
        OR evidence.sighting_availability_basis <> 'SYSTEM_OBSERVED_AT'
        OR evidence.sighting_pit_certifiable IS NOT TRUE
        OR evidence.sighting_system_observed_at IS DISTINCT FROM NEW.settled_at
+       OR evidence.sighting_system_observed_at < evidence.sighting_retrieved_at
        OR evidence.sighting_available_at IS DISTINCT FROM evidence.sighting_system_observed_at
        OR evidence.sighting_retrieved_at > NEW.settled_at
        OR evidence.sighting_payload_sha256 <> evidence.payload_sha256
@@ -186,6 +189,7 @@ BEGIN
        OR evidence.http_status NOT BETWEEN 200 AND 299
        OR evidence.fetched_at <> evidence.sighting_retrieved_at
        OR evidence.response_system_observed_at > NEW.settled_at
+       OR evidence.response_system_observed_at < evidence.fetched_at
        OR evidence.response_system_observed_at > evidence.sighting_system_observed_at
        OR evidence.response_sha256 <> NEW.provider_response_sha256
        OR evidence.payload_sha256 <> NEW.source_payload_sha256
