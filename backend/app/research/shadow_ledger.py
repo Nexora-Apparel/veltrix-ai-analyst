@@ -6,8 +6,8 @@ import json
 import math
 import re
 from datetime import datetime
-from urllib.parse import urlsplit
 from typing import Any
+from urllib.parse import urlsplit
 
 import psycopg
 from psycopg.types.json import Jsonb
@@ -85,7 +85,11 @@ def validate_shadow_report(report: dict, *, code_commit: str) -> dict:
         raise ValueError("ABSTENTION_COUNT_MISMATCH")
 
     training_count = report.get("training_fixture_count", 0)
-    if isinstance(training_count, bool) or not isinstance(training_count, int) or training_count < 0:
+    if (
+        isinstance(training_count, bool)
+        or not isinstance(training_count, int)
+        or training_count < 0
+    ):
         raise ValueError("TRAINING_FIXTURE_COUNT_INVALID")
     training_cutoff = None
     training_sha = None
@@ -94,7 +98,11 @@ def validate_shadow_report(report: dict, *, code_commit: str) -> dict:
         training_cutoff = _timestamp(report.get("training_cutoff_at"), "TRAINING_CUTOFF_AT")
         training_sha = _hash(report.get("training_data_sha256"), "TRAINING_DATA_SHA256")
         model = report.get("model")
-        if not isinstance(model, dict) or not isinstance(model.get("version"), str) or not model["version"].strip():
+        if (
+            not isinstance(model, dict)
+            or not isinstance(model.get("version"), str)
+            or not model["version"].strip()
+        ):
             raise ValueError("MODEL_VERSION_MISSING")
         model_version = model["version"]
         if training_count < 1 or not predictions:
@@ -110,10 +118,16 @@ def validate_shadow_report(report: dict, *, code_commit: str) -> dict:
         fixture_id = prediction.get("canonical_fixture_id")
         if not isinstance(fixture_id, str) or not fixture_id.strip():
             raise ValueError("CANONICAL_FIXTURE_ID_MISSING")
-        cutoff = _timestamp(prediction.get("prediction_cutoff_at"), "PREDICTION_CUTOFF_AT")
+        cutoff = _timestamp(
+            prediction.get("prediction_cutoff_at"), "PREDICTION_CUTOFF_AT"
+        )
         kickoff = _timestamp(prediction.get("kickoff_at"), "KICKOFF_AT")
-        forecast_generated = _timestamp(prediction.get("generated_at"), "FORECAST_GENERATED_AT")
-        forecast_training_cutoff = _timestamp(prediction.get("training_cutoff_at"), "FORECAST_TRAINING_CUTOFF_AT")
+        forecast_generated = _timestamp(
+            prediction.get("generated_at"), "FORECAST_GENERATED_AT"
+        )
+        forecast_training_cutoff = _timestamp(
+            prediction.get("training_cutoff_at"), "FORECAST_TRAINING_CUTOFF_AT"
+        )
         if not (forecast_training_cutoff < cutoff <= forecast_generated < kickoff):
             raise ValueError("FORECAST_PREMATCH_CHRONOLOGY_INVALID")
         if forecast_generated != generated_at:
@@ -172,7 +186,8 @@ def persist_shadow_report(
 ) -> dict:
     if write_enabled is not True:
         raise RuntimeError("SHADOW_LEDGER_WRITE_EXPLICIT_OPT_IN_REQUIRED")
-    if urlsplit(database_url).path.lstrip("/").split("?", 1)[0] != "veltrix_ai_analyst":
+    database_name = urlsplit(database_url).path.lstrip("/").split("?", 1)[0]
+    if database_name != "veltrix_ai_analyst":
         raise RuntimeError("DATABASE_URL_PATH_MISMATCH")
     record = validate_shadow_report(report, code_commit=code_commit)
     with psycopg.connect(database_url) as connection:
@@ -187,7 +202,8 @@ def persist_shadow_report(
                 report_sha256, report
             ) VALUES (
                 %(run_key)s, %(generated_at)s, %(status)s, %(dataset_sha256)s,
-                %(training_data_sha256)s, %(training_cutoff_at)s, %(training_fixture_count)s,
+                %(training_data_sha256)s, %(training_cutoff_at)s,
+                %(training_fixture_count)s,
                 %(model_version)s, %(code_commit)s, %(forecast_count)s, %(abstention_count)s,
                 %(report_sha256)s, %(report)s
             )
