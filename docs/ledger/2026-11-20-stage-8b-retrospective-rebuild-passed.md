@@ -70,3 +70,14 @@ Only the 380 FINISHED rows were used as retrospective labels. The two valid upco
 - Branch comparison against `main`: candidate is 119 commits ahead and 3 commits behind; the branches diverged from merge base `7039615d51a30609a67a944c050bd8b31ce20bce`.
 - The three main-only commits add the default-branch historical evidence preflight workflow, enforce a read-only transaction in that preflight, and expose the bounded historical backfill workflow. Both main and the candidate branch contain different versions of `.github/workflows/historical-feature-evidence-backfill.yml`; the candidate must preserve its verified run behavior while incorporating the later default-branch safety refinements. The candidate also needs the main-only preflight workflow.
 - Do not merge while GitHub reports non-mergeable. Next integration task is a deliberate workflow reconciliation against those three main commits, followed by fresh CI on the resulting exact head. The already successful CI/research runs remain valid evidence for their original tested head only; documentation-only commits and any subsequent workflow reconciliation are not thereby CI-verified.
+
+
+## 2026-11-20 — PR #123 workflow reconciliation started
+
+- Rechecked branch comparison: `stage-8b-statistics-ci-release` is 120 commits ahead and three commits behind `main`; merge base remains `7039615d51a30609a67a944c050bd8b31ce20bce`. The candidate still lacked the main-only historical entitlement preflight workflow.
+- Updated the candidate backfill workflow to preserve its review-before-execution input and bounded collector command while verifying production database identity inside an explicit read-only transaction. The preflight remains opt-in/manual and does not collect historical fixtures.
+- Added `.github/workflows/historical-feature-evidence-preflight.yml` to the candidate. It checks the expected Neon database in a read-only transaction, probes the 5Dollar entitlement endpoint, and explicitly performs no collection or database writes.
+- Commits: backfill safety update `cb1c0f7ff46de5e8e48df27549b487452b8afdde`; preflight workflow `395d2672f0fbd6b4627350b6b4bf925871e774d7`.
+- Fetch-back verified the backfill workflow content and blob SHA `697692a271e3e3a0d39a141a9e3bd07de767b164`. Preflight creation returned commit `395d2672f0fbd6b4627350b6b4bf925871e774d7`; a separate fetch-back and fresh CI are still required.
+- No historical collection was dispatched, no provider collection requests were sent, no Odds API credits were spent, and no production database writes or deployments occurred.
+- Next: fetch-back verify both workflows; inspect main-only commit patches and the remaining branch diff; update roadmap/ledger; run CI on the resulting exact candidate head. Do not merge until divergence is resolved and CI passes.
