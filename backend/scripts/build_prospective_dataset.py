@@ -457,6 +457,7 @@ def build_report(
             "train_fixture_ids": list(fold.train_fixture_ids),
             "validation_fixture_ids": list(fold.validation_fixture_ids),
             "train_cutoff_at": fold.train_cutoff_at.isoformat(),
+            "validation_cutoff_at": fold.validation_cutoff_at.isoformat(),
             "validation_start_at": fold.validation_start_at.isoformat(),
             "validation_end_at": fold.validation_end_at.isoformat(),
         }
