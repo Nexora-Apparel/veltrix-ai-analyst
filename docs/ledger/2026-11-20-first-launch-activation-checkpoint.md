@@ -55,3 +55,9 @@
 - The scheduled shadow workflow remains read-only and was deliberately not modified to write to production Neon.
 - Migration 019 has **not** been applied to production. The writer has **not** been executed. No production database write or provider request was made.
 - Before enabling persistent writes, a separately approved migration and explicit production-write authorization are required. Do not add the production DB secret to Preview or automatically run the writer from the scheduled workflow.
+
+## CI iteration
+
+- First full backend test pass completed: **487 passed, 1 warning** on commit `558cb158026e3299505a19549b266dfa53bc06db`.
+- Ruff then found three `TRY004` findings in the new validator (invalid input types were raised as `ValueError` rather than `TypeError`). Corrected those exception classes in commit `be89293df48ebdf0ea71b3fe2302648bf6d8a42b`.
+- Fresh CI run `44766266221` is in progress against the corrected commit. Do not treat the earlier lint failure as passed; await this rerun's completed checks.
