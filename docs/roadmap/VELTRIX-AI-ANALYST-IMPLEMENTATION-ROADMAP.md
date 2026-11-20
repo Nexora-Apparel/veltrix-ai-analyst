@@ -399,3 +399,8 @@ The manually dispatched historical feature backfill (run 44637566125) completed 
 5. Review PR #123 after both workflow artifacts pass. Keep Stage 7 certification, production publication and value betting locked.
 
 The 1,601 historical observations already contain non-empty statistics objects, so further historical statistics collection is not required for this corpus. Any later collection must be limited to an explicitly audited coverage gap.
+
+
+### Historical import verification refinement — 2026-11-20
+
+A complete read-only SQL equivalence audit now verifies 35/35 request reservation keys, endpoints, canonical request-parameter hashes, request-event links and raw-response SHA-256 checksums. All seven import runs have current approved rights, correct request budgets/windows/checkpoints, complete fixture sightings, inserted-row reconciliation, valid provenance, no invalid fixtures and no unresolved quarantine. The Python validator and candidate CI workflows still require manual GitHub Actions dispatch; do not rerun collection.
