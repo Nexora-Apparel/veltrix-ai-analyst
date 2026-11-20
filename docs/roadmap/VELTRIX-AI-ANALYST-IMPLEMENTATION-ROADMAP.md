@@ -1,6 +1,6 @@
 # VELTRIX AI ANALYST — Implementation Roadmap
 
-**Last updated:** 2026-11-20 (Stage 8B retrospective rebuild verified)  
+**Last updated:** 2026-11-20 (Stage 8B retrospective rebuild verified; PR workflow reconciliation underway)  
 **Repository:** `Nexora-Apparel/veltrix-ai-analyst`  
 **Roadmap status:** engineering baseline; statuses below distinguish implemented infrastructure from validated production capability.
 
@@ -472,3 +472,11 @@ The CI run on the latest pre-fix PR #123 head passed backend tests and Android b
 **Next:** use this corpus only for exploratory feature/model diagnostics; design a genuinely PIT-qualified feature/outcome dataset from prospective snapshots and post-kickoff labels, then continue Stage 8B/8C. Do not claim that statistics are production-integrated or that any model is certified.
 
 Detailed artifact, metric, provenance and limitation record: `docs/ledger/2026-11-20-stage-8b-retrospective-rebuild-passed.md`.
+
+
+### 2026-11-20 — PR #123 workflow reconciliation underway
+
+- Candidate backfill workflow now verifies Neon database identity in a read-only transaction while preserving manual dispatch, review-before-execution and bounded request controls.
+- Candidate now includes the manual entitlement preflight workflow. It uses a read-only Neon transaction, probes 5Dollar entitlement and performs no historical collection or database writes.
+- No collection dispatch, provider collection requests, Odds API spend, production writes, merge or deployment occurred.
+- Reconciliation is not complete: inspect the three main-only commits and remaining diff, verify both workflow files by fetch-back, then run CI on the exact resulting head. Keep production inference/publication and value betting locked.
