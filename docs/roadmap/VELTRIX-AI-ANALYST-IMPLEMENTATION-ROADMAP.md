@@ -420,3 +420,10 @@ Changes committed to `stage-8b-statistics-ci-release`; latest verified PR #123 h
 The first CI rerun on PR #123 head `71b4d7374e17f71db24a76d14a4eb18962487ea8` passed the Android debug build but failed one backend test (445 passed, 1 failed). The failing malformed-provider-response quarantine test exposed that fixture reconciliation attempted to cast captured raw response bytes to JSONB. The validator now derives distinct fixture observation tuples from immutable sightings/observations instead, so malformed response bodies remain auditable without breaking validation. Fix commit: `a92c6d7d1c67feed44ec4936b67edb06ac94c88f`.
 
 **Gate:** CI must be rerun on the updated branch head. Retrospective research workflow remains blocked until CI passes. No historical collection rerun, provider-credit spend, merge, deployment, production publication, or value-bet unlock is authorized by this change.
+
+
+### 2026-11-20 — Stage 8B lint-path correction
+
+The CI run on the latest pre-fix PR #123 head passed backend tests and Android build but Ruff failed with E902 because the validator script path was incorrectly prefixed with `../`. Since the backend job runs from `backend/` and the validator is under `backend/scripts/`, the workflow now uses `scripts/validate_historical_feature_backfill.py`. Workflow fix commit: `5522c1c7f09231ff8e61c3ebc4ed4e6f2bcf5dcf`.
+
+**Gate:** rerun CI on the new branch head. The retrospective research workflow remains blocked until CI fully passes. No data collection, provider-credit use, merge, deployment, or production unlock.
