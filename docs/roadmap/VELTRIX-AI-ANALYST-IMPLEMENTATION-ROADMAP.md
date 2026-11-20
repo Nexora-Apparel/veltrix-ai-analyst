@@ -370,3 +370,12 @@ The manually dispatched historical feature backfill (run 44637566125) completed 
 - No further provider calls or database writes are needed for this repair. Next: run full CI, inspect the complete PR diff, execute the corrected validator read-only against runs 19–25, inspect payload feature completeness, then proceed with retrospective dataset/model comparison. Certification/value-bet locks remain unchanged.
 
 - Follow-up correction `681ff63b52b307315ad4b1913e22a30e9b9bb90c`: a scope with zero newly inserted rows is not automatically empty. The no-data gate now checks for zero records/sightings, allowing Brazil Serie B's fully observed duplicate-only scope to validate when all other evidence reconciles.
+
+
+### 2026-11-20 reconciliation repair — verification state
+
+- Import runs 19–25 are independently reconciled at the checkpoint level: records_seen, records_inserted and requests_used match their single completed checkpoint for each competition. The legacy stored duplicate counters remain zero; read-only evidence implies 1,006 duplicate fixture sightings across the batch, conditional on the separate sighting and materialized-row checks.
+- The 1,601 raw fixture payload objects all include a statistics key, but every statistics array is empty. Events are non-empty for 1,584/1,601 fixtures. Lineups are absent. Do not describe this as recovered stats or lineup intelligence; it is primarily historical event-payload evidence.
+- The previous green CI run 44637030091 is not sufficient for the later accounting/validator code: its tested commit changed only this roadmap. Trigger and verify a fresh CI run against the latest PR head before merge.
+- The original collection workflow failed while executing its older validator. Corrected validator revalidation has not yet run. Next: full CI on latest code, execute a read-only validator against import runs 19–25 (without provider requests or DB writes), then run the retrospective dataset builder and baseline comparison. No repeat collection.
+- PR #121 remains open/unmerged. Production inference, publication, Stage 7 certification, and value betting remain locked.
