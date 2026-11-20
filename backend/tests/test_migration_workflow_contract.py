@@ -124,3 +124,14 @@ def test_settlement_workflow_is_scheduled_and_manual_execution_is_opt_in() -> No
     assert "scripts/settle_published_predictions.py" in workflow
     assert "VELTRIX_AI_ANALYST_DATABASE_URL" in workflow
     assert "The Odds API" not in workflow
+
+
+def test_shadow_forecast_workflow_runs_after_successful_snapshot_materialization() -> None:
+    workflow = (
+        ROOT / ".github/workflows/prospective-shadow-predictions.yml"
+    ).read_text()
+    assert "workflow_run:" in workflow
+    assert "Stage 6 daily immutable snapshot and outcome materialization" in workflow
+    assert "github.event.workflow_run.conclusion == 'success'" in workflow
+    assert 'cron: "0 5 * * *"' in workflow
+    assert "--max-snapshot-age-hours 6" in workflow
