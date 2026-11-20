@@ -49,7 +49,7 @@ def build_retrospective_lagged_features(
     for row in fixtures:
         if row.kickoff_at.tzinfo is None or row.kickoff_at.utcoffset() is None:
             raise ValueError("all kickoff timestamps must be timezone-aware")
-        if not row.fixture_id or not row.competition_id or not row.home_team_id or not row.away_team_id:
+        if not all((row.fixture_id, row.competition_id, row.home_team_id, row.away_team_id)):
             raise ValueError("fixture and identity fields cannot be blank")
         if min(row.home_goals, row.away_goals) < 0:
             raise ValueError("goal counts cannot be negative")
@@ -60,7 +60,7 @@ def build_retrospective_lagged_features(
     ordered = sorted(fixtures, key=lambda row: (row.kickoff_at, row.fixture_id))
     history: dict[
         tuple[str, str],
-        list[tuple[str, float | None, float | None, float | None, float | None, float | None, float | None, dict[str, float | None], dict[str, float | None]]],
+        list[tuple[Any, ...]],
     ] = {}
     output: list[dict[str, Any]] = []
 
@@ -96,7 +96,10 @@ def build_retrospective_lagged_features(
                 "away_cards_for_mean": average(5, away_history),
                 "away_cards_against_mean": average(6, away_history),
             }
-            stat_names = ("attacks", "dangerous_attacks", "shots_on_target", "shots_off_target", "possession")
+            stat_names = (
+                "attacks", "dangerous_attacks", "shots_on_target",
+                "shots_off_target", "possession",
+            )
             for stat_name in stat_names:
                 for period in ("", "first_half"):
                     suffix = "_first_half" if period else ""
@@ -104,8 +107,12 @@ def build_retrospective_lagged_features(
                     for team_name, team_history in (("home", home_history), ("away", away_history)):
                         own_values = [item[7].get(key) for item in team_history]
                         opponent_values = [item[8].get(key) for item in team_history]
-                        features[f"{team_name}_{stat_name}{suffix}_for_mean"] = _mean([float(v) for v in own_values if v is not None])
-                        features[f"{team_name}_{stat_name}{suffix}_against_mean"] = _mean([float(v) for v in opponent_values if v is not None])
+                        features[f"{team_name}_{stat_name}{suffix}_for_mean"] = _mean(
+                            [float(value) for value in own_values if value is not None]
+                        )
+                        features[f"{team_name}_{stat_name}{suffix}_against_mean"] = _mean(
+                            [float(value) for value in opponent_values if value is not None]
+                        )
             output.append({
                 "fixture_id": target.fixture_id,
                 "competition_id": target.competition_id,
@@ -140,7 +147,10 @@ def build_retrospective_lagged_features(
             ) -> tuple[dict[str, float | None], dict[str, float | None]]:
                 own: dict[str, float | None] = {}
                 opponent: dict[str, float | None] = {}
-                for metric in ("attacks", "dangerous_attacks", "shots_on_target", "shots_off_target", "possession"):
+                for metric in (
+                    "attacks", "dangerous_attacks", "shots_on_target",
+                    "shots_off_target", "possession",
+                ):
                     for period in ("", "first_half"):
                         source = value.get(period) if period else value
                         source = source if isinstance(source, dict) else {}
@@ -149,12 +159,24 @@ def build_retrospective_lagged_features(
                         prefix = f"{period}." if period else ""
                         own_raw = pair.get(own_side)
                         opponent_raw = pair.get(opponent_side)
-                        own[f"{prefix}{metric}"] = float(own_raw) if isinstance(own_raw, (int, float)) and not isinstance(own_raw, bool) else None
-                        opponent[f"{prefix}{metric}"] = float(opponent_raw) if isinstance(opponent_raw, (int, float)) and not isinstance(opponent_raw, bool) else None
+                        own[f"{prefix}{metric}"] = (
+                            float(own_raw)
+                            if isinstance(own_raw, (int, float)) and not isinstance(own_raw, bool)
+                            else None
+                        )
+                        opponent[f"{prefix}{metric}"] = (
+                            float(opponent_raw)
+                            if isinstance(opponent_raw, (int, float)) and not isinstance(opponent_raw, bool)
+                            else None
+                        )
                 return own, opponent
 
-            home_stats, home_opponent_stats = flatten_statistics(target.home_statistics, "home", "away")
-            away_stats, away_opponent_stats = flatten_statistics(target.away_statistics, "away", "home")
+            home_stats, home_opponent_stats = flatten_statistics(
+                target.home_statistics, "home", "away"
+            )
+            away_stats, away_opponent_stats = flatten_statistics(
+                target.away_statistics, "away", "home"
+            )
             history.setdefault((target.competition_id, target.home_team_id), []).append((
                 target.fixture_id, float(target.home_goals), float(target.away_goals),
                 float(target.home_corners) if target.home_corners is not None else None,
