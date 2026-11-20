@@ -189,7 +189,8 @@ def _estimate_inner_rho(
         inner_train = [row_by_id[key] for key in fold.train_fixture_ids]
         inner_validation = [row_by_id[key] for key in fold.validation_fixture_ids]
         if (
-            fold.train_cutoff_at >= fold.validation_start_at
+            fold.train_cutoff_at >= fold.validation_cutoff_at
+            or fold.validation_cutoff_at >= fold.validation_start_at
             or any(
                 row.label_observed_at is None
                 or row.label_observed_at > fold.train_cutoff_at
@@ -294,7 +295,8 @@ def evaluate_prospective_model(
         if not training or not validation:
             raise ValueError("prospective fold cannot have empty training or validation rows")
         if (
-            fold.train_cutoff_at >= fold.validation_start_at
+            fold.train_cutoff_at >= fold.validation_cutoff_at
+            or fold.validation_cutoff_at >= fold.validation_start_at
             or any(
                 not _label_evidence_valid(row)
                 or row.label_observed_at is None
@@ -310,6 +312,7 @@ def evaluate_prospective_model(
         if any(
             not row.validation_eligible
             or row.prediction_cutoff_at is None
+            or row.prediction_cutoff_at < fold.validation_cutoff_at
             or row.prediction_cutoff_at >= row.kickoff_at
             or not _label_evidence_valid(row)
             or not _lineage_rights_valid(
@@ -401,6 +404,7 @@ def evaluate_prospective_model(
             "training_fixtures": len(training),
             "validation_fixtures": len(validation),
             "training_label_observed_cutoff": fold.train_cutoff_at.isoformat(),
+            "validation_prediction_cutoff": fold.validation_cutoff_at.isoformat(),
             "validation_start": fold.validation_start_at.isoformat(),
             "validation_end": fold.validation_end_at.isoformat(),
             "rho": rho,
@@ -471,7 +475,7 @@ def evaluate_prospective_model(
         "training_protocol": {
             "outer": "PROSPECTIVE_EXPANDING_WINDOW",
             "inner_rho": "INNER_EXPANDING_WINDOW_OUT_OF_FOLD",
-            "label_availability": "SYSTEM_OBSERVED_AT_STRICTLY_BEFORE_OUTER_VALIDATION_START",
+            "label_availability": "SYSTEM_OBSERVED_AT_STRICTLY_BEFORE_EARLIEST_OUTER_VALIDATION_PREDICTION_CUTOFF",
             "pre_match_features": "STRICTLY_BEFORE_TARGET_KICKOFF",
             "historical_training_labels": "DATABASE_INSERTED_AT_TRAINING_ONLY; NEVER_USED_AS_PRE_MATCH_FEATURES_OR_VALIDATION_ROWS",
             "hyperparameters": {
