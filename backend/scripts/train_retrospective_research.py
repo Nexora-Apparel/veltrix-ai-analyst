@@ -12,6 +12,7 @@ import psycopg
 from app.models.chronology_adjudication import apply_kickoff_adjudications, load_kickoff_adjudications
 from app.models.retrospective import ResearchFixture, chronological_research_run
 from app.models.retrospective_report import validate_retrospective_report
+from app.models.retrospective_source import classify_fixture_row
 
 QUERY = """
 SELECT provider_fixture_id, kickoff_at, home_team_provider_id,
@@ -44,16 +45,20 @@ def main() -> int:
 
     finished = []
     unknown = []
+    scheduled = []
     invalid = []
     for fixture_id, kickoff, home_id, away_id, home_goals, away_goals, status in rows:
-        if status == "FINISHED" and home_goals is not None and away_goals is not None:
+        row_class = classify_fixture_row(status, home_goals, away_goals)
+        if row_class == "FINISHED":
             finished.append(ResearchFixture(
                 fixture_id=str(fixture_id), kickoff_at=kickoff,
                 home_team_id=str(home_id), away_team_id=str(away_id),
                 home_goals=int(home_goals), away_goals=int(away_goals),
             ))
-        elif status == "UNKNOWN" and home_goals is None and away_goals is None:
+        elif row_class == "UNKNOWN":
             unknown.append(str(fixture_id))
+        elif row_class == "SCHEDULED":
+            scheduled.append(str(fixture_id))
         else:
             invalid.append(str(fixture_id))
     if invalid:
@@ -78,6 +83,8 @@ def main() -> int:
         "finished_labeled_rows": len(finished),
         "unknown_unlabeled_rows_excluded": len(unknown),
         "unknown_fixture_ids": sorted(unknown),
+        "scheduled_unlabeled_rows_excluded": len(scheduled),
+        "scheduled_fixture_ids": sorted(scheduled),
         "invalid_rows": 0,
         "scoreline_evidence": {
             "finished_labels_in_research_corpus": len(finished),
