@@ -556,3 +556,21 @@ The three commits present on `main` but absent from the candidate's ancestry wer
 2. Inspect shadow forecasts from fresh snapshots; maintain abstention on stale or invalid inputs.
 3. After the release path applies migration 018, verify production history and dry-run settlement against real source evidence.
 4. Continue prospective calibration and certification; keep publication and value betting locked until their full evidence gates pass.
+
+
+
+## 2026-11-20 — Production release checkpoint
+
+- PR #123 is merged to `main` at `1bdb07b1f87c8fe17ea6698345f99d9323222ae9`.
+- Production API deployment is READY. Health and readiness checks return HTTP 200; `GET /v1/predictions/history` returns HTTP 200 and an empty list. The old production 422 route collision is resolved.
+- Production Neon migration 018 is applied and checksum-verified. Append-only settlement infrastructure is present. Current data: 59 prospective snapshots, 0 prospective labels, 0 predictions, 0 publication events and 0 settlements.
+- CI run 44729468573 passed backend tests/lint and Android debug build. APK artifact: 14626240750.
+- Retrospective rebuild and Stage 7 evaluation workflows completed. Stage 7 reports `INSUFFICIENT_PROSPECTIVE_DATA` (0 eligible fixtures, folds, settled labels or dates); publication and value betting remain locked.
+- The 20 November capture failed because the validator did not distinguish repeated fixture sightings across provider responses. France Ligue 1 also encountered a real provider identity conflict and remains excluded.
+- PR #124 is the active corrective change: response-scoped sighting counts, regression test, and partial-success handling so independently validated competition scopes can materialize without bypassing source identity failures. It is awaiting CI and the Vercel daily deployment quota reset.
+
+### Next
+1. Verify PR #124 CI and preserve France's identity conflict as a hard stop.
+2. Merge only after CI passes and the Vercel deployment check is healthy.
+3. Confirm the next capture and Stage 6 materialization from validated scopes only.
+4. Continue prospective calibration; no model certification or value-bet unlock is claimed.

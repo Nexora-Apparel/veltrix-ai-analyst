@@ -839,6 +839,77 @@ def test_duplicate_fixture_sightings_are_counted_separately_from_new_rows(
     assert run == (2, 1, 1)
     assert checkpoint == (2, 1, 1)
     assert report["fixture_sightings"] == 1
-    assert report["distinct_fixture_entities"] == 1
+    assert report["distinct_fixture_sightings"] == 1
+    assert report["fixture_rows"] == 1
+    assert report["records_duplicate_verified"] == 1
+
+
+
+def test_same_fixture_across_provider_responses_counts_each_sighting(
+    database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VELTRIX_ENABLE_HISTORICAL_COLLECTION", "true")
+    monkeypatch.setattr(historical_import, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    monkeypatch.setattr(historical_validation, "EXPECTED_DATABASE_NAME", "veltrix_test")
+    competition_id = "3118717965"
+    start = datetime(2026, 11, 2, tzinfo=UTC)
+    end = datetime(2026, 11, 3, tzinfo=UTC)
+    fixture = _fixture(
+        881100,
+        "2026-11-02T13:00:00+00:00",
+        competition_id=int(competition_id),
+        competition_name="Brazil Serie A",
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        page = int(request.url.params["page"])
+        return httpx.Response(
+            200,
+            json={
+                "success": 1,
+                "data": [fixture],
+                "pagination": {
+                    "page": page,
+                    "per_page": 50,
+                    "count": 2,
+                    "has_more": page == 1,
+                },
+            },
+            headers={"X-Request-Id": f"repeated-fixture-page-{page}"},
+        )
+
+    provider = FiveDollarFootballProvider(
+        api_key="test-only-key",
+        transport=httpx.MockTransport(handler),
+    )
+    run_id = asyncio.run(
+        run_competition_historical_import(
+            database_url,
+            api_key="test-only-key",
+            execute=True,
+            approval=IMPORT_APPROVAL,
+            provider=provider,
+            boundary_start=start,
+            boundary_end=end,
+            request_budget=2,
+            competition_id=competition_id,
+            import_type="historical_feature_backfill",
+            window_days=365,
+        )
+    )
+
+    with psycopg.connect(database_url) as connection:
+        run = connection.execute(
+            """
+            SELECT records_seen, records_inserted, records_duplicate
+            FROM veltrix_ai_analyst.import_runs WHERE id = %s
+            """,
+            (run_id,),
+        ).fetchone()
+        report = validate_competition_import(connection, run_id, competition_id)
+
+    assert run == (2, 1, 1)
+    assert report["fixture_sightings"] == 2
+    assert report["distinct_fixture_sightings"] == 2
     assert report["fixture_rows"] == 1
     assert report["records_duplicate_verified"] == 1
