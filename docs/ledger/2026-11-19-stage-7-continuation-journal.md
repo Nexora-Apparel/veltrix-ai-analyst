@@ -778,3 +778,5 @@ Open [the workflow page](https://github.com/Nexora-Apparel/veltrix-ai-analyst/ac
   - 7a9244df67bc105bb84047fcda1314c7445f35a8 — regression test for duplicate fixtures and checkpoint accounting.
 - The validator's legacy recovery is read-only: it reports inferred duplicate count only when stored duplicate counters are absent, there are no rejected/quarantined records, and later sighting/row checks independently reconcile seen and inserted counts. It does not rewrite historical ledger rows.
 - No provider requests, Odds API requests, production database writes, or deployments were made for this repair. CI and PR review are pending; historical backfill remains collection-completed / validation-not-yet-recertified until the corrected validator is run against the existing runs.
+
+- Follow-up correction `681ff63b52b307315ad4b1913e22a30e9b9bb90c`: a scope with zero newly inserted rows is not automatically empty. The no-data gate now checks for zero records/sightings, allowing Brazil Serie B's fully observed duplicate-only scope to validate when all other evidence reconciles.
