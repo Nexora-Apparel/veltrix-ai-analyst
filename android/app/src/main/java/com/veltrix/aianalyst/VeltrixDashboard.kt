@@ -350,7 +350,7 @@ private fun HistoryScreen(
                     Column(Modifier.padding(16.dp)) {
                         MatchHeader(
                             "${match.homeTeam} vs ${match.awayTeam}",
-                            "${match.competition} · ${formatKickoff(match.kickoffAt)}",
+                            "${match.competition} · ${formatHistoryKickoff(match.kickoffAt)}",
                         ) {
                             Pill(
                                 if (entry.settlementStatus == "SETTLED") "SETTLED"
@@ -536,6 +536,12 @@ private fun InfoRow(label: String, value: String) {
 }
 
 private fun percent(value: Double): Int = (value * 100.0).roundToInt().coerceIn(0, 100)
+
+private fun formatHistoryKickoff(value: String): String = runCatching {
+    DateTimeFormatter.ofPattern("dd MMM yyyy · HH:mm", Locale.getDefault())
+        .withZone(ZoneId.systemDefault())
+        .format(Instant.parse(value))
+}.getOrDefault(value)
 
 private fun formatKickoff(value: String): String = runCatching {
     DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
