@@ -1,0 +1,57 @@
+name: VELTRIX historical feature evidence preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-historical-evidence-preflight
+  cancel-in-progress: false
+
+jobs:
+  entitlement-preflight:
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY: ${{ secrets.FIVEDOLLARFOOTBALL_COMMUNITY_API_KEY || secrets.FIVEDOLLARFOOTBALL_API_KEY || secrets.FIVE_DOLLAR_FOOTBALL_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        working-directory: backend
+        run: python -m pip install -e .
+      - name: Verify production database identity in a read-only transaction
+        run: |
+          test -n "$DATABASE_URL"
+          python - <<'PY'
+          import os
+          import psycopg
+          from urllib.parse import urlsplit
+
+          expected = "veltrix_ai_analyst"
+          if urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/").split("?")[0] != expected:
+              raise SystemExit("DATABASE_IDENTITY_MISMATCH")
+          with psycopg.connect(os.environ["DATABASE_URL"], connect_timeout=10) as connection:
+              with connection.transaction():
+                  connection.execute("SET TRANSACTION READ ONLY")
+                  if connection.info.dbname != expected:
+                      raise SystemExit("DATABASE_IDENTITY_MISMATCH")
+                  row = connection.execute(
+                      "SELECT current_database(), current_setting('transaction_read_only')"
+                  ).fetchone()
+                  if row != (expected, "on"):
+                      raise SystemExit("DATABASE_IDENTITY_MISMATCH")
+          PY
+      - name: Probe 5Dollar plan and remaining quota (safe fields only)
+        working-directory: backend
+        run: python ../scripts/probe_5dollar_entitlement.py
+      - name: Explicitly confirm no collection was performed
+        run: echo "PREFLIGHT_ONLY_COMPLETE; no historical fixture collection or database writes were performed."
