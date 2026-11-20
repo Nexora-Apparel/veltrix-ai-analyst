@@ -32,6 +32,8 @@ def _fixture(
         away_yellow_cards=2,
         home_red_cards=0,
         away_red_cards=0,
+        home_statistics={"attacks": {"home": 100 + day, "away": 80}, "shots_on_target": {"home": 5, "away": 3}, "possession": {"home": 60, "away": 40}},
+        away_statistics={"attacks": {"home": 100 + day, "away": 80}, "shots_on_target": {"home": 5, "away": 3}, "possession": {"home": 60, "away": 40}},
     )
 
 
@@ -90,3 +92,17 @@ def test_duplicate_fixture_ids_and_naive_timestamps_are_rejected():
     )
     with pytest.raises(ValueError, match="timezone-aware"):
         build_retrospective_lagged_features([naive])
+
+
+def test_lagged_statistics_use_prior_matches_and_team_perspective():
+    rows = [
+        _fixture("prior", 1, "A", "B", 2, 0),
+        _fixture("target", 2, "A", "C", 0, 0),
+    ]
+    target = {row["fixture_id"]: row for row in build_retrospective_lagged_features(rows)}["target"]
+    assert target["features"]["home_attacks_for_mean"] == 101.0
+    assert target["features"]["home_attacks_against_mean"] == 80.0
+    assert target["features"]["away_attacks_for_mean"] is None
+    assert target["features"]["home_shots_on_target_for_mean"] == 5.0
+    assert target["features"]["home_possession_for_mean"] == 60.0
+    assert target["validation_eligible"] is False
