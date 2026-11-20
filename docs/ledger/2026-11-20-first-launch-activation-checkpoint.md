@@ -110,3 +110,35 @@
 - Production prediction publication, model promotion and value betting remain LOCKED until the independent prospective certification gates pass.
 - France Ligue 1 remains excluded pending provider fixture identity reconciliation.
 - This section supersedes earlier statements in this checkpoint that migration 019 had not been applied or required future authorization. Those statements were accurate before the approval and execution recorded here.
+
+
+## 2026-11-20 — Android launch-readiness preparation checkpoint
+
+### Repository evidence reviewed
+- Rechecked the live repository and Actions inventory before making launch-readiness statements. The latest observed main CI run is [44767283702](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44767283702), completed successfully on the PR #125 merge SHA; the production migration run [44767283690](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44767283690) also completed successfully.
+- The most recent observed Stage 5 identity reconciliation preview is [44767447965](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44767447965), completed successfully. This is not evidence of a fresh post-fix fixture capture.
+- The only capture run in the recent Actions inventory remains the pre-fix failed run [44725750217](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44725750217). A successful post-fix capture, subsequent Stage 6 materialization and shadow forecast artifact have not yet been verified.
+
+### Android integration review
+- Reviewed `android/README.md`, `PredictionApi.kt` and `VeltrixDashboard.kt` on main.
+- Existing Android screens/design remain in place. The client already calls `GET /v1/predictions` and `GET /v1/predictions/history`; empty prediction responses are represented as an empty state, while API/network errors are represented separately. No sample fixtures or fabricated metrics are bundled.
+- Android README explicitly distinguishes successful CI compilation from live prediction display and physical-device verification. The prior PR CI run confirms the debug build passed; no physical-device test is claimed in this checkpoint.
+
+### Launch preparation and boundaries
+- Capture workflow is scheduled for 03:00 UTC / 04:00 WAT on 21 November. Stage 6 is configured to run after a successful capture; shadow inference is configured after successful Stage 6 materialization and also on its own schedule.
+- Shadow inference is read-only with respect to the database and provider (zero provider calls, zero database writes), capped at 25 fixtures, requires snapshots no older than six hours and at least 30 cutoff-valid training fixtures, and explicitly marks forecasts research-only/not published with promotion and value betting locked.
+- Target for 21 November: verify the post-fix capture, Stage 6 materialization, shadow forecast artifact, and Android/API end-to-end readiness. A working demonstration is conditional on valid eligible forecasts and passing checks; it is not represented as a guaranteed certified production launch.
+- No code changes, provider requests, Odds API credit use, Vercel deployment, or additional production database writes were made during this readiness review.
+
+### Next actions
+1. Inspect the 21 November scheduled capture run and verify per-scope outcomes and artifacts.
+2. Confirm Stage 6 snapshot/label materialization and lineage checks.
+3. Inspect the shadow forecast artifact for status, hashes, training cutoff/count, fixture count, abstentions, probability validity and convergence.
+4. If a valid report exists, validate and persist it only through the already approved research-only ledger writer; verify append-only persistence. Do not insert into production prediction/publication tables.
+5. Run/inspect Android integration and physical-device release checks where available; preserve the existing UI.
+6. Keep publication, model promotion and value betting locked until the agreed certification criteria are met.
+
+### Evidence classification
+- **Verified:** repository workflow definitions, current Actions results listed above, Android API integration code and documented build/device distinction.
+- **Pending:** next scheduled capture and its downstream Stage 6/shadow outputs, plus physical-device verification.
+- **Not claimed:** successful post-fix capture, generated forecasts, live predictions displayed in the app, or full certified production release.
