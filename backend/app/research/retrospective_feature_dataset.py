@@ -73,6 +73,11 @@ def load_historical_rows(dsn: str) -> list[dict[str, Any]]:
                 WHERE source_observation.data_type = 'fixtures_and_results'
                   AND source_observation.entity_type = 'fixture'
                   AND source_observation.provider_entity_id = fixture.provider_fixture_id
+                  AND source_observation.rights_approval_id = (
+                      SELECT original.rights_approval_id
+                      FROM veltrix_ai_analyst.source_observations AS original
+                      WHERE original.id = fixture.source_observation_id
+                  )
                   AND sighting.retrieved_at <= now()
                 ORDER BY sighting.retrieved_at DESC, sighting.id DESC
                 LIMIT 1
