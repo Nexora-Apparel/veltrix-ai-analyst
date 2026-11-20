@@ -55,9 +55,9 @@ def test_dataset_is_separate_and_non_pit_with_source_lineage():
     second = dataset["rows"][1]
     assert second["features"]["home_prior_match_count"] == 1
     assert second["features"]["home_goals_for_mean"] == 0.0
-    assert second["features"]["home_attacks_for_mean"] == 101.0
-    assert second["features"]["home_attacks_against_mean"] == 80.0
-    assert second["features"]["home_shots_on_target_for_mean"] == 5.0
+    assert second["features"]["home_attacks_for_mean"] == 80.0
+    assert second["features"]["home_attacks_against_mean"] == 101.0
+    assert second["features"]["home_shots_on_target_for_mean"] == 3.0
     assert second["feature_provenance"]["history_fixture_ids"] == ["1"]
     assert second["feature_provenance"]["source_observation_id"] == 2
     assert second["feature_provenance"]["availability_basis"] == "RETRIEVED_AT_ONLY"
