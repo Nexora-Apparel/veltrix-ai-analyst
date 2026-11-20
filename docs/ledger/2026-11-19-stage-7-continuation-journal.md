@@ -753,3 +753,14 @@ PR #121 remains open and unmerged. No production deployment, production predicti
 
 ### Manual step now available
 Open [the workflow page](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/historical-feature-evidence-backfill.yml), choose branch `stage-8b-sparse-inference-governance`, set `execute_backfill=true` to launch the bounded collection, then click Run workflow. The workflow will first verify database identity and probe provider entitlement before collection. Send the resulting run URL for monitoring and validation.
+
+
+### Historical feature backfill execution and reconciliation failure (2026-11-20)
+
+- Manual workflow run [44637566125](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44637566125), job 135959917939, ran on branch `stage-8b-sparse-inference-governance` and exited failure (exit code 1).
+- Independently verified in Neon: all seven historical import runs (IDs 19–25) completed. Aggregate: 1,601 records seen, 595 inserted, 0 rejected/quarantined, 35 provider requests used. Competition breakdown: Brazil Serie A 289/165/6; Brazil Serie B 384/0/8; England Premier League 180/79/4; France Ligue 1 166/75/4; Germany Bundesliga I 155/74/4; Italy Serie A 200/90/4; Spain La Liga 227/112/5 (seen/inserted/requests).
+- The workflow validation step rejected every scope with `FIXTURE_SIGHTING_COUNT_MISMATCH` and `IMPORT_COUNTER_RECONCILIATION_FAILED`; Brazil Serie B also had `NO_FIXTURE_DATA_IMPORTED`. The batch summary therefore reported 7 failed competitions despite all DB import-run statuses being COMPLETED. Treat collection as completed but validation FAILED; do not claim recovered payload coverage or certified reconciliation yet.
+- Run logs are available and were independently inspected. The per-competition validation output includes fixture row and sighting counts; the validator is currently failing its reconciliation checks.
+- Production database measured 23 MB after run (24,150,016 bytes), versus prior 22 MB. No immediate storage concern relative to 5 GB.
+- No Odds API requests were used. Provider request usage total was 35 across the seven scopes.
+- Next: diagnose sighting/counter reconciliation and Brazil Serie B zero-row condition; audit stored observations/payload completeness and lineage read-only; repair validation accounting with tests; do not blindly repeat the provider collection or spend additional requests until diagnosis.
