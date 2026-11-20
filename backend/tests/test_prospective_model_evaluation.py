@@ -165,3 +165,25 @@ def test_evaluator_rejects_training_label_after_recorded_fold_cutoff():
             bootstrap_replicates=200,
             seed=31,
         )
+
+
+def test_evaluator_rejects_training_cutoff_at_or_after_prediction_cutoff():
+    rows = _synthetic_rows()
+    folds = build_expanding_window_folds(
+        rows,
+        minimum_training_fixtures=30,
+        validation_block_fixtures=25,
+    )
+    assert folds
+    unsafe_fold = replace(
+        folds[0],
+        train_cutoff_at=folds[0].validation_cutoff_at,
+    )
+
+    with pytest.raises(ValueError, match="recorded fold cutoff"):
+        evaluate_prospective_model(
+            rows,
+            [unsafe_fold],
+            bootstrap_replicates=200,
+            seed=37,
+        )
