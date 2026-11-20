@@ -32,8 +32,16 @@ def _fixture(
         away_yellow_cards=2,
         home_red_cards=0,
         away_red_cards=0,
-        home_statistics={"attacks": {"home": 100 + day, "away": 80}, "shots_on_target": {"home": 5, "away": 3}, "possession": {"home": 60, "away": 40}},
-        away_statistics={"attacks": {"home": 100 + day, "away": 80}, "shots_on_target": {"home": 5, "away": 3}, "possession": {"home": 60, "away": 40}},
+        home_statistics={
+            "attacks": {"home": 100 + day, "away": 80},
+            "shots_on_target": {"home": 5, "away": 3},
+            "possession": {"home": 60, "away": 40},
+        },
+        away_statistics={
+            "attacks": {"home": 100 + day, "away": 80},
+            "shots_on_target": {"home": 5, "away": 3},
+            "possession": {"home": 60, "away": 40},
+        },
     )
 
 
