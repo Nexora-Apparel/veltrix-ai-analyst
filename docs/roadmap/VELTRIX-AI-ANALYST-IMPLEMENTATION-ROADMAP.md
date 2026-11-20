@@ -413,3 +413,10 @@ The first PR #123 CI run (44697802502) reported 445 passing tests and one failin
 The validator now compares persisted sightings with distinct fixture identities extracted from the captured raw response. Raw seen/inserted/duplicate counters remain independently reconciled, and fixture-row counts remain checked against inserted rows. The regression now asserts: 2 seen, 1 inserted, 1 duplicate, 1 sighting, 1 distinct fixture identity, 1 fixture row. The validator report exposes `distinct_fixture_entities` for auditability.
 
 Changes committed to `stage-8b-statistics-ci-release`; latest verified PR #123 head: `e275a9df361028d7f01c31b2441aabe29ef48a4f`. The fix is not CI-verified yet. **Next user action: run CI only on this exact branch/head.** If it passes, then run the retrospective research workflow. Do not rerun historical collection; no provider calls or production DB writes are needed for this fix. Stage 7 certification, production publication and value betting remain locked.
+
+
+### 2026-11-20 — Stage 8B CI blocker update
+
+The first CI rerun on PR #123 head `71b4d7374e17f71db24a76d14a4eb18962487ea8` passed the Android debug build but failed one backend test (445 passed, 1 failed). The failing malformed-provider-response quarantine test exposed that fixture reconciliation attempted to cast captured raw response bytes to JSONB. The validator now derives distinct fixture observation tuples from immutable sightings/observations instead, so malformed response bodies remain auditable without breaking validation. Fix commit: `a92c6d7d1c67feed44ec4936b67edb06ac94c88f`.
+
+**Gate:** CI must be rerun on the updated branch head. Retrospective research workflow remains blocked until CI passes. No historical collection rerun, provider-credit spend, merge, deployment, production publication, or value-bet unlock is authorized by this change.
