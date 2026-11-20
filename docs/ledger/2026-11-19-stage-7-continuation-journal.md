@@ -836,3 +836,12 @@ Open [the workflow page](https://github.com/Nexora-Apparel/veltrix-ai-analyst/ac
 - Corrected the regression test: two identical fixture occurrences must remain `records_seen=2`, `records_inserted=1`, `records_duplicate=1`, `fixture_sightings=1`, `distinct_fixture_entities=1`, and `fixture_rows=1`.
 - Commits on `stage-8b-statistics-ci-release`: validator reconciliation `b98a9fd94d0275e6570a987bb571624970930ca3`; regression assertion `9ffa40527782f39a418295c45b32ade34a75e132`; SQL alias correction `e275a9df361028d7f01c31b2441aabe29ef48a4f`. PR #123 now points to `e275a9df361028d7f01c31b2441aabe29ef48a4f`.
 - This is a code correction only; it has not yet been executed by CI. The retrospective workflow has not been run. Rerun CI on this exact head first; only after it passes, run the read-only retrospective research workflow. Do not rerun historical collection, spend provider credits, merge, deploy, or unlock publication/value betting.
+
+
+### 2026-11-20 — CI malformed-response reconciliation fix
+
+CI run 44704953098 on PR #123 head `71b4d7374e17f71db24a76d14a4eb18962487ea8` completed with Android debug build successful and backend tests at 445 passed / 1 failed. The failure was `test_malformed_provider_page_is_saved_and_quarantined`: the new fixture-identity reconciliation SQL cast every captured `provider_responses.raw_body` to JSONB. The test intentionally stores truncated JSON (`{"success":1,"data":`) for quarantine/audit, so the validator crashed before its expected paused-run validation error.
+
+Corrected `backend/app/providers/historical_validation.py` to derive the distinct fixture observation tuple count from immutable `source_observation_sightings` joined to `source_observations`, counting distinct `(provider_entity_id, payload_sha256)` tuples within the approved fixture scope. This preserves idempotent duplicate accounting while never parsing raw response bodies. Malformed raw payloads remain retained byte-for-byte for quarantine and audit. Code commit: `a92c6d7d1c67feed44ec4936b67edb06ac94c88f`.
+
+Verification status: fix committed but not yet CI-verified. Rerun CI on the updated PR #123 head. Do not run the retrospective workflow until CI passes. Android build from run 44704953098 passed; backend lint was skipped because tests failed. No provider requests, Odds API credits, production DB writes, merges, deployments, or certification changes were made.
