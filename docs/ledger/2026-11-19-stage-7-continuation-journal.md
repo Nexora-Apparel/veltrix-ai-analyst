@@ -845,3 +845,10 @@ CI run 44704953098 on PR #123 head `71b4d7374e17f71db24a76d14a4eb18962487ea8` co
 Corrected `backend/app/providers/historical_validation.py` to derive the distinct fixture observation tuple count from immutable `source_observation_sightings` joined to `source_observations`, counting distinct `(provider_entity_id, payload_sha256)` tuples within the approved fixture scope. This preserves idempotent duplicate accounting while never parsing raw response bodies. Malformed raw payloads remain retained byte-for-byte for quarantine and audit. Code commit: `a92c6d7d1c67feed44ec4936b67edb06ac94c88f`.
 
 Verification status: fix committed but not yet CI-verified. Rerun CI on the updated PR #123 head. Do not run the retrospective workflow until CI passes. Android build from run 44704953098 passed; backend lint was skipped because tests failed. No provider requests, Odds API credits, production DB writes, merges, deployments, or certification changes were made.
+
+
+### 2026-11-20 — CI lint path correction
+
+CI run 44707971737 on PR #123 head `d0624f95f9b3cc5e09e80771acf13620a56dd85e` passed all backend tests and the Android debug build, then failed Ruff with E902 because `.github/workflows/ci.yml` invoked `../scripts/validate_historical_feature_backfill.py`. The script is located at `backend/scripts/validate_historical_feature_backfill.py`, and the job working directory is `backend`; the correct Ruff argument is therefore `scripts/validate_historical_feature_backfill.py`.
+
+Corrected the workflow path in commit `5522c1c7f09231ff8e61c3ebc4ed4e6f2bcf5dcf`. This is a CI configuration fix; no application logic changed. It is not yet CI-verified. Rerun CI on the latest branch head before running the retrospective research workflow. No provider requests, Odds API credits, production writes, merge, deployment, or certification unlock occurred.
