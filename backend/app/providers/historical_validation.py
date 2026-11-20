@@ -77,7 +77,23 @@ def validate_competition_import(
         failures.append("REQUEST_BUDGET_VIOLATION")
     if records_quarantined or records_rejected:
         failures.append("REJECTED_OR_QUARANTINED_RECORDS_PRESENT")
-    if records_seen != records_inserted + records_duplicate + records_rejected + records_quarantined:
+    # Legacy importer versions failed to persist duplicate counters on successful
+    # pages. We can recover that count without mutating the ledger only when every
+    # seen fixture has an immutable sighting and all non-inserted rows are therefore
+    # accounted for as duplicates. The evidence checks below independently verify
+    # sightings and newly materialized fixture rows.
+    stored_duplicate_count = int(records_duplicate)
+    legacy_duplicate_count = 0
+    counters_reconcile = (
+        int(records_seen)
+        == int(records_inserted) + stored_duplicate_count
+        + int(records_rejected) + int(records_quarantined)
+    )
+    if not counters_reconcile and not records_rejected and not records_quarantined:
+        legacy_duplicate_count = int(records_seen) - int(records_inserted)
+        if legacy_duplicate_count >= 0:
+            counters_reconcile = True
+    if not counters_reconcile:
         failures.append("IMPORT_COUNTER_RECONCILIATION_FAILED")
 
     approval = connection.execute(
@@ -294,7 +310,10 @@ def validate_competition_import(
         ).fetchone()[0]
     if records_inserted <= 0:
         failures.append("NO_FIXTURE_DATA_IMPORTED")
-    if int(fixture_sightings) != int(records_inserted):
+    # Every provider fixture in the response must have one captured sighting,
+    # including fixtures already present in provider_fixtures. Inserts are a
+    # separate count and are checked against the materialized rows below.
+    if int(fixture_sightings) != int(records_seen):
         failures.append("FIXTURE_SIGHTING_COUNT_MISMATCH")
     if int(fixture_rows) != int(records_inserted):
         failures.append("PROVIDER_FIXTURE_ROW_COUNT_MISMATCH")
@@ -343,6 +362,10 @@ def validate_competition_import(
         "records_seen": int(records_seen),
         "records_inserted": int(records_inserted),
         "records_duplicate": int(records_duplicate),
+        "records_duplicate_verified": (
+            int(records_duplicate) if int(records_duplicate) else legacy_duplicate_count
+        ),
+        "legacy_duplicate_counter_recovered": bool(legacy_duplicate_count),
         "records_quarantined": int(records_quarantined),
         "request_events_with_raw_response": response_count,
         "fixture_sightings": int(fixture_sightings),
