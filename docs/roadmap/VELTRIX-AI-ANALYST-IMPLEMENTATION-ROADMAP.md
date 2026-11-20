@@ -351,3 +351,8 @@ This gives the 996 historical outcomes a legitimate route to richer research fea
 - Manual dispatch must select `stage-8b-sparse-inference-governance`; the workflow checks out the selected ref, where the feature-backfill importer exists.
 - Default is preflight-only. To run the bounded collection, set `execute_backfill=true`. Scope is 7 approved competitions × 10 requests maximum, 365-day window, 60-second request spacing (60/hour), under the user-confirmed 300/hour provider limit.
 - Workflow is exposed but has not been dispatched. User must perform the actual manual dispatch; inspect the resulting run before claiming collection success.
+
+
+### 2026-11-20 backfill execution checkpoint
+
+The manually dispatched historical feature backfill (run 44637566125) completed its collection work but the workflow exited failure during reconciliation validation. Neon independently confirms seven import runs completed: 1,601 records seen, 595 inserted, 35 requests used, 0 rejected/quarantined. Scope-level details and failure codes are recorded in the dated ledger. Validation reported sighting-count and import-counter reconciliation mismatches across all seven competitions; Brazil Serie B additionally inserted zero fixtures. The database is 23 MB. Treat this as completed collection with failed validation—not as a verified feature-recovery success. Do not repeat collection until the importer/reconciliation and zero-insert scope are audited. No Odds API use.
