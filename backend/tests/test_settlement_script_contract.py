@@ -38,6 +38,8 @@ def test_settlement_candidate_query_requires_verified_pit_result_evidence():
     assert "point_in_time_certifiable IS TRUE" in CANDIDATE_QUERY
     assert "MODEL_TRAINING" in CANDIDATE_QUERY
     assert "MODEL_VALIDATION" in CANDIDATE_QUERY
+    assert "NOT EXISTS" in CANDIDATE_QUERY
+    assert "existing_settlement.source_observation_id = observation.id" in CANDIDATE_QUERY
     assert "provider_response_sha256" in CANDIDATE_QUERY
     assert "5DollarFootballAPI" in CANDIDATE_QUERY
     assert "The Odds API" not in CANDIDATE_QUERY
