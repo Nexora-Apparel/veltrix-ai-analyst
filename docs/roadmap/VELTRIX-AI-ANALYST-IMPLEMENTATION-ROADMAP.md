@@ -440,3 +440,17 @@ The CI run on the latest pre-fix PR #123 head passed backend tests and Android b
 - The current GitHub connector exposes no workflow-dispatch action; manual UI dispatch is required. No repeat collection, provider requests, Odds API requests or production DB writes are needed for this next gate.
 - CI success is not model certification. PR #123 remains open/unmerged; production publishing and value betting remain locked.
 - Detailed evidence: `docs/ledger/2026-11-20-stage-8b-ci-passed.md`.
+
+
+## 2026-11-20 — Retrospective rebuild: scheduled fixture classification
+
+**Status: root cause confirmed by read-only Neon audit; correction committed; CI pending.**
+
+- Run [44711913137](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44711913137) passed the read-only validator for import runs 19–25 and the statistics-aware feature dataset build, then failed in the retrospective training runner with `UNEXPECTED_STATUS_OR_SCORE_ROWS:2`.
+- Read-only status distribution for the selected competition: 380 FINISHED with scores, four UNKNOWN without scores, and two SCHEDULED without scores. The two unexpected records are legitimate upcoming 2026-11-22 fixtures, not malformed results.
+- Corrected source classification now distinguishes FINISHED, UNKNOWN, SCHEDULED and INVALID. Scheduled rows are excluded from retrospective labels and counted separately; partial scores and inconsistent status/score combinations still fail closed.
+- Report validator source accounting now requires source rows = finished + unknown + scheduled + invalid, with regression tests.
+- Expected next report accounting: 386 total rows, 380 finished labels, four unknown exclusions, two scheduled exclusions, zero invalid. This is a target to verify, not yet a generated report.
+- **Next:** full CI on the updated head; if green, rerun the retrospective rebuild and inspect all artifacts. No repeat collection, provider requests, Odds API requests or production database writes.
+- Production certification, inference/publishing, PR merge and value betting remain locked.
+- Detailed evidence: `docs/ledger/2026-11-20-retrospective-scheduled-fixture-fix.md`.
