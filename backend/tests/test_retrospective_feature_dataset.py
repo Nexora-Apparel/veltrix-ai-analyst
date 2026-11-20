@@ -5,7 +5,10 @@ import pytest
 from app.research.retrospective_feature_dataset import build_dataset, write_content_addressed
 
 
-def _row(fixture_id: str, kickoff: datetime, home: str, away: str, home_goals: int, away_goals: int):
+def _row(
+    fixture_id: str, kickoff: datetime, home: str, away: str,
+    home_goals: int, away_goals: int,
+):
     return {
         "fixture_id": fixture_id,
         "competition_id": "league-a",
@@ -20,7 +23,11 @@ def _row(fixture_id: str, kickoff: datetime, home: str, away: str, home_goals: i
         "away_yellow_cards": 2,
         "home_red_cards": 0,
         "away_red_cards": 0,
-        "statistics": {"attacks": {"home": 101, "away": 80}, "shots_on_target": {"home": 5, "away": 3}, "possession": {"home": 60, "away": 40}},
+        "statistics": {
+            "attacks": {"home": 101, "away": 80},
+            "shots_on_target": {"home": 5, "away": 3},
+            "possession": {"home": 60, "away": 40},
+        },
         "source_observation_id": int(fixture_id),
         "provider_response_id": 100 + int(fixture_id),
         "retrieved_at": datetime(2026, 11, 19, tzinfo=UTC),
