@@ -4,10 +4,7 @@ from uuid import UUID
 import pytest
 from pydantic import ValidationError
 
-from app.contracts.public_prediction import (
-    PublicPredictionHistoryItem,
-    PublicPredictionMarkets,
-)
+from app.contracts.public_prediction import PublicPredictionHistoryItem
 
 
 def _history_payload() -> dict:
