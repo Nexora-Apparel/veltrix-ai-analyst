@@ -61,3 +61,14 @@
 - First full backend test pass completed: **487 passed, 1 warning** on commit `558cb158026e3299505a19549b266dfa53bc06db`.
 - Ruff then found three `TRY004` findings in the new validator (invalid input types were raised as `ValueError` rather than `TypeError`). Corrected those exception classes in commit `be89293df48ebdf0ea71b3fe2302648bf6d8a42b`.
 - Fresh CI run `44766266221` is in progress against the corrected commit. Do not treat the earlier lint failure as passed; await this rerun's completed checks.
+
+
+## 2026-11-20 16:5x WAT — PR #125 final CI and migration safety review
+
+- PR #125 head: `0260ce23ef871fc7ef9dc3b632b799dddd4c8f13`; base is current main `bea70392e45e97848d0df006ffef7dbb262bcb47`; PR remains open and GitHub reports it mergeable.
+- CI run [44766392542](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44766392542) completed successfully on the exact PR head. Both jobs passed: Backend tests and lint; Android debug build. Earlier interrupted CI attempts are superseded by this completed run.
+- The capture workflow remains scheduled for 03:00 UTC / 04:00 WAT daily. The only capture run found in the current recent run inventory is the pre-fix 20 November run [44725750217], which failed. No post-PR #124 capture, Stage 6 materialization or shadow forecast run is verified yet. Next scheduled capture is 21 November 04:00 WAT.
+- Critical merge-safety finding: `.github/workflows/apply-database-migrations.yml` has a `push` trigger on `main` for `backend/migrations/*.sql`; its migration job automatically applies all pending migrations using the production database secret. Therefore merging PR #125 would trigger migration 019 against production. This is a production schema write, not a documentation-only merge.
+- PR #125 is intentionally **not merged**. Migration 019 has not been applied and the writer has not been run. No production database write, provider request, Odds API credit use or Vercel deployment occurred in this checkpoint.
+- Do not merge PR #125 or apply migration 019 without explicit production-write authorization. Safe alternative under evaluation: preserve immutable shadow reports as GitHub Actions artifacts first, with hashes and run metadata, without production Neon persistence. Revisit the DB ledger only through an explicitly approved migration path.
+- France Ligue 1 remains excluded for its unresolved provider fixture identity conflict. Publication and value betting remain locked.
