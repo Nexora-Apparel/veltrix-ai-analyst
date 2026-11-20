@@ -129,7 +129,7 @@ def test_training_rows_require_label_availability_and_rights_before_cutoff():
         kickoff_at=BASE + timedelta(days=4),
         observed_at=BASE + timedelta(days=4, hours=3),
         validation_eligible=True,
-        prediction_cutoff_at=BASE + timedelta(days=4, hours=1),
+        prediction_cutoff_at=BASE + timedelta(days=4) - timedelta(hours=1),
         import_run_id=103,
     )
 
