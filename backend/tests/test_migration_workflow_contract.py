@@ -109,3 +109,18 @@ def test_manual_migration_workflow_verifies_prediction_settlement_migration() ->
     assert "enforce_prediction_settlement_evidence()" in workflow
     assert "prediction_settlement_evidence_guard" in workflow
     assert "prediction_settlement_events_append_only" in workflow
+
+
+def test_settlement_workflow_is_scheduled_and_manual_execution_is_opt_in() -> None:
+    workflow = (
+        ROOT / ".github/workflows/settle-published-predictions.yml"
+    ).read_text()
+    assert 'cron: "0 6 * * *"' in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "execute_settlements:" in workflow
+    assert "default: false" in workflow
+    assert 'GITHUB_EVENT_NAME" == "schedule"' in workflow
+    assert 'EXECUTE_SETTLEMENTS" == "true"' in workflow
+    assert "scripts/settle_published_predictions.py" in workflow
+    assert "VELTRIX_AI_ANALYST_DATABASE_URL" in workflow
+    assert "The Odds API" not in workflow
