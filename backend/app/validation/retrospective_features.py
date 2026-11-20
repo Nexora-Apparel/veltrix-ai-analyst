@@ -101,12 +101,9 @@ def build_retrospective_lagged_features(
                 for period in ("", "first_half"):
                     suffix = "_first_half" if period else ""
                     key = f"{period}.{stat_name}" if period else stat_name
-                    for team_name, own_history, opponent_history in (
-                        ("home", home_history, home_history),
-                        ("away", away_history, away_history),
-                    ):
-                        own_values = [item[7].get(key) for item in own_history]
-                        opponent_values = [item[8].get(key) for item in own_history] if team_name == "home" else [item[7].get(key) for item in away_history]
+                    for team_name, team_history in (("home", home_history), ("away", away_history)):
+                        own_values = [item[7].get(key) for item in team_history]
+                        opponent_values = [item[8].get(key) for item in team_history]
                         features[f"{team_name}_{stat_name}{suffix}_for_mean"] = _mean([float(v) for v in own_values if v is not None])
                         features[f"{team_name}_{stat_name}{suffix}_against_mean"] = _mean([float(v) for v in opponent_values if v is not None])
             output.append({
@@ -138,33 +135,37 @@ def build_retrospective_lagged_features(
                 if target.away_yellow_cards is not None and target.away_red_cards is not None
                 else None
             )
-            def flatten_statistics(value: dict[str, Any] | None) -> dict[str, float | None]:
-                flattened: dict[str, float | None] = {}
+            def flatten_statistics(
+                value: dict[str, Any] | None, own_side: str, opponent_side: str
+            ) -> tuple[dict[str, float | None], dict[str, float | None]]:
+                own: dict[str, float | None] = {}
+                opponent: dict[str, float | None] = {}
                 for metric in ("attacks", "dangerous_attacks", "shots_on_target", "shots_off_target", "possession"):
                     for period in ("", "first_half"):
                         source = value.get(period) if period else value
                         source = source if isinstance(source, dict) else {}
                         pair = source.get(metric)
-                        raw_home = pair.get("home") if isinstance(pair, dict) else None
-                        raw_away = pair.get("away") if isinstance(pair, dict) else None
+                        pair = pair if isinstance(pair, dict) else {}
                         prefix = f"{period}." if period else ""
-                        for side, raw in (("home", raw_home), ("away", raw_away)):
-                            flattened[f"{prefix}{metric}.{side}"] = float(raw) if isinstance(raw, (int, float)) and not isinstance(raw, bool) else None
-                return flattened
+                        own_raw = pair.get(own_side)
+                        opponent_raw = pair.get(opponent_side)
+                        own[f"{prefix}{metric}"] = float(own_raw) if isinstance(own_raw, (int, float)) and not isinstance(own_raw, bool) else None
+                        opponent[f"{prefix}{metric}"] = float(opponent_raw) if isinstance(opponent_raw, (int, float)) and not isinstance(opponent_raw, bool) else None
+                return own, opponent
 
-            home_stats = flatten_statistics(target.home_statistics)
-            away_stats = flatten_statistics(target.away_statistics)
+            home_stats, home_opponent_stats = flatten_statistics(target.home_statistics, "home", "away")
+            away_stats, away_opponent_stats = flatten_statistics(target.away_statistics, "away", "home")
             history.setdefault((target.competition_id, target.home_team_id), []).append((
                 target.fixture_id, float(target.home_goals), float(target.away_goals),
                 float(target.home_corners) if target.home_corners is not None else None,
                 float(target.away_corners) if target.away_corners is not None else None,
-                home_cards, away_cards, home_stats, away_stats,
+                home_cards, away_cards, home_stats, home_opponent_stats,
             ))
             history.setdefault((target.competition_id, target.away_team_id), []).append((
                 target.fixture_id, float(target.away_goals), float(target.home_goals),
                 float(target.away_corners) if target.away_corners is not None else None,
                 float(target.home_corners) if target.home_corners is not None else None,
-                away_cards, home_cards, away_stats, home_stats,
+                away_cards, home_cards, away_stats, away_opponent_stats,
             ))
         cursor = block_end
 
