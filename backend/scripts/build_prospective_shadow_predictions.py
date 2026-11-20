@@ -7,9 +7,10 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from build_prospective_dataset import build_report
+
 from app.research.prospective_shadow import build_shadow_predictions
 from app.validation.prospective_dataset import ProspectiveDatasetRow
-from build_prospective_dataset import build_report
 
 
 def _datetime(value: str | None) -> datetime | None:
