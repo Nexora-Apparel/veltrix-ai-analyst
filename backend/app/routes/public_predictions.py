@@ -15,7 +15,10 @@ from app.contracts.public_prediction import (
     PublicFixture,
     PublicPrediction,
     PublicPredictionList,
+    PublicPredictionHistoryItem,
+    PublicPredictionHistoryList,
     PublicPredictionMarkets,
+    PublicFinalScore,
 )
 
 router = APIRouter(prefix="/v1/predictions", tags=["predictions"])
@@ -157,6 +160,120 @@ def _load_public_predictions(*, prediction_id: UUID | None = None) -> tuple[Publ
 def list_predictions() -> PublicPredictionList:
     """Return upcoming published predictions with market probabilities only."""
     return PublicPredictionList(predictions=_load_public_predictions())
+
+
+@router.get("/history", response_model=PublicPredictionHistoryList)
+def list_prediction_history() -> PublicPredictionHistoryList:
+    """Return previously published fixtures with evidence-backed final scores."""
+    return PublicPredictionHistoryList(predictions=_load_prediction_history())
+
+
+_HISTORY_QUERY = """
+    SELECT
+        published.prediction_id,
+        published.canonical_fixture_id,
+        competition.display_name AS competition,
+        home_team.display_name AS home_team,
+        away_team.display_name AS away_team,
+        fixture.kickoff_at,
+        published.expected_home_goals,
+        published.expected_away_goals,
+        published.generated_at,
+        first_publication.published_at,
+        latest_publication.decision AS publication_status,
+        settlement.home_goals AS settled_home_goals,
+        settlement.away_goals AS settled_away_goals,
+        settlement.settled_at
+    FROM veltrix_ai_analyst.predictions published
+    JOIN veltrix_ai_analyst.canonical_fixtures fixture
+      ON fixture.id = published.canonical_fixture_id
+    JOIN veltrix_ai_analyst.canonical_competitions competition
+      ON competition.id = fixture.canonical_competition_id
+    JOIN veltrix_ai_analyst.canonical_teams home_team
+      ON home_team.id = fixture.home_canonical_team_id
+    JOIN veltrix_ai_analyst.canonical_teams away_team
+      ON away_team.id = fixture.away_canonical_team_id
+    JOIN LATERAL (
+        SELECT MIN(event.effective_at) AS published_at
+        FROM veltrix_ai_analyst.prediction_publication_events event
+        WHERE event.prediction_id = published.prediction_id
+          AND event.decision = 'PUBLISHED'
+    ) first_publication ON first_publication.published_at IS NOT NULL
+    JOIN LATERAL (
+        SELECT event.decision
+        FROM veltrix_ai_analyst.prediction_publication_events event
+        WHERE event.prediction_id = published.prediction_id
+        ORDER BY event.effective_at DESC, event.id DESC
+        LIMIT 1
+    ) latest_publication ON TRUE
+    LEFT JOIN veltrix_ai_analyst.latest_prediction_settlements settlement
+      ON settlement.prediction_id = published.prediction_id
+    WHERE fixture.kickoff_at <= %s
+      AND first_publication.published_at < fixture.kickoff_at
+    ORDER BY fixture.kickoff_at DESC, published.generated_at DESC,
+             published.prediction_id
+    LIMIT 250
+"""
+
+
+def _load_prediction_history() -> tuple[PublicPredictionHistoryItem, ...]:
+    connection = _database_connection()
+    try:
+        with connection:
+            fixtures = connection.execute(
+                _HISTORY_QUERY,
+                (datetime.now(UTC),),
+            ).fetchall()
+            if not fixtures:
+                return ()
+
+            prediction_ids = [row["prediction_id"] for row in fixtures]
+            market_rows = connection.execute(
+                """
+                SELECT prediction_id, market, outcome, probability
+                FROM veltrix_ai_analyst.prediction_market_probabilities
+                WHERE prediction_id = ANY(%s)
+                ORDER BY prediction_id, market, outcome
+                """,
+                (prediction_ids,),
+            ).fetchall()
+            grouped: dict[UUID, list[dict[str, Any]]] = {}
+            for row in market_rows:
+                grouped.setdefault(row["prediction_id"], []).append(row)
+
+            history = []
+            for row in fixtures:
+                base = _public_prediction(
+                    row, grouped.get(row["prediction_id"], [])
+                )
+                settled_at = row["settled_at"]
+                final_score = (
+                    PublicFinalScore(
+                        home_goals=row["settled_home_goals"],
+                        away_goals=row["settled_away_goals"],
+                    )
+                    if settled_at is not None
+                    else None
+                )
+                history.append(PublicPredictionHistoryItem(
+                    **base.model_dump(),
+                    generated_at=row["generated_at"],
+                    published_at=row["published_at"],
+                    publication_status=row["publication_status"],
+                    settlement_status=(
+                        "SETTLED" if settled_at is not None else "PENDING_RESULT"
+                    ),
+                    final_score=final_score,
+                    settled_at=settled_at,
+                ))
+            return tuple(history)
+    except (psycopg.Error, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PREDICTION_HISTORY_UNAVAILABLE",
+        ) from None
+    finally:
+        connection.close()
 
 
 @router.get("/{prediction_id}", response_model=PublicPrediction)
