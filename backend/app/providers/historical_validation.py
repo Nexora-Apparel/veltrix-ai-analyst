@@ -275,7 +275,7 @@ def validate_competition_import(
             FROM veltrix_ai_analyst.provider_responses r
             CROSS JOIN LATERAL jsonb_array_elements(
                 COALESCE(convert_from(r.raw_body, 'UTF8')::jsonb->'data', '[]'::jsonb)
-            ) AS fixture
+            ) AS items(fixture)
             WHERE r.id = ANY(%s)
               AND fixture->>'id' IS NOT NULL
             """,
