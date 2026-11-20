@@ -49,6 +49,7 @@ def _folds(values: list[dict]) -> tuple[ExpandingFold, ...]:
             train_fixture_ids=tuple(row["train_fixture_ids"]),
             validation_fixture_ids=tuple(row["validation_fixture_ids"]),
             train_cutoff_at=_datetime(row["train_cutoff_at"]),
+            validation_cutoff_at=_datetime(row["validation_cutoff_at"]),
             validation_start_at=_datetime(row["validation_start_at"]),
             validation_end_at=_datetime(row["validation_end_at"]),
         )
