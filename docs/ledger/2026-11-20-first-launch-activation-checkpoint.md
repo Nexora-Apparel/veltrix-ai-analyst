@@ -169,3 +169,19 @@
 - Findings recorded: optimizer convergence is not exposed/enforced; ridge penalty scaling appears to weaken with larger total sample weight under the current gradient normalization; centering/reparameterization requires derivation and invariance tests; tests do not establish fit recovery, convergence, numerical stability, chronology, or row-order invariance.
 - Required before resubmission: reconstruct/rebase against current main, define and test the penalized objective, expose convergence diagnostics and fail-closed behavior, add synthetic recovery/held-out and invariance tests, then run full CI. No merge or production integration is approved by this review.
 - No provider requests, Odds API credit use, deployments, or production database writes were performed.
+
+
+## 2026-11-20 — launch-chain and current-main model preflight
+
+### Findings
+- Re-inspected the three live workflow definitions on current main. Capture is scheduled at 03:00 UTC (04:00 WAT), bounded to yesterday's results plus a rolling seven-day fixture window, with a request budget of 4 and a production database/schema preflight before provider access.
+- Stage 6 is triggered only by a successful capture completion (or its own workflow-file push), builds the strict PIT dataset, refuses to persist if no eligible prospective rows exist, and verifies persisted snapshot/label counts plus append-only guards.
+- Shadow inference is triggered by successful Stage 6 completion (and separately scheduled at 05:00 UTC / 06:00 WAT). It is read-only, caps forecasts at 25, enforces a six-hour snapshot age and at least 30 cutoff-valid training fixtures, and uploads a research-only artifact.
+- Reviewed current-main `backend/app/models/hierarchical_poisson.py`: unlike the stale PR #74 head reviewed above, current main already includes an explicit penalized objective, normalized likelihood plus ridge penalty, backtracking line search, convergence diagnostics, and fail-closed non-convergence. Prediction output also reports history-aware calculation modes. This is a verified difference between current main and PR #74's stale branch; do not apply PR #74 review findings to current main without rechecking the exact code revision.
+- Reviewed current-main shadow builder and ledger validator. The builder's terminal statuses align with the ledger's allowlist; successful forecasts carry research-only flags, market distributions, cutoff/training lineage and explicit NOT_PUBLISHED / LOCKED statuses. No Android shadow endpoint exists in the inspected client; Android continues to consume only published prediction endpoints.
+
+### Operational decision
+- No early/manual capture was triggered today. Preserve the scheduled 21 November run and provider request budget.
+- No Android API change or UI redesign is justified before tomorrow's evidence exists. Do not route research-only forecasts into the published endpoint to create a demo.
+- Tomorrow's operator action is only to inspect completed GitHub Actions runs/artifacts; no manual upload or data entry is required from the user.
+- No provider calls, Odds API usage, Vercel deployment, or production DB writes were performed during this preflight.
