@@ -41,3 +41,17 @@
 - No production database write, migration, prediction insert, publication, settlement insert or Vercel deployment occurred.
 - Value betting and production promotion remain LOCKED.
 - Verified facts are distinguished above from future scheduled actions; no capture or Stage 6 run after PR #124 is claimed as completed.
+
+## Implementation added on PR #125
+
+- Added migration `019_research_shadow_forecast_ledger.sql` defining a dedicated append-only research run ledger. It stores the complete report JSONB plus report hash, dataset/training hashes, model version, code commit, cutoff timestamps, forecast and abstention counts.
+- Added `app.research.shadow_ledger` to validate the research-only state, all five market distributions, probability normalization, per-forecast pre-match chronology, model/training lineage, 25-fixture cap and stable idempotency key before any write.
+- Added `scripts/persist_prospective_shadow_forecasts.py`. Writes require both the explicit CLI confirmation flag and `VELTRIX_SHADOW_LEDGER_WRITE_ENABLED=true`; the database URL must target `veltrix_ai_analyst`. Repeated identical runs are idempotent; conflicting content under the same run key fails closed.
+- Added unit tests for immutable identity, locked publication/value-betting state, market balance, chronology, fixture cap, explicit write opt-in and database target. Extended migration integration assertions to include migration 019 and the append-only trigger.
+
+## Verification boundary
+
+- These changes are committed to the PR #125 feature branch; CI is the next verification gate.
+- The scheduled shadow workflow remains read-only and was deliberately not modified to write to production Neon.
+- Migration 019 has **not** been applied to production. The writer has **not** been executed. No production database write or provider request was made.
+- Before enabling persistent writes, a separately approved migration and explicit production-write authorization are required. Do not add the production DB secret to Preview or automatically run the writer from the scheduled workflow.
