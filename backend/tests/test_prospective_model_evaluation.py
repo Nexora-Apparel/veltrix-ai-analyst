@@ -187,3 +187,25 @@ def test_evaluator_rejects_training_cutoff_at_or_after_prediction_cutoff():
             bootstrap_replicates=200,
             seed=37,
         )
+
+
+def test_evaluator_rejects_fold_cutoff_after_validation_fixture_cutoff():
+    rows = _synthetic_rows()
+    folds = build_expanding_window_folds(
+        rows,
+        minimum_training_fixtures=30,
+        validation_block_fixtures=25,
+    )
+    assert folds
+    unsafe_fold = replace(
+        folds[0],
+        validation_cutoff_at=folds[0].validation_cutoff_at + timedelta(hours=1),
+    )
+
+    with pytest.raises(ValueError, match="validation row lacks"):
+        evaluate_prospective_model(
+            rows,
+            [unsafe_fold],
+            bootstrap_replicates=200,
+            seed=41,
+        )
