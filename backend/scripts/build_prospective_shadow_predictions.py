@@ -104,6 +104,13 @@ def main() -> int:
         "production_promotion": "LOCKED",
         "value_betting": "LOCKED",
     }, sort_keys=True))
+    if report["status"] in {
+        "NO_FRESH_UPCOMING_SNAPSHOTS",
+        "INSUFFICIENT_CUTOFF_VALID_TRAINING_LABELS",
+    }:
+        # A scheduled research run with no safe forecast is a valid,
+        # auditable abstention, not an infrastructure failure.
+        return 0
     if report["status"] != "SHADOW_FORECASTS_READY":
         raise SystemExit(report["status"])
     return 0
