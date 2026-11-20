@@ -57,6 +57,7 @@ def load_historical_rows(dsn: str) -> list[dict[str, Any]]:
                 observation.availability_basis,
                 observation.point_in_time_certifiable,
                 observation.payload_sha256,
+                observation.payload->'statistics' AS statistics,
                 observation.provider_response_id,
                 observation.rights_approval_id,
                 approval.status AS rights_status,
@@ -126,6 +127,8 @@ def build_dataset(rows: list[dict[str, Any]]) -> dict[str, Any]:
             away_yellow_cards=row["away_yellow_cards"],
             home_red_cards=row["home_red_cards"],
             away_red_cards=row["away_red_cards"],
+            home_statistics=row.get("statistics"),
+            away_statistics=row.get("statistics"),
         )
         for row in rows
     ]
