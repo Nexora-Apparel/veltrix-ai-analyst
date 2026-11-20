@@ -85,10 +85,15 @@ class PublicPredictionHistoryItem(PublicPrediction):
         for value in (self.generated_at, self.published_at):
             if value.tzinfo is None or value.utcoffset() is None:
                 raise ValueError("history timestamps must be timezone-aware")
-        if self.settled_at is not None and (
-            self.settled_at.tzinfo is None or self.settled_at.utcoffset() is None
-        ):
-            raise ValueError("settled_at must be timezone-aware")
+        if self.published_at < self.generated_at:
+            raise ValueError("publication cannot precede prediction generation")
+        if self.published_at >= self.fixture.kickoff_at:
+            raise ValueError("publication must precede fixture kickoff")
+        if self.settled_at is not None:
+            if self.settled_at.tzinfo is None or self.settled_at.utcoffset() is None:
+                raise ValueError("settled_at must be timezone-aware")
+            if self.settled_at <= self.fixture.kickoff_at:
+                raise ValueError("settlement must follow fixture kickoff")
         return self
 
 
