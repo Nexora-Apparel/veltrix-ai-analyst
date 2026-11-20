@@ -134,6 +134,9 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "013_target_fixture_pre_match_gate.sql",
             "014_prediction_publication_storage.sql",
             "015_automated_identity_adjudication.sql",
+            "016_immutable_prospective_feature_snapshots.sql",
+            "017_append_only_prospective_snapshot_labels.sql",
+            "018_prediction_settlement_ledger.sql",
         }
     )
 
@@ -177,6 +180,9 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "013_target_fixture_pre_match_gate.sql",
             "014_prediction_publication_storage.sql",
             "015_automated_identity_adjudication.sql",
+            "016_immutable_prospective_feature_snapshots.sql",
+            "017_append_only_prospective_snapshot_labels.sql",
+            "018_prediction_settlement_ledger.sql",
         }.issubset(migration_versions)
 
         timestamp_columns = {
@@ -252,6 +258,10 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "prediction_publication_events",
             "published_predictions",
             "published_prediction_markets",
+            "prospective_feature_snapshots",
+            "prospective_feature_snapshot_labels",
+            "prediction_settlement_events",
+            "latest_prediction_settlements",
         }.issubset(tables)
 
         case_count = connection.execute(
