@@ -38,7 +38,7 @@ def test_settlement_candidate_query_requires_verified_pit_result_evidence():
     assert "point_in_time_certifiable IS TRUE" in CANDIDATE_QUERY
     assert "MODEL_TRAINING" in CANDIDATE_QUERY
     assert "MODEL_VALIDATION" in CANDIDATE_QUERY
-    assert "provider_response_sha256" not in CANDIDATE_QUERY
+    assert "provider_response_sha256" in CANDIDATE_QUERY
     assert "5DollarFootballAPI" in CANDIDATE_QUERY
     assert "The Odds API" not in CANDIDATE_QUERY
     assert DATABASE_NAME == "veltrix_ai_analyst"
