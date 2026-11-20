@@ -135,6 +135,7 @@ def build_shadow_predictions(
         row for row in rows
         if isinstance(row, ProspectiveDatasetRow)
         and row.validation_eligible
+        and row.label is None
         and row.prediction_cutoff_at is not None
         and row.canonical_fixture_id is not None
         and row.canonical_competition_id is not None
