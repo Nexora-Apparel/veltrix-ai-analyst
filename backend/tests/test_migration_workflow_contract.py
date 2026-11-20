@@ -90,7 +90,7 @@ def test_prediction_settlement_migration_is_append_only_and_provenance_gated() -
     assert "prediction_settlement_events_append_only" in migration
     assert "latest_prediction_settlements" in migration
     assert "SYSTEM_OBSERVED_AT" in migration
-    assert "point_in_time_certifiable IS NOT TRUE" in migration
+    assert "observation_pit_certifiable IS NOT TRUE" in migration
     assert "MODEL_TRAINING" in migration
     assert "MODEL_VALIDATION" in migration
     assert "SOURCE_FIXTURE_LINK_REVIEWED" in migration
