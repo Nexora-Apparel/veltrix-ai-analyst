@@ -101,3 +101,29 @@ def test_shadow_ledger_rejects_more_than_daily_fixture_cap():
     candidate["forecast_count"] = 26
     with pytest.raises(ValueError, match="SHADOW_FORECAST_LIMIT_EXCEEDED"):
         validate_shadow_report(candidate, code_commit=COMMIT)
+
+
+
+def test_shadow_ledger_requires_explicit_write_opt_in_before_database_access():
+    from app.research.shadow_ledger import persist_shadow_report
+
+    with pytest.raises(
+        RuntimeError, match="SHADOW_LEDGER_WRITE_EXPLICIT_OPT_IN_REQUIRED"
+    ):
+        persist_shadow_report(
+            "postgresql://user:password@localhost:5432/veltrix_ai_analyst",
+            report(),
+            code_commit=COMMIT,
+        )
+
+
+def test_shadow_ledger_rejects_other_database_names_before_connecting():
+    from app.research.shadow_ledger import persist_shadow_report
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL_PATH_MISMATCH"):
+        persist_shadow_report(
+            "postgresql://user:password@localhost:5432/postgres",
+            report(),
+            code_commit=COMMIT,
+            write_enabled=True,
+        )
