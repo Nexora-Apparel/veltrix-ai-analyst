@@ -62,3 +62,11 @@ Only the 380 FINISHED rows were used as retrospective labels. The two valid upco
 3. Build/evaluate feature effects on prospectively observed pre-kickoff snapshots joined only to strictly post-kickoff labels; accumulate sufficient distinct dates and settled outcomes.
 4. Continue Stage 8B/8C integration and reliability calibration. Do not merge PR #123 solely because these workflows passed; review the complete PR and remaining Stage 8 exit criteria first.
 5. Preserve existing Android UI; integrate only after a certified immutable artifact and publisher exist.
+
+
+## PR integration status — post-rebuild check
+
+- PR #123 remains open and unmerged. GitHub reports `mergeable=false`.
+- Branch comparison against `main`: candidate is 119 commits ahead and 3 commits behind; the branches diverged from merge base `7039615d51a30609a67a944c050bd8b31ce20bce`.
+- The three main-only commits add the default-branch historical evidence preflight workflow, enforce a read-only transaction in that preflight, and expose the bounded historical backfill workflow. Both main and the candidate branch contain different versions of `.github/workflows/historical-feature-evidence-backfill.yml`; the candidate must preserve its verified run behavior while incorporating the later default-branch safety refinements. The candidate also needs the main-only preflight workflow.
+- Do not merge while GitHub reports non-mergeable. Next integration task is a deliberate workflow reconciliation against those three main commits, followed by fresh CI on the resulting exact head. The already successful CI/research runs remain valid evidence for their original tested head only; documentation-only commits and any subsequent workflow reconciliation are not thereby CI-verified.
