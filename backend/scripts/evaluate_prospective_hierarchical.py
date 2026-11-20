@@ -114,7 +114,7 @@ def main() -> int:
         "model_feature_usage": "HIERARCHICAL_GOAL_RATE_ONLY; SHOT_POSSESSION_ATTACK_EVENT_FEATURES_CAPTURED_BUT_NOT_YET_USED",
         "invalid_system_observed_sightings": dataset["invalid_system_observed_sightings"],
         "source_data_provider": dataset["provider"],
-        "point_in_time_policy": "SYSTEM_OBSERVED_AT_STRICTLY_BEFORE_TARGET_KICKOFF",
+        "point_in_time_policy": "SYSTEM_OBSERVED_AT_AT_OR_BEFORE_TARGET_PREDICTION_CUTOFF",
         "bookmaker_odds_used": False,
         "production_promotion": "LOCKED",
         "value_betting": "LOCKED",
