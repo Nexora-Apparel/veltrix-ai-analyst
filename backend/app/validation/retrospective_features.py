@@ -147,6 +147,7 @@ def build_retrospective_lagged_features(
             ) -> tuple[dict[str, float | None], dict[str, float | None]]:
                 own: dict[str, float | None] = {}
                 opponent: dict[str, float | None] = {}
+                value = value if isinstance(value, dict) else {}
                 for metric in (
                     "attacks", "dangerous_attacks", "shots_on_target",
                     "shots_off_target", "possession",
