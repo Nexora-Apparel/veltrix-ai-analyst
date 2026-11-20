@@ -81,3 +81,17 @@ Only the 380 FINISHED rows were used as retrospective labels. The two valid upco
 - Fetch-back verified the backfill workflow content and blob SHA `697692a271e3e3a0d39a141a9e3bd07de767b164`. Preflight creation returned commit `395d2672f0fbd6b4627350b6b4bf925871e774d7`; a separate fetch-back and fresh CI are still required.
 - No historical collection was dispatched, no provider collection requests were sent, no Odds API credits were spent, and no production database writes or deployments occurred.
 - Next: fetch-back verify both workflows; inspect main-only commit patches and the remaining branch diff; update roadmap/ledger; run CI on the resulting exact candidate head. Do not merge until divergence is resolved and CI passes.
+
+
+## 2026-11-20 — PR #123 workflow reconciliation review completed
+
+- Reviewed all three main-only commits against the candidate branch:
+  - `7eadce29f340bbed88ce2c3252744934910d38e3`: introduced the manual entitlement preflight workflow.
+  - `7291c90c3cbf89fe0e5f13bbcb129c3a2c9152a9`: corrected that preflight to set and verify a read-only transaction.
+  - `6b6c045a50572cf22f12d6ca95038fca81d91b36`: exposed the bounded historical backfill workflow on the default branch.
+- Candidate preflight file was fetched back and is byte-for-byte content-equivalent to the corrected `main` version. It checks the expected Neon database within `SET TRANSACTION READ ONLY`, verifies `transaction_read_only = on`, probes provider entitlement, and performs no collection.
+- Compared both complete backfill workflow files. Candidate retains the default-branch push parse-validation job, manual dispatch, preflight-only default, review-before-execution wording, bounded 10-request collector invocation and selected-ref behavior (GitHub Actions checks out the dispatch ref by default). Candidate additionally verifies Neon identity in an explicit read-only transaction with a connection timeout before any optional collection step. The main workflow's identity check was weaker and was not copied over the candidate's stricter guard.
+- The three main-only changes are therefore functionally represented on the candidate branch; the candidate deliberately keeps its stronger execution safeguards. No wholesale merge/cherry-pick was performed, and no provider collection was dispatched.
+- Corrected earlier reconciliation note: both workflow files have now been fetched back successfully; the preflight is no longer awaiting fetch-back verification.
+- Current compare and PR metadata still require a fresh check after this ledger update. No PR merge, production deployment, database writes, historical collection, or Odds API spend occurred.
+- Next: update roadmap reconciliation status, verify the exact new PR head and fresh CI, then proceed to point-in-time prospective feature/model integration. Existing retrospective event-time reconstruction remains excluded from production inference and prospective certification.
