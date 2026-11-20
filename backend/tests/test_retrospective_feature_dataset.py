@@ -20,6 +20,7 @@ def _row(fixture_id: str, kickoff: datetime, home: str, away: str, home_goals: i
         "away_yellow_cards": 2,
         "home_red_cards": 0,
         "away_red_cards": 0,
+        "statistics": {"attacks": {"home": 101, "away": 80}, "shots_on_target": {"home": 5, "away": 3}, "possession": {"home": 60, "away": 40}},
         "source_observation_id": int(fixture_id),
         "provider_response_id": 100 + int(fixture_id),
         "retrieved_at": datetime(2026, 11, 19, tzinfo=UTC),
@@ -47,6 +48,9 @@ def test_dataset_is_separate_and_non_pit_with_source_lineage():
     second = dataset["rows"][1]
     assert second["features"]["home_prior_match_count"] == 1
     assert second["features"]["home_goals_for_mean"] == 0.0
+    assert second["features"]["home_attacks_for_mean"] == 101.0
+    assert second["features"]["home_attacks_against_mean"] == 80.0
+    assert second["features"]["home_shots_on_target_for_mean"] == 5.0
     assert second["feature_provenance"]["history_fixture_ids"] == ["1"]
     assert second["feature_provenance"]["source_observation_id"] == 2
     assert second["feature_provenance"]["availability_basis"] == "RETRIEVED_AT_ONLY"
