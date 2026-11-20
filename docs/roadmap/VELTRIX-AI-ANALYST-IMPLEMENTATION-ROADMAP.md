@@ -356,3 +356,15 @@ This gives the 996 historical outcomes a legitimate route to richer research fea
 ### 2026-11-20 backfill execution checkpoint
 
 The manually dispatched historical feature backfill (run 44637566125) completed its collection work but the workflow exited failure during reconciliation validation. Neon independently confirms seven import runs completed: 1,601 records seen, 595 inserted, 35 requests used, 0 rejected/quarantined. Scope-level details and failure codes are recorded in the dated ledger. Validation reported sighting-count and import-counter reconciliation mismatches across all seven competitions; Brazil Serie B additionally inserted zero fixtures. The database is 23 MB. Treat this as completed collection with failed validation—not as a verified feature-recovery success. Do not repeat collection until the importer/reconciliation and zero-insert scope are audited. No Odds API use.
+
+
+### Stage 8B — historical backfill accounting and validation repair (2026-11-20)
+
+**Status: code repair committed to Stage 8B branch; CI and revalidation pending.**
+
+- Corrected successful-page checkpoint persistence so records_duplicate, records_rejected, and records_quarantined are retained alongside seen/inserted counts. This allows _run_totals() and _finish() to calculate truthful run-level counters.
+- Corrected validator semantics: fixture sightings must reconcile to provider records seen; fixture rows linked through the stable provenance pointer must reconcile to newly inserted identities. A duplicate sighting is expected to create immutable observation evidence without replacing the original fixture provenance key.
+- Added a regression test with two sightings of one fixture identity, expecting seen=2, inserted=1, duplicate=1, sightings=2, fixture rows=1.
+- For historical runs created by the defective checkpoint writer, validator may derive a legacy duplicate count without mutating the database, but only if all sightings reconcile, inserted rows reconcile, and no rejected/quarantined records exist.
+- Read-only audit establishes the 384 Brazil Serie B sightings are already captured observations; zero new fixture rows is expected because the identities existed before the backfill. The original fixture rows intentionally retain their first source-observation pointer.
+- No further provider calls or database writes are needed for this repair. Next: run full CI, inspect the complete PR diff, execute the corrected validator read-only against runs 19–25, inspect payload feature completeness, then proceed with retrospective dataset/model comparison. Certification/value-bet locks remain unchanged.
