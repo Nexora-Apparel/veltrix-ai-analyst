@@ -137,6 +137,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "016_immutable_prospective_feature_snapshots.sql",
             "017_append_only_prospective_snapshot_labels.sql",
             "018_prediction_settlement_ledger.sql",
+            "019_research_shadow_forecast_ledger.sql",
         }
     )
 
@@ -183,6 +184,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "016_immutable_prospective_feature_snapshots.sql",
             "017_append_only_prospective_snapshot_labels.sql",
             "018_prediction_settlement_ledger.sql",
+            "019_research_shadow_forecast_ledger.sql",
         }.issubset(migration_versions)
 
         timestamp_columns = {
@@ -262,7 +264,18 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "prospective_feature_snapshot_labels",
             "prediction_settlement_events",
             "latest_prediction_settlements",
+            "research_shadow_forecast_runs",
         }.issubset(tables)
+
+        shadow_ledger_trigger = connection.execute(
+            """
+            SELECT tgname
+            FROM pg_trigger
+            WHERE tgrelid = 'veltrix_ai_analyst.research_shadow_forecast_runs'::regclass
+              AND NOT tgisinternal
+            """
+        ).fetchall()
+        assert ("research_shadow_forecast_runs_append_only",) in shadow_ledger_trigger
 
         case_count = connection.execute(
             """
