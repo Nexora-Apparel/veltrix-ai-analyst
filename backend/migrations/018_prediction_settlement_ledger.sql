@@ -92,10 +92,12 @@ BEGIN
         observation.availability_basis AS observation_availability_basis,
         observation.point_in_time_certifiable AS observation_pit_certifiable,
         observation.retrieved_at AS observation_retrieved_at,
+        observation.available_at AS observation_available_at,
         observation.system_observed_at AS observation_system_observed_at,
         sighting.source_observation_id AS sighting_observation_id,
         sighting.provider_response_id AS sighting_response_id,
         sighting.retrieved_at AS sighting_retrieved_at,
+        sighting.available_at AS sighting_available_at,
         sighting.system_observed_at AS sighting_system_observed_at,
         sighting.availability_basis AS sighting_availability_basis,
         sighting.point_in_time_certifiable AS sighting_pit_certifiable,
@@ -169,19 +171,22 @@ BEGIN
        OR evidence.observation_availability_basis <> 'SYSTEM_OBSERVED_AT'
        OR evidence.observation_pit_certifiable IS NOT TRUE
        OR evidence.observation_system_observed_at > NEW.settled_at
+       OR evidence.observation_available_at IS DISTINCT FROM evidence.observation_system_observed_at
        OR evidence.observation_retrieved_at > NEW.settled_at
        OR evidence.sighting_observation_id <> NEW.source_observation_id
        OR evidence.sighting_response_id <> NEW.provider_response_id
        OR evidence.sighting_availability_basis <> 'SYSTEM_OBSERVED_AT'
        OR evidence.sighting_pit_certifiable IS NOT TRUE
        OR evidence.sighting_system_observed_at IS DISTINCT FROM NEW.settled_at
+       OR evidence.sighting_available_at IS DISTINCT FROM evidence.sighting_system_observed_at
        OR evidence.sighting_retrieved_at > NEW.settled_at
        OR evidence.sighting_payload_sha256 <> evidence.payload_sha256
        OR evidence.response_provider <> evidence.observation_provider
        OR evidence.response_source_id <> evidence.observation_source_id
        OR evidence.http_status NOT BETWEEN 200 AND 299
        OR evidence.fetched_at <> evidence.sighting_retrieved_at
-       OR evidence.response_system_observed_at IS DISTINCT FROM NEW.settled_at
+       OR evidence.response_system_observed_at > NEW.settled_at
+       OR evidence.response_system_observed_at > evidence.sighting_system_observed_at
        OR evidence.response_sha256 <> NEW.provider_response_sha256
        OR evidence.payload_sha256 <> NEW.source_payload_sha256
        OR evidence.approval_provider <> evidence.observation_provider
