@@ -12,13 +12,13 @@ from fastapi import APIRouter, HTTPException, status
 from psycopg.rows import dict_row
 
 from app.contracts.public_prediction import (
+    PublicFinalScore,
     PublicFixture,
     PublicPrediction,
-    PublicPredictionList,
     PublicPredictionHistoryItem,
     PublicPredictionHistoryList,
+    PublicPredictionList,
     PublicPredictionMarkets,
-    PublicFinalScore,
 )
 
 router = APIRouter(prefix="/v1/predictions", tags=["predictions"])
