@@ -142,3 +142,22 @@
 - **Verified:** repository workflow definitions, current Actions results listed above, Android API integration code and documented build/device distinction.
 - **Pending:** next scheduled capture and its downstream Stage 6/shadow outputs, plus physical-device verification.
 - **Not claimed:** successful post-fix capture, generated forecasts, live predictions displayed in the app, or full certified production release.
+
+
+## 2026-11-20 — PR #74 integration blocker review
+
+### Repository evidence
+- Rechecked live main: `a608d37c1eb42bbda2ead0b75e54778235d4d432`.
+- PR [#74](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/74) remains open and unmerged. It adds a competition-aware hierarchical Poisson goal-rate component and sparse-team tests, but its own description states it is not wired into prediction orchestration/API or production.
+- PR #74 head is `15c62661e30781e305eac00afc0ebd400fe3ec13`; its base/merge-base is `e137a8525dee5f9231a1f6423661b639b72810ff`. GitHub comparison reports the PR branch diverged from current main: 2 commits ahead and 290 commits behind. PR metadata reports `mergeable=false`, and the head combined-status endpoint returned no status checks.
+- Current Android README confirms the app reads only the published `GET /v1/predictions` contract; an empty response is displayed as “No upcoming predictions”. CI build alone does not verify live prediction display or physical-device behavior.
+
+### Decision / next steps
+- Do not merge PR #74 in its current state. It is materially stale against main and has no current head status evidence. First rebase/reconstruct the model component against current main, rerun its tests and full CI, and review the statistical implementation before considering integration.
+- Do not wire the component into production prediction orchestration or expose forecasts until chronology, hyperparameter selection, convergence, calibration, and prospective evaluation requirements are satisfied.
+- Keep Android UI and published API contract unchanged. The launch path remains dependent on successful post-fix capture, Stage 6 materialization, eligible shadow output, and safe demonstration/publication boundaries.
+- No code merge, branch rewrite, provider request, Odds API credit use, deployment, or production database write was performed during this review.
+
+### Evidence classification
+- **Verified:** main SHA, PR metadata, comparison divergence counts, absent PR head status entries, and Android published-endpoint contract.
+- **Pending:** current-main rebased model implementation, fresh CI, integration review, next scheduled capture, Stage 6 and shadow outputs, and physical-device verification.
