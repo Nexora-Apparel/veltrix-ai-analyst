@@ -818,3 +818,11 @@ Open [the workflow page](https://github.com/Nexora-Apparel/veltrix-ai-analyst/ac
 - Candidate PR #123: `stage-8b-statistics-ci-release` -> `main`, non-draft and open. PR #121 and #122 are closed as superseded; none of these PRs has been merged.
 - Required manual runs: CI workflow on candidate branch for backend tests/lint and Android build; retrospective research workflow on candidate branch for the seven-run read-only validator and statistics-aware dataset artifact. The connected GitHub integration exposes no workflow-dispatch action and no CI run appeared for the PR-created commits. The workflow pages are available in GitHub Actions; the user must select `stage-8b-statistics-ci-release` and click Run workflow.
 - No further data collection is needed to recover statistics from these 1,601 observations. Do not rerun the historical backfill. The feature dataset and candidate model remain research-only/non-PIT.
+
+
+### Full read-only SQL equivalence audit for historical validator (2026-11-20)
+
+- Extended the independent Neon read-only audit to cover all import-validator invariants that can be checked in SQL. Across runs 19–25: all 35 reservation idempotency keys, endpoints, canonical parameter hashes, request-event links, and raw-response SHA-256 checksums pass (35/35 each); no event-link or checksum failures.
+- All seven runs are COMPLETED, provider/source and rights approval fields match the approved scope, request budgets are respected, and the approval is current. Each run has the expected 365-day window protocol, checkpoint totals reconcile, sightings equal records_seen, and fixture rows equal records_inserted. Non-PIT provenance violations, out-of-window/bad fixture rows and unresolved quarantine are all zero.
+- Legacy duplicate counts inferred from evidence by run: 124, 384, 101, 91, 81, 110, 115 (total 1,006). The duplicate-only Brazil Serie B scope is fully accounted for by its 384 sightings and zero new fixture rows.
+- This is a read-only SQL-equivalence audit of the validator's checks; the Python validator itself still needs to run once from the new manual research workflow. No DB writes or provider requests were made.
