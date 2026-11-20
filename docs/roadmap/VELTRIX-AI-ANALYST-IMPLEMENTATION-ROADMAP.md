@@ -388,3 +388,14 @@ The manually dispatched historical feature backfill (run 44637566125) completed 
 **Implementation added on `stage-8b-statistics-ci-release`:** the retrospective dataset loader now reads the latest observation payload under the fixture's original rights approval (not just the original fixture projection pointer). The retrospective feature builder derives strictly lagged, same-competition, team-perspective means for attacks, dangerous attacks, shots on/off target, possession and first-half versions. Missing values remain null; simultaneous kickoff fixtures cannot leak; all outputs remain retrospective, non-PIT and certification-ineligible. Regression tests cover the new feature path.
 
 **Current verification:** database coverage checks passed read-only. End-to-end dataset build, complete corrected Python validator, backend test/lint, and Android CI remain unverified. PR #123 is the active consolidated candidate; PRs #121 and #122 were closed as superseded, not merged. The connected GitHub integration created PR #123 but did not trigger GitHub Actions CI; a fresh CI run on the candidate head is required. Do not rerun historical collection or spend provider requests for the statistics already present.
+
+
+### Next execution gates — 2026-11-20
+
+1. Run GitHub Actions `CI` on branch `stage-8b-statistics-ci-release`; require backend pytest, Ruff and Android debug build success on the candidate head.
+2. Run `Rebuild retrospective research report` on the same branch. The candidate workflow now performs full read-only validation of import runs 19–25 and builds/uploads the statistics-aware retrospective feature dataset before the existing baseline research report.
+3. Inspect the dataset artifact's row count, statistics coverage, provenance hashes, rights eligibility and feature null rates.
+4. Train a statistics-aware research candidate and compare it with the goal-rate baseline on identical chronological folds, stratified by competition and history depth. Do not mix these retrospective rows with prospective certification.
+5. Review PR #123 after both workflow artifacts pass. Keep Stage 7 certification, production publication and value betting locked.
+
+The 1,601 historical observations already contain non-empty statistics objects, so further historical statistics collection is not required for this corpus. Any later collection must be limited to an explicitly audited coverage gap.
