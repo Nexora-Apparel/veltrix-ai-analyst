@@ -266,20 +266,22 @@ def validate_competition_import(
         ).fetchone()[0]
         # A provider page can repeat the same fixture object. The ingestion
         # store intentionally creates one immutable observation/sighting for
-        # an identical (fixture identity, payload hash, response) tuple.
-        # Compare sightings with distinct fixture identities in the raw
-        # response, not records_seen (which counts every payload occurrence).
+        # each distinct (fixture identity, payload hash, response) tuple.
+        # Derive the expected tuple count from persisted immutable observations
+        # rather than parsing raw response bodies: captured malformed responses
+        # are retained for quarantine/audit and are not guaranteed to be JSON.
         distinct_fixture_entities = connection.execute(
             """
-            SELECT COUNT(DISTINCT fixture->>'id')
-            FROM veltrix_ai_analyst.provider_responses r
-            CROSS JOIN LATERAL jsonb_array_elements(
-                COALESCE(convert_from(r.raw_body, 'UTF8')::jsonb->'data', '[]'::jsonb)
-            ) AS items(fixture)
-            WHERE r.id = ANY(%s)
-              AND fixture->>'id' IS NOT NULL
+            SELECT COUNT(DISTINCT (o.provider_entity_id, o.payload_sha256))
+            FROM veltrix_ai_analyst.source_observation_sightings s
+            JOIN veltrix_ai_analyst.source_observations o
+              ON o.id = s.source_observation_id
+            WHERE s.provider_response_id = ANY(%s)
+              AND o.rights_approval_id = %s
+              AND o.data_type = 'fixtures_and_results'
+              AND o.entity_type = 'fixture'
             """,
-            (response_ids,),
+            (response_ids, approval_id),
         ).fetchone()[0]
         fixture_rows = connection.execute(
             """
