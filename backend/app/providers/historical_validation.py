@@ -247,6 +247,7 @@ def validate_competition_import(
         response_count += 1
 
     fixture_sightings = 0
+    distinct_fixture_entities = 0
     fixture_rows = 0
     non_pit_observations = 0
     if response_ids:
@@ -262,6 +263,23 @@ def validate_competition_import(
               AND o.entity_type = 'fixture'
             """,
             (response_ids, approval_id),
+        ).fetchone()[0]
+        # A provider page can repeat the same fixture object. The ingestion
+        # store intentionally creates one immutable observation/sighting for
+        # an identical (fixture identity, payload hash, response) tuple.
+        # Compare sightings with distinct fixture identities in the raw
+        # response, not records_seen (which counts every payload occurrence).
+        distinct_fixture_entities = connection.execute(
+            """
+            SELECT COUNT(DISTINCT fixture->>'id')
+            FROM veltrix_ai_analyst.provider_responses r
+            CROSS JOIN LATERAL jsonb_array_elements(
+                COALESCE(convert_from(r.raw_body, 'UTF8')::jsonb->'data', '[]'::jsonb)
+            ) AS fixture
+            WHERE r.id = ANY(%s)
+              AND fixture->>'id' IS NOT NULL
+            """,
+            (response_ids,),
         ).fetchone()[0]
         fixture_rows = connection.execute(
             """
@@ -310,10 +328,10 @@ def validate_competition_import(
         ).fetchone()[0]
     if int(records_seen) <= 0 or int(fixture_sightings) <= 0:
         failures.append("NO_FIXTURE_DATA_IMPORTED")
-    # Every provider fixture in the response must have one captured sighting,
-    # including fixtures already present in provider_fixtures. Inserts are a
-    # separate count and are checked against the materialized rows below.
-    if int(fixture_sightings) != int(records_seen):
+    # Each distinct fixture identity in the raw response must have one
+    # captured sighting. records_seen counts raw occurrences and can be larger
+    # when a provider page repeats an identical fixture object.
+    if int(fixture_sightings) != int(distinct_fixture_entities):
         failures.append("FIXTURE_SIGHTING_COUNT_MISMATCH")
     if int(fixture_rows) != int(records_inserted):
         failures.append("PROVIDER_FIXTURE_ROW_COUNT_MISMATCH")
@@ -369,6 +387,7 @@ def validate_competition_import(
         "records_quarantined": int(records_quarantined),
         "request_events_with_raw_response": response_count,
         "fixture_sightings": int(fixture_sightings),
+        "distinct_fixture_entities": int(distinct_fixture_entities),
         "fixture_rows": int(fixture_rows),
         "non_pit_observations": int(non_pit_observations),
         "unresolved_quarantine": int(quarantine_count),
