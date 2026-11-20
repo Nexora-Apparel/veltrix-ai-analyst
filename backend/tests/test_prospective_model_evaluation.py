@@ -78,6 +78,10 @@ def test_prospective_evaluator_scores_1x2_btts_and_totals_with_confidence_interv
     )
     assert report["status"] == "RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL"
     assert report["fixtures"] > 0
+    assert all(
+        fold.train_cutoff_at < fold.validation_cutoff_at < fold.validation_start_at
+        for fold in folds
+    )
     assert set(report["markets"]) == {
         "1X2", "BTTS", "OVER_UNDER_1_5", "OVER_UNDER_2_5", "OVER_UNDER_3_5"
     }
