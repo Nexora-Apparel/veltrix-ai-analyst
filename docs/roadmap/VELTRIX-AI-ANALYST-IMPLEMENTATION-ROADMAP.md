@@ -404,3 +404,12 @@ The 1,601 historical observations already contain non-empty statistics objects, 
 ### Historical import verification refinement — 2026-11-20
 
 A complete read-only SQL equivalence audit now verifies 35/35 request reservation keys, endpoints, canonical request-parameter hashes, request-event links and raw-response SHA-256 checksums. All seven import runs have current approved rights, correct request budgets/windows/checkpoints, complete fixture sightings, inserted-row reconciliation, valid provenance, no invalid fixtures and no unresolved quarantine. The Python validator and candidate CI workflows still require manual GitHub Actions dispatch; do not rerun collection.
+
+
+### 2026-11-20 — CI duplicate-sighting regression fix
+
+The first PR #123 CI run (44697802502) reported 445 passing tests and one failing duplicate-sighting regression. The ingestion store intentionally deduplicates identical fixture observations within the same provider response, so two identical raw fixture occurrences count as two `records_seen` but one persisted sighting. The validator incorrectly equated sightings with raw occurrence count.
+
+The validator now compares persisted sightings with distinct fixture identities extracted from the captured raw response. Raw seen/inserted/duplicate counters remain independently reconciled, and fixture-row counts remain checked against inserted rows. The regression now asserts: 2 seen, 1 inserted, 1 duplicate, 1 sighting, 1 distinct fixture identity, 1 fixture row. The validator report exposes `distinct_fixture_entities` for auditability.
+
+Changes committed to `stage-8b-statistics-ci-release`; latest verified PR #123 head: `e275a9df361028d7f01c31b2441aabe29ef48a4f`. The fix is not CI-verified yet. **Next user action: run CI only on this exact branch/head.** If it passes, then run the retrospective research workflow. Do not rerun historical collection; no provider calls or production DB writes are needed for this fix. Stage 7 certification, production publication and value betting remain locked.
