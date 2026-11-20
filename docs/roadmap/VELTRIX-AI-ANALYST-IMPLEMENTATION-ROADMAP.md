@@ -489,3 +489,38 @@ The three commits present on `main` but absent from the candidate's ancestry wer
 **Status:** workflow-content reconciliation reviewed; branch ancestry remains divergent until a safe integration strategy is chosen. Do not merge solely on this review. Require fresh CI on the exact updated candidate head. No historical collection, production database writes, provider collection calls, Odds API spend, deployment or production publication occurred during this review.
 
 **Next engineering work:** build a strictly point-in-time prospective feature dataset from immutable pre-kickoff snapshots and post-kickoff append-only labels. Keep retrospective event-time reconstructed statistics in a research-only namespace. Continue feature/model comparisons and reliability calibration without unlocking production publication or value betting before the stated certification gates pass.
+
+
+## 2026-11-20 — Stage 8B cutoff safety and shadow inference
+
+### Stage status
+- **Stage 4 — prospective capture:** schedule configured at 03:00 UTC; first 59 snapshots materialized on 19 November. No 20 November prospective-capture import run was present at the latest database audit. Verify the next scheduled run rather than assuming the schedule executed.
+- **Stage 5 — canonical identity:** seven competition scopes currently provide 996 canonical, rights-qualified historical result labels.
+- **Stage 6 — immutable snapshots/labels:** 59 immutable snapshots exist; 0 prospective labels are settled. Historical feature backfill must not be injected into earlier snapshots.
+- **Stage 7 — chronological evaluation:** expanding folds now enforce training-label availability strictly before the earliest validation prediction cutoff, not merely before kickoff. Prospective evidence remains insufficient for certification.
+- **Stage 8A — source/model inventory:** complete.
+- **Stage 8B — sparse-data/research engine:** PIT fold leakage corrected; statistics-aware retrospective dataset retained as research-only; read-only shadow forecast builder and daily workflow added. CI verified.
+- **Stage 8C — reliability calibration:** pending prospective settled outcomes.
+- **Stage 8D — certified artifact/inference/publisher:** pending. Shadow forecasts are not published and do not unlock value betting.
+- **Stage 9 — Android integration:** pending. Preserve current app screens; integrate only the approved backend prediction contract.
+
+### Current evidence and operating rules
+- 996 historical labels across seven approved competitions are rights-qualified. 990 were observed by import-run completion before the earliest 19 November snapshot cutoff; all 996 were available before the last snapshot cutoff.
+- 1,576 completed matches have statistics available before the next scheduled 21 November 03:00 UTC capture cutoff; 1,575 have event arrays. These can inform future target snapshots only when the exact source observation time precedes the target cutoff.
+- The 59 existing snapshots are feature-sparse (53 without eligible home-team recent history; 54 without eligible away-team recent history). Keep them immutable.
+- The shadow model trains on cutoff-valid historical goal outcomes only. It reports snapshot feature coverage but does not use unvalidated statistics/event features as probability inputs. It caps output at 25 fixtures, rejects snapshots older than six hours and writes no database rows.
+- Daily shadow workflow targets 05:00 UTC / 06:00 WAT. It is read-only, uses no odds provider and sends no Telegram/OS notifications.
+- Keep 1X2, BTTS, O/U and value betting production gates closed until their separate prospective evidence and certification requirements pass.
+
+### Branch and release state
+- PR #123 candidate branch now contains main ancestry through merge commit `5ef8854d20a1fd2df1798d0d4ee752ed74f078a4`; compare is 151 ahead / 0 behind and GitHub reports mergeable=true, state `unstable`.
+- The merge commit preserved the reviewed candidate tree; it did not merge PR #123 into main.
+- CI run 44720976619 passed on implementation tree `e099a4256e143c4d855f3eb2ff8106fe18ddfefe` (backend tests, Ruff, Android debug build).
+- Vercel is rate-limited for 24 hours. No deployment or PR merge until that status clears and the final integrated head is verified.
+
+### Next execution sequence
+1. Verify 21 November 03:00 UTC prospective capture and Stage 6 materialization.
+2. Require fresh snapshots, then inspect the 05:00 UTC shadow artifact: cutoff-valid training count/hash, optimizer convergence, feature coverage, market probabilities and abstentions.
+3. Continue daily append-only outcome labels; evaluate only with the corrected prediction-cutoff folds.
+4. Build reliability calibration and the certified inference/publisher path only after enough prospective outcomes exist.
+5. Integrate published predictions into the existing Android screens without redesign.
