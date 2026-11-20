@@ -838,6 +838,7 @@ def test_duplicate_fixture_sightings_are_counted_separately_from_new_rows(
 
     assert run == (2, 1, 1)
     assert checkpoint == (2, 1, 1)
-    assert report["fixture_sightings"] == 2
+    assert report["fixture_sightings"] == 1
+    assert report["distinct_fixture_entities"] == 1
     assert report["fixture_rows"] == 1
     assert report["records_duplicate_verified"] == 1
