@@ -161,3 +161,11 @@
 ### Evidence classification
 - **Verified:** main SHA, PR metadata, comparison divergence counts, absent PR head status entries, and Android published-endpoint contract.
 - **Pending:** current-main rebased model implementation, fresh CI, integration review, next scheduled capture, Stage 6 and shadow outputs, and physical-device verification.
+
+
+## 2026-11-20 — PR #74 statistical review
+
+- Posted a non-approval engineering review comment on PR #74 (review ID `5996224886`). GitHub rejected a formal REQUEST_CHANGES review because the connected account is the PR author; a COMMENT review was successfully recorded instead.
+- Findings recorded: optimizer convergence is not exposed/enforced; ridge penalty scaling appears to weaken with larger total sample weight under the current gradient normalization; centering/reparameterization requires derivation and invariance tests; tests do not establish fit recovery, convergence, numerical stability, chronology, or row-order invariance.
+- Required before resubmission: reconstruct/rebase against current main, define and test the penalized objective, expose convergence diagnostics and fail-closed behavior, add synthetic recovery/held-out and invariance tests, then run full CI. No merge or production integration is approved by this review.
+- No provider requests, Odds API credit use, deployments, or production database writes were performed.
