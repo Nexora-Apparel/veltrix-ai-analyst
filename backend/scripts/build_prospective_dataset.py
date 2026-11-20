@@ -508,6 +508,7 @@ def build_report(
         "expanding_folds": serialized_folds,
         "dataset_sha256": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
         "rows": serialized_rows,
+        "training_only_rows": serialized_training_only_rows,
         "release_eligible": False,
         "production_promotion": "LOCKED",
         "value_betting": "LOCKED",
