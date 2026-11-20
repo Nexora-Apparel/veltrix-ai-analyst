@@ -200,3 +200,25 @@ Only the 380 FINISHED rows were used as retrospective labels. The two valid upco
 3. Once migration 018 is applied through the approved release path, verify the production history endpoint and run the settlement worker in dry-run mode before enabling scheduled inserts.
 4. Continue prospective settled labels and corrected prediction-cutoff walk-forward evaluation; build reliability calibration only from prospective evidence.
 5. Preserve the existing Android UI and connect it to production history only after the production API deployment and migration are both verified.
+
+
+
+## 2026-11-20 — Stage 8B production release and migration 018 verified
+
+- PR #123 merged to `main` as commit `1bdb07b1f87c8fe17ea6698345f99d9323222ae9`.
+- Production migration workflow [44729468637](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44729468637) completed successfully. Migration `018_prediction_settlement_ledger.sql` is applied with checksum `50757ee84f83ea1cb70b71b9ca5ef50879a7589d2af720feac6c1bb36e972aca`; its append-only settlement table, evidence guard and latest-settlement view were verified by the workflow.
+- Read-only Neon fetch-back at 2026-11-20 11:40 UTC confirms migration 018 is latest. Production counts remain: 59 prospective snapshots, 0 prospective labels, 0 prediction rows, 0 publication events and 0 settlement events. No forecasts were published and no settlement events were inserted.
+- Production Vercel deployment `dpl_H6kiYwJhiuu5c893hqmUspytK2ya` is READY for commit `1bdb07b1f87c8fe17ea6698345f99d9323222ae9`. Production `/health` and `/ready` return HTTP 200. `/v1/predictions/history` now returns HTTP 200 with an empty `predictions` array, correcting the previous 422 route collision.
+- Main-commit CI [44729468573](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44729468573) passed backend tests/lint and Android debug build. APK artifact ID `14626240750`, 16,453,457 bytes.
+- Read-only retrospective rebuild [44729468648](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44729468648) passed and uploaded report artifact `14626225756`, statistics-aware dataset `14625637140`, and paired diagnostics `14625243063`.
+- Prospective evaluation [44729468654](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44729468654) passed its workflow but returned `INSUFFICIENT_PROSPECTIVE_DATA`: 0 eligible fixtures, 0 folds, 0 settled labels and 0 distinct prospective dates. Production promotion and value betting remain LOCKED.
+- The 20 November scheduled capture [44725750217](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44725750217) failed after 13 provider requests across seven scopes (58 records seen, 5 inserted, 0 duplicate counters, 1 quarantined record). Five completed scopes were rejected by a validator reconciliation defect: repeated fixtures across separate provider responses were counted as one entity rather than one response-scoped sighting. France Ligue 1 also stopped on `PROVIDER_FIXTURE_IDENTITY_CONFLICT`; this is retained as a genuine identity blocker and must not be bypassed. No Odds API credits were used.
+- PR #124 `fix/prospective-capture-sighting-reconciliation` adds response-scoped sighting reconciliation, a regression test for the same fixture appearing in separate responses, and partial-scope batch handling. Validated scopes may proceed to Stage 6 while conflicted scopes remain excluded. PR #124 is open; its code is not yet CI-verified or merged. Vercel preview status is currently blocked by the free-tier daily deployment limit.
+- The candidate preview's missing `DATABASE_URL` was not populated with production credentials. Production is deployed with its existing production database configuration; preview isolation remains intentional.
+
+### Next actions
+1. Verify CI on PR #124 and review its regression result before merge.
+2. Keep France Ligue 1 excluded until its provider fixture identity conflict is independently reconciled.
+3. After Vercel quota resets, merge/deploy the validated capture correction; then verify Stage 6 materializes only independently validated scopes.
+4. Check the next capture opportunity without repeating today's 13 provider requests or mutating existing snapshots.
+5. Continue prospective labels and cutoff-correct evaluation; keep all production publication and value betting gates locked until certification evidence passes.
