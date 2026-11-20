@@ -427,3 +427,16 @@ The first CI rerun on PR #123 head `71b4d7374e17f71db24a76d14a4eb18962487ea8` pa
 The CI run on the latest pre-fix PR #123 head passed backend tests and Android build but Ruff failed with E902 because the validator script path was incorrectly prefixed with `../`. Since the backend job runs from `backend/` and the validator is under `backend/scripts/`, the workflow now uses `scripts/validate_historical_feature_backfill.py`. Workflow fix commit: `5522c1c7f09231ff8e61c3ebc4ed4e6f2bcf5dcf`.
 
 **Gate:** rerun CI on the new branch head. The retrospective research workflow remains blocked until CI fully passes. No data collection, provider-credit use, merge, deployment, or production unlock.
+
+
+## 2026-11-20 — Stage 8B CI verification
+
+**Status: CI PASSED on candidate head; retrospective research rebuild is the next gate.**
+
+- CI run [44711273673](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44711273673) completed successfully on `6aba288a8d102301329d220bc776fa09faa14fbb`, the PR #123 head at run time.
+- Backend tests, Ruff lint and Android debug build all passed. Android APK artifact ID `14617771339` was uploaded (16,448,825 bytes; SHA-256 `7c7d62718f06ae0909de2c44bbec2073fd5c5dd90a394666b93b052eaf3e5a90`).
+- The prior duplicate-sighting, malformed-JSON and Ruff-path blockers are cleared by this exact-head CI result.
+- **Next:** manually dispatch `.github/workflows/retrospective-research-rebuild.yml` on `stage-8b-statistics-ci-release`. It performs read-only import validation for runs 19–25, builds the statistics-aware retrospective dataset, runs retrospective research and paired chronological diagnostics, then uploads three artifacts.
+- The current GitHub connector exposes no workflow-dispatch action; manual UI dispatch is required. No repeat collection, provider requests, Odds API requests or production DB writes are needed for this next gate.
+- CI success is not model certification. PR #123 remains open/unmerged; production publishing and value betting remain locked.
+- Detailed evidence: `docs/ledger/2026-11-20-stage-8b-ci-passed.md`.
