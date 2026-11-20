@@ -145,7 +145,6 @@ def test_expanding_folds_keep_simultaneous_kickoffs_together():
         assert all(
             next(row for row in rows if row.fixture_id == fid).kickoff_at < fold.validation_start_at
             and next(row for row in rows if row.fixture_id == fid).label_observed_at < fold.validation_cutoff_at
-        )
             for fid in fold.train_fixture_ids
         )
         if "f-3" in fold.validation_fixture_ids or "f-same-time" in fold.validation_fixture_ids:
