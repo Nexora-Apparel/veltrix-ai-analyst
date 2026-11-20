@@ -308,7 +308,7 @@ def validate_competition_import(
             """,
             (response_ids,),
         ).fetchone()[0]
-    if records_inserted <= 0:
+    if int(records_seen) <= 0 or int(fixture_sightings) <= 0:
         failures.append("NO_FIXTURE_DATA_IMPORTED")
     # Every provider fixture in the response must have one captured sighting,
     # including fixtures already present in provider_fixtures. Inserts are a
