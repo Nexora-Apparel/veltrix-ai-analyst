@@ -764,3 +764,17 @@ Open [the workflow page](https://github.com/Nexora-Apparel/veltrix-ai-analyst/ac
 - Production database measured 23 MB after run (24,150,016 bytes), versus prior 22 MB. No immediate storage concern relative to 5 GB.
 - No Odds API requests were used. Provider request usage total was 35 across the seven scopes.
 - Next: diagnose sighting/counter reconciliation and Brazil Serie B zero-row condition; audit stored observations/payload completeness and lineage read-only; repair validation accounting with tests; do not blindly repeat the provider collection or spend additional requests until diagnosis.
+
+
+### Historical feature backfill reconciliation diagnosis and code repair (2026-11-20)
+
+- Read-only Neon audit of import runs 19–25 confirms 1,601 fixture sightings across seven competition scopes. Each scope's fixture sighting count exactly equals records_seen (289, 384, 180, 166, 155, 200, 227).
+- Six scopes materialized 595 new provider_fixtures rows. Brazil Serie B had 384 fixture sightings and zero new rows because its fixtures were already present; the importer preserved the original fixture provenance pointer, so these new sightings correctly do not join through provider_fixtures.source_observation_id. This is not evidence of missing observations.
+- Root cause 1: FixturePagePersister incremented records_duplicate in memory but the successful-page checkpoint omitted duplicate/rejected/quarantined counters. _finish() aggregates checkpoint totals, so duplicate accounting was lost and import-run counters falsely failed reconciliation.
+- Root cause 2: validator incorrectly required fixture sightings to equal newly inserted fixture rows. Sightings represent every observation; inserted rows represent only new identities. Correct invariant is sightings = records_seen and materialized fixture rows = records_inserted.
+- Code repair commits on stage-8b-sparse-inference-governance:
+  - f588751b212de77be0f78f70754596264dc8b529 — persist all page counters.
+  - 162a624e3b5cbf4d28e6995256715ec3729411db — separate sighting and insert validation; recover legacy duplicate totals only when evidence permits.
+  - 7a9244df67bc105bb84047fcda1314c7445f35a8 — regression test for duplicate fixtures and checkpoint accounting.
+- The validator's legacy recovery is read-only: it reports inferred duplicate count only when stored duplicate counters are absent, there are no rejected/quarantined records, and later sighting/row checks independently reconcile seen and inserted counts. It does not rewrite historical ledger rows.
+- No provider requests, Odds API requests, production database writes, or deployments were made for this repair. CI and PR review are pending; historical backfill remains collection-completed / validation-not-yet-recertified until the corrected validator is run against the existing runs.
