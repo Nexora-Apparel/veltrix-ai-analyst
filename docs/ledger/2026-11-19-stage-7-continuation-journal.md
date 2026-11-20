@@ -808,3 +808,13 @@ Open [the workflow page](https://github.com/Nexora-Apparel/veltrix-ai-analyst/ac
 - Neon read-only audit of the 1,601 backfill sightings confirms stats object/shot/possession coverage 100% for every competition. The corrected loader has not yet been executed end-to-end and the new tests have not yet received a fresh CI run.
 - Consolidated PR #123 is the active CI candidate. PR #121 and #122 were closed as superseded, not merged. The connected GitHub integration did not start CI for PR #123; only the Vercel preview check appeared. A repository-side GitHub Actions run on the candidate head is still required before merge.
 - No new provider calls, Odds API calls, production DB writes, or deployments occurred. No statistics backfill is needed for the seven collected competitions unless a later coverage audit identifies a specific missing fixture.
+
+
+### Statistics-aware dataset and validation workflow completed in code (2026-11-20)
+
+- Added `backend/scripts/validate_historical_feature_backfill.py`. It opens the production database in a read-only transaction, verifies the exact seven expected import scopes (IDs 19–25), and runs the full corrected `validate_competition_import` implementation for each. It performs no provider requests or database writes.
+- Updated `.github/workflows/retrospective-research-rebuild.yml` on the candidate branch to run the read-only import validator, build the statistics-aware retrospective feature dataset, retain the prior retrospective baseline report and paired diagnostics, and upload the new dataset artifact.
+- Updated the lagged statistics builder to treat absent stats as null and added a regression test for this case. Added dataset assertions for the newly loaded provider statistics. These code changes have not yet been executed by GitHub Actions.
+- Candidate PR #123: `stage-8b-statistics-ci-release` -> `main`, non-draft and open. PR #121 and #122 are closed as superseded; none of these PRs has been merged.
+- Required manual runs: CI workflow on candidate branch for backend tests/lint and Android build; retrospective research workflow on candidate branch for the seven-run read-only validator and statistics-aware dataset artifact. The connected GitHub integration exposes no workflow-dispatch action and no CI run appeared for the PR-created commits. The workflow pages are available in GitHub Actions; the user must select `stage-8b-statistics-ci-release` and click Run workflow.
+- No further data collection is needed to recover statistics from these 1,601 observations. Do not rerun the historical backfill. The feature dataset and candidate model remain research-only/non-PIT.
