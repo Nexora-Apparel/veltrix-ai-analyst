@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from app.validation.retrospective_features import (
@@ -75,11 +76,13 @@ def test_missing_supporting_features_remain_missing_not_imputed():
         _fixture("m1", 1, "A", "B", 1, 0, home_corners=None, away_corners=None),
         _fixture("target", 2, "A", "C", 0, 0),
     ]
+    rows[0] = replace(rows[0], home_statistics=None, away_statistics=None)
 
     target = build_retrospective_lagged_features(rows)[1]
     assert target["features"]["home_prior_match_count"] == 1
     assert target["features"]["home_corners_for_mean"] is None
     assert target["features"]["home_corners_against_mean"] is None
+    assert target["features"]["home_attacks_for_mean"] is None
 
 
 def test_duplicate_fixture_ids_and_naive_timestamps_are_rejected():
