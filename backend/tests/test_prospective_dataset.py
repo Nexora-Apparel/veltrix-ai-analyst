@@ -144,7 +144,7 @@ def test_expanding_folds_keep_simultaneous_kickoffs_together():
         assert set(fold.train_fixture_ids).isdisjoint(fold.validation_fixture_ids)
         assert all(
             next(row for row in rows if row.fixture_id == fid).kickoff_at < fold.validation_start_at
-            and next(row for row in rows if row.fixture_id == fid).label_observed_at < fold.validation_start_at
+            and next(row for row in rows if row.fixture_id == fid).label_observed_at < fold.validation_cutoff_at
             for fid in fold.train_fixture_ids
         )
         if "f-3" in fold.validation_fixture_ids or "f-same-time" in fold.validation_fixture_ids:
@@ -423,6 +423,8 @@ def test_historical_training_only_rows_seed_folds_but_never_validate():
     assert len(folds) == 2
     assert folds[0].train_fixture_ids == ("history-only",)
     assert folds[0].validation_fixture_ids == ("prospective-1",)
+    assert folds[0].validation_cutoff_at == first.prediction_cutoff_at
+    assert folds[0].train_cutoff_at < folds[0].validation_cutoff_at
     assert "history-only" in folds[1].train_fixture_ids
     assert "prospective-1" in folds[1].train_fixture_ids
     assert all(
@@ -430,3 +432,57 @@ def test_historical_training_only_rows_seed_folds_but_never_validate():
         for fold in folds
     )
 
+
+
+def test_training_label_after_prediction_cutoff_is_excluded_even_before_kickoff():
+    validation_kickoff = BASE + timedelta(days=5)
+    prediction_cutoff = validation_kickoff - timedelta(hours=2)
+    history_observed_at = prediction_cutoff + timedelta(minutes=30)
+
+    history = ProspectiveDatasetRow(
+        fixture_id="history-late-label",
+        provider="5DollarFootballAPI",
+        source_id="5dollarfootballapi",
+        competition_id="league",
+        kickoff_at=BASE + timedelta(days=1),
+        prediction_cutoff_at=None,
+        home_team_id="history-home",
+        away_team_id="history-away",
+        features={},
+        feature_lineage=(),
+        label={"home_goals": 1, "away_goals": 0},
+        label_observed_at=history_observed_at,
+        label_observation_id=1,
+        label_lineage={
+            "availability_basis": "IMPORT_RUN_COMPLETED_AT_TRAINING_ONLY",
+            "point_in_time_certifiable": False,
+            "import_run_id": 7002,
+            "import_run_finished_at": history_observed_at.isoformat(),
+        },
+        validation_eligible=False,
+    )
+    validation = ProspectiveDatasetRow(
+        fixture_id="validation-target",
+        provider="5DollarFootballAPI",
+        source_id="5dollarfootballapi",
+        competition_id="league",
+        kickoff_at=validation_kickoff,
+        prediction_cutoff_at=prediction_cutoff,
+        home_team_id="target-home",
+        away_team_id="target-away",
+        features={},
+        feature_lineage=(),
+        label={"home_goals": 0, "away_goals": 0},
+        label_observed_at=validation_kickoff + timedelta(hours=3),
+        label_observation_id=2,
+        label_lineage={},
+        validation_eligible=True,
+    )
+
+    folds = build_expanding_window_folds(
+        [history, validation],
+        minimum_training_fixtures=1,
+        validation_block_fixtures=1,
+    )
+
+    assert folds == ()

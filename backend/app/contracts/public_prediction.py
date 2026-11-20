@@ -59,3 +59,43 @@ class PublicPrediction(ContractModel):
 
 class PublicPredictionList(ContractModel):
     predictions: tuple[PublicPrediction, ...]
+
+
+class PublicFinalScore(ContractModel):
+    home_goals: int = Field(ge=0)
+    away_goals: int = Field(ge=0)
+
+
+class PublicPredictionHistoryItem(PublicPrediction):
+    generated_at: datetime
+    published_at: datetime
+    publication_status: Literal["PUBLISHED", "WITHDRAWN"]
+    settlement_status: Literal["SETTLED", "PENDING_RESULT"]
+    final_score: PublicFinalScore | None = None
+    settled_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_settlement(self) -> PublicPredictionHistoryItem:
+        if (self.final_score is None) != (self.settled_at is None):
+            raise ValueError("final score and settlement timestamp must be present together")
+        if self.settled_at is not None and self.settlement_status != "SETTLED":
+            raise ValueError("settled history item must have SETTLED status")
+        if self.settled_at is None and self.settlement_status != "PENDING_RESULT":
+            raise ValueError("unsettled history item must have PENDING_RESULT status")
+        for value in (self.generated_at, self.published_at):
+            if value.tzinfo is None or value.utcoffset() is None:
+                raise ValueError("history timestamps must be timezone-aware")
+        if self.published_at < self.generated_at:
+            raise ValueError("publication cannot precede prediction generation")
+        if self.published_at >= self.fixture.kickoff_at:
+            raise ValueError("publication must precede fixture kickoff")
+        if self.settled_at is not None:
+            if self.settled_at.tzinfo is None or self.settled_at.utcoffset() is None:
+                raise ValueError("settled_at must be timezone-aware")
+            if self.settled_at <= self.fixture.kickoff_at:
+                raise ValueError("settlement must follow fixture kickoff")
+        return self
+
+
+class PublicPredictionHistoryList(ContractModel):
+    predictions: tuple[PublicPredictionHistoryItem, ...]

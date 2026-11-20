@@ -338,6 +338,9 @@ class FixturePagePersister:
                 status="RUNNING" if has_more else "COMPLETED",
                 records_seen=self.records_seen,
                 records_inserted=self.records_inserted,
+                records_duplicate=self.records_duplicate,
+                records_rejected=self.records_rejected,
+                records_quarantined=self.records_quarantined,
                 requests_used=self.requests_used,
                 cursor_value=str(int(page["page_number"]) + 1) if has_more else None,
                 response_sha256=response_hash,
@@ -695,7 +698,9 @@ async def run_competition_historical_import(
         raise HistoricalImportError("LIVE_COLLECTION_NOT_EXPLICITLY_ENABLED")
     if not isinstance(competition_id, str) or not competition_id.strip():
         raise HistoricalImportError("COMPETITION_ID_REQUIRED")
-    if import_type not in {"historical_backfill", "prospective_capture"}:
+    if import_type not in {
+        "historical_backfill", "prospective_capture", "historical_feature_backfill"
+    }:
         raise HistoricalImportError("UNSUPPORTED_IMPORT_TYPE")
     competition_id = competition_id.strip()
     if not api_key.strip():

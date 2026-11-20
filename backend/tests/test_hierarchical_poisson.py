@@ -49,6 +49,7 @@ def test_one_unseen_team_uses_observed_competition_baseline():
     assert rates.competition_seen is True
     assert rates.home_team_history == 2
     assert rates.away_team_history == 0
+    assert rates.calculation_mode == "ONE_SIDED_TEAM_HISTORY"
 
 
 def test_both_unseen_teams_use_competition_context_not_fixed_probabilities():
@@ -58,6 +59,7 @@ def test_both_unseen_teams_use_competition_context_not_fixed_probabilities():
     assert rates.home_lambda > 0
     assert rates.away_lambda > 0
     assert rates.competition_seen is True
+    assert rates.calculation_mode == "COMPETITION_ONLY"
     assert (rates.home_lambda, rates.away_lambda) != (
         other_competition.home_lambda,
         other_competition.away_lambda,
@@ -70,6 +72,7 @@ def test_unknown_competition_falls_back_to_observed_global_goal_rate():
     assert rates.competition_seen is False
     assert rates.home_lambda > 0
     assert rates.away_lambda > 0
+    assert rates.calculation_mode == "GLOBAL_CONTEXT_ONLY"
 
 
 def test_sparse_team_history_is_retained_and_reported():
@@ -80,6 +83,7 @@ def test_sparse_team_history_is_retained_and_reported():
     rates = model.predict("NEW", "B", "league-a")
     assert rates.home_team_history == 1
     assert rates.away_team_history == 2
+    assert rates.calculation_mode == "TEAM_AND_COMPETITION_HISTORY"
 
 
 def test_fit_rejects_future_rows_and_duplicate_fixtures():
@@ -97,3 +101,26 @@ def test_no_positive_goal_signal_is_not_replaced_with_a_fabricated_rate():
     rows = [result("zero", 1, "league-a", "A", "B", 0, 0)]
     with pytest.raises(ValueError, match="positive weighted goal signal"):
         fit_hierarchical_poisson(rows)
+
+
+
+def test_known_team_with_unseen_competition_uses_global_context_and_reports_mode():
+    model = fit_hierarchical_poisson(sample_results())
+    rates = model.predict("A", "NEW", "unseen-league")
+
+    assert rates.competition_seen is False
+    assert rates.home_team_history == 2
+    assert rates.away_team_history == 0
+    assert rates.home_lambda > 0
+    assert rates.away_lambda > 0
+    assert rates.calculation_mode == "TEAM_HISTORY_GLOBAL_CONTEXT"
+
+
+def test_no_team_or_competition_history_is_explicit_global_context_only():
+    model = fit_hierarchical_poisson(sample_results())
+    rates = model.predict("UNKNOWN-HOME", "UNKNOWN-AWAY", "unknown-league")
+
+    assert rates.home_team_history == 0
+    assert rates.away_team_history == 0
+    assert rates.competition_seen is False
+    assert rates.calculation_mode == "GLOBAL_CONTEXT_ONLY"

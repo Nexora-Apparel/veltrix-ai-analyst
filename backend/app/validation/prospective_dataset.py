@@ -105,6 +105,7 @@ class ExpandingFold:
     train_fixture_ids: tuple[str, ...]
     validation_fixture_ids: tuple[str, ...]
     train_cutoff_at: datetime
+    validation_cutoff_at: datetime
     validation_start_at: datetime
     validation_end_at: datetime
 
@@ -553,8 +554,10 @@ def build_expanding_window_folds(
 
     Rows marked validation_eligible=False are an explicitly separate,
     training-only outcome pool. They can seed a fold only when their outcome
-    was recorded before that fold's validation kickoff. They can never become
-    validation observations. Prospective rows remain the only validation set.
+    was recorded strictly before the earliest prediction cutoff in that fold's
+    validation block. Kickoff is not a substitute for the prediction cutoff.
+    They can never become validation observations. Prospective rows remain the
+    only validation set.
     """
     if minimum_training_fixtures < 1 or validation_block_fixtures < 1:
         raise ValueError("fold sizes must be positive")
@@ -576,10 +579,27 @@ def build_expanding_window_folds(
 
     groups: list[list[ProspectiveDatasetRow]] = []
     for row in prospective_validation:
+        if row.prediction_cutoff_at is None:
+            raise ValueError("PROSPECTIVE_VALIDATION_CUTOFF_REQUIRED")
+        _require_aware(row.prediction_cutoff_at, "prediction_cutoff_at")
+        if row.prediction_cutoff_at >= row.kickoff_at:
+            raise ValueError("PROSPECTIVE_VALIDATION_CUTOFF_MUST_PRECEDE_KICKOFF")
         if not groups or groups[-1][0].kickoff_at != row.kickoff_at:
             groups.append([row])
         else:
             groups[-1].append(row)
+
+    def earliest_prediction_cutoff(
+        validation_rows: list[ProspectiveDatasetRow],
+    ) -> datetime:
+        cutoffs = [
+            row.prediction_cutoff_at
+            for row in validation_rows
+            if row.prediction_cutoff_at is not None
+        ]
+        if len(cutoffs) != len(validation_rows):
+            raise ValueError("PROSPECTIVE_VALIDATION_CUTOFF_REQUIRED")
+        return min(cutoffs)
 
     folds: list[ExpandingFold] = []
     prior_prospective: list[ProspectiveDatasetRow] = []
@@ -587,12 +607,13 @@ def build_expanding_window_folds(
     fold_number = 1
     while group_index < len(groups):
         validation_start = groups[group_index][0].kickoff_at
+        validation_cutoff = earliest_prediction_cutoff(groups[group_index])
         candidate_training = [*historical_training, *prior_prospective]
         eligible_train = [
             row for row in candidate_training
             if row.kickoff_at < validation_start
             and row.label_observed_at is not None
-            and row.label_observed_at < validation_start
+            and row.label_observed_at < validation_cutoff
         ]
         if len(eligible_train) < minimum_training_fixtures:
             prior_prospective.extend(groups[group_index])
@@ -611,11 +632,14 @@ def build_expanding_window_folds(
         ]
         validation_start = validation_rows[0].kickoff_at
         validation_end = validation_rows[-1].kickoff_at
+        validation_cutoff = min(
+            earliest_prediction_cutoff(group) for group in validation_groups
+        )
         eligible_train = [
             row for row in candidate_training
             if row.kickoff_at < validation_start
             and row.label_observed_at is not None
-            and row.label_observed_at < validation_start
+            and row.label_observed_at < validation_cutoff
         ]
         if len(eligible_train) >= minimum_training_fixtures:
             folds.append(
@@ -632,6 +656,7 @@ def build_expanding_window_folds(
                         for row in eligible_train
                         if row.label_observed_at is not None
                     ),
+                    validation_cutoff_at=validation_cutoff,
                     validation_start_at=validation_start,
                     validation_end_at=validation_end,
                 )

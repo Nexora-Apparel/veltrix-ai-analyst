@@ -56,6 +56,10 @@ class PredictionAuditRecord:
     validation_report_id: str
     training_cutoff_at: datetime
     evidence: EvidenceAssessment
+    calculation_mode: str
+    home_team_history: int
+    away_team_history: int
+    competition_seen: bool
     rho: float
     rho_development_protocol: str
     hyperparameter_protocol: str
@@ -92,6 +96,7 @@ def generate_hierarchical_prediction(
     if not model.optimizer_converged:
         raise RuntimeError("MODEL_OPTIMIZER_NOT_CONVERGED")
     evidence = assess_evidence(evidence_signals, policy=evidence_policy)
+    rates = model.predict(home_team_id, away_team_id, competition_id)
     markets: dict[str, MarketAvailability] = {}
     try:
         forecast = forecast_hierarchical_fixture(
@@ -128,6 +133,10 @@ def generate_hierarchical_prediction(
         validation_report_id=release.validation_report_id,
         training_cutoff_at=model.training_cutoff_at,
         evidence=evidence,
+        calculation_mode=rates.calculation_mode,
+        home_team_history=rates.home_team_history,
+        away_team_history=rates.away_team_history,
+        competition_seen=rates.competition_seen,
         rho=release.rho,
         rho_development_protocol=release.rho_development_protocol,
         hyperparameter_protocol=release.hyperparameter_protocol,

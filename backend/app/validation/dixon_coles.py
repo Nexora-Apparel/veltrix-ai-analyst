@@ -1,8 +1,9 @@
 """Development-only Dixon-Coles rho estimation from out-of-fold goal rates."""
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, replace
+from datetime import datetime
 from math import isfinite, lgamma, log
 
 
@@ -116,8 +117,15 @@ def estimate_rho_from_development_folds(
     candidate,
     *,
     min_training_fixtures: int = 30,
+    label_available_at: Mapping[str, datetime] | None = None,
+    evaluation_as_of: datetime | None = None,
 ) -> DixonColesRhoEstimate:
-    """Build strictly out-of-fold rates, then estimate rho on development data."""
+    """Build strictly out-of-fold rates, then estimate rho on development data.
+
+    In availability-aware mode, both model-fitting and OOF scoring are bounded
+    by the recorded result-observation timestamps. Match kickoff alone never
+    establishes when a label became available to VELTRIX.
+    """
     from itertools import pairwise
 
     from app.models.hierarchical_poisson import fit_hierarchical_poisson
@@ -130,6 +138,23 @@ def estimate_rho_from_development_folds(
         raise ValueError("min_training_fixtures must be positive")
     if len({row.fixture_id for row in rows}) != len(rows):
         raise ValueError("duplicate fixture IDs are not allowed")
+    if label_available_at is not None:
+        if set(label_available_at) != {row.fixture_id for row in rows}:
+            raise ValueError("label availability timestamps must cover every result exactly")
+        for row in rows:
+            available_at = label_available_at[row.fixture_id]
+            if (
+                available_at.tzinfo is None or available_at.utcoffset() is None
+                or available_at <= row.kickoff_at
+            ):
+                raise ValueError("label availability must be timezone-aware and post-kickoff")
+        if evaluation_as_of is None or (
+            evaluation_as_of.tzinfo is None or evaluation_as_of.utcoffset() is None
+        ):
+            raise ValueError("availability-aware rho estimation requires evaluation_as_of")
+    for fold in ordered_folds:
+        if label_available_at is not None and fold.train_cutoff > evaluation_as_of:
+            raise ValueError("fold training cutoff cannot be later than evaluation_as_of")
     for previous, current in pairwise(ordered_folds):
         if current.train_cutoff < previous.validation_end:
             raise ValueError("chronological validation windows overlap")
@@ -137,10 +162,21 @@ def estimate_rho_from_development_folds(
     observations = []
     scored_fixture_ids = set()
     for fold in ordered_folds:
-        training = tuple(row for row in rows if row.kickoff_at <= fold.train_cutoff)
+        training = tuple(
+            row for row in rows
+            if row.kickoff_at <= fold.train_cutoff
+            and (
+                label_available_at is None
+                or label_available_at[row.fixture_id] <= fold.train_cutoff
+            )
+        )
         validation = tuple(
             row for row in rows
             if fold.train_cutoff < row.kickoff_at <= fold.validation_end
+            and (
+                label_available_at is None
+                or label_available_at[row.fixture_id] <= evaluation_as_of
+            )
         )
         if len(training) < min_training_fixtures or not validation:
             continue
@@ -162,4 +198,10 @@ def estimate_rho_from_development_folds(
 
     if len(observations) < 20:
         raise ValueError("development folds produced fewer than 20 out-of-fold forecasts")
-    return estimate_dixon_coles_rho(observations)
+    estimate = estimate_dixon_coles_rho(observations)
+    if label_available_at is not None:
+        estimate = replace(
+            estimate,
+            protocol="OOF_DIXON_COLES_PROFILE_NLL_LABEL_AVAILABILITY_AWARE_V2",
+        )
+    return estimate

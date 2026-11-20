@@ -77,3 +77,61 @@ def test_manual_migration_workflow_verifies_system_observed_pit_migration_010() 
     assert "SYSTEM_OBSERVED_AT" in migration
     assert "sighting.available_at <> sighting.retrieved_at" in migration
     assert "PRE_MATCH_SYSTEM_OBSERVATION_NOT_AVAILABLE_AT_CUTOFF" in migration
+
+
+def test_prediction_settlement_migration_is_append_only_and_provenance_gated() -> None:
+    migration = (
+        ROOT / "backend/migrations/018_prediction_settlement_ledger.sql"
+    ).read_text()
+    assert "CREATE TABLE veltrix_ai_analyst.prediction_settlement_events" in migration
+    assert "UNIQUE (prediction_id, source_observation_id)" in migration
+    assert "enforce_prediction_settlement_evidence()" in migration
+    assert "prediction_settlement_evidence_guard" in migration
+    assert "prediction_settlement_events_append_only" in migration
+    assert "latest_prediction_settlements" in migration
+    assert "SYSTEM_OBSERVED_AT" in migration
+    assert "observation_pit_certifiable IS NOT TRUE" in migration
+    assert "MODEL_TRAINING" in migration
+    assert "MODEL_VALIDATION" in migration
+    assert "SOURCE_FIXTURE_LINK_REVIEWED" in migration
+    assert "PREDICTION_SETTLEMENT_TIME_NOT_MONOTONIC" in migration
+    assert "provider_response_sha256" in migration
+    assert "source_payload_sha256" in migration
+
+
+def test_manual_migration_workflow_verifies_prediction_settlement_migration() -> None:
+    workflow = (
+        ROOT / ".github/workflows/apply-database-migrations.yml"
+    ).read_text()
+    assert "018_prediction_settlement_ledger.sql" in workflow
+    assert "prediction_settlement_events" in workflow
+    assert "latest_prediction_settlements" in workflow
+    assert "enforce_prediction_settlement_evidence()" in workflow
+    assert "prediction_settlement_evidence_guard" in workflow
+    assert "prediction_settlement_events_append_only" in workflow
+
+
+def test_settlement_workflow_is_scheduled_and_manual_execution_is_opt_in() -> None:
+    workflow = (
+        ROOT / ".github/workflows/settle-published-predictions.yml"
+    ).read_text()
+    assert 'cron: "0 6 * * *"' in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "execute_settlements:" in workflow
+    assert "default: false" in workflow
+    assert 'GITHUB_EVENT_NAME" == "schedule"' in workflow
+    assert 'EXECUTE_SETTLEMENTS" == "true"' in workflow
+    assert "scripts/settle_published_predictions.py" in workflow
+    assert "VELTRIX_AI_ANALYST_DATABASE_URL" in workflow
+    assert "The Odds API" not in workflow
+
+
+def test_shadow_forecast_workflow_runs_after_successful_snapshot_materialization() -> None:
+    workflow = (
+        ROOT / ".github/workflows/prospective-shadow-predictions.yml"
+    ).read_text()
+    assert "workflow_run:" in workflow
+    assert "Stage 6 daily immutable snapshot and outcome materialization" in workflow
+    assert "github.event.workflow_run.conclusion == 'success'" in workflow
+    assert 'cron: "0 5 * * *"' in workflow
+    assert "--max-snapshot-age-hours 6" in workflow

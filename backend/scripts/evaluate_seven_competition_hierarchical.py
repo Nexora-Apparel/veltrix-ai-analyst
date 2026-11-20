@@ -64,7 +64,9 @@ CANDIDATE_GRID = {
 MAX_GOALS = 12
 
 
-def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
+def load_dataset(
+    dsn: str,
+) -> tuple[list[HierarchicalGoalResult], dict, dict[str, datetime]]:
     """Load and validate the seven scoped competitions in a read-only transaction."""
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET TRANSACTION READ ONLY")
@@ -161,6 +163,20 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
     ]
     if len(finished) < 990 or len(unknown) < 8 or len(finished) + len(unknown) != len(rows):
         raise RuntimeError("SOURCE_STATUS_SCORE_AUDIT_MISMATCH")
+
+    label_available_at = {
+        f"{row['provider_competition_id']}:{row['provider_fixture_id']}": (
+            row["system_observed_at"] or row["retrieved_at"]
+        )
+        for row in finished
+    }
+    if any(
+        label_available_at[
+            f"{row['provider_competition_id']}:{row['provider_fixture_id']}"
+        ] <= row["kickoff_at"]
+        for row in finished
+    ):
+        raise RuntimeError("FINISHED_LABEL_AVAILABILITY_MUST_BE_POST_KICKOFF")
 
     results = [
         HierarchicalGoalResult(
@@ -305,13 +321,23 @@ def load_dataset(dsn: str) -> tuple[list[HierarchicalGoalResult], dict]:
             1 for row in rows if row["system_observed_at"] is not None
         ),
         "pit_certifiable_rows": 0,
+        "label_availability_basis_counts": {
+            "SYSTEM_OBSERVED_AT": sum(
+                1 for row in finished if row["system_observed_at"] is not None
+            ),
+            "RETRIEVED_AT_ONLY": sum(
+                1 for row in finished if row["system_observed_at"] is None
+            ),
+        },
+        "label_availability_min": min(label_available_at.values()).isoformat(),
+        "label_availability_max": max(label_available_at.values()).isoformat(),
         "canonical_identity_policy": "PROVIDER_LOCAL_IDS_ONLY_NO_ALIAS_MERGES",
         "feature_policy": "NO_POST_MATCH_RETRIEVED_FEATURES_USED",
         "dataset_fingerprint_sha256": fingerprint,
     }
     if not provenance["all_observations_retrieved_after_historical_fixtures"]:
         raise RuntimeError("HISTORICAL_RETRIEVAL_CHRONOLOGY_AUDIT_FAILED")
-    return results, provenance
+    return results, provenance, label_available_at
 
 
 def outcome(goals_home: int, goals_away: int) -> str:
@@ -350,13 +376,83 @@ def main() -> int:
     if os.environ.get("EXPECTED_DATABASE_NAME", DATABASE_NAME) != DATABASE_NAME:
         raise SystemExit("EXPECTED_DATABASE_NAME_MISMATCH")
 
-    results, provenance = load_dataset(dsn)
+    results, provenance, label_available_at = load_dataset(dsn)
+    evaluation_as_of = datetime.now(UTC)
     development = [row for row in results if row.kickoff_at <= HOLDOUT_START]
     holdout = [row for row in results if row.kickoff_at > HOLDOUT_START]
     if len(development) < 100 or len(holdout) < 30:
         raise RuntimeError("INSUFFICIENT_DEVELOPMENT_OR_FINAL_HOLDOUT_ROWS")
     if len({row.fixture_id for row in results}) != len(results):
         raise RuntimeError("DUPLICATE_TRAINING_FIXTURE_IDS")
+
+    fold_availability = []
+    for fold in DEVELOPMENT_FOLDS:
+        train_rows = [
+            row for row in development
+            if row.kickoff_at <= fold.train_cutoff
+            and label_available_at[row.fixture_id] <= fold.train_cutoff
+        ]
+        validation_rows = [
+            row for row in development
+            if fold.train_cutoff < row.kickoff_at <= fold.validation_end
+            and label_available_at[row.fixture_id] <= evaluation_as_of
+        ]
+        fold_availability.append({
+            "train_cutoff": fold.train_cutoff.isoformat(),
+            "validation_end": fold.validation_end.isoformat(),
+            "prior_kickoff_rows": sum(
+                1 for row in development if row.kickoff_at <= fold.train_cutoff
+            ),
+            "training_labels_available_at_cutoff": len(train_rows),
+            "validation_labels_available_as_of_evaluation": len(validation_rows),
+            "eligible": len(train_rows) >= 60 and bool(validation_rows),
+        })
+    if not any(item["eligible"] for item in fold_availability):
+        report = {
+            "report_type": "SEVEN_COMPETITION_HIERARCHICAL_AVAILABILITY_AUDIT",
+            "status": "INSUFFICIENT_LABEL_AVAILABILITY_FOR_CHRONOLOGICAL_TUNING",
+            "created_at": evaluation_as_of.isoformat(),
+            "provenance": provenance,
+            "temporal_protocol": {
+                "evaluation_as_of": evaluation_as_of.isoformat(),
+                "training_label_availability_basis": (
+                    "SYSTEM_OBSERVED_AT_WHEN_PRESENT_ELSE_RETRIEVED_AT_ONLY"
+                ),
+                "retrieved_at_only_labels_are_non_pit": True,
+                "folds": fold_availability,
+                "historical_pit_certified": False,
+            },
+            "dataset": {
+                "finished_outcome_rows": len(results),
+                "development_rows": len(development),
+                "event_time_holdout_rows_not_scored": len(holdout),
+            },
+            "release_decision": {
+                "model_fit_performed": False,
+                "production_promotion": False,
+                "value_betting": "LOCKED",
+                "reason": "NO_TRAINING_LABELS_WERE_AVAILABLE_AT_THE_CONFIGURED_FOLD_CUTOFFS",
+            },
+        }
+        canonical = json.dumps(report, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        report["report_sha256"] = hashlib.sha256(canonical.encode()).hexdigest()
+        output = Path(os.environ.get(
+            "TRAINING_REPORT_PATH",
+            "artifacts/seven-competition-hierarchical-availability-audit.json",
+        ))
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n",
+            encoding="utf-8",
+        )
+        print(json.dumps({
+            "status": report["status"],
+            "report_path": str(output),
+            "report_sha256": report["report_sha256"],
+            "finished_outcome_rows": len(results),
+            "fold_availability": fold_availability,
+        }, sort_keys=True))
+        return 0
 
     selection = select_hierarchical_hyperparameters(
         development,
@@ -365,10 +461,17 @@ def main() -> int:
         team_ridges=CANDIDATE_GRID["team_ridges"],
         competition_ridges=CANDIDATE_GRID["competition_ridges"],
         min_training_fixtures=60,
+        label_available_at=label_available_at,
+        evaluation_as_of=evaluation_as_of,
     )
     candidate = selection.selected
     rho_estimate = estimate_rho_from_development_folds(
-        development, DEVELOPMENT_FOLDS, candidate, min_training_fixtures=60
+        development,
+        DEVELOPMENT_FOLDS,
+        candidate,
+        min_training_fixtures=60,
+        label_available_at=label_available_at,
+        evaluation_as_of=evaluation_as_of,
     )
 
     model = fit_hierarchical_poisson(

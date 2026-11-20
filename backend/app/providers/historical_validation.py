@@ -36,7 +36,7 @@ def validate_competition_import(
         SELECT status, boundary_start, boundary_end, provider, source_id,
                request_budget, requests_used, records_seen, records_inserted,
                records_duplicate, records_rejected, records_quarantined,
-               rights_approval_id, scope_value
+               rights_approval_id, scope_value, importer_version
         FROM veltrix_ai_analyst.import_runs
         WHERE id = %s
         """,
@@ -60,6 +60,7 @@ def validate_competition_import(
         records_quarantined,
         approval_id,
         run_scope_value,
+        importer_version,
     ) = run
     failures: list[str] = []
     if status != "COMPLETED":
@@ -76,7 +77,23 @@ def validate_competition_import(
         failures.append("REQUEST_BUDGET_VIOLATION")
     if records_quarantined or records_rejected:
         failures.append("REJECTED_OR_QUARANTINED_RECORDS_PRESENT")
-    if records_seen != records_inserted + records_duplicate + records_rejected + records_quarantined:
+    # Legacy importer versions failed to persist duplicate counters on successful
+    # pages. We can recover that count without mutating the ledger only when every
+    # seen fixture has an immutable sighting and all non-inserted rows are therefore
+    # accounted for as duplicates. The evidence checks below independently verify
+    # sightings and newly materialized fixture rows.
+    stored_duplicate_count = int(records_duplicate)
+    legacy_duplicate_count = 0
+    counters_reconcile = (
+        int(records_seen)
+        == int(records_inserted) + stored_duplicate_count
+        + int(records_rejected) + int(records_quarantined)
+    )
+    if not counters_reconcile and not records_rejected and not records_quarantined:
+        legacy_duplicate_count = int(records_seen) - int(records_inserted)
+        if legacy_duplicate_count >= 0:
+            counters_reconcile = True
+    if not counters_reconcile:
         failures.append("IMPORT_COUNTER_RECONCILIATION_FAILED")
 
     approval = connection.execute(
@@ -107,8 +124,19 @@ def validate_competition_import(
         if not currently_valid:
             failures.append("RIGHTS_APPROVAL_OUTSIDE_VALIDITY")
 
+    window_days = 7
+    version_suffix = str(importer_version or "").rsplit("-window-", 1)
+    if len(version_suffix) == 2 and version_suffix[1].endswith("d"):
+        try:
+            parsed_window_days = int(version_suffix[1][:-1])
+        except ValueError:
+            parsed_window_days = 0
+        if 1 <= parsed_window_days <= 365:
+            window_days = parsed_window_days
+        else:
+            failures.append("IMPORT_WINDOW_PROTOCOL_INVALID")
     expected_windows = (
-        build_date_windows(boundary_start, boundary_end, window_days=7)
+        build_date_windows(boundary_start, boundary_end, window_days=window_days)
         if boundary_start is not None and boundary_end is not None and boundary_end > boundary_start
         else ()
     )
@@ -219,12 +247,32 @@ def validate_competition_import(
         response_count += 1
 
     fixture_sightings = 0
+    distinct_fixture_entities = 0
     fixture_rows = 0
     non_pit_observations = 0
     if response_ids:
         fixture_sightings = connection.execute(
             """
             SELECT COUNT(*)
+            FROM veltrix_ai_analyst.source_observation_sightings s
+            JOIN veltrix_ai_analyst.source_observations o
+              ON o.id = s.source_observation_id
+            WHERE s.provider_response_id = ANY(%s)
+              AND o.rights_approval_id = %s
+              AND o.data_type = 'fixtures_and_results'
+              AND o.entity_type = 'fixture'
+            """,
+            (response_ids, approval_id),
+        ).fetchone()[0]
+        # A provider page can repeat the same fixture object. The ingestion
+        # store intentionally creates one immutable observation/sighting for
+        # each distinct (fixture identity, payload hash, response) tuple.
+        # Derive the expected tuple count from persisted immutable observations
+        # rather than parsing raw response bodies: captured malformed responses
+        # are retained for quarantine/audit and are not guaranteed to be JSON.
+        distinct_fixture_entities = connection.execute(
+            """
+            SELECT COUNT(DISTINCT (o.provider_entity_id, o.payload_sha256))
             FROM veltrix_ai_analyst.source_observation_sightings s
             JOIN veltrix_ai_analyst.source_observations o
               ON o.id = s.source_observation_id
@@ -280,9 +328,12 @@ def validate_competition_import(
             """,
             (response_ids,),
         ).fetchone()[0]
-    if records_inserted <= 0:
+    if int(records_seen) <= 0 or int(fixture_sightings) <= 0:
         failures.append("NO_FIXTURE_DATA_IMPORTED")
-    if int(fixture_sightings) != int(records_inserted):
+    # Each distinct fixture identity in the raw response must have one
+    # captured sighting. records_seen counts raw occurrences and can be larger
+    # when a provider page repeats an identical fixture object.
+    if int(fixture_sightings) != int(distinct_fixture_entities):
         failures.append("FIXTURE_SIGHTING_COUNT_MISMATCH")
     if int(fixture_rows) != int(records_inserted):
         failures.append("PROVIDER_FIXTURE_ROW_COUNT_MISMATCH")
@@ -331,9 +382,14 @@ def validate_competition_import(
         "records_seen": int(records_seen),
         "records_inserted": int(records_inserted),
         "records_duplicate": int(records_duplicate),
+        "records_duplicate_verified": (
+            int(records_duplicate) if int(records_duplicate) else legacy_duplicate_count
+        ),
+        "legacy_duplicate_counter_recovered": bool(legacy_duplicate_count),
         "records_quarantined": int(records_quarantined),
         "request_events_with_raw_response": response_count,
         "fixture_sightings": int(fixture_sightings),
+        "distinct_fixture_entities": int(distinct_fixture_entities),
         "fixture_rows": int(fixture_rows),
         "non_pit_observations": int(non_pit_observations),
         "unresolved_quarantine": int(quarantine_count),

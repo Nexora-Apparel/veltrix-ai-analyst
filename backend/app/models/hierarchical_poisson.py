@@ -45,6 +45,19 @@ class HierarchicalGoalRates:
     competition_seen: bool
     home_team_history: int
     away_team_history: int
+    calculation_mode: str
+
+    def __post_init__(self) -> None:
+        if self.calculation_mode not in {
+            "TEAM_AND_COMPETITION_HISTORY",
+            "ONE_SIDED_TEAM_HISTORY",
+            "COMPETITION_ONLY",
+            "TEAM_HISTORY_GLOBAL_CONTEXT",
+            "GLOBAL_CONTEXT_ONLY",
+        }:
+            raise ValueError("unknown hierarchical calculation mode")
+        if self.home_team_history < 0 or self.away_team_history < 0:
+            raise ValueError("team history counts cannot be negative")
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,12 +97,25 @@ class HierarchicalPoissonModel:
         )
         if not (-20.0 < home_eta < 20.0 and -20.0 < away_eta < 20.0):
             raise ArithmeticError("predicted goal-rate linear predictor outside safe range")
+        home_history = self.team_match_counts.get(home_team_id, 0)
+        away_history = self.team_match_counts.get(away_team_id, 0)
+        if competition_seen and home_history > 0 and away_history > 0:
+            calculation_mode = "TEAM_AND_COMPETITION_HISTORY"
+        elif competition_seen and (home_history > 0 or away_history > 0):
+            calculation_mode = "ONE_SIDED_TEAM_HISTORY"
+        elif competition_seen:
+            calculation_mode = "COMPETITION_ONLY"
+        elif home_history > 0 or away_history > 0:
+            calculation_mode = "TEAM_HISTORY_GLOBAL_CONTEXT"
+        else:
+            calculation_mode = "GLOBAL_CONTEXT_ONLY"
         return HierarchicalGoalRates(
             home_lambda=exp(home_eta),
             away_lambda=exp(away_eta),
             competition_seen=competition_seen,
-            home_team_history=self.team_match_counts.get(home_team_id, 0),
-            away_team_history=self.team_match_counts.get(away_team_id, 0),
+            home_team_history=home_history,
+            away_team_history=away_history,
+            calculation_mode=calculation_mode,
         )
 
 

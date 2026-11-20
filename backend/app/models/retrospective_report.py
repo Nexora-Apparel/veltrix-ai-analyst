@@ -55,10 +55,11 @@ def validate_retrospective_report(report: dict[str, Any]) -> None:
     source_rows = source.get("source_rows")
     finished = source.get("finished_labeled_rows")
     unknown = source.get("unknown_unlabeled_rows_excluded")
+    scheduled = source.get("scheduled_unlabeled_rows_excluded")
     invalid = source.get("invalid_rows")
-    if any(type(value) is not int or value < 0 for value in (source_rows, finished, unknown, invalid)):
+    if any(type(value) is not int or value < 0 for value in (source_rows, finished, unknown, scheduled, invalid)):
         raise ValueError("REPORT_SOURCE_ACCOUNTING_INVALID")
-    if finished != fixture_count or source_rows != finished + unknown + invalid:
+    if finished != fixture_count or source_rows != finished + unknown + scheduled + invalid:
         raise ValueError("REPORT_SOURCE_ACCOUNTING_MISMATCH")
     if invalid != 0:
         raise ValueError("REPORT_INVALID_SOURCE_ROWS_PRESENT")

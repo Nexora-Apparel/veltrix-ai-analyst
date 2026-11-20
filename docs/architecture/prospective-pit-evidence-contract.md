@@ -24,6 +24,8 @@ The six-competition 2026-11-18 corpus is retrospective: all 614 observations wer
 - Preserve source observation ID, sighting ID, provider response ID, application retrieval time, DB observation time, normalized payload hash and raw response hash for every feature input and result label.
 - Group simultaneous kickoffs atomically; no fixture from a simultaneous group may enter another fixture's history.
 - Fit preprocessing, calibration, hyperparameter selection and feature selection within each training fold only.
+- For each validation block, set the training-data cutoff to the earliest `prediction_cutoff_at` in that block. Every training label's system-observed/import-completion time must be strictly earlier than that cutoff; being observed before kickoff is not sufficient.
+- Keep validation kickoff boundaries and prediction cutoffs as separate fields in every fold manifest, and verify `train_cutoff_at < validation_cutoff_at < validation_start_at`.
 - Retain provider-local IDs. No inferred team aliases or fixture merges.
 - Keep retrospective outcome-only research separate from prospective PIT feature evaluation.
 

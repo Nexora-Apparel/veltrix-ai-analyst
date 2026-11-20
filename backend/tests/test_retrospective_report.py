@@ -17,6 +17,7 @@ def sealed_report() -> dict:
             "source_rows": 3,
             "finished_labeled_rows": 2,
             "unknown_unlabeled_rows_excluded": 1,
+            "scheduled_unlabeled_rows_excluded": 0,
             "invalid_rows": 0,
             "identity_namespace": "PROVIDER_LOCAL_TEAM_IDS",
             "feature_semantics": "RETROSPECTIVE_LAGGED_RESULTS_NOT_HISTORICAL_PIT_REPLAY",
@@ -121,4 +122,20 @@ def test_rejects_nan_before_accepting_hash() -> None:
     report = sealed_report()
     report["predictions"][0]["rho"] = float("nan")
     with pytest.raises(ValueError, match="REPORT_NOT_JSON_SAFE"):
+        validate_retrospective_report(report)
+
+
+def test_accepts_separately_accounted_scheduled_unlabeled_rows() -> None:
+    report = sealed_report()
+    report["source"]["source_rows"] = 4
+    report["source"]["scheduled_unlabeled_rows_excluded"] = 1
+    reseal(report)
+    validate_retrospective_report(report)
+
+
+def test_rejects_unaccounted_scheduled_rows() -> None:
+    report = sealed_report()
+    report["source"]["scheduled_unlabeled_rows_excluded"] = 1
+    reseal(report)
+    with pytest.raises(ValueError, match="REPORT_SOURCE_ACCOUNTING_MISMATCH"):
         validate_retrospective_report(report)

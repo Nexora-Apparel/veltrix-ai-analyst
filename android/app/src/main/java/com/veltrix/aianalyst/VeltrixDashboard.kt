@@ -79,12 +79,14 @@ fun VeltrixDashboard() {
     val pal = if (isSystemInDarkTheme()) DarkPal else LightPal
     var tab by remember { mutableStateOf(Tab.Home) }
     var predictions by remember { mutableStateOf<List<FixturePrediction>?>(null) }
+    var history by remember { mutableStateOf<List<PredictionHistoryEntry>?>(null) }
     var loading by remember { mutableStateOf(true) }
     var refreshToken by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(refreshToken) {
         loading = true
         predictions = PredictionApi.fetchUpcoming()
+        history = PredictionApi.fetchHistory()
         loading = false
     }
 
@@ -92,7 +94,7 @@ fun VeltrixDashboard() {
         Box(Modifier.fillMaxSize().background(pal.bg)) {
             when (tab) {
                 Tab.Home -> HomeScreen(predictions, loading) { refreshToken++ }
-                Tab.History -> HistoryScreen()
+                Tab.History -> HistoryScreen(history, loading)
                 Tab.Btts -> BttsScreen(predictions, loading)
                 Tab.Value -> ValueScreen()
                 Tab.OverUnder -> OverUnderScreen(predictions, loading)
@@ -330,9 +332,71 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun HistoryScreen() {
-    Screen("History", "Past predictions and results") {
-        Card { EmptyState("No settled predictions yet.") }
+private fun HistoryScreen(
+    history: List<PredictionHistoryEntry>?,
+    loading: Boolean,
+) {
+    val p = LocalPal.current
+    val entries = history.orEmpty()
+    Screen("History", "Published predictions and verified results") {
+        when {
+            loading && history == null -> EmptyState("Loading prediction history…")
+            history == null -> EmptyState("Prediction history is temporarily unavailable.")
+            entries.isEmpty() -> EmptyState("No previously published predictions yet.")
+            else -> Card {
+                entries.forEachIndexed { index, entry ->
+                    if (index > 0) Divider()
+                    val match = entry.prediction
+                    Column(Modifier.padding(16.dp)) {
+                        MatchHeader(
+                            "${match.homeTeam} vs ${match.awayTeam}",
+                            "${match.competition} · ${formatHistoryKickoff(match.kickoffAt)}",
+                        ) {
+                            Pill(
+                                if (entry.settlementStatus == "SETTLED") "SETTLED"
+                                else "AWAITING RESULT",
+                                if (entry.settlementStatus == "SETTLED") p.green else p.orange,
+                            )
+                        }
+                        if (entry.settlementStatus == "SETTLED") {
+                            Text(
+                                "Full time  ${entry.homeGoals} - ${entry.awayGoals}",
+                                style = t(18, FontWeight.Bold, p.text),
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                            val actualOutcome = when {
+                                (entry.homeGoals ?: 0) > (entry.awayGoals ?: 0) -> "HOME"
+                                (entry.homeGoals ?: 0) < (entry.awayGoals ?: 0) -> "AWAY"
+                                else -> "DRAW"
+                            }
+                            Text(
+                                "Final 1X2 result: $actualOutcome",
+                                style = t(13, c = p.sub),
+                                modifier = Modifier.padding(top = 3.dp),
+                            )
+                        } else {
+                            Text(
+                                "Final score is awaiting verified source evidence.",
+                                style = t(13, c = p.sub),
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                        }
+                        Text(
+                            "1X2  ·  H ${percent(match.home)}%   D ${percent(match.draw)}%   A ${percent(match.away)}%",
+                            style = t(13, FontWeight.Medium, p.text),
+                            modifier = Modifier.padding(top = 10.dp),
+                        )
+                        if (entry.publicationStatus == "WITHDRAWN") {
+                            Text(
+                                "Withdrawn before kickoff",
+                                style = t(12, FontWeight.Medium, p.orange),
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -472,6 +536,12 @@ private fun InfoRow(label: String, value: String) {
 }
 
 private fun percent(value: Double): Int = (value * 100.0).roundToInt().coerceIn(0, 100)
+
+private fun formatHistoryKickoff(value: String): String = runCatching {
+    DateTimeFormatter.ofPattern("dd MMM yyyy · HH:mm", Locale.getDefault())
+        .withZone(ZoneId.systemDefault())
+        .format(Instant.parse(value))
+}.getOrDefault(value)
 
 private fun formatKickoff(value: String): String = runCatching {
     DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())

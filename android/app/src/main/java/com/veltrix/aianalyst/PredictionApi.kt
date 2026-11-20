@@ -30,6 +30,17 @@ data class FixturePrediction(
     val under35: Double,
 )
 
+data class PredictionHistoryEntry(
+    val prediction: FixturePrediction,
+    val generatedAt: String,
+    val publishedAt: String,
+    val publicationStatus: String,
+    val settlementStatus: String,
+    val homeGoals: Int?,
+    val awayGoals: Int?,
+    val settledAt: String?,
+)
+
 object PredictionApi {
     private const val TAG = "VeltrixPredictions"
     private val client = OkHttpClient.Builder()
@@ -70,42 +81,101 @@ object PredictionApi {
         }
     }
 
+    suspend fun fetchHistory(): List<PredictionHistoryEntry>? = withContext(Dispatchers.IO) {
+        val baseUrl = BuildConfig.API_BASE_URL.trim().trimEnd('/')
+        if (baseUrl.isBlank()) {
+            Log.w(TAG, "API base URL has not been configured")
+            return@withContext null
+        }
+
+        val request = Request.Builder()
+            .url("$baseUrl/v1/predictions/history")
+            .get()
+            .header("Accept", "application/json")
+            .build()
+
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "Prediction history API returned HTTP ${response.code}")
+                    null
+                } else {
+                    val body = response.body?.string()
+                        ?: throw IOException("Prediction history API returned an empty response")
+                    parseHistory(body)
+                }
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            Log.e(TAG, "Unable to load prediction history", exception)
+            null
+        }
+    }
+
     internal fun parsePredictions(json: String): List<FixturePrediction> {
         val root = JSONObject(json)
-        val items = root.optJSONArray("predictions") ?: throw IllegalArgumentException("Missing predictions array")
+        val items = root.optJSONArray("predictions")
+            ?: throw IllegalArgumentException("Missing predictions array")
+        return buildList(items.length()) {
+            for (index in 0 until items.length()) {
+                add(parsePrediction(items.getJSONObject(index)))
+            }
+        }
+    }
+
+    internal fun parseHistory(json: String): List<PredictionHistoryEntry> {
+        val root = JSONObject(json)
+        val items = root.optJSONArray("predictions")
+            ?: throw IllegalArgumentException("Missing predictions array")
         return buildList(items.length()) {
             for (index in 0 until items.length()) {
                 val item = items.getJSONObject(index)
-                val fixture = item.getJSONObject("fixture")
-                val markets = item.getJSONObject("markets")
-                val oneXTwo = markets.getJSONObject("one_x_two")
-                val btts = markets.getJSONObject("btts")
-                val over15 = markets.getJSONObject("over_under_1_5")
-                val over25 = markets.getJSONObject("over_under_2_5")
-                val over35 = markets.getJSONObject("over_under_3_5")
-
+                val score = item.optJSONObject("final_score")
                 add(
-                    FixturePrediction(
-                        id = item.getString("prediction_id"),
-                        fixtureId = fixture.getString("fixture_id"),
-                        competition = fixture.getString("competition"),
-                        homeTeam = fixture.getString("home_team"),
-                        awayTeam = fixture.getString("away_team"),
-                        kickoffAt = fixture.getString("kickoff_at"),
-                        home = oneXTwo.getDouble("HOME"),
-                        draw = oneXTwo.getDouble("DRAW"),
-                        away = oneXTwo.getDouble("AWAY"),
-                        bttsYes = btts.getDouble("YES"),
-                        bttsNo = btts.getDouble("NO"),
-                        over15 = over15.getDouble("OVER"),
-                        under15 = over15.getDouble("UNDER"),
-                        over25 = over25.getDouble("OVER"),
-                        under25 = over25.getDouble("UNDER"),
-                        over35 = over35.getDouble("OVER"),
-                        under35 = over35.getDouble("UNDER"),
+                    PredictionHistoryEntry(
+                        prediction = parsePrediction(item),
+                        generatedAt = item.getString("generated_at"),
+                        publishedAt = item.getString("published_at"),
+                        publicationStatus = item.getString("publication_status"),
+                        settlementStatus = item.getString("settlement_status"),
+                        homeGoals = score?.getInt("home_goals"),
+                        awayGoals = score?.getInt("away_goals"),
+                        settledAt = if (item.isNull("settled_at")) null
+                            else item.getString("settled_at"),
                     )
                 )
             }
         }
+    }
+
+    private fun parsePrediction(item: JSONObject): FixturePrediction {
+        val fixture = item.getJSONObject("fixture")
+        val markets = item.getJSONObject("markets")
+        val oneXTwo = markets.getJSONObject("one_x_two")
+        val btts = markets.getJSONObject("btts")
+        val over15 = markets.getJSONObject("over_under_1_5")
+        val over25 = markets.getJSONObject("over_under_2_5")
+        val over35 = markets.getJSONObject("over_under_3_5")
+
+        return FixturePrediction(
+            id = item.getString("prediction_id"),
+            fixtureId = fixture.getString("fixture_id"),
+            competition = fixture.getString("competition"),
+            homeTeam = fixture.getString("home_team"),
+            awayTeam = fixture.getString("away_team"),
+            kickoffAt = fixture.getString("kickoff_at"),
+            home = oneXTwo.getDouble("HOME"),
+            draw = oneXTwo.getDouble("DRAW"),
+            away = oneXTwo.getDouble("AWAY"),
+            bttsYes = btts.getDouble("YES"),
+            bttsNo = btts.getDouble("NO"),
+            over15 = over15.getDouble("OVER"),
+            under15 = over15.getDouble("UNDER"),
+            over25 = over25.getDouble("OVER"),
+            under25 = over25.getDouble("UNDER"),
+            over35 = over35.getDouble("OVER"),
+            under35 = over35.getDouble("UNDER"),
+        )
     }
 }

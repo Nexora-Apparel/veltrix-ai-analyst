@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       execute_backfill:
-        description: "Set true to execute the bounded historical feature backfill"
+        description: "Set true only after reviewing the 5Dollar entitlement output"
         required: true
         type: boolean
         default: false
@@ -40,8 +40,6 @@ jobs:
       VELTRIX_ENABLE_HISTORICAL_COLLECTION: "true"
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -50,7 +48,7 @@ jobs:
       - name: Install backend
         working-directory: backend
         run: python -m pip install -e .
-      - name: Verify production database identity
+      - name: Verify production database identity in a read-only transaction
         run: |
           test -n "$DATABASE_URL"
           python - <<'PY'
@@ -61,11 +59,18 @@ jobs:
           expected = "veltrix_ai_analyst"
           if urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/").split("?")[0] != expected:
               raise SystemExit("DATABASE_IDENTITY_MISMATCH")
-          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
-              if connection.info.dbname != expected:
-                  raise SystemExit("DATABASE_IDENTITY_MISMATCH")
+          with psycopg.connect(os.environ["DATABASE_URL"], connect_timeout=10) as connection:
+              with connection.transaction():
+                  connection.execute("SET TRANSACTION READ ONLY")
+                  if connection.info.dbname != expected:
+                      raise SystemExit("DATABASE_IDENTITY_MISMATCH")
+                  row = connection.execute(
+                      "SELECT current_database(), current_setting('transaction_read_only')"
+                  ).fetchone()
+                  if row != (expected, "on"):
+                      raise SystemExit("DATABASE_IDENTITY_MISMATCH")
           PY
-      - name: Probe 5Dollar plan and hourly rate limit
+      - name: Probe 5Dollar plan and remaining quota (safe fields only)
         working-directory: backend
         run: python ../scripts/probe_5dollar_entitlement.py
       - name: Backfill historical fixtures with stats and events

@@ -1,0 +1,58 @@
+name: VELTRIX daily prospective shadow forecasts
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_run:
+    workflows: ["Stage 6 daily immutable snapshot and outcome materialization"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veltrix-prospective-shadow-forecasts
+  cancel-in-progress: false
+
+jobs:
+  shadow-forecasts:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    environment: veltrix-historical-import
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      VELTRIX_AI_ANALYST_DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+      EXPECTED_DATABASE_NAME: veltrix_ai_analyst
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend
+        run: python -m pip install -e .
+
+      - name: Build read-only prospective shadow forecasts
+        run: |
+          mkdir -p artifacts
+          python scripts/build_prospective_shadow_predictions.py \
+            --output artifacts/prospective-shadow-forecasts.json \
+            --max-fixtures 25 \
+            --max-snapshot-age-hours 6 \
+            --minimum-training-fixtures 30
+
+      - name: Upload research-only shadow forecasts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-prospective-shadow-forecasts
+          path: backend/artifacts/prospective-shadow-forecasts.json
+          if-no-files-found: warn
+          retention-days: 30

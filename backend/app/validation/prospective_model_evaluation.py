@@ -188,16 +188,23 @@ def _estimate_inner_rho(
     for fold in inner_folds:
         inner_train = [row_by_id[key] for key in fold.train_fixture_ids]
         inner_validation = [row_by_id[key] for key in fold.validation_fixture_ids]
-        if any(
-            row.label_observed_at is None
-            or row.label_observed_at >= fold.validation_start_at
-            or row.kickoff_at >= fold.validation_start_at
-            for row in inner_train
+        if (
+            fold.train_cutoff_at >= fold.validation_cutoff_at
+            or fold.validation_cutoff_at >= fold.validation_start_at
+            or any(
+                row.label_observed_at is None
+                or row.label_observed_at > fold.train_cutoff_at
+                or row.kickoff_at >= fold.validation_start_at
+                or not _lineage_rights_valid(
+                    row.label_lineage, fold.train_cutoff_at, ("MODEL_TRAINING",)
+                )
+                for row in inner_train
+            )
         ):
-            raise ValueError("inner OOF training label was not available before validation")
+            raise ValueError("inner OOF training label was not available and rights-valid at its fold cutoff")
         fitted = fit_hierarchical_poisson(
             [_goal_result(row) for row in inner_train],
-            as_of=fold.validation_start_at,
+            as_of=fold.train_cutoff_at,
             half_life_days=HALF_LIFE_DAYS,
             team_ridge=TEAM_RIDGE,
             competition_ridge=COMPETITION_RIDGE,
@@ -287,20 +294,25 @@ def evaluate_prospective_model(
         validation = [row_by_id[key] for key in fold.validation_fixture_ids]
         if not training or not validation:
             raise ValueError("prospective fold cannot have empty training or validation rows")
-        if any(
-            not _label_evidence_valid(row)
-            or row.label_observed_at is None
-            or row.label_observed_at >= fold.validation_start_at
-            or row.kickoff_at >= fold.validation_start_at
-            or not _lineage_rights_valid(
-                row.label_lineage, fold.validation_start_at, ("MODEL_TRAINING",)
+        if (
+            fold.train_cutoff_at >= fold.validation_cutoff_at
+            or fold.validation_cutoff_at >= fold.validation_start_at
+            or any(
+                not _label_evidence_valid(row)
+                or row.label_observed_at is None
+                or row.label_observed_at > fold.train_cutoff_at
+                or row.kickoff_at >= fold.validation_start_at
+                or not _lineage_rights_valid(
+                    row.label_lineage, fold.train_cutoff_at, ("MODEL_TRAINING",)
+                )
+                for row in training
             )
-            for row in training
         ):
-            raise ValueError("training labels are not available or rights-valid before validation")
+            raise ValueError("training labels were not available and rights-valid at the recorded fold cutoff")
         if any(
             not row.validation_eligible
             or row.prediction_cutoff_at is None
+            or row.prediction_cutoff_at < fold.validation_cutoff_at
             or row.prediction_cutoff_at >= row.kickoff_at
             or not _label_evidence_valid(row)
             or not _lineage_rights_valid(
@@ -315,7 +327,7 @@ def evaluate_prospective_model(
         rho, rho_oof_count, rho_status = _estimate_inner_rho(training)
         fitted = fit_hierarchical_poisson(
             [_goal_result(row) for row in training],
-            as_of=fold.validation_start_at,
+            as_of=fold.train_cutoff_at,
             half_life_days=HALF_LIFE_DAYS,
             team_ridge=TEAM_RIDGE,
             competition_ridge=COMPETITION_RIDGE,
@@ -392,6 +404,7 @@ def evaluate_prospective_model(
             "training_fixtures": len(training),
             "validation_fixtures": len(validation),
             "training_label_observed_cutoff": fold.train_cutoff_at.isoformat(),
+            "validation_prediction_cutoff": fold.validation_cutoff_at.isoformat(),
             "validation_start": fold.validation_start_at.isoformat(),
             "validation_end": fold.validation_end_at.isoformat(),
             "rho": rho,
@@ -462,8 +475,8 @@ def evaluate_prospective_model(
         "training_protocol": {
             "outer": "PROSPECTIVE_EXPANDING_WINDOW",
             "inner_rho": "INNER_EXPANDING_WINDOW_OUT_OF_FOLD",
-            "label_availability": "SYSTEM_OBSERVED_AT_STRICTLY_BEFORE_OUTER_VALIDATION_START",
-            "pre_match_features": "STRICTLY_BEFORE_TARGET_KICKOFF",
+            "label_availability": "SYSTEM_OBSERVED_AT_STRICTLY_BEFORE_EARLIEST_OUTER_VALIDATION_PREDICTION_CUTOFF",
+            "pre_match_features": "SYSTEM_OBSERVED_AT_AT_OR_BEFORE_TARGET_PREDICTION_CUTOFF",
             "historical_training_labels": "DATABASE_INSERTED_AT_TRAINING_ONLY; NEVER_USED_AS_PRE_MATCH_FEATURES_OR_VALIDATION_ROWS",
             "hyperparameters": {
                 "half_life_days": HALF_LIFE_DAYS,
