@@ -476,7 +476,7 @@ def evaluate_prospective_model(
             "outer": "PROSPECTIVE_EXPANDING_WINDOW",
             "inner_rho": "INNER_EXPANDING_WINDOW_OUT_OF_FOLD",
             "label_availability": "SYSTEM_OBSERVED_AT_STRICTLY_BEFORE_EARLIEST_OUTER_VALIDATION_PREDICTION_CUTOFF",
-            "pre_match_features": "STRICTLY_BEFORE_TARGET_KICKOFF",
+            "pre_match_features": "SYSTEM_OBSERVED_AT_AT_OR_BEFORE_TARGET_PREDICTION_CUTOFF",
             "historical_training_labels": "DATABASE_INSERTED_AT_TRAINING_ONLY; NEVER_USED_AS_PRE_MATCH_FEATURES_OR_VALIDATION_ROWS",
             "hyperparameters": {
                 "half_life_days": HALF_LIFE_DAYS,
