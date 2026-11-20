@@ -95,3 +95,49 @@ Only the 380 FINISHED rows were used as retrospective labels. The two valid upco
 - Corrected earlier reconciliation note: both workflow files have now been fetched back successfully; the preflight is no longer awaiting fetch-back verification.
 - Current compare and PR metadata still require a fresh check after this ledger update. No PR merge, production deployment, database writes, historical collection, or Odds API spend occurred.
 - Next: update roadmap reconciliation status, verify the exact new PR head and fresh CI, then proceed to point-in-time prospective feature/model integration. Existing retrospective event-time reconstruction remains excluded from production inference and prospective certification.
+
+
+## 2026-11-20 — PIT fold correction, shadow inference and integration checkpoint
+
+### Point-in-time fold leakage correction
+- Found that expanding-window validation admitted historical labels observed after a validation fixture's prediction cutoff but before its kickoff. This was a real forecast-time leakage path.
+- Added `ExpandingFold.validation_cutoff_at`, defined as the earliest prediction cutoff in the validation block. Training labels must be strictly earlier than this cutoff; validation kickoff remains a separate boundary.
+- Enforced `train_cutoff_at < validation_cutoff_at < validation_start_at` in fold construction/evaluation, and required each validation row's own prediction cutoff to be at or after the fold cutoff and before kickoff.
+- Added the cutoff to serialized dataset manifests and evaluation reports; corrected protocol metadata to distinguish feature availability at-or-before prediction cutoff from label availability strictly-before cutoff.
+- Added regression coverage for a label observed after the prediction cutoff but before kickoff, plus evaluator rejection of corrupted fold cutoff metadata.
+
+### Shadow forecast pipeline
+- Added `backend/app/research/prospective_shadow.py` and `backend/scripts/build_prospective_shadow_predictions.py`.
+- The read-only dataset manifest now exposes `training_only_rows` (already included in its dataset hash) so the shadow builder can train from verified historical result labels.
+- Shadow training accepts only canonical, rights-qualified labels observed strictly before the earliest selected target cutoff; it rechecks rights at both target cutoff and actual training cutoff.
+- Shadow output is capped at 25 upcoming fixtures, rejects snapshots older than six hours, uses a single common cutoff-safe training pool, records provenance hashes and model diagnostics, and never writes to Neon or calls a provider.
+- The initial probability model uses historical goal outcomes only. Snapshot statistics/events are audited and reported but are not used as probability inputs until prospective feature validation exists. Dixon-Coles rho is estimated only from eligible inner prospective folds; otherwise it remains zero.
+- All shadow outputs explicitly remain `NOT_PUBLISHED`, production promotion LOCKED and value betting LOCKED.
+- Added `.github/workflows/prospective-shadow-predictions.yml`, scheduled for 05:00 UTC (06:00 WAT), with manual dispatch and a six-hour freshness gate. It is read-only and does not call The Odds API or Telegram.
+- Added regression tests for cutoff/rights selection, stale-snapshot rejection and insufficient training evidence.
+
+### Data audit — verified at 2026-11-20
+- Prospective snapshots: 59 across seven competitions and six kickoff dates, all from the 19 November capture window.
+- Prospective settled labels: 0. Production predictions/published predictions: 0. Two existing model artifacts remain research-only and not PIT-certified.
+- The first snapshots were sparse in recent features: 53/59 had no eligible home-team recent history and 54/59 had no eligible away-team recent history. The historical statistics backfill completed after those snapshot cutoffs, so it must not be retroactively injected into them.
+- Separate training-label audit: 996 canonical, rights-qualified historical result labels across seven approved competitions; 990 were available before the earliest 19 November snapshot cutoff and all 996 before the last snapshot cutoff. These may seed future-facing model training only when their recorded import-completion times precede the target cutoff.
+- By the next scheduled capture cutoff (2026-11-21 03:00 UTC), 1,576 completed source matches across the seven competitions had statistics available and rights approved for feature engineering/model use; 1,575 also had non-empty event arrays. This is future-target evidence, not retrospective historical PIT certification.
+- The 19 November 11:23 UTC scheduled capture run reused import run IDs 12–18 and reported `SKIPPED_ALREADY_VALIDATED`; it did not create a second capture. Stage 6 materialized the existing 59 snapshots. No 20 November `prospective_capture` import run was present at the audit time.
+- The daily capture workflow remains configured for 03:00 UTC. The next expected scheduled opportunity is 21 November 03:00 UTC; if it does not run, a manual workflow dispatch is required. Do not backdate or mutate existing snapshots.
+
+### CI and PR integration
+- CI run 44720976619 passed on implementation commit `e099a4256e143c4d855f3eb2ff8106fe18ddfefe`: backend tests passed, Ruff passed, Android debug build passed.
+- APK artifact ID `14622330651`, 16,448,831 bytes, SHA-256 `252366cdeeba4d68ca942c4832b9dd4750dc8213768533482d3419c313e009c6`.
+- The initial lint failure in run 44720729600 was corrected (TypeError for invalid input type; import ordering); the successful run above verifies the corrected implementation tree.
+- Reviewed all three main-only commits. Candidate preflight is content-identical to corrected main. Candidate backfill workflow retains push validation and manual preflight/execute controls while adding stricter explicit read-only Neon identity verification; main's weaker identity check was not copied.
+- Created merge commit `5ef8854d20a1fd2df1798d0d4ee752ed74f078a4` with parents candidate `e099a4256e143c4d855f3eb2ff8106fe18ddfefe` and main `6b6c045a50572cf22f12d6ca95038fca81d91b36`, preserving the reviewed candidate tree `c59f1761a6ddebbec7df27f1953cddb93001c660`.
+- GitHub compare now reports 151 commits ahead, 0 behind; PR #123 is mergeable=true, state `unstable`. This is ancestry reconciliation only; PR #123 was not merged.
+- Vercel status remains failure: deployment rate limited, retry after the 24-hour window. Do not retry deployment or merge while the required deployment status is failing.
+- No new provider requests, Odds API credits, production DB writes, production predictions or publication occurred in this checkpoint.
+
+### Next actions
+1. Verify the 21 November 03:00 UTC capture and Stage 6 materialization; require fresh snapshots with the 1,576 statistics/event observations available before their cutoffs.
+2. Run the read-only shadow workflow at 05:00 UTC only if fresh snapshots exist; inspect its artifact, model convergence, 25-fixture cap, training cutoff, feature coverage and abstentions.
+3. Continue prospective labels and cutoff-correct walk-forward evaluation. Build reliability calibration only from eligible prospective outcomes.
+4. Keep production publication, value betting and Android live prediction integration locked until model, reliability and certification gates pass. Preserve the existing Android UI.
+5. Recheck Vercel quota/status after the 24-hour retry window before any deployment or PR merge.
