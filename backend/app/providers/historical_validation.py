@@ -247,7 +247,7 @@ def validate_competition_import(
         response_count += 1
 
     fixture_sightings = 0
-    distinct_fixture_entities = 0
+    distinct_fixture_sightings = 0
     fixture_rows = 0
     non_pit_observations = 0
     if response_ids:
@@ -272,7 +272,7 @@ def validate_competition_import(
         # are retained for quarantine/audit and are not guaranteed to be JSON.
         distinct_fixture_entities = connection.execute(
             """
-            SELECT COUNT(DISTINCT (o.provider_entity_id, o.payload_sha256))
+            SELECT COUNT(DISTINCT (o.provider_entity_id, o.payload_sha256, s.provider_response_id))
             FROM veltrix_ai_analyst.source_observation_sightings s
             JOIN veltrix_ai_analyst.source_observations o
               ON o.id = s.source_observation_id

@@ -201,10 +201,27 @@ def main() -> int:
             results.append(item)
             print(json.dumps(item, sort_keys=True), flush=True)
             # Continue to the next competition; each importer run is independently scoped.
-    summary = {"competitions_total": len(COMPETITIONS), "results": results,
-               "failed_competitions": len(failures)}
+    validated = sum(
+        item.get("status") in {"COMPLETED_VALIDATED", "SKIPPED_ALREADY_VALIDATED"}
+        for item in results
+    )
+    batch_status = (
+        "COMPLETED" if not failures
+        else "PARTIAL_SUCCESS" if validated
+        else "FAILED"
+    )
+    summary = {
+        "status": batch_status,
+        "competitions_total": len(COMPETITIONS),
+        "validated_competitions": validated,
+        "results": results,
+        "failed_competitions": len(failures),
+    }
     print("BATCH_SUMMARY " + json.dumps(summary, sort_keys=True), flush=True)
-    return 1 if failures else 0
+    # A single source-identity conflict must not block Stage 6 from materializing
+    # other independently validated competition scopes. Preserve each failure in
+    # the run log and fail only when no competition produced validated evidence.
+    return 1 if validated == 0 else 0
 
 
 if __name__ == "__main__":
