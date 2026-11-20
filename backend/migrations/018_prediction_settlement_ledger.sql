@@ -76,6 +76,7 @@ BEGIN
 
     SELECT
         provider_fixture.provider_fixture_id,
+        provider_fixture.provider_competition_id,
         provider_fixture.status AS provider_fixture_status,
         provider_fixture.home_goals AS provider_fixture_home_goals,
         provider_fixture.away_goals AS provider_fixture_away_goals,
@@ -167,7 +168,7 @@ BEGIN
        OR evidence.entity_type <> 'fixture'
        OR evidence.observation_availability_basis <> 'SYSTEM_OBSERVED_AT'
        OR evidence.observation_pit_certifiable IS NOT TRUE
-       OR evidence.observation_system_observed_at IS DISTINCT FROM NEW.settled_at
+       OR evidence.observation_system_observed_at > NEW.settled_at
        OR evidence.observation_retrieved_at > NEW.settled_at
        OR evidence.sighting_observation_id <> NEW.source_observation_id
        OR evidence.sighting_response_id <> NEW.provider_response_id
@@ -192,15 +193,7 @@ BEGIN
        OR NOT (evidence.data_types @> '["fixtures_and_results"]'::jsonb)
        OR NOT (evidence.permitted_uses @> '["MODEL_TRAINING","MODEL_VALIDATION"]'::jsonb)
        OR NOT (evidence.scope_values @> jsonb_build_array(
-            (SELECT provider_competition_id
-             FROM veltrix_ai_analyst.provider_fixtures
-             WHERE id = (
-                 SELECT provider_fixture_row_id
-                 FROM veltrix_ai_analyst.canonical_fixture_sources
-                 WHERE canonical_fixture_id = prediction_fixture_id
-                   AND provider_fixture_id = evidence.provider_fixture_id
-                 LIMIT 1
-             ))
+            evidence.provider_competition_id
        ))
        OR evidence.provider_fixture_status <> 'FINISHED'
        OR evidence.provider_fixture_home_goals IS DISTINCT FROM NEW.home_goals
@@ -215,13 +208,7 @@ BEGIN
        OR evidence.payload->>'home_team_id' IS NULL
        OR evidence.payload->>'away_team_id' IS NULL
        OR evidence.payload->>'kickoff_at' IS NULL
-       OR evidence.payload->>'competition_id' <> (
-            SELECT provider_competition_id
-            FROM veltrix_ai_analyst.provider_fixtures
-            WHERE provider_fixture_id = evidence.provider_fixture_id
-              AND provider = evidence.observation_provider
-              AND source_id = evidence.observation_source_id
-       )
+       OR evidence.payload->>'competition_id' <> evidence.provider_competition_id
        OR evidence.payload->>'home_team_id' <> (
             SELECT home_team_provider_id
             FROM veltrix_ai_analyst.provider_fixtures
@@ -237,7 +224,7 @@ BEGIN
               AND source_id = evidence.observation_source_id
        )
        OR (evidence.payload->>'kickoff_at')::timestamptz <> fixture_kickoff
-       OR evidence.payload #>> '{provenance,provider_record_id}' <> evidence.provider_fixture_id THEN
+       OR evidence.payload #>> '{provenance,provider_record_id}' IS DISTINCT FROM evidence.provider_fixture_id THEN
         RAISE EXCEPTION 'PREDICTION_SETTLEMENT_SOURCE_EVIDENCE_INVALID';
     END IF;
 
