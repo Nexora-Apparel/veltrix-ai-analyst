@@ -76,9 +76,6 @@ on:
 permissions:
   contents: read
 
-pull_request:
-  branches: [main]
-
 jobs:
   backend:
     name: Backend tests and lint

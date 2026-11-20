@@ -270,7 +270,7 @@ def validate_competition_import(
         # Derive the expected tuple count from persisted immutable observations
         # rather than parsing raw response bodies: captured malformed responses
         # are retained for quarantine/audit and are not guaranteed to be JSON.
-        distinct_fixture_entities = connection.execute(
+        distinct_fixture_sightings = connection.execute(
             """
             SELECT COUNT(DISTINCT (o.provider_entity_id, o.payload_sha256, s.provider_response_id))
             FROM veltrix_ai_analyst.source_observation_sightings s
@@ -333,7 +333,7 @@ def validate_competition_import(
     # Each distinct fixture identity in the raw response must have one
     # captured sighting. records_seen counts raw occurrences and can be larger
     # when a provider page repeats an identical fixture object.
-    if int(fixture_sightings) != int(distinct_fixture_entities):
+    if int(fixture_sightings) != int(distinct_fixture_sightings):
         failures.append("FIXTURE_SIGHTING_COUNT_MISMATCH")
     if int(fixture_rows) != int(records_inserted):
         failures.append("PROVIDER_FIXTURE_ROW_COUNT_MISMATCH")
@@ -389,7 +389,7 @@ def validate_competition_import(
         "records_quarantined": int(records_quarantined),
         "request_events_with_raw_response": response_count,
         "fixture_sightings": int(fixture_sightings),
-        "distinct_fixture_entities": int(distinct_fixture_entities),
+        "distinct_fixture_sightings": int(distinct_fixture_sightings),
         "fixture_rows": int(fixture_rows),
         "non_pit_observations": int(non_pit_observations),
         "unresolved_quarantine": int(quarantine_count),
