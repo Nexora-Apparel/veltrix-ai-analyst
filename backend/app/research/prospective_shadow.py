@@ -127,7 +127,7 @@ def build_shadow_predictions(
     raw_rows = dataset.get("rows")
     raw_training = dataset.get("training_only_rows")
     if not isinstance(raw_rows, list) or not isinstance(raw_training, list):
-        raise ValueError("PROSPECTIVE_DATASET_ROWS_MISSING")
+        raise TypeError("PROSPECTIVE_DATASET_ROWS_MISSING")
 
     rows = tuple(raw_rows)
     training_only_rows = tuple(raw_training)
