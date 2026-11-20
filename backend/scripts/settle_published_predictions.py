@@ -125,6 +125,12 @@ CANDIDATE_QUERY = """
     WHERE sighting.system_observed_at > COALESCE(
         previous.settled_at, fixture.kickoff_at
     )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM veltrix_ai_analyst.prediction_settlement_events existing_settlement
+          WHERE existing_settlement.prediction_id = prediction.prediction_id
+            AND existing_settlement.source_observation_id = observation.id
+      )
       AND COALESCE(approval_event.status, approval.status) = 'APPROVED'
       AND (observation.payload->>'home_goals')::smallint = provider_fixture.home_goals
       AND (observation.payload->>'away_goals')::smallint = provider_fixture.away_goals
