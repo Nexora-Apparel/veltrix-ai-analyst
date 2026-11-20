@@ -167,7 +167,10 @@ def build_retrospective_lagged_features(
                         )
                         opponent[f"{prefix}{metric}"] = (
                             float(opponent_raw)
-                            if isinstance(opponent_raw, (int, float)) and not isinstance(opponent_raw, bool)
+                            if (
+                                isinstance(opponent_raw, (int, float))
+                                and not isinstance(opponent_raw, bool)
+                            )
                             else None
                         )
                 return own, opponent
