@@ -72,3 +72,41 @@
 - PR #125 is intentionally **not merged**. Migration 019 has not been applied and the writer has not been run. No production database write, provider request, Odds API credit use or Vercel deployment occurred in this checkpoint.
 - Do not merge PR #125 or apply migration 019 without explicit production-write authorization. Safe alternative under evaluation: preserve immutable shadow reports as GitHub Actions artifacts first, with hashes and run metadata, without production Neon persistence. Revisit the DB ledger only through an explicitly approved migration path.
 - France Ligue 1 remains excluded for its unresolved provider fixture identity conflict. Publication and value betting remain locked.
+
+
+## 2026-11-20 16:52 WAT — Production migration approval and execution
+
+### Authorization
+- Project owner explicitly approved production migration and associated write operations on 2026-11-20.
+- Scope executed: merge PR #125 and apply migration 019 only. Existing production data was not intentionally modified or deleted. No prediction or publication records were inserted.
+
+### Repository and CI
+- PR #125 merged successfully by squash. Merge commit: `ad91e87d1e9aacd21c3e77680f9d89646b239c31`.
+- PR CI run [44766975475](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44766975475): backend tests/lint and Android debug build both passed.
+- Main push CI run [44767283702](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44767283702): completed successfully.
+- Production migration workflow [44767283690](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44767283690): completed successfully; every job step passed.
+
+### Production database migration
+- Migration runner output: `MIGRATIONS_APPLIED: 019_research_shadow_forecast_ledger.sql`. No other pending migration was applied.
+- Post-migration verification checked migrations 006–018 and required prediction-storage, PIT, identity, snapshot-label and settlement objects. All workflow verification steps passed.
+- Independent read-only Neon query against production database `veltrix_ai_analyst` confirmed:
+  - Migration 019 checksum recorded: `6d6b8a191253edcf19e04718d595b57bcb3aa3ca58f3059615f30b8b6b970a4e`.
+  - Table `veltrix_ai_analyst.research_shadow_forecast_runs` exists with 14 columns.
+  - Append-only trigger `research_shadow_forecast_runs_append_only` is enabled.
+  - Index `research_shadow_forecast_runs_generated_idx` exists.
+  - Research ledger rows: 0 (migration created schema only; no report persisted yet).
+  - Production `predictions` rows: 0; `published_predictions` rows: 0. No forecast publication was created by the migration.
+- Existing data was preserved; no DELETE, TRUNCATE or destructive schema operation was run.
+
+### Production API compatibility
+- `GET /health`: HTTP 200, service status `ok`.
+- `GET /ready`: HTTP 200; database connected, migrations current, prediction storage available.
+- `GET /v1/predictions/history`: HTTP 200; returns an empty prediction list, consistent with the verified zero published prediction rows.
+- Vercel deployment lookup for merge SHA returned no matching deployment at check time. No Vercel deployment was required for this database-only schema change; the existing production API remained healthy.
+
+### Current release boundary and next work
+- Migration 019 is applied and verified. The explicit report writer remains opt-in; it has not yet been executed. The research ledger is empty.
+- Next safe execution: wait for the scheduled 21 November 04:00 WAT post-PR #124 capture; verify Stage 6 and shadow forecast artifact; then validate and persist the research-only report using the approved isolated ledger writer.
+- Production prediction publication, model promotion and value betting remain LOCKED until the independent prospective certification gates pass.
+- France Ligue 1 remains excluded pending provider fixture identity reconciliation.
+- This section supersedes earlier statements in this checkpoint that migration 019 had not been applied or required future authorization. Those statements were accurate before the approval and execution recorded here.
