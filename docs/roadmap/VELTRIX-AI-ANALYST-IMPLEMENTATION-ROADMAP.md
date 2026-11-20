@@ -1,6 +1,6 @@
 # VELTRIX AI ANALYST — Implementation Roadmap
 
-**Last updated:** 2026-11-19 (Stage 8B implementation checkpoint)  
+**Last updated:** 2026-11-20 (Stage 8B retrospective rebuild verified)  
 **Repository:** `Nexora-Apparel/veltrix-ai-analyst`  
 **Roadmap status:** engineering baseline; statuses below distinguish implemented infrastructure from validated production capability.
 
@@ -454,3 +454,21 @@ The CI run on the latest pre-fix PR #123 head passed backend tests and Android b
 - **Next:** full CI on the updated head; if green, rerun the retrospective rebuild and inspect all artifacts. No repeat collection, provider requests, Odds API requests or production database writes.
 - Production certification, inference/publishing, PR merge and value betting remain locked.
 - Detailed evidence: `docs/ledger/2026-11-20-retrospective-scheduled-fixture-fix.md`.
+
+
+## 2026-11-20 — Stage 8B retrospective rebuild verified
+
+**Status: retrospective research rebuild completed; outputs remain research-only and non-PIT-certified.**
+
+- CI run [44712955417](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44712955417) passed on candidate head `e61791463e142a4afceaab363537ba853f37a4cb`: backend tests, Ruff and Android debug build. APK artifact ID `14618615613`, SHA-256 `268da91198a0dba132cf0f7bed92d4e9a22acb1a200f323d31891a8a3d3dff96`.
+- Retrospective rebuild [44713600712](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44713600712) passed all steps: read-only import validation, statistics-aware dataset build, corrected retrospective training, paired chronological diagnostics and all three artifact uploads.
+- Corrected source accounting verified: 386 rows = 380 FINISHED labelled + 4 UNKNOWN unlabelled + 2 SCHEDULED unlabelled + 0 INVALID. Only the 380 finished fixtures entered the retrospective report.
+- Report hash: `14a69cc1d0b3b786d4a11808079b43ab0d3ffa97581e1136a3881e5cb8813ad5`. Full-corpus prequential 1X2 metrics (380 matches): Elo Brier/log loss 0.63336/1.05113; Poisson 0.63055/1.04804; ensemble 0.62933/1.04589. Paired block-bootstrap intervals overlap zero for all reported pairwise Brier/log-loss differences; no statistically supported winner is established. No bookmaker odds were used, so bookmaker-relative improvement is not assessed.
+- Statistics-aware feature dataset: 1,576 rows across seven competitions; dataset hash `fd805256d0015f08e05f4a312d065fa8f8c00170227ac08e37ac10d11be7bf55`. Statistics feature cells are 95.05% non-null for home-perspective fields and 95.37% for away-perspective fields; 1,498/1,576 rows have at least one home stat mean and 1,503/1,576 have at least one away stat mean.
+- Critical provenance boundary: all 1,576 feature rows are retrospective event-time reconstructions; all have `source_available_before_target_kickoff=false`; dataset-level `point_in_time_certifiable=false`, `validation_eligible=false`, and zero certification-eligible rows. Rights status at current read is APPROVED, but this does not make later-retrieved historical statistics PIT evidence. Do not use this dataset for prospective certification or production inference.
+- Artifacts uploaded: corrected retrospective report (ID `14618990915`), paired diagnostics (ID `14619310095`), statistics-aware dataset (ID `14618123576`). Artifact ZIP SHA-256 digests and report/dataset hashes are recorded in the dated ledger.
+- PR #123 remains open and unmerged. Production publishing, Stage 7 certification and value betting remain locked. No provider or Odds API calls, historical recollection, production DB writes, deployment or merge were performed by this research rebuild.
+
+**Next:** use this corpus only for exploratory feature/model diagnostics; design a genuinely PIT-qualified feature/outcome dataset from prospective snapshots and post-kickoff labels, then continue Stage 8B/8C. Do not claim that statistics are production-integrated or that any model is certified.
+
+Detailed artifact, metric, provenance and limitation record: `docs/ledger/2026-11-20-stage-8b-retrospective-rebuild-passed.md`.
