@@ -480,3 +480,12 @@ Detailed artifact, metric, provenance and limitation record: `docs/ledger/2026-1
 - Candidate now includes the manual entitlement preflight workflow. It uses a read-only Neon transaction, probes 5Dollar entitlement and performs no historical collection or database writes.
 - No collection dispatch, provider collection requests, Odds API spend, production writes, merge or deployment occurred.
 - Reconciliation is not complete: inspect the three main-only commits and remaining diff, verify both workflow files by fetch-back, then run CI on the exact resulting head. Keep production inference/publication and value betting locked.
+
+
+## 2026-11-20 — PR #123 workflow reconciliation review
+
+The three commits present on `main` but absent from the candidate's ancestry were reviewed individually. Their functional changes are represented on `stage-8b-statistics-ci-release`: the corrected manual entitlement preflight is content-equivalent, and the backfill workflow retains the default-branch push-validation/manual-dispatch behavior while using stricter candidate-side read-only Neon identity verification, review-before-execution wording, bounded request budget and preflight-only default. No blind merge or cherry-pick was used. Both workflow files were fetched back from the candidate after the updates.
+
+**Status:** workflow-content reconciliation reviewed; branch ancestry remains divergent until a safe integration strategy is chosen. Do not merge solely on this review. Require fresh CI on the exact updated candidate head. No historical collection, production database writes, provider collection calls, Odds API spend, deployment or production publication occurred during this review.
+
+**Next engineering work:** build a strictly point-in-time prospective feature dataset from immutable pre-kickoff snapshots and post-kickoff append-only labels. Keep retrospective event-time reconstructed statistics in a research-only namespace. Continue feature/model comparisons and reliability calibration without unlocking production publication or value betting before the stated certification gates pass.
