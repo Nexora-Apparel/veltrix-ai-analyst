@@ -267,6 +267,16 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "research_shadow_forecast_runs",
         }.issubset(tables)
 
+        shadow_ledger_trigger = connection.execute(
+            """
+            SELECT tgname
+            FROM pg_trigger
+            WHERE tgrelid = 'veltrix_ai_analyst.research_shadow_forecast_runs'::regclass
+              AND NOT tgisinternal
+            """
+        ).fetchall()
+        assert ("research_shadow_forecast_runs_append_only",) in shadow_ledger_trigger
+
         case_count = connection.execute(
             """
             SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_identity_review_cases
