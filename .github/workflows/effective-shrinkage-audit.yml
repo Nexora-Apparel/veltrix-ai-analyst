@@ -54,8 +54,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/veltrix-audit/stage6 /tmp/veltrix-audit/forecast
-          gh api "/repos/$GH_REPO/actions/artifacts/$STAGE6_ARTIFACT/zip" > /tmp/stage6.zip
-          gh api "/repos/$GH_REPO/actions/artifacts/$FORECAST_ARTIFACT/zip" > /tmp/forecast.zip
+          gh api "/repos/$GH_REPO/actions/runs/$STAGE6_RUN/artifacts" --jq ".artifacts[].id" | grep -Fx "$STAGE6_ARTIFACT"\ngh api "/repos/$GH_REPO/actions/artifacts/$STAGE6_ARTIFACT/zip" > /tmp/stage6.zip
+          gh api "/repos/$GH_REPO/actions/runs/$FORECAST_RUN/artifacts" --jq ".artifacts[].id" | grep -Fx "$FORECAST_ARTIFACT"\ngh api "/repos/$GH_REPO/actions/artifacts/$FORECAST_ARTIFACT/zip" > /tmp/forecast.zip
           echo "$STAGE6_RUN $STAGE6_ARTIFACT" > /tmp/veltrix-audit/stage6/source.txt
           echo "$FORECAST_RUN $FORECAST_ARTIFACT" > /tmp/veltrix-audit/forecast/source.txt
           echo "3a2ebfb7dd94899bc1cf5000bb365c440753afcfa474869a733bbeeda0a1ad81  /tmp/stage6.zip" | sha256sum -c -
@@ -82,10 +82,10 @@ jobs:
           dataset=next((json.loads(p.read_text()) for p in files if json.loads(p.read_text()).get('report_type')=='VELTRIX_PROSPECTIVE_EXPANDING_DATASET'),None)
           forecast=next((json.loads(p.read_text()) for p in files if isinstance(json.loads(p.read_text()).get('predictions'),list)),None)
           if dataset is None or forecast is None: raise SystemExit('PINNED_JSON_PAYLOAD_NOT_FOUND')
-          from backend.app.research.shadow_model_audit import training_data_sha256
+          from app.research.shadow_model_audit import training_data_sha256
           if dataset.get('dataset_sha256')!='80148b3f0f42e70d94391d9283c42f35b5b92e1631a9a1cb7baee899373dad0c': raise SystemExit('DATASET_SHA_MISMATCH')
           if training_data_sha256(dataset['training_only_rows'])!='d70ee34940c8fc6681f3cd5751d4fdcc2e876b307fe388d9f3a792c73e34b262': raise SystemExit('TRAINING_SHA_MISMATCH')
-          from backend.app.research.corrected_shrinkage_audit import run_audit
+          from app.research.corrected_shrinkage_audit import run_audit
           report=run_audit(dataset,forecast,commit_sha=__import__('os').environ['AUDIT_COMMIT_SHA'])
           pathlib.Path('sanitized-audit.json').write_text(json.dumps(report,sort_keys=True,indent=2)+'\\n')
           PY
