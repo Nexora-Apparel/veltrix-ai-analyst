@@ -1,0 +1,138 @@
+name: Shrinkage repair evaluation (owner dispatch only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      evaluation_commit_sha:
+        description: Exact PR branch commit containing evaluator and frozen preregistration (40 lowercase hex)
+        required: true
+        type: string
+      dataset_run_id:
+        description: GitHub Actions run ID that produced the pinned Stage 6 dataset artifact
+        required: true
+        type: string
+      dataset_artifact_id:
+        description: Exact Stage 6 dataset artifact ID
+        required: true
+        type: string
+      dataset_sha256:
+        description: dataset_sha256 embedded in the dataset JSON
+        required: true
+        type: string
+      forecast_run_id:
+        description: GitHub Actions run ID that produced the pinned shadow forecast artifact
+        required: true
+        type: string
+      forecast_artifact_id:
+        description: Exact shadow forecast artifact ID
+        required: true
+        type: string
+      config_sha256:
+        description: Frozen v3.1 canonical config SHA-256
+        required: true
+        default: a6b0f5484a34e4375c02c0b96bb8f0ed4e696a055fd06b1f6bf4a054fcabba24
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Validate immutable evaluation inputs
+        env:
+          EVALUATION_COMMIT_SHA: ${{ inputs.evaluation_commit_sha }}
+          DATASET_SHA256: ${{ inputs.dataset_sha256 }}
+          CONFIG_SHA256: ${{ inputs.config_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$EVALUATION_COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$DATASET_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$CONFIG_SHA256" =~ ^[0-9a-f]{64}$ ]]
+
+      - name: Checkout exact evaluation commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # actions/checkout@v4
+        with:
+          ref: ${{ inputs.evaluation_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify frozen config and download pinned source artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DATASET_RUN: ${{ inputs.dataset_run_id }}
+          DATASET_ARTIFACT: ${{ inputs.dataset_artifact_id }}
+          FORECAST_RUN: ${{ inputs.forecast_run_id }}
+          FORECAST_ARTIFACT: ${{ inputs.forecast_artifact_id }}
+          DATASET_SHA256: ${{ inputs.dataset_sha256 }}
+          CONFIG_SHA256: ${{ inputs.config_sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/veltrix-repair/dataset /tmp/veltrix-repair/forecast
+          gh api "/repos/$GH_REPO/actions/runs/$DATASET_RUN/artifacts" > /tmp/dataset-artifacts.json
+          gh api "/repos/$GH_REPO/actions/runs/$FORECAST_RUN/artifacts" > /tmp/forecast-artifacts.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          for path, artifact_id, expected in (
+              (Path("/tmp/dataset-artifacts.json"), os.environ["DATASET_ARTIFACT"], "veltrix-stage6-daily-materialization-audit"),
+              (Path("/tmp/forecast-artifacts.json"), os.environ["FORECAST_ARTIFACT"], "veltrix-prospective-shadow-forecasts"),
+          ):
+              payload=json.loads(path.read_text())
+              matches=[item for item in payload.get("artifacts",[]) if str(item.get("id"))==artifact_id]
+              if len(matches)!=1 or matches[0].get("name")!=expected or matches[0].get("expired"):
+                  raise SystemExit(f"PINNED_ARTIFACT_VALIDATION_FAILED:{artifact_id}")
+          config=json.loads(Path("docs/research/shrinkage-selection-v3.json").read_text())
+          canonical=json.dumps(config,sort_keys=True,separators=(",",":"),ensure_ascii=False,allow_nan=False)+"\n"
+          import hashlib
+          if hashlib.sha256(canonical.encode()).hexdigest()!=os.environ["CONFIG_SHA256"]:
+              raise SystemExit("FROZEN_CONFIG_HASH_MISMATCH")
+          PY
+          gh api "/repos/$GH_REPO/actions/artifacts/$DATASET_ARTIFACT/zip" > /tmp/dataset.zip
+          gh api "/repos/$GH_REPO/actions/artifacts/$FORECAST_ARTIFACT/zip" > /tmp/forecast.zip
+          unzip -tq /tmp/dataset.zip
+          unzip -tq /tmp/forecast.zip
+          unzip -q /tmp/dataset.zip -d /tmp/veltrix-repair/dataset
+          unzip -q /tmp/forecast.zip -d /tmp/veltrix-repair/forecast
+          test -f /tmp/veltrix-repair/dataset/prospective-dataset.json
+          test -f /tmp/veltrix-repair/forecast/prospective-shadow-forecasts.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          data=json.loads(Path("/tmp/veltrix-repair/dataset/prospective-dataset.json").read_text())
+          if data.get("dataset_sha256")!=os.environ["DATASET_SHA256"]:
+              raise SystemExit("DATASET_FINGERPRINT_MISMATCH")
+          forecast=json.loads(Path("/tmp/veltrix-repair/forecast/prospective-shadow-forecasts.json").read_text())
+          if forecast.get("dataset_sha256")!=data.get("dataset_sha256"):
+              raise SystemExit("FORECAST_DATASET_FINGERPRINT_MISMATCH")
+          PY
+
+      - name: Install backend evaluation dependencies
+        run: python -m pip install --disable-pip-version-check -e "backend[dev]"
+
+      - name: Run Newton and diagnostic helper tests
+        working-directory: backend
+        run: python -m pytest -q tests/test_hierarchical_poisson_newton.py tests/test_shrinkage_repair_metrics.py tests/test_prospective_shrinkage_settlement_scorer.py
+
+      - name: Run development-fold selection (fails closed on non-PIT labels)
+        working-directory: backend
+        env:
+          CONFIG_SHA256: ${{ inputs.config_sha256 }}
+          DATASET_SHA256: ${{ inputs.dataset_sha256 }}
+        run: |
+          python -m app.research.shrinkage_repair_evaluation \
+            /tmp/veltrix-repair/dataset/prospective-dataset.json \
+            ../docs/research/shrinkage-selection-v3.json \
+            "$CONFIG_SHA256" "$DATASET_SHA256"
+
+      - name: Upload sanitized development report
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # actions/upload-artifact@v4
+        with:
+          name: veltrix-shrinkage-v31-development-report
+          path: backend/shrinkage-development-report.json
+          if-no-files-found: error
+          retention-days: 30
