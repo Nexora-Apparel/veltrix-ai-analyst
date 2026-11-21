@@ -422,19 +422,20 @@ def _newton_minimize(
                     for j, vj in x_away:
                         hessian[i][j] += scale_away * vi * vj
 
+        penalty = 0.0
         for index in range(comp_start, attack_start):
             value = vector[index]
-            loss += 0.5 * competition_ridge * value * value
+            penalty += 0.5 * competition_ridge * value * value
             gradient[index] += competition_ridge * value
             if hessian is not None:
                 hessian[index][index] += competition_ridge
         for index in range(attack_start, size):
             value = vector[index]
-            loss += 0.5 * team_ridge * value * value
+            penalty += 0.5 * team_ridge * value * value
             gradient[index] += team_ridge * value
             if hessian is not None:
                 hessian[index][index] += team_ridge
-        return loss / total_weight, gradient, hessian
+        return loss / total_weight + penalty, gradient, hessian
 
     def norm(values: list[float]) -> float:
         return sqrt(sum(value * value for value in values))
