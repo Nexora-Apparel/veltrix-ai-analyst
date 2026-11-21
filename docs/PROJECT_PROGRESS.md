@@ -765,3 +765,15 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [x] Corrective commit `3c07aacb8fdc1dfd4832d1779d91ac4eaed98963` raises only the candidate optimizer numerical tolerance from 1e-7 to 1e-6 and adds iteration/gradient-norm diagnostics. No admission or performance threshold was relaxed.
 - [ ] Latest CI #44894364730 is pending on the correction commit. Require full backend tests, Ruff and Android build to pass before merging.
 - [x] No new Vercel deployment was created for 3c07; the last preview remains READY on 940ae2f. Production deployment/API remain unchanged and quarantined.
+
+
+## Backfill and identity evidence — 2026-11-21
+
+- [x] Verified Community Access terms: last 12 months of results/odds, top-five leagues plus one country pack, 300 requests/hour and 20/minute burst cap; public free-plan products require attribution and raw-data redistribution is prohibited. No provider calls, plan purchase or Odds API credits used.
+- [x] Production DB read-back: 28 identity review cases are now `AUTOMATED_CONFIRMED` under recorded policy; one additional PIT timestamp gap is deferred. This is not equivalent to blanket cross-season identity clearance.
+- [x] 20 Brazil Série B team real-world crosswalks are marked `REAL_WORLD_IDENTITY_VERIFIED` using full 380-fixture CBF schedule reconciliation. Another 116 links are only `SOURCE_IDENTITY_REVIEWED`, not real-world identity verified.
+- [x] One remaining provider identity conflict: 5Dollar provider team ID `3808811746` (América Mineiro), link 16; exclude from cross-season stitching until independently resolved.
+- [x] New v2 candidate now abstains when either competition-scoped team has zero match history; test added. The candidate remains research-only.
+- [ ] Continue optimizer convergence work: the latest CI run #44894997224 failed the candidate synthetic recovery test at 4,000 iterations (gradient norm 2.51062e-5). Increasing the iteration budget/learning rate is under test; do not claim candidate recovery until CI passes.
+- [ ] Next CI run #44895139262 is pending at this checkpoint; Android build and backend test job results must be read back individually.
+- [x] Detailed findings recorded in [2026-11-21 regularization and DB audit ledger](ledger/2026-11-21-regularization-contract-and-db-audit.md).
