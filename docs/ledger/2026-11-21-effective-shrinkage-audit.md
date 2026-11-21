@@ -23,12 +23,16 @@
 
 ## Effective shrinkage result
 
-For the unpenalized comparison, the independent calculation used the same optimizer/objective with a 1e-9 ridge as a numerical zero-penalty limit. Per-team ratios are signed fitted effect divided by near-unpenalized reference effect; medians below use absolute ratios to avoid cancellation from sign differences.
+For the unpenalized comparison, the independent calculation used the same objective with a 1e-9 ridge as a numerical zero-penalty limit. Each per-team ratio is signed fitted effect divided by its near-unpenalized reference effect. Both signed and absolute summaries are recorded because a small number of estimates change sign.
 
-- Median absolute attack-effect ratio: 0.0300654 (about 3.01% retained).
-- Median absolute defence-effect ratio: 0.0339394 (about 3.39% retained).
-- Median attack prior / data information: 30.5764×.
-- Median defence prior / data information: 30.3068×.
+- Median signed attack-effect ratio: 0.0300654 (3.01%).
+- Median absolute attack-effect ratio: 0.0311043 (3.11% retained).
+- Median signed defence-effect ratio: 0.0327775 (3.28%).
+- Median absolute defence-effect ratio: 0.0339394 (3.39% retained).
+- Attack sign agreement with the near-unpenalized reference: 90.44%; defence sign agreement: 91.18%.
+- Attack absolute-ratio P10–P90: 1.33%–8.86%; defence absolute-ratio P10–P90: 1.66%–9.43%.
+- Median attack prior / data information: 30.5764× (P10–P90: 11.43×–34.43×).
+- Median defence prior / data information: 30.3068× (P10–P90: 11.48×–34.43×).
 - Penalized attack-effect population SD: 0.0136711; near-unpenalized reference SD: 0.3651402.
 - Penalized defence-effect population SD: 0.0125548; near-unpenalized reference SD: 0.3397125.
 
