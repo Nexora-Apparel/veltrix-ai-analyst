@@ -122,3 +122,48 @@ At 2026-11-21 10:23:43 UTC, after the PR #139 preview became READY:
 - Corrective commit `3c07aacb8fdc1dfd4832d1779d91ac4eaed98963` raises the research candidate's numerical optimizer tolerance from 1e-7 to 1e-6 and adds iteration/gradient-norm diagnostics to the line-search failure. This is an optimizer convergence setting only; no admission threshold or market gate was relaxed.
 - Latest CI run #44894364730 is running on that correction commit. Its result is pending. Do not merge PR #139 until the candidate recovery test, all backend tests/lint and Android build pass on the exact current head.
 - No new Vercel deployment was found for commit 3c07; the existing preview remains READY at commit 940ae2f. Production deployment remains unchanged.
+
+
+## Effective shrinkage report — independently read back (2026-11-21)
+
+Successful archived audit:
+- Workflow #44893869016, job 136815242522: success.
+- Artifact #14703192024, SHA-256 `4997f0b6a93c2fc02c1a164c2daff33e2dd532b8b50b57a35a41ec609e64fab0`.
+- The report was downloaded and parsed independently from the GitHub artifact ZIP.
+- `FIT_REPRODUCTION_VERIFIED`; 996 training fixtures, 136 teams, 7 competitions.
+- Effective runtime: team_ridge=0.5; competition_ridge=0.5; half_life_days=365; total recency weight=868.581121480181; summed-objective team tau=434.2905607400905.
+- Median signed attack ratio=3.0065%; median absolute attack ratio=3.1104%.
+- Median signed defence ratio=3.2777%; median absolute defence ratio=3.3939%.
+- Median attack tau/data information=30.5764x (P10–P90 11.4254x–34.4268x).
+- Median defence tau/data information=30.3068x (P10–P90 11.4785x–34.4259x).
+- Attack sign agreement with near-unpenalized estimates=90.44%; defence=91.18%.
+- These are per-team retrospective fit diagnostics. They do not demonstrate out-of-sample quality and do not select new k values.
+
+## 5DollarFootballAPI Community terms and backfill ceiling
+
+Checked the current public Community page, Terms of Service, and fixture endpoint documentation (21 Nov 2026):
+- Community Access is $0 and provides the top-five leagues plus one country pack, the last 12 months of results and odds, 300 requests/hour, and a 20 requests/minute burst ceiling.
+- The Community entitlement is renewable every 12 months. It does not grant the full 130+ league catalogue or bulk odds for a whole fixture list in one call.
+- The API terms allow use in commercial products and caching. Public-facing products on the $0 plan must visibly attribute/link “Football data by 5DollarFootballAPI”. Raw-data redistribution as a competing feed is prohibited.
+- No plan purchase, account change, provider API call, or Odds API call was made.
+- The 12-month history window cannot support unrestricted multi-season historical backfill. It can cover only the most recent 12 months, subject to competition-pack scope and actual per-league availability. No older season is to be fabricated or inferred.
+
+Sources:
+- https://5dollarfootballapi.com/community
+- https://5dollarfootballapi.com/terms
+- https://5dollarfootballapi.com/docs/fixtures
+- https://5dollarfootballapi.com/docs
+
+## Current identity reconciliation read-back
+
+Read-only production DB snapshot:
+- `effective_canonical_identity_review_cases`: 28 cases have effective status `AUTOMATED_CONFIRMED`; one additional case is `AUTOMATED_DEFERRED` (PIT timestamp gap).
+- The 28 confirmed cases comprise 20 team real-world identity candidates, 1 team alias candidate, 5 fixture duplicate candidates, 1 competition identity candidate and 1 season-coverage reconciliation.
+- The 20 team real-world identity cases use policy `cbf-2026-identity-adjudication-v1`, confidence 0.995, and decision basis `CBF_380_FIXTURE_GRAPH_19_HOME_19_AWAY_MATCHED`. The notes state the complete ordered fixture graph matches the official CBF 2026 Série B schedule; this confirms the real-world crosswalk, not alias merging or provider-label rewriting.
+- `effective_provider_team_identity_links`: 20 `REAL_WORLD_IDENTITY_VERIFIED`, 116 `SOURCE_IDENTITY_REVIEWED`, and 1 `CONFLICT`.
+- The conflict is provider team ID `3808811746`, labelled América Mineiro, link ID 16. Its provenance audit says `PROVENANCE_VERIFIED` but `real_world_identity_status='CONFLICT'`; it has no direct evidence URI/hash. Keep this identity link excluded from any cross-season stitching until separately adjudicated.
+- The 116 `SOURCE_IDENTITY_REVIEWED` links must not be promoted to real-world cross-season identity merely because source provenance is reviewed.
+- Therefore the remembered count of 28 unresolved review cases is no longer an accurate description of the current effective review view: 28 are automated-confirmed under their recorded policies. However, one provider identity conflict remains, and broad cross-season stitching is still not authorized.
+- Model team keys remain competition-scoped. Do not join teams across seasons by display name. Newly promoted/unseen competition-scoped teams abstain unless a separate pre-registered prior and verified identity path are admitted.
+
+No DB rows were changed by these queries.
