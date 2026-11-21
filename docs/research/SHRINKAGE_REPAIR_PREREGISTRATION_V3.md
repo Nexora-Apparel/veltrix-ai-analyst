@@ -1,58 +1,78 @@
-# Shrinkage repair pre-registration v3
+# Shrinkage repair pre-registration v3.1
 
-**Status:** pre-registered; no real-data rerun has been dispatched.  
-**Base audit:** run 44916186280, implementation commit `4ee0cbfdcb98149524c0a7a369fc0400126b4c6f`.  
-**Config SHA-256:** `80658db5ee8a8793e9c9d747101059072dd1fb3af55b08f6f610c4e5a6346a56` (canonical JSON: UTF-8, sorted keys, compact separators, trailing newline).  
-**Configuration:** `docs/research/shrinkage-selection-v3.json`.
+**Status:** pre-registered; no candidate grid has been evaluated under v3.1.  
+**Base diagnostic:** run 44916186280, implementation commit `4ee0cbfdcb98149524c0a7a369fc0400126b4c6f`.  
+**Config:** `docs/research/shrinkage-selection-v3.json`.  
+**Canonical config SHA-256:** `14333ab670983a692605e91705bc001707bc3c2319c1e94f116ddc15adcb44dd` (canonical JSON UTF-8, sorted keys, compact separators, no NaN, trailing newline).
 
-## 1. Solver method
+## 1. Solver and fixed convergence rule
 
-The repair will add an explicitly selectable damped-Newton optimizer to the existing hierarchical Poisson objective. It will use the analytic Hessian of the same recency-weighted Poisson negative log-likelihood plus the same ridge penalties, with a backtracking Armijo line search and a positive-definite damping strategy. The objective, feature parameterization, home-advantage treatment, and penalty scaling will not be changed as part of the solver repair.
+Use damped Newton on the unchanged recency-weighted Poisson negative log-likelihood plus unchanged ridge penalties. Construct the analytic Hessian from each weighted Poisson observation's feature-vector outer products and add the exact ridge diagonal. Solve the damped linear system; escalate damping when the system is not positive definite or the candidate direction is not a descent direction. Use backtracking Armijo line search.
 
-The production/default caller path remains the existing default optimizer unless a separate, explicitly reviewed change is made. The prospective shadow path must not silently switch solver or hyperparameters in this repair PR.
+A fit is converged only when **both** conditions hold for **two consecutive accepted steps**:
+- Euclidean gradient norm `||g||₂ <= 1e-7`.
+- Relative objective change `abs(f_new - f_old) / max(1, abs(f_old)) <= 1e-10`.
 
-## 2. Required solver verification before real-data use
+Maximum 200 Newton iterations. No tolerance relaxation after observing results. Any fit failing either condition, line search, or finite-value checks is invalid, excluded from model comparison, and reported with its terminal diagnostics. This stopping rule applies uniformly to every candidate and fold.
 
-1. Compare Newton against the existing gradient-descent fitter on a small deterministic synthetic case: fitted objective, parameter vector/predicted rates, and convergence status must agree within predeclared numerical tolerances.
-2. Compare Newton against L-BFGS on a small deterministic case where L-BFGS converges. Compare objective, parameter vector/predicted rates, and gradient norm.
-3. Exercise singular/ill-conditioned Hessian handling, damping escalation, rejected line-search steps, and explicit non-convergence.
-4. Only after these checks pass may synthetic scale tests be run. No 996-row corpus or other real-data regularization/recovery run is permitted until a separately authorized dispatch.
+## 2. Solver verification
 
-## 3. Hyperparameter selection — frozen grid
+Before any real-data evaluation:
+1. Compare Newton with the existing gradient-descent fitter on a deterministic small synthetic case: objective, fitted rates, parameter values, and convergence.
+2. Compare Newton with L-BFGS on a deterministic small case where L-BFGS converges.
+3. Test singular/ill-conditioned Hessians, damping escalation, rejected Armijo steps, non-finite guards, and explicit non-convergence.
+4. Run synthetic scaling tests only after the equivalence and edge-case tests pass.
 
-Evaluate exactly the Cartesian grid:
+Do not change the existing optimizer default or the prospective shadow caller's selected path.
 
-- (k \in \{0.25, 0.5, 1, 2, 4, 8\})
-- half-life (\in \{180, 365, 730\}) days
+## 3. Frozen candidate search
 
-The 18 candidates are selected using chronological development folds 1–3 only. No fold 4 result, prospective result, or later settled outcome may influence selection. Use identical fold partitions and the same objective/penalty conversion across candidates. The selection metric and tie-break rule must be implemented and tested before any real-data run; report fold-wise log loss and multiclass Brier against both training-only climatology and plain scaled Poisson. Freeze the selected pair in a versioned immutable config and record its SHA-256 before prospective scoring.
+Evaluate exactly:
+- Team shrinkage `k ∈ {0.5, 1, 2, 4, 8, 16, 32, 64, 128}`.
+- Half-life `{180, 365, 730}` days.
+- Probability blend `p = w*p_model + (1-w)*p_climatology`, with `w ∈ {0.25, 0.5, 0.75, 1.0}`.
 
-## 4. Previously examined diagnostic window / contamination disclosure
+Select only on chronological development folds 1–3. The Cartesian hyperparameter grid is 27 model configurations; evaluate the four blend weights as a preregistered downstream probability layer on the same development folds. No fold-4 result or prospective settlement may influence selection. Selection metric, aggregation, and tie-break rules must be coded and tested before any real-data run.
 
-Fold 4, **2026-10-28 through 2026-11-19**, has already been evaluated for the archived model and reference configurations (k=0.5) and (k=2) in audit run 44916186280. It is therefore **not an untouched holdout**. It must be labelled **PREVIOUSLY_EXAMINED_DIAGNOSTIC_WINDOW** in every report and preregistration. It may be used only as a sanity check for SHADOW-tier admission; it cannot be presented as clean validation or used to tune the grid.
+Archived-equivalent team-prior reference points, computed as `k_equiv = 0.5 * W / mu` using each fold's recency weight sum W and weighted mean goals per team-match mu:
+- Fold 1: **128.3802704829587**
+- Fold 2: **173.29424410186596**
+- Fold 3: **206.5352382546307**
+- Fold 4: **269.2584048267363** (diagnostic reference only)
 
-The fold 1–3 development-only selection is also constrained by the earlier diagnostic run: this v3 selection is a preregistered repair exercise, not a claim that any historical fold remains pristine.
+These values are not grid candidates and do not authorize fitting. The fold-4 value is not used for selection.
 
-## 5. Research-only admission gate
+## 4. Previously examined diagnostic window and leakage disclosure
 
-Research-only display is eligible only if the frozen candidate:
-- beats BOTH the training-only climatology baseline and the plain scaled Poisson baseline on the preregistered chronological development folds 1–3; and
-- does not fail the previously examined fold-4 diagnostic sanity check.
+Fold 4, **2026-10-28 through 2026-11-19**, has already been evaluated in audit run 44916186280. It is **PREVIOUSLY_EXAMINED_DIAGNOSTIC_WINDOW**, not an untouched holdout. It may be used only as a SHADOW-tier sanity check, never for tuning or as clean validation.
 
-A pass supports research-only display consideration only, not production promotion. Anything beyond research-only requires prospective fixtures settled after 2026-11-21, scored automatically against the frozen configuration, plus explicit owner sign-off.
+The source dataset's historical labels were imported retrospectively. The fold-4 leakage review found:
+- 835/835 training rows have label-observation timestamps at or after the fold-4 test cutoff (2026-10-28 17:30 UTC).
+- The training rows have no per-row prediction-cutoff timestamp in the artifact, so whether each label was known at its own historical prediction time cannot be established.
+- No exact cross-fold duplicate was found among available canonical fixture IDs, provider fixture IDs, or same-direction teams/date keys in the supplied 996-row training table.
+- The artifact contains only the aggregate `fixture_identity_rows=1053` count, not the identity-case records; the 28 unresolved cases cannot be independently enumerated or cleared from this artifact.
+
+Therefore fold 4's apparent performance is **not trustworthy as point-in-time evidence**. The existing audit's fold-4 metrics are disclosed but are not admission evidence until identity and timestamp lineage are resolved. The previously examined status remains even after leakage checks.
+
+## 5. Required evaluation and admission report
+
+For each candidate, development fold, and diagnostic window, report:
+- 1X2 log loss and multiclass Brier.
+- Paired differences against training-only climatology and plain scaled Poisson, with 2,000-replicate paired kickoff-date block bootstrap 95% intervals.
+- Reliability tables for HOME, DRAW, AWAY: ten fixed probability bins, count, mean predicted probability, and observed frequency.
+- Calibration slope and intercept per outcome, with fit method and sample count.
+- Count of forecasts with any outcome probability above 0.80, number of hits, and hit rate.
+- Per-competition breakdown of log loss, Brier, high-probability counts, and high-probability hit rate.
+- Explicit invalid-fit counts and terminal convergence diagnostics.
+
+Do not cap or clip high probabilities by hand. Probability outputs must remain those of the model or preregistered convex blend.
+
+Research-only display eligibility requires the frozen candidate to beat both climatology and plain scaled Poisson on development folds 1–3, satisfy the calibration/extreme-probability reporting gate, and not fail the examined diagnostic-window sanity check. The examined window cannot establish clean validation.
 
 ## 6. Prospective settlement scoring
 
-The repair will add a read-only evaluation path that consumes the existing published/shadow forecast ledger and settled fixture outcomes. It must:
-- select only forecasts generated with the frozen config hash;
-- join settlements by canonical fixture identity and preserve prediction cutoff / settlement timestamps;
-- score each eligible settled fixture once, idempotently;
-- calculate 1X2 log loss and multiclass Brier against the frozen model, climatology, and plain scaled Poisson;
-- retain unscored, void, duplicate, late-label, and lineage-invalid records with explicit exclusion reasons;
-- never write predictions, publish forecasts, change quarantine, unlock value betting, call odds providers, or send Telegram notifications.
-
-No real-data execution, feed enablement, database write, provider call, or lock change is authorized by this pre-registration.
+Score only fixtures settled after 2026-11-21 and forecast under the exact frozen config hash. Join by canonical fixture identity; preserve prediction cutoff, kickoff, settlement, label-observation timestamps, and source lineage. Score each eligible settled fixture once, idempotently. Report model, climatology, and plain scaled Poisson log loss/Brier, calibration, reliability, extreme-probability hit rate, and competition breakdown. Retain exclusions with explicit reasons. The scorer is read-only: no prediction writes, publication, database writes, provider calls, odds calls, Telegram notifications, lock changes, or feed changes.
 
 ## 7. Stop conditions
 
-A non-converged fit is invalid and excluded from model comparison. Any change to the objective, feature parameterization, training cutoff, grid, fold boundaries, selection metric, or tie-break rule requires a new versioned pre-registration before inspecting results. The diagnostic fold-4 window must never be described as untouched.
+No real-data evaluation or workflow dispatch is included in this preregistration. A real-data run requires owner-dispatched workflow execution with exact immutable input IDs and commit/config hashes. Any change to objective, parameterization, cutoff, folds, grid, blend set, convergence thresholds, selection metric, or tie-break rule requires a new versioned preregistration before results are inspected. Anything beyond research-only requires prospective settled evidence and owner sign-off.
