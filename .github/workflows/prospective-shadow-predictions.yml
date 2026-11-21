@@ -48,6 +48,17 @@ jobs:
             --max-snapshot-age-hours 6 \
             --minimum-training-fixtures 30
 
+      - name: Persist validated forecasts to isolated research ledger
+        if: success()
+        env:
+          VELTRIX_SHADOW_LEDGER_WRITE_ENABLED: "true"
+          VELTRIX_SHADOW_LEDGER_DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
+        run: |
+          python scripts/persist_prospective_shadow_forecasts.py \
+            --report artifacts/prospective-shadow-forecasts.json \
+            --code-commit "$GITHUB_SHA" \
+            --confirm-research-ledger-write
+
       - name: Upload research-only shadow forecasts
         if: always()
         uses: actions/upload-artifact@v4
