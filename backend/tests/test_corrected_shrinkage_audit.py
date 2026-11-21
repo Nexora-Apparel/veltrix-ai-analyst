@@ -6,9 +6,11 @@ import pytest
 
 from app.models.hierarchical_poisson import fit_hierarchical_poisson
 from app.research import corrected_shrinkage_audit as audit
-
 from app.research.corrected_shrinkage_audit import (
-    ARCHIVED_CONFIG, FOLD_RULE, HOME_ADVANTAGE_TREATMENT, REFERENCE_K,
+    ARCHIVED_CONFIG,
+    FOLD_RULE,
+    HOME_ADVANTAGE_TREATMENT,
+    REFERENCE_K,
 )
 
 
