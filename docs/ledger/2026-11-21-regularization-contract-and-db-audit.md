@@ -98,3 +98,15 @@ No rows were inserted, updated, or deleted during this reconciliation.
 - The fitter requires all k values as explicit arguments; no unvalidated production defaults are supplied. The current production/research fitter is untouched and remains quarantined.
 - A synthetic candidate recovery test was added; current and excessive-prior rejection controls remain. Latest standard CI run #44893869028 is pending and has not yet exposed jobs. Do not claim the candidate test passes until that exact-head run completes.
 - PR #139 metadata read-back returned open, unmerged, mergeable=true. Its Vercel preview deployment `dpl_H5UX1RbMTdMaDFNygvYUKqmZD9Gq` is READY on the feature branch. Production deployment and API are unchanged.
+
+
+## Post-preview production verification
+
+At 2026-11-21 10:23:43 UTC, after the PR #139 preview became READY:
+
+- Production `GET /v1/research/predictions`: HTTP 200; `MODEL_QUARANTINED`, `NOT_PUBLISHED`, `predictions=[]`, production promotion LOCKED, value betting LOCKED.
+- Production `GET /v1/predictions`: HTTP 200; `predictions=[]`.
+- Production deployment remains `dpl_4qjTXEBsVXHxJ13Ap7fjX7Zmk8b4`, READY, main commit `95445c9b7aaba045f15a97afe443211da341a2fe`.
+- PR #139 preview is `dpl_H5UX1RbMTdMaDFNygvYUKqmZD9Gq`, READY, branch commit `940ae2f025e1feb1552bdda58cef5f73d028a0d0`. This is preview-only and did not replace the production deployment.
+- PR #139 metadata read-back: open, unmerged, mergeable=true. Its latest standard CI run #44893869028 is still pending and has not exposed jobs. The prior #44893501873 run passed 504 tests/Ruff/Android but predates the v2 candidate fitter; it is not sufficient to certify the latest head.
+- No production DB writes, migrations, role changes, provider calls or Odds API credits were used.
