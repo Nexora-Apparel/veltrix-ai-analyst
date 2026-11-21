@@ -10,6 +10,7 @@ from typing import Any
 
 from app.models.hierarchical_poisson import fit_hierarchical_poisson
 from app.research.corrected_shrinkage_audit import _dt, _result
+from app.research.shadow_model_audit import training_data_sha256
 from app.research.shrinkage_repair_metrics import (
     blend_probabilities,
     evaluation_diagnostics,
@@ -287,6 +288,37 @@ def _clean_json(value: Any) -> Any:
     if isinstance(value, float) and not math.isfinite(value):
         return None
     return value
+
+
+def validate_artifact_fingerprints(
+    dataset: dict[str, Any],
+    forecast: dict[str, Any],
+    *,
+    expected_dataset_sha: str,
+    expected_training_sha: str,
+) -> dict[str, Any]:
+    """Validate model-consumed training identity; log, but do not gate on, pool identity."""
+    if dataset.get("dataset_sha256") != expected_dataset_sha:
+        raise ValueError("DATASET_CONTENT_FINGERPRINT_MISMATCH")
+    training_rows = dataset.get("training_only_rows")
+    if not isinstance(training_rows, list):
+        raise TypeError("TRAINING_ONLY_ROWS_REQUIRED")
+    try:
+        actual_training_sha = training_data_sha256(training_rows)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("TRAINING_DATA_FINGERPRINT_INPUT_INVALID") from exc
+    if actual_training_sha != expected_training_sha:
+        raise ValueError("DATASET_TRAINING_DATA_FINGERPRINT_MISMATCH")
+    if forecast.get("dataset_sha256") != expected_dataset_sha:
+        raise ValueError("FORECAST_DATASET_FINGERPRINT_MISMATCH")
+    if forecast.get("training_data_sha256") != expected_training_sha:
+        raise ValueError("FORECAST_TRAINING_FINGERPRINT_MISMATCH")
+    return {
+        "dataset_sha256": dataset["dataset_sha256"],
+        "training_data_sha256": actual_training_sha,
+        "forecast_training_data_sha256": forecast["training_data_sha256"],
+        "training_pool_sha256_observed": dataset.get("training_pool_sha256"),
+    }
 
 
 def run_evaluation(

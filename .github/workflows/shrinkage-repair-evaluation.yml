@@ -93,6 +93,9 @@ jobs:
               raise SystemExit("FROZEN_CONFIG_HASH_MISMATCH")
           PY
 
+      - name: Install backend evaluation dependencies
+        run: python -m pip install --disable-pip-version-check -e "backend[dev]"
+
       - name: Verify pinned artifact names, IDs, run ownership, and archive hashes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -126,6 +129,18 @@ jobs:
           echo "44164d6e9ead148b6fa0e663f81bde18ad5f75e839143e408a2ecce98cc7f16f  /tmp/forecast.zip" | sha256sum --check -
           unzip -tq /tmp/dataset.zip
           unzip -tq /tmp/forecast.zip
+          python - <<'PY'
+          from zipfile import ZipFile
+          checks = (
+              ("/tmp/dataset.zip", ["prospective-dataset.json"]),
+              ("/tmp/forecast.zip", ["prospective-shadow-forecasts.json"]),
+          )
+          for archive, expected in checks:
+              with ZipFile(archive) as zipped:
+                  files = [name for name in zipped.namelist() if not name.endswith("/")]
+              if files != expected:
+                  raise SystemExit(f"ARTIFACT_FILE_LAYOUT_MISMATCH:{archive}:{files}")
+          PY
           unzip -q /tmp/dataset.zip -d /tmp/veltrix-v32/dataset
           unzip -q /tmp/forecast.zip -d /tmp/veltrix-v32/forecast
           test -f /tmp/veltrix-v32/dataset/prospective-dataset.json
@@ -133,23 +148,22 @@ jobs:
           python - <<'PY'
           import json, os
           from pathlib import Path
+          from app.research.shrinkage_repair_evaluation import validate_artifact_fingerprints
           dataset=json.loads(Path("/tmp/veltrix-v32/dataset/prospective-dataset.json").read_text())
           forecast=json.loads(Path("/tmp/veltrix-v32/forecast/prospective-shadow-forecasts.json").read_text())
-          expected=os.environ["DATASET_SHA256"]
-          if dataset.get("dataset_sha256")!=expected:
-              raise SystemExit("DATASET_CONTENT_FINGERPRINT_MISMATCH")
-          if forecast.get("dataset_sha256")!=expected:
-              raise SystemExit("FORECAST_DATASET_FINGERPRINT_MISMATCH")
-          if dataset.get("training_pool_sha256")!="d70ee34940c8fc6681f3cd5751d4fdcc2e876b307fe388d9f3a792c73e34b262":
-              raise SystemExit("TRAINING_POOL_FINGERPRINT_MISMATCH")
-          if forecast.get("training_data_sha256")!="d70ee34940c8fc6681f3cd5751d4fdcc2e876b307fe388d9f3a792c73e34b262":
-              raise SystemExit("FORECAST_TRAINING_FINGERPRINT_MISMATCH")
+          validated=validate_artifact_fingerprints(
+              dataset,
+              forecast,
+              expected_dataset_sha=os.environ["DATASET_SHA256"],
+              expected_training_sha="d70ee34940c8fc6681f3cd5751d4fdcc2e876b307fe388d9f3a792c73e34b262",
+          )
+          print("Verified dataset fingerprint:", validated["dataset_sha256"])
+          print("Recomputed training_data_sha256:", validated["training_data_sha256"])
+          print("Forecast training_data_sha256:", validated["forecast_training_data_sha256"])
+          print("Stored training_pool_sha256 (informational; not a gate):", validated["training_pool_sha256_observed"])
           if len(dataset.get("training_only_rows",[]))!=996 or len(forecast.get("predictions",[]))!=25:
               raise SystemExit("PINNED_SOURCE_ROW_COUNT_MISMATCH")
           PY
-
-      - name: Install backend evaluation dependencies
-        run: python -m pip install --disable-pip-version-check -e "backend[dev]"
 
       - name: Run focused Newton and evaluation tests
         working-directory: backend
