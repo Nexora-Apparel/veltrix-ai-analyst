@@ -239,3 +239,29 @@ def test_candidate_abstains_for_unseen_competition_scoped_team(
     candidate, _ = candidate_and_unpenalized_reference
     with pytest.raises(ValueError, match="TEAM_HISTORY_INSUFFICIENT"):
         candidate.predict("newly-promoted-no-history", "team-015", "synthetic-league")
+
+
+@pytest.mark.parametrize(
+    "prior_name",
+    ("k_team", "k_competition", "k_home_competition", "k_home_global"),
+)
+def test_candidate_rejects_zero_precision_that_would_leave_parameters_unidentified(
+    known_strength_results, prior_name
+):
+    from app.models.hierarchical_poisson_v2 import fit_hierarchical_poisson_v2
+
+    results, *_ = known_strength_results
+    prior_strengths = {
+        "k_team": 2.0,
+        "k_competition": 2.0,
+        "k_home_competition": 2.0,
+        "k_home_global": 10.0,
+    }
+    prior_strengths[prior_name] = 0.0
+    with pytest.raises(ValueError, match="invalid optimizer configuration"):
+        fit_hierarchical_poisson_v2(
+            results,
+            as_of=datetime(2026, 11, 21, tzinfo=UTC),
+            half_life_days=365.0,
+            **prior_strengths,
+        )
