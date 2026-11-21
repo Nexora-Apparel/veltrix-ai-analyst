@@ -28,6 +28,7 @@ data class FixturePrediction(
     val under25: Double,
     val over35: Double,
     val under35: Double,
+    val researchOnly: Boolean = false,
 )
 
 data class PredictionHistoryEntry(
@@ -81,6 +82,38 @@ object PredictionApi {
         }
     }
 
+    suspend fun fetchResearchUpcoming(): List<FixturePrediction>? = withContext(Dispatchers.IO) {
+        val baseUrl = BuildConfig.API_BASE_URL.trim().trimEnd('/')
+        if (baseUrl.isBlank()) {
+            Log.w(TAG, "API base URL has not been configured")
+            return@withContext null
+        }
+
+        val request = Request.Builder()
+            .url("$baseUrl/v1/research/predictions")
+            .get()
+            .header("Accept", "application/json")
+            .build()
+
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "Research prediction API returned HTTP ${response.code}")
+                    null
+                } else {
+                    val body = response.body?.string()
+                        ?: throw IOException("Research prediction API returned an empty response")
+                    parseResearchPredictions(body)
+                }
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            Log.e(TAG, "Unable to load research predictions", exception)
+            null
+        }
+    }
+
     suspend fun fetchHistory(): List<PredictionHistoryEntry>? = withContext(Dispatchers.IO) {
         val baseUrl = BuildConfig.API_BASE_URL.trim().trimEnd('/')
         if (baseUrl.isBlank()) {
@@ -113,13 +146,31 @@ object PredictionApi {
         }
     }
 
-    internal fun parsePredictions(json: String): List<FixturePrediction> {
+    internal fun parseResearchPredictions(json: String): List<FixturePrediction> {
+        val root = JSONObject(json)
+        require(root.optBoolean("research_only")) { "Research-only flag missing" }
+        require(root.optString("publication_status") == "NOT_PUBLISHED") {
+            "Research forecast must remain unpublished"
+        }
+        require(root.optString("production_promotion") == "LOCKED") {
+            "Research forecast promotion must remain locked"
+        }
+        require(root.optString("value_betting") == "LOCKED") {
+            "Research forecast value betting must remain locked"
+        }
+        return parsePredictions(json, researchOnly = true)
+    }
+
+    internal fun parsePredictions(
+        json: String,
+        researchOnly: Boolean = false,
+    ): List<FixturePrediction> {
         val root = JSONObject(json)
         val items = root.optJSONArray("predictions")
             ?: throw IllegalArgumentException("Missing predictions array")
         return buildList(items.length()) {
             for (index in 0 until items.length()) {
-                add(parsePrediction(items.getJSONObject(index)))
+                add(parsePrediction(items.getJSONObject(index), researchOnly))
             }
         }
     }
@@ -149,7 +200,7 @@ object PredictionApi {
         }
     }
 
-    private fun parsePrediction(item: JSONObject): FixturePrediction {
+    private fun parsePrediction(item: JSONObject, researchOnly: Boolean = false): FixturePrediction {
         val fixture = item.getJSONObject("fixture")
         val markets = item.getJSONObject("markets")
         val oneXTwo = markets.getJSONObject("one_x_two")
@@ -176,6 +227,7 @@ object PredictionApi {
             under25 = over25.getDouble("UNDER"),
             over35 = over35.getDouble("OVER"),
             under35 = over35.getDouble("UNDER"),
+            researchOnly = researchOnly,
         )
     }
 }
