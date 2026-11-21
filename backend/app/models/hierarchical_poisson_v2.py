@@ -101,9 +101,9 @@ def fit_hierarchical_poisson_v2(
     k_competition: float,
     k_home_competition: float,
     k_home_global: float,
-    learning_rate: float = 1.0,
-    max_iterations: int = 4000,
-    tolerance: float = 1e-7,
+    learning_rate: float = 1.5,
+    max_iterations: int = 12000,
+    tolerance: float = 1e-6,
 ) -> HierarchicalPoissonV2Model:
     """Fit the unnormalized likelihood with common pseudo-match prior strengths.
 
