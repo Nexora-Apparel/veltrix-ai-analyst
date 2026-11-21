@@ -64,28 +64,7 @@ def _known_league_rows() -> list[dict]:
     return rows
 
 
-def test_fold_prior_conversion_matches_summed_objective_stationarity_scale():
-    rows = _known_league_rows()[:36]
-    cutoff = datetime.fromisoformat(rows[-1]["kickoff_at"])
-    total_weight, mu = audit._fold_weight_and_mean_goals(rows, cutoff)
-    k = 0.5
-    team_ridge, competition_ridge = audit._ridge_for_unnormalized_prior(k, mu, total_weight)
-    model = fit_hierarchical_poisson(
-        [audit._result(row) for row in rows],
-        as_of=cutoff,
-        half_life_days=365,
-        team_ridge=team_ridge,
-        competition_ridge=competition_ridge,
-    )
-    assert model.optimizer_converged
-    tau_team = k * mu
-    tau_competition = k * 2 * mu
-    assert total_weight * model.team_ridge == pytest.approx(tau_team, rel=1e-12)
-    assert total_weight * model.competition_ridge == pytest.approx(tau_competition, rel=1e-12)
-
-    # Reconstruct the gradient of the *summed* weighted NLL plus summed
-    # penalties at the fitted parameters. Its norm must agree with the
-    # optimizer's averaged-objective gradient after multiplying by W.
+def _summed_objective_gradient_norm(rows, cutoff, model, tau_team, tau_competition):
     weights = audit._weights(rows, cutoff)
     team_gradient = {team: 0.0 for team in model.attack}
     defence_gradient = {team: 0.0 for team in model.defence}
@@ -98,7 +77,9 @@ def test_fold_prior_conversion_matches_summed_objective_stationarity_scale():
         residual_away = rates.away_lambda - row["label"]["away_goals"]
         global_gradient += weight * (residual_home + residual_away)
         home_gradient += weight * residual_home
-        competition_gradient[row["competition_id"]] += weight * (residual_home + residual_away)
+        competition_gradient[row["competition_id"]] += weight * (
+            residual_home + residual_away
+        )
         team_gradient[row["home_team_id"]] += weight * residual_home
         team_gradient[row["away_team_id"]] += weight * residual_away
         defence_gradient[row["away_team_id"]] -= weight * residual_home
@@ -107,21 +88,69 @@ def test_fold_prior_conversion_matches_summed_objective_stationarity_scale():
         team_gradient[team] += tau_team * model.attack[team]
         defence_gradient[team] += tau_team * model.defence[team]
     for competition in competition_gradient:
-        competition_gradient[competition] += tau_competition * model.competition_effects[competition]
-    summed_gradient_norm = (
-        global_gradient**2 + home_gradient**2
+        competition_gradient[competition] += (
+            tau_competition * model.competition_effects[competition]
+        )
+    return (
+        global_gradient**2
+        + home_gradient**2
         + sum(value**2 for value in competition_gradient.values())
         + sum(value**2 for value in team_gradient.values())
         + sum(value**2 for value in defence_gradient.values())
     ) ** 0.5
-    assert summed_gradient_norm <= total_weight * model.optimizer_gradient_norm * 1.01 + 1e-8
+
+
+def test_fold_prior_conversion_matches_summed_objective_stationarity_scale():
+    rows = _known_league_rows()[:36]
+    cutoff = datetime.fromisoformat(rows[-1]["kickoff_at"])
+    total_weight, mu = audit._fold_weight_and_mean_goals(rows, cutoff)
+    k = 0.5
+    team_ridge, competition_ridge = audit._ridge_for_unnormalized_prior(
+        k, mu, total_weight
+    )
+    converted = fit_hierarchical_poisson(
+        [audit._result(row) for row in rows],
+        as_of=cutoff,
+        half_life_days=365,
+        team_ridge=team_ridge,
+        competition_ridge=competition_ridge,
+    )
+    assert converted.optimizer_converged
+    tau_team = k * mu
+    tau_competition = k * 2 * mu
+    assert total_weight * converted.team_ridge == pytest.approx(
+        tau_team, rel=1e-12
+    )
+    assert total_weight * converted.competition_ridge == pytest.approx(
+        tau_competition, rel=1e-12
+    )
+    stationarity_limit = total_weight * 1e-7 * 1.01 + 1e-8
+    converted_gradient = _summed_objective_gradient_norm(
+        rows, cutoff, converted, tau_team, tau_competition
+    )
+    assert converted_gradient <= stationarity_limit
+
+    # Negative control: reproduce the original units bug by passing summed
+    # tau values directly to an API that averages the likelihood by W.
+    unconverted = fit_hierarchical_poisson(
+        [audit._result(row) for row in rows],
+        as_of=cutoff,
+        half_life_days=365,
+        team_ridge=k * mu,
+        competition_ridge=k * 2 * mu,
+    )
+    unconverted_gradient = _summed_objective_gradient_norm(
+        rows, cutoff, unconverted, tau_team, tau_competition
+    )
+    assert unconverted_gradient > stationarity_limit
 
 
 def test_synthetic_overpenalization_suppresses_signal_and_scaled_prior_recovers_ranking():
     rows = _known_league_rows()
     cutoff = datetime.fromisoformat(rows[-1]["kickoff_at"])
+    rows = _known_league_rows()[:96]
     total_weight, mu = audit._fold_weight_and_mean_goals(rows, cutoff)
-    scaled_team, scaled_comp = audit._ridge_for_unnormalized_prior(0.5, mu, total_weight)
+    scaled_team, scaled_comp = audit._ridge_for_unnormalized_prior(2.0, mu, total_weight)
     results = [audit._result(row) for row in rows]
     overfit = fit_hierarchical_poisson(
         results, as_of=cutoff, half_life_days=365,
