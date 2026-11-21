@@ -123,3 +123,27 @@ def test_reproduction_rejects_non_training_only_labels():
 
     with pytest.raises(ValueError, match="TRAINING_POOL_FINGERPRINT_MISMATCH"):
         reproduce_shadow_fit(dataset, forecast)
+
+
+def test_objective_scaling_reports_equivalent_summed_likelihood_penalty():
+    from app.research.shadow_model_audit import objective_scaling_diagnostics
+
+    cutoff = datetime(2026, 1, 2, tzinfo=UTC)
+    rows = [
+        {"kickoff_at": datetime(2026, 1, 1, tzinfo=UTC).isoformat()},
+        {"kickoff_at": datetime(2026, 1, 2, tzinfo=UTC).isoformat()},
+    ]
+    report = objective_scaling_diagnostics(
+        rows,
+        training_cutoff_at=cutoff,
+        half_life_days=365.0,
+        team_ridge=0.5,
+        competition_ridge=0.5,
+    )
+
+    expected_weight = 1.0 + 2.0 ** (-1.0 / 365.0)
+    assert report["total_recency_weight"] == pytest.approx(expected_weight)
+    assert report["equivalent_team_ridge_in_summed_objective"] == pytest.approx(
+        0.5 * expected_weight
+    )
+    assert report["home_advantage_ridge"] == 0.0
