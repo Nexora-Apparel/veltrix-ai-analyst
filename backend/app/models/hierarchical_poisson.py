@@ -507,7 +507,7 @@ def _newton_minimize(
         else:
             stable_steps = 0
         if stable_steps >= 2:
-            return vector, True, iteration, gradient_norm
+            return vector, True, iteration, gradient_norm, relative_change
 
     raise ArithmeticError(
         f"damped Newton did not converge after {max_iterations} iterations "
