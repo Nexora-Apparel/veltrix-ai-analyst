@@ -174,9 +174,10 @@ def build_stage7_shadow_predictions(
         "predictions": [],
         "abstentions": [],
         "concentration_monitor": {
-            "fitted_fixture_count": len(fitted_predictions),
-            "retained_fixture_count": len(predictions),
-            "abstained_fixture_count": len(abstentions),},
+            "fitted_fixture_count": 0,
+            "retained_fixture_count": 0,
+            "abstained_fixture_count": 0,
+        },
         "provider_calls": 0,
         "database_writes": 0,
         "odds_used": False,
