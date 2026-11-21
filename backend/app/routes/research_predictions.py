@@ -24,6 +24,7 @@ _RESEARCH_QUERY = """
           AND report->>'production_promotion' = 'LOCKED'
           AND report->>'value_betting' = 'LOCKED'
           AND report->>'release_eligible' = 'false'
+          AND generated_at > NOW() - INTERVAL '6 hours'
         ORDER BY generated_at DESC, created_at DESC
         LIMIT 1
     )
