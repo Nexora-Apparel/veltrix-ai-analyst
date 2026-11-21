@@ -17,6 +17,13 @@ Sort unique kickoff dates. For each fold, use the first 60%, 70%, 80%, or 90% of
 ## Metrics and uncertainty
 On identical test fixtures, report 1X2 log loss and multiclass Brier. For archived-minus-reference log loss, report paired date-block bootstrap 95% intervals (2,000 replicates; seed 20261121). Report home-advantage climatology on the same folds. Report test fixtures with either side below five training matches. Any failed convergence remains visible and invalidates that fit's metric comparison; it is not dropped.
 
+## Slimmed report outputs (Commit B)
+- On each identical chronological fold, report a training-only, recency-weighted HOME/DRAW/AWAY climatology and its 1X2 log-loss and multiclass Brier on that fold's test fixtures. This is the home-advantage-aware categorical baseline; no test outcomes enter its probabilities.
+- For archived-versus-reference team effects, centre attack and defence effects by each team's training-match-count-weighted mean before forming ratios. Summarize absolute centred archived/reference ratios with ordinary and match-count-weighted median, Q1 and Q3 (IQR), and disclose omitted near-zero reference effects and sign reversals. These are descriptive ratios, not identified raw-effect comparisons.
+- Report expected home goals, expected away goals and P(home) dispersion (mean, SD, minimum, maximum) on the fixed archived forecast fixtures, plus the already specified test-fold and training-matchup dispersion. Explicitly report expected, matched and missing archived-fixture counts.
+- Preserve paired archived-minus-reference log-loss differences with the pre-registered date-block bootstrap and per-fit convergence/iteration/gradient diagnostics. A failed or non-converged fit remains visible and is excluded from comparative metrics, never silently dropped.
+- Commit B adds report calculations and synthetic unit tests only. It does not load, fit, or evaluate the 996-row artifact.
+
 ## Reporting
 Report convergence, iterations, gradient norm per fit/fold; centered/identified effects; dispersion of expected home goals, expected away goals and P(home) on archived 25 and training matchups; team effect ratio medians/IQRs weighted and unweighted by match count. The sum(w*lambda) diagnostic is first-order only; joint attack/defence estimation means it is not a standalone shrinkage estimate. No team display names, fixture scores or raw provider fields in JSON.
 
