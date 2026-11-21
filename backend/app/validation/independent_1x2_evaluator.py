@@ -394,7 +394,7 @@ def evaluate_primary_1x2(
     climatology_losses = []
     team_losses = []
     for row in rows:
-        date_key = row.kickoff_at.astimezone(timezone.utc).date().isoformat()
+        date_key = row.kickoff_at.astimezone(UTC).date().isoformat()
         candidate_loss = _log_loss(row.candidate_probabilities, row.outcome)
         climatology_loss = _log_loss(row.climatology_probabilities, row.outcome)
         team_loss = _log_loss(row.team_baseline_probabilities, row.outcome)
