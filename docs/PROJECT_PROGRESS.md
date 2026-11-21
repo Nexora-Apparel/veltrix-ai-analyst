@@ -13,10 +13,10 @@
 - [x] Commit A: exact head `c646911b112cca5329209e038c56f11b40e65091`; CI [44899500969](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44899500969), 501 tests passed, Ruff and Android passed.
 - [x] Commit B: same-fold climatology, paired bootstrap, centered team-ratio summaries and archived-fixture dispersion; CI [44900222526](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44900222526), 505 passed, Ruff and Android passed.
 - [x] Solver v2.0: pure-Python L-BFGS/Armijo on the same objective; 1,000-fixture/130-team/7-competition synthetic convergence tests for k=0.5 and 2.0 plus small-case equivalence to existing gradient descent. No 996-row data computation.
-- [x] Workflow C: manual-only, required merge-commit SHA input, exact artifact ID/name/hash/file checks, parsed once, allowlist sanitizer and leakage tests, pinned install/action SHAs, import isolation, 30-minute timeout, elapsed log and 30-day sanitized-only artifact retention. actionlint v1.7.7 passed.
-- [x] Exact code head `4b0828cf1ddbefd851d06eaa230fc1a1f4d51465`; CI [44901481975](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44901481975): **510 passed**, Ruff clean, actionlint clean, Android debug build passed.
-- [ ] PR #142 remains draft pending final ledger/progress commit and its exact-head CI run. No merge or workflow dispatch. Owner must approve merge and manually press Run workflow after PR is marked ready.
-- Quarantine and production/value-betting locks unchanged. No DB/production/provider/Odds API/Android/Telegram changes. Vercel preview quota remains protected.
+- [x] Workflow C: manual-only, required 40-lowercase-hex audit SHA (any merge method accepted), ancestor-of-main and implementation-file checks, exact artifact ID/name/expiry/content-fingerprint/file checks, allowlist sanitizer and leakage tests, pinned actions, import isolation, 30-minute timeout, elapsed log and 30-day sanitized-only artifact retention. ZIP byte hashes are informational only.
+- [x] Final PR head `469097b58c1fce2d58b6684bbb1b504b512fcfba`; exact-head CI [44902828715](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44902828715): **510 passed, 1 warning**, Ruff clean, actionlint clean, Android debug build and APK upload passed.
+- [x] PR [#142](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/142) merged by squash after exact-head CI and full-diff review. Main commit: `4ee0cbfdcb98149524c0a7a369fc0400126b4c6f`. No audit workflow dispatch.
+- Quarantine and production/value-betting locks unchanged. No DB/production/provider/Odds API/Telegram changes. Vercel preview deployment is Ready; prior quota failures were not retried. No 996-row audit computation or workflow dispatch.
 - Detailed evidence: [2026-11-21 PR #142 ledger](ledger/2026-11-21-pr142-commit-a-b.md).
 
 
