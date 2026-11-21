@@ -26,9 +26,9 @@
 For the unpenalized comparison, the independent calculation used the same objective with a 1e-9 ridge as a numerical zero-penalty limit. Each per-team ratio is signed fitted effect divided by its near-unpenalized reference effect. Both signed and absolute summaries are recorded because a small number of estimates change sign.
 
 - Median signed attack-effect ratio: 0.0300654 (3.01%).
-- Median absolute attack-effect ratio: 0.0311043 (3.11% retained).
+- Median absolute attack-effect ratio: 0.0311042532 (3.11% retained).
 - Median signed defence-effect ratio: 0.0327775 (3.28%).
-- Median absolute defence-effect ratio: 0.0339394 (3.39% retained).
+- Median absolute defence-effect ratio: 0.0339393048 (3.39% retained).
 - Attack sign agreement with the near-unpenalized reference: 90.44%; defence sign agreement: 91.18%.
 - Attack absolute-ratio P10–P90: 1.33%–8.86%; defence absolute-ratio P10–P90: 1.66%–9.43%.
 - Median attack prior / data information: 30.5764× (P10–P90: 11.43×–34.43×).
@@ -50,7 +50,8 @@ Interpretation: the previous rough estimate that only a few percent of team sign
   - Android debug build: success; assemble and artifact upload completed.
 - Earlier CI run #44891489266 on the previous PR head also passed both jobs; latest head run #44892716222 is the controlling verification.
 - Post-merge main read-back confirmed `backend/app/research/effective_shrinkage_audit.py` exists on main.
-- The new audit function emits per-team fitted attack/defence effects, near-unpenalized references, signed effect ratios, data information and prior/information ratios. Its synthetic regression test passed in CI. The actual archived-artifact CLI has not yet been run by GitHub Actions; the numerical headline figures above came from an independent offline refit, not from claiming the new CLI produced a committed report.
+- The new audit function emits all 136 per-team fitted attack/defence effects, near-unpenalized references, signed effect ratios, data information and prior/information ratios. Its synthetic regression test passed in CI.
+- The actual repository CLI was executed successfully against the immutable archived artifacts in workflow run #44893869016. It verified `FIT_REPRODUCTION_VERIFIED`, 996 training labels, 136 teams, seven competitions, and uploaded the full 136-row JSON report as artifact ID `14703192024` (SHA-256 `4997f0b6a93c2fc02c1a164c2daff33e2dd532b8b50b57a35a41ec609e64fab0`). The CLI results match the independent numerical refit.
 - No production deployment was triggered by this audit PR. Latest Vercel production deployment remained READY at `dpl_4qjTXEBsVXHxJ13Ap7fjX7Zmk8b4`, commit `95445c9b7aaba045f15a97afe443211da341a2fe`.
 
 ## Production API read-back
@@ -114,7 +115,7 @@ Reviewed the provider's current public documentation and terms on 2026-11-21:
 
 ## Next steps
 
-1. Execute the new per-team audit CLI against the archived 996-label dataset and forecast artifact; retain the full per-team report and verify its output against the independent numerical reproduction.
+1. [x] Execute the per-team audit CLI against the archived 996-label dataset and forecast artifact; retain the full report and verify it against the independent numerical reproduction. Full report: [workflow run #44893869016](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893869016), artifact ID 14703192024.
 2. Implement the complete regularization contract and synthetic recovery/shrinkage tests, explicitly proving failure for the current configuration and the excessive-prior negative control.
 3. Qualify season coverage under Community's 12-month cap before designing a backfill; no purchase or upgrade. Build the 28-case identity resolution and promotion/relegation mapping gate before joining seasons.
 4. Build the independent chronological evaluator, MDE/power calculation, single-primary-metric protocol, baselines and immutable run ledger.
@@ -123,7 +124,7 @@ Reviewed the provider's current public documentation and terms on 2026-11-21:
 
 ## Current blockers
 
-- The archived-artifact CLI output from the new repository implementation has not yet been run against the actual production artifacts.
+- [x] Archived-artifact CLI output from the repository implementation was run against the immutable production artifacts and verified.
 - The recovery/shrinkage admission tests and absurd-prior negative control have not yet been implemented.
 - 28 identity/reconciliation cases remain unresolved.
 - Community history depth is limited to 12 months; two complete prior seasons are not available under the current plan.
