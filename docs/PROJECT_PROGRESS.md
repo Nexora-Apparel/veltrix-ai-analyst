@@ -712,3 +712,12 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [x] Current published predictions table has zero rows. Current research-shadow run is preserved as QUARANTINED when registry backfill is designed; never mark it ADMITTED based on its prior SHADOW_FORECASTS_READY status.
 - [ ] Compute and independently verify the current shadow config SHA from the immutable archived report/config before any migration backfill. Never invent the hash.
 - [ ] Build migrations and disposable-Neon-branch tests first. No production migration, role creation, Vercel secret rotation, or database write has been performed.
+
+
+## Verification refresh — PR #139 latest head (2026-11-21)
+
+- [x] Latest PR #139 head `edb41a13cbaeedd11eb143c311de5e12407b0da2`; six commits ahead of main, zero behind.
+- [x] Latest CI run [#44893501873](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893501873) passed both jobs: 504 backend tests, Ruff, Android debug build and APK upload.
+- [x] The PR remains open and unmerged. Vercel reports `build-rate-limit`; no preview deployment was found and production deployment remains unchanged.
+- [ ] The archived per-team CLI workflow has been added to the review branch, but its push-triggered execution has not been independently verified. Do not claim a full 136-team report until its run and artifact are read back.
+- [x] DB admission design is documented in [MODEL_ADMISSION_DB_CONTRACT.md](MODEL_ADMISSION_DB_CONTRACT.md); no production migration or write has been applied.
