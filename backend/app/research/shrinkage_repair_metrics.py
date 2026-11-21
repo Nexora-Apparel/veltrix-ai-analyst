@@ -6,7 +6,6 @@ import math
 import random
 from typing import Any
 
-
 OUTCOMES = ("HOME", "DRAW", "AWAY")
 
 
