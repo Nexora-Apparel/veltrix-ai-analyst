@@ -741,3 +741,12 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [x] PR #139 metadata read-back: open, unmerged, mergeable; current head `940ae2f025e1feb1552bdda58cef5f73d028a0d0`. Latest preview deployment `dpl_H5UX1RbMTdMaDFNygvYUKqmZD9Gq` is READY for this branch only. No production deployment.
 - [ ] Latest standard CI run #44893869028 is still pending with no jobs exposed yet; do not merge until backend tests/lint and Android debug build complete on this exact head.
 - **Production remains unchanged:** API research feed MODEL_QUARANTINED/NOT_PUBLISHED/zero forecasts; published feed zero forecasts; Neon tables unchanged. No provider calls, Odds API credits or database writes.
+
+
+## Final production read-back after PR #139 preview (2026-11-21 10:23:43 UTC)
+
+- [x] Production research API: HTTP 200, MODEL_QUARANTINED, NOT_PUBLISHED, zero forecasts, promotion/value locked.
+- [x] Production published API: HTTP 200, zero forecasts.
+- [x] Production Vercel deployment remains READY at `dpl_4qjTXEBsVXHxJ13Ap7fjX7Zmk8b4`, main SHA `95445c9b7aaba045f15a97afe443211da341a2fe`.
+- [x] PR #139 preview `dpl_H5UX1RbMTdMaDFNygvYUKqmZD9Gq` is READY at head `940ae2f025e1feb1552bdda58cef5f73d028a0d0`; preview-only.
+- [ ] Standard CI #44893869028 remains pending with no job details. The 504-test pass on #44893501873 predates the v2 candidate fitter; do not merge until latest-head checks complete.
