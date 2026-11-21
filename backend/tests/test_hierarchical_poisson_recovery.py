@@ -129,3 +129,51 @@ def test_absurdly_large_prior_is_rejected_by_recovery_negative_control(
         return
 
     assert not _recovery_passes(excessive_prior, strong, weak)
+
+
+def test_pseudo_match_candidate_recovers_known_team_strengths(known_strength_results):
+    from app.models.hierarchical_poisson_v2 import fit_hierarchical_poisson_v2
+
+    results, strong, weak, attack_truth, defence_truth = known_strength_results
+    candidate = fit_hierarchical_poisson_v2(
+        results,
+        as_of=datetime(2026, 11, 21, tzinfo=UTC),
+        half_life_days=365.0,
+        k_team=2.0,
+        k_competition=2.0,
+        k_home_competition=2.0,
+        k_home_global=10.0,
+    )
+
+    group_gap = mean(
+        candidate.attack[("synthetic-league", team)]
+        - candidate.defence[("synthetic-league", team)]
+        for team in strong
+    ) - mean(
+        candidate.attack[("synthetic-league", team)]
+        - candidate.defence[("synthetic-league", team)]
+        for team in weak
+    )
+    rates = candidate.predict("team-000", "team-135", "synthetic-league")
+    match_contrast = log(rates.home_lambda / rates.away_lambda)
+    retention = _median_truth_retention(
+        type("ModelView", (), {
+            "attack": {
+                team: candidate.attack[("synthetic-league", team)]
+                for team in candidate.attack_truth_ids
+            }
+        })(),
+        attack_truth,
+        defence_truth,
+    ) if False else median([
+        abs(candidate.attack[("synthetic-league", team)] / attack_truth[team])
+        for team in attack_truth if abs(attack_truth[team]) > 0.05
+    ] + [
+        abs(candidate.defence[("synthetic-league", team)] / defence_truth[team])
+        for team in defence_truth if abs(defence_truth[team]) > 0.05
+    ])
+
+    assert group_gap >= 0.70
+    assert match_contrast >= 0.70
+    assert retention >= 0.50
+    assert candidate.optimizer_converged
