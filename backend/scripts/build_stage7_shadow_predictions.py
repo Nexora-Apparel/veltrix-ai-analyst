@@ -100,7 +100,7 @@ def main() -> int:
     summary = {
         "status": report["status"],
         "model_version": report["model"]["version"],
-        "fixture_count": report.get("forecast_count", 0),
+        "fixtures_considered": report.get("sanitized_summary", {}).get("fixtures_considered", 0),\n        "fitted_fixture_count": report.get("sanitized_summary", {}).get("fitted", 0),\n        "shown_fixture_count": report.get("sanitized_summary", {}).get("shown", 0),\n        "fixture_count": report.get("forecast_count", 0),\n        "p_home_mean": monitor.get("p_home_mean"),\n        "p_home_min": monitor.get("p_home_min"),\n        "p_home_max": monitor.get("p_home_max"),\n        "expected_goals_sd": report.get("sanitized_summary", {}).get("expected_goals_sd"),\n        "p_draw_above_050_share": monitor.get("p_draw_above_050_share"),\n        "any_probability_above_080_share": monitor.get("any_probability_above_080_share"),\n        "monitor_status": "QUARANTINED" if monitor.get("quarantined", False) else "PASS",\n        "extreme_forecasts": report.get("sanitized_summary", {}).get("extremes"),
         "abstention_count": report.get("abstention_count", 0),
         "p_home_sd": monitor.get("p_home_sd"),
         "top_pick_shares": monitor.get("top_pick_shares"),

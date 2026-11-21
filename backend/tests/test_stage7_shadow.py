@@ -129,3 +129,48 @@ def test_inference_workflow_is_manual_only_and_old_schedule_remains_disabled():
     assert "workflow_run:" not in manual
     assert "confirm_research_ledger_write" in manual
     assert "if: false" in existing
+
+def test_research_query_has_two_placeholders_and_model_version_filter():
+    from app.routes import research_predictions
+
+    assert research_predictions._RESEARCH_QUERY.count("%s") == 2
+    assert "WHERE model_version = %s" in research_predictions._RESEARCH_QUERY
+    assert "latest_run.model_version" in research_predictions._RESEARCH_QUERY
+
+
+def test_research_route_passes_model_version_then_now(monkeypatch):
+    from app.routes import research_predictions
+
+    class FakeConnection:
+        def __init__(self):
+            self.params = None
+            self.query = None
+            self.closed = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def execute(self, query, params):
+            self.query, self.params = query, params
+            return self
+
+        def fetchall(self):
+            return []
+
+        def close(self):
+            self.closed = True
+
+    fake = FakeConnection()
+    monkeypatch.setenv("VELTRIX_RESEARCH_SHADOW_DISPLAY_ENABLED", "true")
+    monkeypatch.setattr(research_predictions, "_model_admitted", lambda: True)
+    monkeypatch.setattr(research_predictions, "_database_connection", lambda: fake)
+    response = research_predictions.list_research_predictions()
+    assert fake.query.count("%s") == len(fake.params) == 2
+    assert fake.query.count("%s") == 2
+    assert fake.params[0] == research_predictions.MODEL_VERSION
+    assert fake.params[1].tzinfo is not None
+    assert response["status"] == "NO_RESEARCH_FORECASTS_AVAILABLE"
+    assert fake.closed

@@ -676,3 +676,10 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 5. Keep the PIT timestamp gap open unless authoritative source-publication/availability evidence is found. No kickoff or retrieval timestamp substitution.
 6. Keep Android integration deferred until genuine prediction endpoints exist; keep value betting locked pending separate certification.
 
+
+
+## Stage 7 corrective review delta (2026-11-21)
+
+- Correct route model-version filtering, placeholder/parameter tests, pre-abstention concentration monitor, six-hour freshness fail-fast guard and expanded sanitized summary are being implemented on PR #145. Research-only SHADOW, quarantine, schedule and production/value locks unchanged.
+- Owner sequence: merge after exact-head CI; fresh capture and Stage 6 success; owner dispatch inference within six hours with explicit write confirmation; supervisor reviews sanitized summary; only thereafter owner enables display and redeploys/verifies API and app.
+- Required follow-up within three days of display: separate sanitized fixture-level dev-fold diagnostic with fold, retained flag, probabilities and outcome only, no names.

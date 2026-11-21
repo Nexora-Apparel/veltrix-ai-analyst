@@ -173,7 +173,7 @@ def build_stage7_shadow_predictions(
         "abstention_count": 0,
         "predictions": [],
         "abstentions": [],
-        "concentration_monitor": {},
+        "concentration_monitor": {\n            "fitted_fixture_count": len(fitted_predictions),\n            "retained_fixture_count": len(predictions),\n            "abstained_fixture_count": len(abstentions),},
         "provider_calls": 0,
         "database_writes": 0,
         "odds_used": False,
@@ -219,21 +219,13 @@ def build_stage7_shadow_predictions(
         return base
 
     training_sha = _training_data_sha256(training)
-    predictions, abstentions = [], []
+    fitted_predictions, predictions, abstentions = [], [], []
     for row in targets:
         rates = model.predict(
             row.home_team_id, row.away_team_id, row.competition_id
         )
-        if insufficient_team_history(rates.home_team_history, rates.away_team_history):
-            abstentions.append({
-                "canonical_fixture_id": str(row.canonical_fixture_id),
-                "reason": "ABSTAIN_INSUFFICIENT_TEAM_HISTORY",
-                "home_team_matches": rates.home_team_history,
-                "away_team_matches": rates.away_team_history,
-            })
-            continue
         markets = _markets(rates.home_lambda, rates.away_lambda)
-        predictions.append({
+        fitted = {
             "canonical_fixture_id": str(row.canonical_fixture_id),
             "canonical_competition_id": str(row.canonical_competition_id),
             "home_canonical_team_id": str(row.home_team_id),
@@ -253,9 +245,54 @@ def build_stage7_shadow_predictions(
             },
             "publication_status": "NOT_PUBLISHED",
             "value_betting_status": "LOCKED",
-        })
-    monitor = _summary(predictions)
+        }
+        fitted_predictions.append(fitted)
+        if insufficient_team_history(rates.home_team_history, rates.away_team_history):
+            abstentions.append({
+                "canonical_fixture_id": str(row.canonical_fixture_id),
+                "reason": "ABSTAIN_INSUFFICIENT_TEAM_HISTORY",
+                "home_team_matches": rates.home_team_history,
+                "away_team_matches": rates.away_team_history,
+            })
+        else:
+            predictions.append(fitted)
+    # Safety monitor applies to all fitted fixtures, including subsequently abstained ones.
+    monitor = _summary(fitted_predictions)
     violations = concentration_violations(monitor)
+    shown = predictions if not violations else []
+    expected_total = [
+        p["expected_home_goals"] + p["expected_away_goals"]
+        for p in fitted_predictions
+    ]
+    if expected_total:
+        mean_total = sum(expected_total) / len(expected_total)
+        expected_goals_sd = math.sqrt(
+            sum((value - mean_total) ** 2 for value in expected_total) / len(expected_total)
+        )
+    else:
+        expected_goals_sd = 0.0
+    extreme = {
+        "highest_p_home": max(fitted_predictions, key=lambda p:p["markets"]["1X2"]["HOME"], default=None),
+        "highest_p_away": max(fitted_predictions, key=lambda p:p["markets"]["1X2"]["AWAY"], default=None),
+        "highest_p_draw": max(fitted_predictions, key=lambda p:p["markets"]["1X2"]["DRAW"], default=None),
+    }
+    base["sanitized_summary"] = {
+        "fixtures_considered": len(targets),
+        "abstained": len(abstentions),
+        "fitted": len(fitted_predictions),
+        "shown": len(shown),
+        "p_home_mean": monitor.get("p_home_mean"),
+        "p_home_sd": monitor.get("p_home_sd"),
+        "p_home_min": monitor.get("p_home_min"),
+        "p_home_max": monitor.get("p_home_max"),
+        "expected_goals_sd": expected_goals_sd,
+        "top_pick_shares": monitor.get("top_pick_shares"),
+        "p_draw_above_050_share": monitor.get("p_draw_above_050_share"),
+        "any_probability_above_080_share": monitor.get("any_probability_above_080_share"),
+        "monitor_status": "QUARANTINED" if violations else "PASS",
+        "five_samples": shown[:5],
+        "extremes": extreme,
+    }
     base.update({
         "status": "SHADOW_FORECASTS_READY" if predictions and not violations
                   else "NO_VALID_SHADOW_FORECASTS",
@@ -274,9 +311,9 @@ def build_stage7_shadow_predictions(
             "optimizer_gradient_norm": model.optimizer_gradient_norm,
             "optimizer_relative_objective_change": model.optimizer_relative_objective_change,
         },
-        "predictions": predictions if not violations else [],
+        "predictions": shown,
         "abstentions": abstentions,
-        "forecast_count": len(predictions) if not violations else 0,
+        "forecast_count": len(shown),
         "abstention_count": len(abstentions),
         "concentration_monitor": {
             **monitor,

@@ -57,3 +57,13 @@ Also report, without gating, the share with P(draw)>0.50 and the share with any 
 3. Before app visibility, inspect the uploaded sanitized run summary and five sample forecasts. Only then may the owner separately set `VELTRIX_RESEARCH_SHADOW_DISPLAY_ENABLED=true` in the deployment environment.
 4. Do not enable schedules, change production/value locks, or publish production forecasts under this admission.
 
+
+
+## Corrective review delta — 2026-11-21
+
+- Corrected research route latest-run selection must be restricted by `model_version`; the query now has two placeholders and the route parameters are ordered (model version, current UTC time).
+- Slate concentration monitoring must use all fitted fixtures before abstention. Display/API forecast rows remain only retained fixtures; both fitted and retained counts are reported.
+- Inference is valid only within six hours of the latest Stage 6 snapshot. If none qualify, the builder terminates with `NO_FRESH_UPCOMING_SNAPSHOTS` before writing report files or invoking ledger persistence.
+- Sanitized first-run report includes considered, abstained, fitted and shown counts; P(home) mean/SD/min/max; expected-goals SD; top-pick shares; draw>0.50 and any probability>0.80 shares; monitor state; five samples and the highest home/away/draw forecasts.
+- Owner flow (not executed): merge PR #145 after green exact-head CI; obtain a fresh capture and successful Stage 6; dispatch inference within six hours with `confirm_research_ledger_write=true` (approve environment deployment if required); paste the sanitized summary for supervisor review; only then enable `VELTRIX_RESEARCH_SHADOW_DISPLAY_ENABLED=true` and redeploy, then verify API read-back and app. Production and value betting remain locked.
+- Follow-up within three days of research display: separate sanitized fixture-level dev-fold diagnostic (fold, retained flag, probabilities, outcome only; no names). It requires a separate owner-dispatched evaluation run and is not a merge/display gate under the revised supervisor decision.
