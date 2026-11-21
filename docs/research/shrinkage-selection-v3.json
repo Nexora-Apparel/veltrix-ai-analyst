@@ -7,17 +7,18 @@
   "archived_equivalent_reference": {
     "definition": "k_team_equivalent = archived_team_ridge_averaged_objective * total_recency_weight / weighted_mean_goals_per_team_match",
     "archived_team_ridge_averaged_objective": 0.5,
-    "fold_values": {
-      "fold_1": 128.3802704829587,
-      "fold_2": 173.29424410186596,
-      "fold_3": 206.5352382546307,
-      "fold_4": 269.2584048267363
-    },
+    "fold_values": {"fold_1": 128.3802704829587, "fold_2": 173.29424410186596, "fold_3": 206.5352382546307, "fold_4": 269.2584048267363},
     "note": "Fold 4 value is diagnostic only; archived-equivalent k values are reference points, not selected candidates."
   },
   "blend_weight_grid": [0.25, 0.5, 0.75, 1.0],
   "blend_definition": "p = w * p_model + (1-w) * p_climatology",
   "blend_selection_scope": "chronological_development_folds_1_to_3_only",
+  "selection_rule": {
+    "primary_metric": "arithmetic_mean_of_fold_mean_1X2_log_loss_over_development_folds_1_to_3_equal_fold_weight",
+    "secondary_metric": "arithmetic_mean_of_fold_mean_multiclass_brier_over_development_folds_1_to_3_equal_fold_weight",
+    "tie_break_order": ["larger_k", "longer_half_life_days", "larger_blend_weight"],
+    "incomplete_or_nonconverged_candidate_policy": "EXCLUDE_CANDIDATE_AND_REPORT_FIT_FAILURE"
+  },
   "convergence": {
     "solver": "damped_newton_analytic_hessian_backtracking_line_search",
     "gradient_norm_l2_max": 1e-7,
