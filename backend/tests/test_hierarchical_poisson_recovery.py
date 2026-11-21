@@ -138,11 +138,11 @@ def abundant_strength_results():
     strong = {f"team-{index:03d}" for index in range(3)}
     weak = {f"team-{index:03d}" for index in range(13, 16)}
     attack_truth = {
-        f"team-{index:03d}": (0.45 if index < 3 else -0.45 if index >= 13 else 0.0)
+        f"team-{index:03d}": (0.80 if index < 3 else -0.80 if index >= 13 else 0.0)
         for index in range(team_count)
     }
     defence_truth = {
-        f"team-{index:03d}": (-0.25 if index < 3 else 0.25 if index >= 13 else 0.0)
+        f"team-{index:03d}": (-0.40 if index < 3 else 0.40 if index >= 13 else 0.0)
         for index in range(team_count)
     }
     base = datetime(2025, 11, 22, tzinfo=UTC)
