@@ -44,3 +44,10 @@ def test_research_mapper_preserves_markets_and_stable_nonpublication_identity() 
     assert first["markets"]["over_under_1_5"]["OVER"] == 0.7
     assert first["expected_home_goals"] == 1.4
     assert first["prediction_id"]
+
+
+def test_research_api_keeps_daily_report_available_through_next_matchday() -> None:
+    from app.routes.research_predictions import _RESEARCH_QUERY
+
+    assert "INTERVAL '36 hours'" in _RESEARCH_QUERY
+    assert "INTERVAL '6 hours'" not in _RESEARCH_QUERY
