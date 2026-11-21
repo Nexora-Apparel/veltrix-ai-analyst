@@ -185,3 +185,30 @@
 - No Android API change or UI redesign is justified before tomorrow's evidence exists. Do not route research-only forecasts into the published endpoint to create a demo.
 - Tomorrow's operator action is only to inspect completed GitHub Actions runs/artifacts; no manual upload or data entry is required from the user.
 - No provider calls, Odds API usage, Vercel deployment, or production DB writes were performed during this preflight.
+
+
+## 2026-11-21 06:26 WAT — scheduled capture verification
+
+### Live repository state
+- Rechecked the live default branch: `main` is at `13bcef1d0135f7d45cfc04d13bd63f34c9cb40d3` (`docs(ledger): record launch pipeline preflight`).
+- Open PR inventory still contains PR #74 only; it remains open and is not part of today's capture execution.
+- The capture workflow on current main remains configured with cron `0 3 * * *` (04:00 WAT), plus manual dispatch. It targets yesterday's settlements and a rolling seven-day forward fixture window, with request budget 4.
+- The Stage 6 workflow remains gated on successful completion of the capture workflow. The shadow workflow remains gated on successful Stage 6 completion (and has its own 06:00 WAT schedule).
+
+### 21 November capture status
+- As of 06:26 WAT, the GitHub Actions scheduled-run inventory contains no 21 November run for the prospective 5Dollar capture workflow.
+- The newest capture run available is [44725750217](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44725750217), created 2026-11-20T11:12:59Z, event `schedule`, head SHA `6b6c045a50572cf22f12d6ca95038fca81d91b36`, conclusion `failure`. This run is not evidence of a 21 November capture and does not run from today's current main SHA.
+- Its job log reports all seven competition scopes failed. Brazil Serie A, Brazil Serie B, England Premier League, Germany Bundesliga I, Italy Serie A and Spain La Liga reported `FIXTURE_SIGHTING_COUNT_MISMATCH` and `IMPORT_COUNTER_RECONCILIATION_FAILED`; Brazil Serie B additionally reported `NO_FIXTURE_DATA_IMPORTED`. France Ligue 1 failed separately with `PROVIDER_FIXTURE_IDENTITY_CONFLICT`.
+- The prior audit for this run recorded 13 provider requests and 58 records observed. The log shows partial ingestion counters for some scopes; therefore this must not be described as a zero-write run. No additional provider request was made during this verification.
+- Stage 6 run [44727606590](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44727606590) completed with its materialization job skipped. The capture and Stage 6 runs each have zero uploaded artifacts.
+
+### Decision / blockers
+- No successful 21 November capture, fresh Stage 6 dataset, or shadow forecast artifact is verified. No Android live-prediction demonstration can be claimed from this evidence.
+- Do not manually rerun the failed 20 November capture: it already consumed provider requests and was executed on an earlier commit. Do not spend Odds API credits; no Odds API calls were made.
+- The connected GitHub action set exposes workflow run reads and logs but no workflow-dispatch action. A manual dispatch could not be initiated from this session. If the 21 November schedule remains absent, dispatch the existing capture workflow from GitHub Actions UI only after confirming the corrected current-main implementation and checking the request budget.
+- Next engineering action: inspect the current-main capture reconciliation implementation against the failed run's exact failure counters, verify whether the fix is present on current main, and add a focused regression test before any further provider execution. Preserve France Ligue 1 exclusion until its identity conflict is resolved.
+- Publication, production promotion and value betting remain LOCKED. No code changes, production DB writes, deployments, provider requests or Odds API usage occurred during this 06:26 WAT verification.
+
+### Evidence classification
+- **Verified:** current main SHA; current workflow configuration; absence of a 21 November scheduled capture in the returned Actions inventory; 20 November capture run status, head SHA and job logs; seven failed scopes and their logged error classes; Stage 6 skipped status; zero artifacts for those two runs.
+- **Not verified:** whether GitHub will deliver a delayed scheduled run later on 21 November; whether the current-main reconciliation code fully resolves the observed mismatch; any 21 November snapshot or shadow forecast.
