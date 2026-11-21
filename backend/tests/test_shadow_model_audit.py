@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from app.models.hierarchical_poisson import HierarchicalGoalResult, fit_hierarchical_poisson
