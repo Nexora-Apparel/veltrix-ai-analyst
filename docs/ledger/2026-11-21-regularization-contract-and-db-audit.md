@@ -167,3 +167,31 @@ Read-only production DB snapshot:
 - Model team keys remain competition-scoped. Do not join teams across seasons by display name. Newly promoted/unseen competition-scoped teams abstain unless a separate pre-registered prior and verified identity path are admitted.
 
 No DB rows were changed by these queries.
+
+
+## Candidate fitter, abstention and latest CI (2026-11-21)
+
+PR #139 branch `research/regularization-contract-tests` now contains 16 commits ahead of main, zero behind. Latest code head: `d58d993645f4a9edf25f0a4c4bfc092ef8be9586`.
+
+- Added research-only `backend/app/models/hierarchical_poisson_v2.py`, using the unnormalized weighted Poisson NLL and common pseudo-match prior scales. The candidate includes global home advantage with a prior and per-competition deviations shrunk toward it.
+- Candidate prediction now raises `TEAM_HISTORY_INSUFFICIENT` if either competition-scoped team has no history. It does not silently forecast a newly promoted/unseen team from global context.
+- Synthetic tests retain explicit rejection assertions for the old 0.5/0.5/365 model and the excessive-prior negative control, and test recovery/shrinkage for the new candidate plus abstention for an unseen team.
+- The first candidate CI attempt #44893869028 failed: 504 passed, 1 candidate recovery test failed due optimizer line-search non-convergence. The second attempt #44894997224 also failed: 505 collected, optimizer reached 4,000 iterations with gradient norm 2.51062e-5. These failures were recorded, not suppressed.
+- Optimizer convergence was then improved with Fisher-diagonal parameter scaling, a 1.5 learning rate, a 12,000-iteration ceiling, 1e-6 gradient tolerance and diagnostics for stalled line search.
+- Latest controlling CI #44895139262 on exact head `d58d993645f4a9edf25f0a4c4bfc092ef8be9586` succeeded:
+  - Backend tests and lint: 506 tests passed in 70.42s; Ruff all checks passed.
+  - Android debug build: success; APK assembled and uploaded.
+- Archived effective-shrinkage audit reran successfully as workflow #44895139250; report artifact #14703656111 (artifact SHA-256 `c93d37c1e1e961a5f0e1d4bbc72c34ba200c518197c4c21182989ef0f64dc990`).
+- Vercel preview deployment `dpl_2xkxXzqYpq89BeTKiPrYRhBLsrrD` is READY for exact head `d58d993...`; this is a preview deployment, not production.
+- Preview API read-back: research endpoint HTTP 200, `MODEL_QUARANTINED`, zero forecasts, locks intact. Preview published endpoint returned HTTP 503 `PREDICTIONS_UNAVAILABLE`; no runtime logs were available for that request. This preview-only 503 is unresolved and must be diagnosed before treating the preview API as healthy. It did not affect production.
+- Production API read-back at 10:38:26 UTC: research endpoint HTTP 200 `MODEL_QUARANTINED` / `NOT_PUBLISHED` / zero predictions; published endpoint HTTP 200 / zero predictions.
+- Production DB read-back remains `predictions=0`, `research_shadow_forecast_runs=1`. No database writes or migrations were performed.
+- PR #139 remains open and unmerged. No production deployment or model admission occurred.
+
+## Next work
+
+1. Diagnose the preview-only published endpoint 503 (deployment/env/runtime configuration) without changing production.
+2. Review candidate fitter for mathematical correctness and extend sparse-team/home-effect/parameter-identifiability tests. Synthetic CI success is necessary but not predictive admission.
+3. Implement the independent evaluator module as a separate scoring-only package; the preregistration draft is in `docs/INDEPENDENT_1X2_EVALUATOR_PREREGISTRATION_DRAFT.md`.
+4. Draft numeric thresholds and MDE/power plan for explicit user approval. No holdout access before approval and protocol hash freeze.
+5. Build database-enforced SHADOW/PUBLISHED admission and evaluation-run ledger on a disposable Neon branch. Do not apply production migrations.
