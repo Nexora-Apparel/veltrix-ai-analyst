@@ -31,6 +31,11 @@ data class FixturePrediction(
     val researchOnly: Boolean = false,
 )
 
+data class PredictionFeedResult(
+    val predictions: List<FixturePrediction>?,
+    val error: String?,
+)
+
 data class PredictionHistoryEntry(
     val prediction: FixturePrediction,
     val generatedAt: String,
@@ -82,35 +87,41 @@ object PredictionApi {
         }
     }
 
-    suspend fun fetchResearchUpcoming(): List<FixturePrediction>? = withContext(Dispatchers.IO) {
+    suspend fun fetchResearchUpcoming(): PredictionFeedResult = withContext(Dispatchers.IO) {
         val baseUrl = BuildConfig.API_BASE_URL.trim().trimEnd('/')
         if (baseUrl.isBlank()) {
-            Log.w(TAG, "API base URL has not been configured")
-            return@withContext null
+            val message = "API base URL is not configured"
+            Log.w(TAG, message)
+            return@withContext PredictionFeedResult(null, message)
         }
 
-        val request = Request.Builder()
-            .url("$baseUrl/v1/research/predictions")
-            .get()
-            .header("Accept", "application/json")
-            .build()
-
         try {
+            val request = Request.Builder()
+                .url("$baseUrl/v1/research/predictions")
+                .get()
+                .header("Accept", "application/json")
+                .build()
+
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    Log.w(TAG, "Research prediction API returned HTTP ${response.code}")
-                    null
+                    val message = "HTTP ${response.code}"
+                    Log.w(TAG, "Research feed request failed: $message")
+                    PredictionFeedResult(null, message)
                 } else {
                     val body = response.body?.string()
-                        ?: throw IOException("Research prediction API returned an empty response")
-                    parseResearchPredictions(body)
+                        ?: throw IOException("Empty response body")
+                    val predictions = parseResearchPredictions(body)
+                    Log.i(TAG, "Research feed loaded: ${predictions.size} forecasts")
+                    PredictionFeedResult(predictions, null)
                 }
             }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
-            Log.e(TAG, "Unable to load research predictions", exception)
-            null
+            val detail = exception.message?.takeIf { it.isNotBlank() }
+                ?: exception.javaClass.simpleName
+            Log.e(TAG, "Research feed load failed: $detail", exception)
+            PredictionFeedResult(null, detail)
         }
     }
 
