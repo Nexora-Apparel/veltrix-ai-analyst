@@ -149,7 +149,7 @@ def run_evaluation(dataset_path: Path, config_path: Path, expected_config_sha: s
     fold_results = []
     candidate_records = []
     for fold_number, (percent, train, test, cutoff) in enumerate(_folds(rows), start=1):
-        latest = max(_dt(row["kickoff_at"]) for row in train)
+        latest = cutoff
         climatology = _climatology(train, latest)
         fold_candidates = []
         for half_life in config["half_life_days_grid"]:
