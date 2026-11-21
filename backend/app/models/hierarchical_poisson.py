@@ -77,6 +77,7 @@ class HierarchicalPoissonModel:
     optimizer_converged: bool
     optimizer_iterations: int
     optimizer_gradient_norm: float
+    optimizer_relative_objective_change: float | None
 
     def predict(
         self, home_team_id: str, away_team_id: str, competition_id: str
@@ -315,7 +316,7 @@ def _lbfgs_minimize(
         vector, value, gradient = candidate, next_value, next_gradient
         gradient_norm = norm(gradient)
         if gradient_norm <= tolerance:
-            return vector, True, iteration, gradient_norm
+            return vector, True, iteration, gradient_norm, relative_change
     return vector, False, max_iterations, gradient_norm
 
 
@@ -363,7 +364,7 @@ def _newton_minimize(
     max_iterations: int,
     tolerance: float,
     relative_objective_tolerance: float = 1e-10,
-) -> tuple[list[float], bool, int, float]:
+) -> tuple[list[float], bool, int, float, float]:
     """Damped Newton on the unchanged averaged Poisson objective."""
     from math import sqrt
 
@@ -444,13 +445,14 @@ def _newton_minimize(
     value, gradient, _ = evaluate(vector, False)
     gradient_norm = norm(gradient)
     stable_steps = 0
+    relative_change = float("inf")
     if gradient_norm <= tolerance:
         # No accepted step exists to establish objective stability; require a
         # deterministic zero-step confirmation under the same fixed criteria.
         confirmed_value, confirmed_gradient, _ = evaluate(vector, False)
         confirmed_norm = norm(confirmed_gradient)
         if confirmed_norm <= tolerance and abs(confirmed_value - value) <= relative_objective_tolerance:
-            return vector, True, 0, confirmed_norm
+            return vector, True, 0, confirmed_norm, 0.0
 
     for iteration in range(1, max_iterations + 1):
         value, gradient, hessian = evaluate(vector, True)
@@ -494,7 +496,7 @@ def _newton_minimize(
         if not accepted:
             raise ArithmeticError(
                 f"damped Newton Armijo line search failed at iteration {iteration} "
-                f"(gradient_norm={gradient_norm:.6g})"
+                f"(gradient_norm={gradient_norm:.6g}, relative_objective_change={relative_change:.6g})"
             )
 
         relative_change = abs(next_value - value) / max(1.0, abs(value))
@@ -525,7 +527,7 @@ def fit_hierarchical_poisson(
     tolerance: float = 1e-7,
     optimizer: str = "gradient_descent",
 ) -> HierarchicalPoissonModel:
-    """Fit the penalized likelihood with gradient descent or L-BFGS.
+    """Fit the penalized likelihood with gradient descent, L-BFGS, or damped Newton.
 
     Hyperparameters are not production defaults; select them on chronological
     development folds and freeze them before prospective evaluation.
@@ -579,6 +581,7 @@ def fit_hierarchical_poisson(
     )
     converged = False
     gradient_norm = float("inf")
+    relative_objective_change: float | None = None
     iterations = 0
 
     if optimizer in {"lbfgs", "newton"}:
@@ -593,7 +596,7 @@ def fit_hierarchical_poisson(
                 max_iterations=max_iterations, tolerance=tolerance,
             )
         else:
-            fitted, converged, iterations, gradient_norm = _newton_minimize(
+            fitted, converged, iterations, gradient_norm, relative_objective_change = _newton_minimize(
                 rows, weights, total_weight, team_index, competition_index, initial,
                 team_ridge, competition_ridge,
                 max_iterations=min(max_iterations, 200), tolerance=tolerance,
@@ -691,4 +694,5 @@ def fit_hierarchical_poisson(
         optimizer_converged=converged,
         optimizer_iterations=iterations,
         optimizer_gradient_norm=gradient_norm,
+        optimizer_relative_objective_change=relative_objective_change,
     )
