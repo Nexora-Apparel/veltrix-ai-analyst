@@ -86,6 +86,21 @@ def _research_prediction(row: dict[str, Any]) -> dict[str, Any]:
 @router.get("")
 def list_research_predictions() -> dict[str, Any]:
     """Return upcoming shadow forecasts without exposing them as published predictions."""
+    # Release quarantine: the current model's cross-market concentration audit
+    # failed admission. Keep the existing app/API contract but serve no forecasts
+    # until a replacement or repaired model passes independent validation.
+    return {
+        "status": "MODEL_QUARANTINED",
+        "research_only": True,
+        "publication_status": "NOT_PUBLISHED",
+        "production_promotion": "LOCKED",
+        "value_betting": "LOCKED",
+        "generated_at": None,
+        "training_fixture_count": 0,
+        "model_version": None,
+        "predictions": [],
+    }
+
     connection = _database_connection()
     try:
         with connection:
