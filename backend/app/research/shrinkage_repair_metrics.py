@@ -1,9 +1,9 @@
 """Calibration and probability diagnostics for the preregistered shrinkage repair."""
 from __future__ import annotations
 
+import collections
 import math
 import random
-from collections import defaultdict
 from typing import Any
 
 
@@ -147,7 +147,7 @@ def paired_date_block_bootstrap(
 ) -> dict[str, float | int]:
     if not differences:
         raise ValueError("paired differences are required")
-    groups: dict[str, list[float]] = defaultdict(list)
+    groups: dict[str, list[float]] = collections.defaultdict(list)
     for date, difference in differences:
         groups[date].append(float(difference))
     dates = sorted(groups)
@@ -173,7 +173,7 @@ def paired_date_block_bootstrap(
 
 
 def competition_breakdown(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    groups: dict[str, list[dict[str, Any]]] = collections.defaultdict(list)
     for row in rows:
         groups[str(row["competition_id"])].append(row)
     result = {}
