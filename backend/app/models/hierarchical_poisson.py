@@ -159,6 +159,166 @@ def _objective(
     return loss / total_weight + penalty
 
 
+def _lbfgs_minimize(
+    rows: list[HierarchicalGoalResult],
+    weights: list[float],
+    total_weight: float,
+    team_index: dict[str, int],
+    competition_index: dict[str, int],
+    initial: list[float],
+    team_ridge: float,
+    competition_ridge: float,
+    *,
+    max_iterations: int,
+    tolerance: float,
+    history_size: int = 10,
+) -> tuple[list[float], bool, int, float]:
+    """Pure-Python L-BFGS with Armijo backtracking on the unchanged averaged objective."""
+    from math import sqrt
+
+    competition_count = len(competition_index)
+    team_count = len(team_index)
+
+    def unpack(vector: list[float]):
+        return (
+            vector[0], vector[1],
+            vector[2:2 + competition_count],
+            vector[2 + competition_count:2 + competition_count + team_count],
+            vector[2 + competition_count + team_count:],
+        )
+
+    def evaluate(vector: list[float]) -> tuple[float, list[float]]:
+        intercept, home_advantage, competitions, attack, defence = unpack(vector)
+        gradient = [0.0] * len(vector)
+        gc = gradient[2:2 + competition_count]
+        ga = gradient[2 + competition_count:2 + competition_count + team_count]
+        gd = gradient[2 + competition_count + team_count:]
+        gi = gh = 0.0
+        loss = 0.0
+        for row, weight in zip(rows, weights):
+            h = team_index[row.home_team_id]
+            a = team_index[row.away_team_id]
+            c = competition_index[row.competition_id]
+            shared = intercept + competitions[c]
+            eh = shared + home_advantage + attack[h] - defence[a]
+            ea = shared + attack[a] - defence[h]
+            if not (-20.0 < eh < 20.0 and -20.0 < ea < 20.0):
+                return float("inf"), [float("nan")] * len(vector)
+            home_rate, away_rate = exp(eh), exp(ea)
+            loss += weight * (
+                home_rate - row.home_goals * eh + lgamma(row.home_goals + 1)
+                + away_rate - row.away_goals * ea + lgamma(row.away_goals + 1)
+            )
+            error_h = weight * (home_rate - row.home_goals) / total_weight
+            error_a = weight * (away_rate - row.away_goals) / total_weight
+            gi += error_h + error_a
+            gh += error_h
+            gc[c] += error_h + error_a
+            ga[h] += error_h
+            gd[a] -= error_h
+            ga[a] += error_a
+            gd[h] -= error_a
+        penalty = 0.5 * competition_ridge * sum(value * value for value in competitions)
+        penalty += 0.5 * team_ridge * (
+            sum(value * value for value in attack)
+            + sum(value * value for value in defence)
+        )
+        for index, value in enumerate(competitions):
+            gc[index] += competition_ridge * value
+        for index, value in enumerate(attack):
+            ga[index] += team_ridge * value
+        for index, value in enumerate(defence):
+            gd[index] += team_ridge * value
+        gradient[0] = gi
+        gradient[1] = gh
+        gradient[2:2 + competition_count] = gc
+        gradient[2 + competition_count:2 + competition_count + team_count] = ga
+        gradient[2 + competition_count + team_count:] = gd
+        return loss / total_weight + penalty, gradient
+
+    def dot(left: list[float], right: list[float]) -> float:
+        return sum(a * b for a, b in zip(left, right))
+
+    def norm(vector: list[float]) -> float:
+        return sqrt(dot(vector, vector))
+
+    vector = initial[:]
+    value, gradient = evaluate(vector)
+    s_history: list[list[float]] = []
+    y_history: list[list[float]] = []
+    rho_history: list[float] = []
+    gradient_norm = norm(gradient)
+    if gradient_norm <= tolerance:
+        return vector, True, 0, gradient_norm
+
+    for iteration in range(1, max_iterations + 1):
+        q = gradient[:]
+        alphas: list[float] = []
+        for s_vec, y_vec, rho in zip(
+            reversed(s_history), reversed(y_history), reversed(rho_history)
+        ):
+            alpha = rho * dot(s_vec, q)
+            alphas.append(alpha)
+            q = [v - alpha * y for v, y in zip(q, y_vec)]
+        if s_history:
+            sy = dot(s_history[-1], y_history[-1])
+            yy = dot(y_history[-1], y_history[-1])
+            scale = sy / yy if yy > 0 else 1.0
+        else:
+            scale = 1.0
+        direction = [scale * v for v in q]
+        for index, (s_vec, y_vec, rho) in enumerate(
+            zip(s_history, y_history, rho_history)
+        ):
+            beta = rho * dot(y_vec, direction)
+            alpha = alphas[len(alphas) - 1 - index]
+            direction = [
+                value + s * (alpha - beta)
+                for value, s in zip(direction, s_vec)
+            ]
+        direction = [-value for value in direction]
+        directional_derivative = dot(gradient, direction)
+        if not isfinite(directional_derivative) or directional_derivative >= 0:
+            s_history.clear()
+            y_history.clear()
+            rho_history.clear()
+            direction = [-value for value in gradient]
+            directional_derivative = -dot(gradient, gradient)
+
+        step = 1.0
+        accepted = False
+        for _ in range(50):
+            candidate = [x + step * d for x, d in zip(vector, direction)]
+            next_value, next_gradient = evaluate(candidate)
+            if (
+                isfinite(next_value)
+                and all(isfinite(x) for x in next_gradient)
+                and next_value <= value + 1e-4 * step * directional_derivative
+            ):
+                accepted = True
+                break
+            step *= 0.5
+        if not accepted:
+            return vector, False, iteration, gradient_norm
+
+        s_vec = [new - old for new, old in zip(candidate, vector)]
+        y_vec = [new - old for new, old in zip(next_gradient, gradient)]
+        curvature = dot(s_vec, y_vec)
+        if curvature > 1e-12:
+            if len(s_history) == history_size:
+                s_history.pop(0)
+                y_history.pop(0)
+                rho_history.pop(0)
+            s_history.append(s_vec)
+            y_history.append(y_vec)
+            rho_history.append(1.0 / curvature)
+        vector, value, gradient = candidate, next_value, next_gradient
+        gradient_norm = norm(gradient)
+        if gradient_norm <= tolerance:
+            return vector, True, iteration, gradient_norm
+    return vector, False, max_iterations, gradient_norm
+
+
 def fit_hierarchical_poisson(
     results: Iterable[HierarchicalGoalResult],
     *,
@@ -169,8 +329,9 @@ def fit_hierarchical_poisson(
     learning_rate: float = 1.0,
     max_iterations: int = 4000,
     tolerance: float = 1e-7,
+    optimizer: str = "gradient_descent",
 ) -> HierarchicalPoissonModel:
-    """Fit the penalized likelihood with projected backtracking gradient descent.
+    """Fit the penalized likelihood with gradient descent or L-BFGS.
 
     Hyperparameters are not production defaults; select them on chronological
     development folds and freeze them before prospective evaluation.
@@ -184,6 +345,7 @@ def fit_hierarchical_poisson(
         or not isfinite(competition_ridge) or competition_ridge < 0
         or not isfinite(learning_rate) or learning_rate <= 0
         or max_iterations < 1 or not isfinite(tolerance) or tolerance <= 0
+        or optimizer not in {"gradient_descent", "lbfgs"}
     ):
         raise ValueError("invalid optimizer configuration")
     if len({row.fixture_id for row in rows}) != len(rows):
@@ -225,71 +387,80 @@ def fit_hierarchical_poisson(
     gradient_norm = float("inf")
     iterations = 0
 
-    for iteration in range(1, max_iterations + 1):
-        gi = gh = 0.0
-        gc = [competition_ridge * value for value in competition_effects]
-        ga = [team_ridge * value for value in attack]
-        gd = [team_ridge * value for value in defence]
-        for row, weight in zip(rows, weights):
-            h, a = team_index[row.home_team_id], team_index[row.away_team_id]
-            c = competition_index[row.competition_id]
-            shared = global_intercept + competition_effects[c]
-            eh = shared + home_advantage + attack[h] - defence[a]
-            ea = shared + attack[a] - defence[h]
-            if not (-20.0 < eh < 20.0 and -20.0 < ea < 20.0):
-                raise ArithmeticError("optimizer linear predictor outside safe range")
-            error_h = weight * (exp(eh) - row.home_goals) / total_weight
-            error_a = weight * (exp(ea) - row.away_goals) / total_weight
-            gi += error_h + error_a
-            gh += error_h
-            gc[c] += error_h + error_a
-            ga[h] += error_h
-            gd[a] -= error_h
-            ga[a] += error_a
-            gd[h] -= error_a
-        gradient_norm = sqrt(
-            gi * gi + gh * gh + sum(x*x for x in gc)
-            + sum(x*x for x in ga) + sum(x*x for x in gd)
+    if optimizer == "lbfgs":
+        initial = [
+            global_intercept, home_advantage,
+            *competition_effects, *attack, *defence,
+        ]
+        fitted, converged, iterations, gradient_norm = _lbfgs_minimize(
+            rows, weights, total_weight, team_index, competition_index, initial,
+            team_ridge, competition_ridge,
+            max_iterations=max_iterations, tolerance=tolerance,
         )
-        if not isfinite(gradient_norm):
-            raise ArithmeticError("non-finite optimizer gradient")
-        if gradient_norm <= tolerance:
-            converged = True
-            iterations = iteration
-            break
-
-        step = learning_rate
-        accepted = False
-        for _ in range(40):
-            next_intercept = global_intercept - step * gi
-            next_home = home_advantage - step * gh
-            next_comp = [v - step * g for v, g in zip(competition_effects, gc)]
-            next_attack = [v - step * g for v, g in zip(attack, ga)]
-            next_defence = [v - step * g for v, g in zip(defence, gd)]
-
-            # Do not recenter parameters after taking a gradient step: ridge
-            # penalties already identify the effects, and post-step projection
-            # would make the search direction inconsistent with this objective.
-
-            next_loss = _objective(
-                rows, weights, total_weight, team_index, competition_index,
-                next_intercept, next_home, next_comp, next_attack, next_defence,
-                team_ridge, competition_ridge,
+        competition_effects = fitted[2:2 + competition_count]
+        attack = fitted[2 + competition_count:2 + competition_count + team_count]
+        defence = fitted[2 + competition_count + team_count:]
+        global_intercept, home_advantage = fitted[0], fitted[1]
+    else:
+        for iteration in range(1, max_iterations + 1):
+            gi = gh = 0.0
+            gc = [competition_ridge * value for value in competition_effects]
+            ga = [team_ridge * value for value in attack]
+            gd = [team_ridge * value for value in defence]
+            for row, weight in zip(rows, weights):
+                h, a = team_index[row.home_team_id], team_index[row.away_team_id]
+                c = competition_index[row.competition_id]
+                shared = global_intercept + competition_effects[c]
+                eh = shared + home_advantage + attack[h] - defence[a]
+                ea = shared + attack[a] - defence[h]
+                if not (-20.0 < eh < 20.0 and -20.0 < ea < 20.0):
+                    raise ArithmeticError("optimizer linear predictor outside safe range")
+                error_h = weight * (exp(eh) - row.home_goals) / total_weight
+                error_a = weight * (exp(ea) - row.away_goals) / total_weight
+                gi += error_h + error_a
+                gh += error_h
+                gc[c] += error_h + error_a
+                ga[h] += error_h
+                gd[a] -= error_h
+                ga[a] += error_a
+                gd[h] -= error_a
+            gradient_norm = sqrt(
+                gi * gi + gh * gh + sum(x*x for x in gc)
+                + sum(x*x for x in ga) + sum(x*x for x in gd)
             )
-            if isfinite(next_loss) and next_loss < current_loss:
-                global_intercept, home_advantage = next_intercept, next_home
-                competition_effects, attack, defence = next_comp, next_attack, next_defence
-                current_loss = next_loss
-                accepted = True
-                break
-            step *= 0.5
-        if not accepted:
-            if gradient_norm <= tolerance * 10:
+            if not isfinite(gradient_norm):
+                raise ArithmeticError("non-finite optimizer gradient")
+            if gradient_norm <= tolerance:
                 converged = True
                 iterations = iteration
                 break
-            raise ArithmeticError("optimizer line search failed before convergence")
-        iterations = iteration
+            step = learning_rate
+            accepted = False
+            for _ in range(40):
+                next_intercept = global_intercept - step * gi
+                next_home = home_advantage - step * gh
+                next_comp = [v - step * g for v, g in zip(competition_effects, gc)]
+                next_attack = [v - step * g for v, g in zip(attack, ga)]
+                next_defence = [v - step * g for v, g in zip(defence, gd)]
+                next_loss = _objective(
+                    rows, weights, total_weight, team_index, competition_index,
+                    next_intercept, next_home, next_comp, next_attack, next_defence,
+                    team_ridge, competition_ridge,
+                )
+                if isfinite(next_loss) and next_loss < current_loss:
+                    global_intercept, home_advantage = next_intercept, next_home
+                    competition_effects, attack, defence = next_comp, next_attack, next_defence
+                    current_loss = next_loss
+                    accepted = True
+                    break
+                step *= 0.5
+            if not accepted:
+                if gradient_norm <= tolerance * 10:
+                    converged = True
+                    iterations = iteration
+                    break
+                raise ArithmeticError("optimizer line search failed before convergence")
+            iterations = iteration
 
     if not converged:
         raise ArithmeticError(
