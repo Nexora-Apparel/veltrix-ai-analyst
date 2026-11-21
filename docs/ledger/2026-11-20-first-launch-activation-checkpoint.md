@@ -212,3 +212,12 @@
 ### Evidence classification
 - **Verified:** current main SHA; current workflow configuration; absence of a 21 November scheduled capture in the returned Actions inventory; 20 November capture run status, head SHA and job logs; seven failed scopes and their logged error classes; Stage 6 skipped status; zero artifacts for those two runs.
 - **Not verified:** whether GitHub will deliver a delayed scheduled run later on 21 November; whether the current-main reconciliation code fully resolves the observed mismatch; any 21 November snapshot or shadow forecast.
+
+
+### Follow-on code-path review — 21 November 06:35 WAT
+- Inspected current-main `scripts/collect_5dollar_all_approved_competitions.py`, `backend/app/providers/historical_validation.py` and `backend/app/providers/historical_import.py`.
+- Confirmed the failed 20 November capture ran on historical SHA `6b6c045a50572cf22f12d6ca95038fca81d91b36`. At that revision, validation compared total fixture sightings directly with `records_inserted`, which can reject a response containing duplicate observations even when fixture ingestion is otherwise represented.
+- Current main (`13bcef1d0135f7d45cfc04d13bd63f34c9cb40d3`) has a materially revised check: it compares sighting rows with distinct (provider entity ID, payload hash, response ID) tuples, and separately verifies distinct provider fixture rows against inserted counters. It also reconciles legacy duplicate counters from immutable evidence when permitted.
+- The collector continues independently across competition scopes, records each scope failure, and returns success only when at least one scope validates. This is designed to permit Stage 6 to consume validated scopes after partial success.
+- This source review establishes that current main differs from the failed run's validator; it does **not** establish that the current implementation passes against live provider data. A fresh scheduled/manual capture is still required for runtime proof.
+- No provider call, database query/write, workflow dispatch, deployment or Odds API request was made during this follow-on review.
