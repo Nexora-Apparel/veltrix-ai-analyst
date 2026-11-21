@@ -1,0 +1,21 @@
+{
+  "schema_version": "veltrix-shrinkage-selection-v3",
+  "status": "PRE_REGISTERED_NOT_EXECUTED",
+  "selection_scope": "chronological_development_folds_1_to_3_only",
+  "k_grid": [0.25, 0.5, 1, 2, 4, 8],
+  "half_life_days_grid": [180, 365, 730],
+  "examined_diagnostic_window": {
+    "fold": 4,
+    "date_range": ["2026-10-28", "2026-11-19"],
+    "status": "PREVIOUSLY_EXAMINED_DIAGNOSTIC_WINDOW",
+    "permitted_use": "SHADOW_TIER_SANITY_CHECK_ONLY"
+  },
+  "prospective_validation": "fixtures settled after 2026-11-21, scored against frozen config",
+  "research_display_admission": "candidate must beat both climatology and plain scaled Poisson on development folds and must not fail on previously examined diagnostic window",
+  "promotion": "research-only display at most; anything beyond requires prospective settled evidence and owner sign-off",
+  "solver": "damped_newton_analytic_hessian_backtracking_line_search",
+  "convergence_validation": [
+    "small_case_against_existing_gradient_descent",
+    "small_case_against_converged_lbfgs"
+  ]
+}
