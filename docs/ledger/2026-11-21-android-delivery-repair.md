@@ -77,3 +77,9 @@
 - The sample forecast in the response was Man City vs Fulham, kickoff `2026-11-21T12:30:00Z`; sample only, not a production-published prediction.
 - Android physical display remains unverified until the user refreshes the installed diagnostic APK. Because PR #132 is backend-only, no APK reinstall is required for this SQL correction; force-close/reopen or refresh the existing diagnostic app.
 - Research predictions remain isolated and unpublished; production promotion and value betting remain locked. Certification criteria were not changed or waived.
+
+## Published-feed isolation check — 2026-11-21
+- Performed live unauthenticated GETs to both production endpoints from the same isolated Vercel sandbox.
+- `GET /v1/predictions`: HTTP 200, zero published prediction rows. This confirms the 25 research forecasts are not being exposed through the production-only feed.
+- `GET /v1/research/predictions`: HTTP 200, 25 research rows; `SHADOW_FORECASTS_READY`, `research_only=true`, `NOT_PUBLISHED`, production promotion `LOCKED`, value betting `LOCKED`.
+- This is a read-only HTTP verification. No odds-provider calls, Odds API credits, or database writes were used.
