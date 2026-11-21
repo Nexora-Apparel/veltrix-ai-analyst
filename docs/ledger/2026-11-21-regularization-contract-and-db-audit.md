@@ -77,3 +77,15 @@ A direct SELECT of the two `model_artifacts` rows confirmed:
 Therefore the new `model_versions` registry must not bind the current hierarchical shadow run to either legacy attack-defence artifact. The migration must create a distinct quarantined version record using the archived hierarchical artifact's verified config hash, training-data hash and report hash. The config hash must be computed from canonical archived configuration bytes and independently verified before any database migration.
 
 No rows were inserted, updated, or deleted during this reconciliation.
+
+
+## Final PR #139 head and controlling CI read-back
+
+- PR #139 latest head is `edb41a13cbaeedd11eb143c311de5e12407b0da2` (six commits ahead of main, zero behind).
+- Latest controlling CI run #44893501873 completed successfully:
+  - Backend tests and lint: 504 passed; Ruff passed.
+  - Android debug build: success; APK assembled and uploaded.
+- This run supersedes #44893189043 because it includes the one-off audit workflow file added to PR #139.
+- Vercel status remains failed with `build-rate-limit`; deployment lookup returned no preview deployment for the branch. Production remains on the previously verified deployment and the production API remains quarantined/empty.
+- The one-off workflow is intended to download the immutable archived artifacts and execute the repository audit against all 136 teams. Its push-triggered run has not been independently verified through the available run index, so no claim is made that it produced the full report. The independently computed aggregate figures remain the current evidence; per-team CLI output is still an outstanding verification item.
+- PR #139 remains open and unmerged. No production deployment, migration or database write was performed.
