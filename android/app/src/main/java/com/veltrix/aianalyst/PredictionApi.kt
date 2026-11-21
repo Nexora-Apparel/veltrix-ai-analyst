@@ -95,13 +95,13 @@ object PredictionApi {
             return@withContext PredictionFeedResult(null, message)
         }
 
-        val request = Request.Builder()
-            .url("$baseUrl/v1/research/predictions")
-            .get()
-            .header("Accept", "application/json")
-            .build()
-
         try {
+            val request = Request.Builder()
+                .url("$baseUrl/v1/research/predictions")
+                .get()
+                .header("Accept", "application/json")
+                .build()
+
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     val message = "HTTP ${response.code}"
