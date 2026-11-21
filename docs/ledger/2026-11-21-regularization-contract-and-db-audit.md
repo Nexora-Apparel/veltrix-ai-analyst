@@ -89,3 +89,12 @@ No rows were inserted, updated, or deleted during this reconciliation.
 - Vercel status remains failed with `build-rate-limit`; deployment lookup returned no preview deployment for the branch. Production remains on the previously verified deployment and the production API remains quarantined/empty.
 - The one-off workflow run #44893869016 completed successfully. It downloaded forecast artifact 14694089682 from run #44873166128 and Stage 6 dataset artifact 14694463354 from run #44873016040, ran the exact repository CLI, verified `FIT_REPRODUCTION_VERIFIED` for 996 labels/136 teams/seven competitions, and uploaded report artifact 14703192024 (SHA-256 `4997f0b6a93c2fc02c1a164c2daff33e2dd532b8b50b57a35a41ec609e64fab0`). Full per-team ratios and information values are present in the 136-row JSON artifact. The repository CLI output matches the independent numerical reproduction.
 - PR #139 remains open and unmerged. No production deployment, migration or database write was performed.
+
+
+## Candidate fitter added to PR #139
+
+- Added `backend/app/models/hierarchical_poisson_v2.py` on PR #139 head `940ae2f025e1feb1552bdda58cef5f73d028a0d0`.
+- This is a separate research-only candidate. It uses the unnormalized weighted Poisson NLL plus explicit pseudo-match precision terms, competition-scoped team attack/defence, a competition scoring effect with 2μ information scale, and competition home deviations shrunk toward a global home effect with an explicit global prior.
+- The fitter requires all k values as explicit arguments; no unvalidated production defaults are supplied. The current production/research fitter is untouched and remains quarantined.
+- A synthetic candidate recovery test was added; current and excessive-prior rejection controls remain. Latest standard CI run #44893869028 is pending and has not yet exposed jobs. Do not claim the candidate test passes until that exact-head run completes.
+- PR #139 metadata read-back returned open, unmerged, mergeable=true. Its Vercel preview deployment `dpl_H5UX1RbMTdMaDFNygvYUKqmZD9Gq` is READY on the feature branch. Production deployment and API are unchanged.
