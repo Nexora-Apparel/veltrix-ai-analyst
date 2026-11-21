@@ -447,12 +447,18 @@ def _newton_minimize(
     stable_steps = 0
     relative_change = float("inf")
     if gradient_norm <= tolerance:
-        # No accepted step exists to establish objective stability; require a
-        # deterministic zero-step confirmation under the same fixed criteria.
-        confirmed_value, confirmed_gradient, _ = evaluate(vector, False)
-        confirmed_norm = norm(confirmed_gradient)
-        if confirmed_norm <= tolerance and abs(confirmed_value - value) <= relative_objective_tolerance:
-            return vector, True, 0, confirmed_norm, 0.0
+        # At an exact stationary initialization, repeat the unchanged state
+        # twice; both fixed convergence criteria must hold on both checks.
+        stable_checks = 0
+        for _ in range(2):
+            confirmed_value, confirmed_gradient, _ = evaluate(vector, False)
+            confirmed_norm = norm(confirmed_gradient)
+            relative_change = abs(confirmed_value - value) / max(1.0, abs(value))
+            if confirmed_norm <= tolerance and relative_change <= relative_objective_tolerance:
+                stable_checks += 1
+            value = confirmed_value
+        if stable_checks == 2:
+            return vector, True, 0, confirmed_norm, relative_change
 
     for iteration in range(1, max_iterations + 1):
         value, gradient, hessian = evaluate(vector, True)
