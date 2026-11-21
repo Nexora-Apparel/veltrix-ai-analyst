@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 import pytest
 
-from app.models.hierarchical_poisson import fit_hierarchical_poisson, HierarchicalGoalResult
+from app.models.hierarchical_poisson import HierarchicalGoalResult, fit_hierarchical_poisson
 from app.research.shadow_model_audit import (
     reproduce_shadow_fit,
     training_data_sha256,
