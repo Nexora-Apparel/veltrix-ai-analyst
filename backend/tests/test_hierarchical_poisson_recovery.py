@@ -195,7 +195,7 @@ def candidate_and_unpenalized_reference(abundant_strength_results):
 def test_pseudo_match_candidate_recovers_strength_and_matches_unpenalized_fit(
     abundant_strength_results, candidate_and_unpenalized_reference
 ):
-    results, strong, weak, attack_truth, defence_truth = abundant_strength_results
+    _, strong, weak, attack_truth, defence_truth = abundant_strength_results
     candidate, reference = candidate_and_unpenalized_reference
 
     group_gap = mean(
@@ -222,7 +222,7 @@ def test_pseudo_match_candidate_recovers_strength_and_matches_unpenalized_fit(
         if abs(reference.attack[team[1]]) > 0.05
     ]
     defence_reference_ratios = [
-        abs(candidate.defence[("synthetic-league", team)] / reference.defence[team[1]])
+        abs(candidate.defence[team] / reference.defence[team[1]])
         for team in candidate.defence
         if abs(reference.defence[team[1]]) > 0.05
     ]
