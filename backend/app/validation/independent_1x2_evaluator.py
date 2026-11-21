@@ -11,10 +11,11 @@ import json
 import math
 import random
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from statistics import NormalDist, mean, stdev
-from typing import Literal, Sequence
+from typing import Literal
 
 Outcome = Literal["HOME", "DRAW", "AWAY"]
 BASELINE_CLIMATOLOGY = "LEAGUE_CLIMATOLOGY_HOME_ADVANTAGE"
@@ -151,7 +152,7 @@ def assess_power(
     for baseline_name in (BASELINE_CLIMATOLOGY, BASELINE_TEAM_AWARE):
         date_values = development_daily_improvements.get(baseline_name)
         if not isinstance(date_values, dict):
-            raise ValueError(f"MISSING_DEVELOPMENT_BASELINE:{baseline_name}")
+            raise TypeError(f"MISSING_DEVELOPMENT_BASELINE:{baseline_name}")
         if any(
             not values or any(not math.isfinite(value) for value in values)
             for values in date_values.values()
@@ -373,7 +374,7 @@ def evaluate_primary_1x2(
         raise ValueError("DUPLICATE_FIXTURE_IDS")
     for row in rows:
         _validate_row(row, evaluation_as_of)
-    distinct_dates = {row.kickoff_at.astimezone(timezone.utc).date().isoformat() for row in rows}
+    distinct_dates = {row.kickoff_at.astimezone(UTC).date().isoformat() for row in rows}
     if len(distinct_dates) < protocol.planned_distinct_dates:
         return {
             "status": "INSUFFICIENT_DISTINCT_DATES",
