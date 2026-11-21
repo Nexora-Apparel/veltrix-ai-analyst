@@ -4,6 +4,7 @@ import pytest
 
 from app.models.hierarchical_poisson import HierarchicalGoalResult, fit_hierarchical_poisson
 from app.research.shadow_model_audit import (
+    objective_scaling_diagnostics,
     reproduce_shadow_fit,
     training_data_sha256,
     training_pool_sha256,
@@ -126,8 +127,6 @@ def test_reproduction_rejects_non_training_only_labels():
 
 
 def test_objective_scaling_reports_equivalent_summed_likelihood_penalty():
-    from app.research.shadow_model_audit import objective_scaling_diagnostics
-
     cutoff = datetime(2026, 1, 2, tzinfo=UTC)
     rows = [
         {"kickoff_at": datetime(2026, 1, 1, tzinfo=UTC).isoformat()},
