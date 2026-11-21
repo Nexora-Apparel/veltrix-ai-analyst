@@ -72,6 +72,8 @@ class PowerAssessment:
     smallest_worthwhile_improvement: float
     alpha: float
     target_power: float
+    bootstrap_replicates: int
+    bootstrap_seed: int
 
 
 def _aware(value: datetime, field: str) -> None:
@@ -123,6 +125,8 @@ def assess_power(
     smallest_worthwhile_improvement: float,
     alpha: float,
     target_power: float,
+    bootstrap_replicates: int,
+    bootstrap_seed: int,
 ) -> PowerAssessment:
     """Compute MDE from development-period date blocks before holdout access.
 
@@ -134,6 +138,8 @@ def assess_power(
         raise ValueError("INVALID_POWER_PLAN")
     if not 0 < alpha < 1 or not 0 < target_power < 1:
         raise ValueError("INVALID_POWER_LEVELS")
+    if bootstrap_replicates < 200:
+        raise ValueError("INSUFFICIENT_MDE_BOOTSTRAP_REPLICATES")
     z_alpha = NormalDist().inv_cdf(1.0 - alpha / 2.0)
     z_power = NormalDist().inv_cdf(target_power)
     mde_by_baseline: dict[str, float | None] = {}
@@ -142,15 +148,28 @@ def assess_power(
         date_values = development_daily_improvements.get(baseline_name)
         if not isinstance(date_values, dict):
             raise ValueError(f"MISSING_DEVELOPMENT_BASELINE:{baseline_name}")
-        daily_means = [
-            mean(values) for _, values in sorted(date_values.items()) if values
-        ]
-        date_counts[baseline_name] = len(daily_means)
-        if len(daily_means) < 2:
+        if any(
+            not values or any(not math.isfinite(value) for value in values)
+            for values in date_values.values()
+        ):
+            raise ValueError(f"INVALID_DEVELOPMENT_LOSS_DIFFERENCES:{baseline_name}")
+        date_groups = {
+            date_key: list(values) for date_key, values in sorted(date_values.items())
+        }
+        date_counts[baseline_name] = len(date_groups)
+        if len(date_groups) < 2:
             mde_by_baseline[baseline_name] = None
             continue
-        standard_error = stdev(daily_means) / math.sqrt(planned_distinct_dates)
-        mde_by_baseline[baseline_name] = (z_alpha + z_power) * standard_error
+        bootstrap_means = _date_block_bootstrap_means(
+            date_groups,
+            replicates=bootstrap_replicates,
+            seed=bootstrap_seed + len(mde_by_baseline),
+        )
+        development_standard_error = stdev(bootstrap_means)
+        planned_standard_error = development_standard_error * math.sqrt(
+            len(date_groups) / planned_distinct_dates
+        )
+        mde_by_baseline[baseline_name] = (z_alpha + z_power) * planned_standard_error
     sufficient = all(
         date_counts[name] >= 2 and mde_by_baseline[name] <= smallest_worthwhile_improvement
         for name in (BASELINE_CLIMATOLOGY, BASELINE_TEAM_AWARE)
@@ -163,6 +182,8 @@ def assess_power(
         smallest_worthwhile_improvement=smallest_worthwhile_improvement,
         alpha=alpha,
         target_power=target_power,
+        bootstrap_replicates=bootstrap_replicates,
+        bootstrap_seed=bootstrap_seed,
     )
 
 
@@ -241,13 +262,12 @@ def _percentile(values: Sequence[float], probability: float) -> float:
     return ordered[lower] * (1.0 - fraction) + ordered[upper] * fraction
 
 
-def _date_block_bootstrap(
+def _date_block_bootstrap_means(
     improvements_by_date: dict[str, list[float]],
     *,
     replicates: int,
     seed: int,
-    alpha: float,
-) -> tuple[float, float]:
+) -> list[float]:
     dates = sorted(improvements_by_date)
     if len(dates) < 2:
         raise ValueError("BOOTSTRAP_REQUIRES_AT_LEAST_TWO_DATE_BLOCKS")
@@ -261,6 +281,21 @@ def _date_block_bootstrap(
             for value in improvements_by_date[date_key]
         ]
         samples.append(mean(values))
+    return samples
+
+
+def _date_block_bootstrap(
+    improvements_by_date: dict[str, list[float]],
+    *,
+    replicates: int,
+    seed: int,
+    alpha: float,
+) -> tuple[float, float]:
+    samples = _date_block_bootstrap_means(
+        improvements_by_date,
+        replicates=replicates,
+        seed=seed,
+    )
     return (
         _percentile(samples, alpha / 2.0),
         _percentile(samples, 1.0 - alpha / 2.0),
@@ -287,6 +322,8 @@ def evaluate_primary_1x2(
         or power.smallest_worthwhile_improvement != protocol.smallest_worthwhile_improvement
         or power.alpha != protocol.alpha
         or power.target_power != protocol.target_power
+        or power.bootstrap_replicates != protocol.bootstrap_replicates
+        or power.bootstrap_seed != protocol.bootstrap_seed
     ):
         raise ValueError("POWER_ASSESSMENT_PROTOCOL_MISMATCH")
     if power.status == "POWER_SUFFICIENT" and (
