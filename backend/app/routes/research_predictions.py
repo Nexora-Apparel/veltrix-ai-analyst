@@ -49,7 +49,7 @@ _RESEARCH_QUERY = """
       AND latest_run.report->>'production_promotion' = 'LOCKED'
       AND latest_run.report->>'value_betting' = 'LOCKED'
       AND latest_run.report->>'release_eligible' = 'false'
-      AND latest_run.generated_at > NOW() - INTERVAL '6 hours'
+      AND latest_run.generated_at > NOW() - INTERVAL '36 hours'
       AND fixture.kickoff_at > %s
       AND forecast.value->>'publication_status' = 'NOT_PUBLISHED'
       AND forecast.value->>'value_betting_status' = 'LOCKED'
