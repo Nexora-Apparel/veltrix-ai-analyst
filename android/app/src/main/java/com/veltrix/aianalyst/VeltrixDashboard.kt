@@ -80,6 +80,7 @@ fun VeltrixDashboard() {
     var tab by remember { mutableStateOf(Tab.Home) }
     var predictions by remember { mutableStateOf<List<FixturePrediction>?>(null) }
     var researchPredictions by remember { mutableStateOf<List<FixturePrediction>?>(null) }
+    var researchError by remember { mutableStateOf<String?>(null) }
     var history by remember { mutableStateOf<List<PredictionHistoryEntry>?>(null) }
     var loading by remember { mutableStateOf(true) }
     var refreshToken by remember { mutableIntStateOf(0) }
@@ -87,7 +88,9 @@ fun VeltrixDashboard() {
     LaunchedEffect(refreshToken) {
         loading = true
         predictions = PredictionApi.fetchUpcoming()
-        researchPredictions = PredictionApi.fetchResearchUpcoming()
+        val researchFeed = PredictionApi.fetchResearchUpcoming()
+        researchPredictions = researchFeed.predictions
+        researchError = researchFeed.error
         history = PredictionApi.fetchHistory()
         loading = false
     }
@@ -95,11 +98,11 @@ fun VeltrixDashboard() {
     CompositionLocalProvider(LocalPal provides pal) {
         Box(Modifier.fillMaxSize().background(pal.bg)) {
             when (tab) {
-                Tab.Home -> HomeScreen(predictions, researchPredictions, loading) { refreshToken++ }
+                Tab.Home -> HomeScreen(predictions, researchPredictions, researchError, loading) { refreshToken++ }
                 Tab.History -> HistoryScreen(history, loading)
-                Tab.Btts -> BttsScreen(predictions, researchPredictions, loading)
+                Tab.Btts -> BttsScreen(predictions, researchPredictions, researchError, loading)
                 Tab.Value -> ValueScreen()
-                Tab.OverUnder -> OverUnderScreen(predictions, researchPredictions, loading)
+                Tab.OverUnder -> OverUnderScreen(predictions, researchPredictions, researchError, loading)
                 Tab.Menu -> MenuScreen()
             }
             BottomMenu(tab, { tab = it }, Modifier.align(Alignment.BottomCenter))
@@ -277,9 +280,21 @@ private fun EmptyState(message: String) {
 }
 
 @Composable
+private fun ResearchFeedWarning(error: String?) {
+    if (error != null) {
+        Text(
+            "Research feed unavailable · $error",
+            style = t(12, FontWeight.Medium, LocalPal.current.orange),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
+        )
+    }
+}
+
+@Composable
 private fun HomeScreen(
     predictions: List<FixturePrediction>?,
     researchPredictions: List<FixturePrediction>?,
+    researchError: String?,
     loading: Boolean,
     onRefresh: () -> Unit,
 ) {
@@ -301,6 +316,7 @@ private fun HomeScreen(
             }
         }
 
+        ResearchFeedWarning(researchError)
         when {
             loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
             predictions == null && researchPredictions == null -> EmptyState("Predictions are temporarily unavailable.")
@@ -412,11 +428,13 @@ private fun HistoryScreen(
 private fun BttsScreen(
     predictions: List<FixturePrediction>?,
     researchPredictions: List<FixturePrediction>?,
+    researchError: String?,
     loading: Boolean,
 ) {
     val p = LocalPal.current
     val matches = mergePredictions(predictions, researchPredictions)
     Screen("BTTS", "Both teams to score") {
+        ResearchFeedWarning(researchError)
         when {
             loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
             predictions == null && researchPredictions == null -> EmptyState("Predictions are temporarily unavailable.")
@@ -466,6 +484,7 @@ private fun ValueScreen() {
 private fun OverUnderScreen(
     predictions: List<FixturePrediction>?,
     researchPredictions: List<FixturePrediction>?,
+    researchError: String?,
     loading: Boolean,
 ) {
     val p = LocalPal.current
@@ -490,6 +509,7 @@ private fun OverUnderScreen(
             }
         }
         Spacer(Modifier.height(14.dp))
+        ResearchFeedWarning(researchError)
 
         when {
             loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
