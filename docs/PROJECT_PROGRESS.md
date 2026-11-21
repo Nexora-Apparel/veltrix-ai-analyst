@@ -2,7 +2,7 @@
 
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
-**Last updated:** 2026-11-18 (bookmaker odds isolation merged; PR #55 CI passed)
+**Last updated:** 2026-11-21 (PR #138 shrinkage audit merged; dated ledger update staged)
 **Repository:** https://github.com/Nexora-Apparel/veltrix-ai-analyst  
 **Default branch:** `main`  
 **Repository visibility:** Public  
@@ -665,3 +665,141 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 5. Keep the PIT timestamp gap open unless authoritative source-publication/availability evidence is found. No kickoff or retrieval timestamp substitution.
 6. Keep Android integration deferred until genuine prediction endpoints exist; keep value betting locked pending separate certification.
 
+
+
+## Latest execution checkpoint — effective shrinkage audit and two-tier admission contract (2026-11-21)
+
+- [x] PR [#138](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/138) merged as `d1c55fffe078ebf78910ea75195083984f079a15`. Its exact head `6acca21d7e0ec87496d13a781651bb7add73108d` passed CI run [#44892716222](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44892716222): 496 backend tests passed, Ruff passed, Android debug build passed.
+- [x] Added `backend/app/research/effective_shrinkage_audit.py` and a synthetic report-structure test. The audit emits per-team attack/defence fitted effects, near-unpenalized references, signed ratios and prior/data-information ratios. It does not change model fitting or production behavior.
+- [x] Independent numerical reproduction of archived run #44873166128 / artifact 14694089682 against Stage 6 dataset artifact 14694463354 matched all 25 archived expected-goal rates within approximately 1.1e-7.
+- [x] Effective runtime confirmed from the archived artifact: team_ridge=0.5, competition_ridge=0.5, half-life=365 days. The function default competition_ridge=2.0 was not the runtime value.
+- [x] 996 training-only labels, 136 teams, seven competitions; total recency weight 868.5811214801818; summed-objective team tau 434.2905607400909.
+- [x] Median absolute attack effect retained versus near-unpenalized fit: 3.11%; defence: 3.39%. Median signed ratios: 3.01% attack and 3.28% defence; sign agreement 90.44%/91.18%. Median prior/data-information ratios: 30.58x attack and 30.31x defence. This supports severe over-regularization but is not predictive validation and does not select replacement hyperparameters.
+- [x] Production API read-back: `/v1/research/predictions` HTTP 200, MODEL_QUARANTINED, NOT_PUBLISHED, zero predictions, promotion/value locked; `/v1/predictions` HTTP 200, zero predictions. Latest production deployment remained READY at commit `95445c9b7aaba045f15a97afe443211da341a2fe`; no deployment was triggered by this audit.
+- [x] 5Dollar Community terms/docs reviewed: last 12 months of results/odds; 300 requests/hour and 20/minute burst limit. Two complete prior seasons are not available under the current Community history entitlement. No purchase or provider request was made.
+- [x] Existing 28 identity/reconciliation cases remain unresolved. No cross-season identity stitching, alias promotion or provider-ID rewrite is permitted before evidence-backed resolution.
+- [x] Dated ledger entry: [2026-11-21 effective shrinkage audit](ledger/2026-11-21-effective-shrinkage-audit.md).
+- [ ] Execute the new per-team CLI against the actual archived artifacts and retain its complete per-team report; current headline numbers are from an independent offline numerical reproduction.
+- [ ] Implement synthetic recovery/shrinkage tests that fail the current 0.5/0.5/365 configuration and an excessive-prior negative control.
+- [ ] Implement the approved two-tier admission registry, hash immutability, controlled forecast write function, application-role INSERT revocation and API read-time admission join.
+- [ ] Draft the primary 1X2 log-loss threshold, MDE/power and baseline comparison protocol for explicit user approval; final holdout is single-use.
+- [ ] Design Community-bounded season backfill only after resolving identity mapping and confirming each competition's accessible season coverage.
+- **Release state unchanged:** model QUARANTINED; no production forecasts; value betting LOCKED; Android UI preserved. No Neon writes, provider calls, Odds API credits or production deployment were used for this work.
+
+
+## Latest execution checkpoint — regularization contract tests and database admission audit (2026-11-21)
+
+- [x] Opened PR [#139](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/139), branch `research/regularization-contract-tests`, latest head `6ac289436af299887143ed124ed10e5e9ab40413`. PR remains open and unmerged.
+- [x] Added `docs/ML_REGULARIZATION_CONTRACT.md`, the pseudo-match scale helper, and deterministic synthetic tests. Current quarantined 0.5/0.5/365 configuration is rejected by recovery/shrinkage gates; the excessive-prior negative control is also rejected.
+- [x] CI run [#44893189043](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893189043) passed: 504 backend tests, Ruff, Android debug build and APK upload.
+- [x] Read-only Neon audit found 0 published prediction rows, one research shadow run, and two model artifacts. The research run's model_version is nullable; there is no model_versions table or FK; report hash is required but not bound to admission. Research runs have append-only UPDATE/DELETE triggers but no INSERT admission trigger. Predictions have a pre-match INSERT trigger but no admission check.
+- [x] DB grants show direct INSERT for neondb_owner on forecast tables; no dedicated restricted application role/controlled-write boundary is present in the visible grants. This is a confirmed database architecture gap, not an applied migration.
+- [x] Production API read-back at 10:13:40 UTC: research endpoint HTTP 200 MODEL_QUARANTINED/NOT_PUBLISHED/zero predictions; published endpoint HTTP 200/zero predictions. Production deployment remains READY at commit `95445c9b7aaba045f15a97afe443211da341a2fe`; no deployment created for PR #139.
+- [x] Dated ledger entry: [2026-11-21 regularization contract and DB audit](ledger/2026-11-21-regularization-contract-and-db-audit.md).
+- [ ] Wire the pseudo-match scales into a separate candidate fitter; add tests showing the corrected candidate passes recovery while current and excessive-prior controls fail.
+- [ ] Implement the independent primary 1X2 log-loss evaluator, MDE/power, both baselines, date-block bootstrap and immutable run log.
+- [ ] Design the model_versions registry and two-tier SHADOW/PUBLISHED database enforcement, including immutable hashes, restricted application role, controlled write function and API read-time admission join.
+- [ ] Draft thresholds for explicit user approval; do not freeze numeric thresholds or k values without sign-off.
+- [ ] Resolve/quarantine the 28 identity cases and verify 5Dollar Community per-competition history coverage before any cross-season backfill.
+- **Release state unchanged:** model QUARANTINED, no production forecasts, value betting LOCKED, Android UI preserved. No DB writes, provider requests, Odds API credits or production deployment.
+
+
+## Latest design checkpoint — two-tier database admission enforcement (2026-11-21)
+
+- [x] Drafted [MODEL_ADMISSION_DB_CONTRACT.md](MODEL_ADMISSION_DB_CONTRACT.md) from live read-only schema evidence. It defines SHADOW/PUBLISHED tiers, ADMITTED/QUARANTINED status, immutable hashes, monotonic transitions, model-version binding for both research runs and published predictions, SECURITY DEFINER controlled writers, least-privilege runtime role, and read-time admission-aware API views.
+- [x] Current database evidence confirms `model_versions` does not exist. The two `model_artifacts` rows are legacy `attack-defence-poisson-v1` and `attack-defence-poisson-v2-nested-tuned` artifacts (380 fixtures/20 provider teams); neither is the current `hierarchical-poisson-shadow-v1` run (996 labels/136 teams). Do not attach the current run to either legacy artifact.
+- [x] Existing research run already has a required report_sha256 value, but its model_version column is nullable at schema level and has no registry FK. Its append-only triggers protect UPDATE/DELETE only; no admission-controlled INSERT trigger exists.
+- [x] Current published predictions table has zero rows. Current research-shadow run is preserved as QUARANTINED when registry backfill is designed; never mark it ADMITTED based on its prior SHADOW_FORECASTS_READY status.
+- [ ] Compute and independently verify the current shadow config SHA from the immutable archived report/config before any migration backfill. Never invent the hash.
+- [ ] Build migrations and disposable-Neon-branch tests first. No production migration, role creation, Vercel secret rotation, or database write has been performed.
+
+
+## Verification refresh — PR #139 latest head (2026-11-21)
+
+- [x] Latest PR #139 head `edb41a13cbaeedd11eb143c311de5e12407b0da2`; six commits ahead of main, zero behind.
+- [x] Latest CI run [#44893501873](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893501873) passed both jobs: 504 backend tests, Ruff, Android debug build and APK upload.
+- [x] The PR remains open and unmerged. Vercel reports `build-rate-limit`; no preview deployment was found and production deployment remains unchanged.
+- [ ] The archived per-team CLI workflow has been added to the review branch, but its push-triggered execution has not been independently verified. Do not claim a full 136-team report until its run and artifact are read back.
+- [x] DB admission design is documented in [MODEL_ADMISSION_DB_CONTRACT.md](MODEL_ADMISSION_DB_CONTRACT.md); no production migration or write has been applied.
+
+
+## Archived per-team shrinkage CLI verified (2026-11-21)
+
+- [x] Workflow run [#44893869016](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893869016) successfully downloaded the immutable forecast and Stage 6 artifacts, ran the repository's exact `effective_shrinkage_audit` CLI, and verified `FIT_REPRODUCTION_VERIFIED`.
+- [x] Full report contains all 136 team rows across seven competitions, based on 996 training-only labels. Report artifact ID `14703192024`; SHA-256 `4997f0b6a93c2fc02c1a164c2daff33e2dd532b8b50b57a35a41ec609e64fab0`.
+- [x] Exact CLI results: median absolute attack ratio 3.110425%; defence 3.393930%; median prior/data information 30.57635× attack and 30.30684× defence; effective runtime team_ridge=0.5, competition_ridge=0.5, half-life=365; summed-objective team tau=434.29056074.
+- [x] Signed median ratios: attack 3.006544%, defence 3.277747%; sign agreement 90.44% and 91.18%. Absolute-ratio P10–P90: attack 1.327%–8.863%; defence 1.657%–9.433%.
+- [x] The exact repository CLI output matches the independent numerical reproduction. This is a fit/shrinkage diagnosis, not predictive validation or a selected replacement k.
+- [x] Full per-team report is available from [workflow run #44893869016](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893869016).
+
+
+## Candidate fitter and archived CLI execution checkpoint (2026-11-21)
+
+- [x] Added research-only `backend/app/models/hierarchical_poisson_v2.py` to PR #139. It uses the unnormalized weighted Poisson NLL, common pseudo-match k values, per-competition team effects, explicit competition/global home priors, and no unvalidated defaults. It is not wired to production inference.
+- [x] Added a synthetic candidate recovery test alongside current-configuration and excessive-prior rejection controls. Candidate test is awaiting the latest CI run.
+- [x] Archived audit workflow [#44893869016](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893869016) completed successfully and uploaded the 136-team report artifact 14703192024 (SHA-256 `4997f0b6a93c2fc02c1a164c2daff33e2dd532b8b50b57a35a41ec609e64fab0`).
+- [x] PR #139 metadata read-back: open, unmerged, mergeable; current head `940ae2f025e1feb1552bdda58cef5f73d028a0d0`. Latest preview deployment `dpl_H5UX1RbMTdMaDFNygvYUKqmZD9Gq` is READY for this branch only. No production deployment.
+- [ ] Latest standard CI run #44893869028 is still pending with no jobs exposed yet; do not merge until backend tests/lint and Android debug build complete on this exact head.
+- **Production remains unchanged:** API research feed MODEL_QUARANTINED/NOT_PUBLISHED/zero forecasts; published feed zero forecasts; Neon tables unchanged. No provider calls, Odds API credits or database writes.
+
+
+## Final production read-back after PR #139 preview (2026-11-21 10:23:43 UTC)
+
+- [x] Production research API: HTTP 200, MODEL_QUARANTINED, NOT_PUBLISHED, zero forecasts, promotion/value locked.
+- [x] Production published API: HTTP 200, zero forecasts.
+- [x] Production Vercel deployment remains READY at `dpl_4qjTXEBsVXHxJ13Ap7fjX7Zmk8b4`, main SHA `95445c9b7aaba045f15a97afe443211da341a2fe`.
+- [x] PR #139 preview `dpl_H5UX1RbMTdMaDFNygvYUKqmZD9Gq` is READY at head `940ae2f025e1feb1552bdda58cef5f73d028a0d0`; preview-only.
+- [ ] Standard CI #44893869028 remains pending with no job details. The 504-test pass on #44893501873 predates the v2 candidate fitter; do not merge until latest-head checks complete.
+
+
+## Next architecture component drafted — independent evaluator (2026-11-21)
+
+- [x] Drafted [INDEPENDENT_EVALUATOR_CONTRACT.md](INDEPENDENT_EVALUATOR_CONTRACT.md): single primary 1X2 log-loss metric, both required baselines, nested chronology, pre-evaluation MDE/power, paired date-block bootstrap, single-use final holdout, immutable run ledger, and secondary-market sequencing.
+- [ ] Implement evaluator code separately from model-building code, with independent tests for probability scoring, fold chronology, label-observed cutoffs, date-block bootstrap, MDE/power, baseline comparison, and single-use holdout enforcement.
+- [ ] Draft numeric thresholds for explicit user approval; no threshold hash is frozen yet.
+
+
+## Candidate optimizer correction — validation remains open (2026-11-21)
+
+- [x] CI #44893869028 exposed a real failure: 504 tests passed, but the new v2 synthetic recovery test failed at the optimizer line search. Android debug build passed; Ruff was skipped after the test failure.
+- [x] Corrective commit `3c07aacb8fdc1dfd4832d1779d91ac4eaed98963` raises only the candidate optimizer numerical tolerance from 1e-7 to 1e-6 and adds iteration/gradient-norm diagnostics. No admission or performance threshold was relaxed.
+- [ ] Latest CI #44894364730 is pending on the correction commit. Require full backend tests, Ruff and Android build to pass before merging.
+- [x] No new Vercel deployment was created for 3c07; the last preview remains READY on 940ae2f. Production deployment/API remain unchanged and quarantined.
+
+
+## Backfill and identity evidence — 2026-11-21
+
+- [x] Verified Community Access terms: last 12 months of results/odds, top-five leagues plus one country pack, 300 requests/hour and 20/minute burst cap; public free-plan products require attribution and raw-data redistribution is prohibited. No provider calls, plan purchase or Odds API credits used.
+- [x] Production DB read-back: 28 identity review cases are now `AUTOMATED_CONFIRMED` under recorded policy; one additional PIT timestamp gap is deferred. This is not equivalent to blanket cross-season identity clearance.
+- [x] 20 Brazil Série B team real-world crosswalks are marked `REAL_WORLD_IDENTITY_VERIFIED` using full 380-fixture CBF schedule reconciliation. Another 116 links are only `SOURCE_IDENTITY_REVIEWED`, not real-world identity verified.
+- [x] One remaining provider identity conflict: 5Dollar provider team ID `3808811746` (América Mineiro), link 16; exclude from cross-season stitching until independently resolved.
+- [x] New v2 candidate now abstains when either competition-scoped team has zero match history; test added. The candidate remains research-only.
+- [ ] Continue optimizer convergence work: the latest CI run #44894997224 failed the candidate synthetic recovery test at 4,000 iterations (gradient norm 2.51062e-5). Increasing the iteration budget/learning rate is under test; do not claim candidate recovery until CI passes.
+- [ ] Next CI run #44895139262 is pending at this checkpoint; Android build and backend test job results must be read back individually.
+- [x] Detailed findings recorded in [2026-11-21 regularization and DB audit ledger](ledger/2026-11-21-regularization-contract-and-db-audit.md).
+
+
+## Independent evaluator pre-registration draft (2026-11-21)
+
+- [x] Drafted [INDEPENDENT_1X2_EVALUATOR_PREREGISTRATION_DRAFT.md](INDEPENDENT_1X2_EVALUATOR_PREREGISTRATION_DRAFT.md).
+- [x] Primary endpoint fixed conceptually to 1X2 log loss only; secondary markets are non-regression checks after primary passes.
+- [x] Both mandatory baselines specified: league climatology with home advantage and a tuned team-aware Poisson/Elo baseline.
+- [x] Chronological nested development, MDE/power before holdout, paired date-block bootstrap, one-use final holdout and immutable evaluation-run logging specified.
+- [x] Evaluator must accept predictions/labels and must not import model fitting or feature-generation code.
+- [ ] Numeric thresholds remain unapproved and unfrozen. Suggested alpha=0.05/power=0.80 are draft-only. No final holdout access is permitted until the user approves and the protocol hash is frozen.
+
+
+## Latest PR #139 candidate verification — 2026-11-21
+
+- [x] PR #139 branch `research/regularization-contract-tests`: 16 commits ahead of main, 0 behind. Latest verified code SHA: `d58d993645f4a9edf25f0a4c4bfc092ef8be9586`.
+- [x] Added research-only pseudo-match Poisson candidate fitter with global/per-competition home priors and fail-closed abstention for unseen competition-scoped teams.
+- [x] Recorded two earlier synthetic optimizer failures and their evidence; did not suppress them.
+- [x] Latest CI [#44895139262](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44895139262): backend tests 506 passed; Ruff passed; Android debug build and APK upload passed.
+- [x] Archived shrinkage audit rerun [#44895139250](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44895139250), report artifact #14703656111.
+- [x] Vercel preview deployment `dpl_2xkxXzqYpq89BeTKiPrYRhBLsrrD` READY for exact code SHA. Preview research endpoint remains quarantined/empty; preview published endpoint returned HTTP 503 and remains a preview-only blocker under investigation.
+- [x] Production API read-back: research HTTP 200 `MODEL_QUARANTINED` / `NOT_PUBLISHED` / 0 forecasts; published HTTP 200 / 0 forecasts. Production DB: 0 prediction rows, 1 historical research-shadow run.
+- [ ] Diagnose preview-only 503 before preview API can be called healthy.
+- [ ] Continue independent candidate mathematical review and sparse-team/home-effect tests. CI success is not model admission.
+- [ ] Implement independent 1X2 scoring evaluator and immutable evaluation-run ledger.
+- [ ] No final holdout until numeric thresholds are explicitly approved and protocol hash frozen.
+- **Release state unchanged:** model QUARANTINED; no production forecasts; value betting LOCKED; Android UI preserved; no DB writes, provider requests, Odds API credits or production deployment.
