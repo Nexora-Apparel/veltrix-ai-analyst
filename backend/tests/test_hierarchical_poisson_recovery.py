@@ -217,7 +217,7 @@ def test_pseudo_match_candidate_recovers_strength_and_matches_unpenalized_fit(
         for team in defence_truth if abs(defence_truth[team]) > 0.05
     ])
     attack_reference_ratios = [
-        abs(candidate.attack[("synthetic-league", team)] / reference.attack[team])
+        abs(candidate.attack[team] / reference.attack[team[1]])
         for team in candidate.attack
         if abs(reference.attack[team[1]]) > 0.05
     ]
