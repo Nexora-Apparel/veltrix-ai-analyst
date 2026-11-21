@@ -117,17 +117,15 @@ def test_absurdly_large_prior_is_rejected_by_recovery_negative_control(
     known_strength_results,
 ):
     results, strong, weak, _, _ = known_strength_results
-    try:
-        excessive_prior = _fit(
-            results,
-            team_ridge=1_000_000.0,
-            competition_ridge=1_000_000.0,
-            max_iterations=100,
-        )
-    except (ArithmeticError, ValueError):
-        # A numerical failure is a fail-closed rejection of the negative control.
-        return
+    excessive_prior = _fit(
+        results,
+        team_ridge=1_000_000.0,
+        competition_ridge=1_000_000.0,
+        max_iterations=4000,
+    )
 
+    # The fit must complete; the rejection must come from lost synthetic signal,
+    # not from an optimizer error or a skipped assertion.
     assert not _recovery_passes(excessive_prior, strong, weak)
 
 
