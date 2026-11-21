@@ -60,8 +60,9 @@ The recency weights (w_i) apply only to the likelihood. They do not rescale (k),
 
 ## 3. Identification and competition handling
 
-- Team attack and defence effects must be identified relative to their competition baseline; use explicit sum-to-zero constraints within competition or an algebraically equivalent reference parameterization.
-- Competition scoring deviations must be identified relative to the global scoring intercept.
+- The candidate uses a prior-anchored parameterization rather than post-fit recentering or hard sum-to-zero constraints. Every competition-scoped team attack and defence effect has a proper zero-centred Gaussian prior with strictly positive precision; each competition scoring deviation has a proper zero-centred prior; each competition home deviation is shrunk toward the globally estimated home effect; and the global home effect has its own proper prior.
+- These positive prior precisions anchor the otherwise likelihood-invariant common attack/defence shift and competition/global intercept shifts, yielding a unique penalized MAP solution. The global scoring intercept remains identified by the goal likelihood. The fitter rejects any zero k because it would remove the prior anchor for that parameter family.
+- Competition scoring deviations are therefore identified relative to the global scoring intercept by their proper priors, not by an after-the-fact centering operation.
 - Competition home effects are (h_c=h_0+\delta_c); deviations are shrunk toward the single global (h_0).
 - A team is competition-scoped until canonical identity and cross-competition transfer evidence justify sharing. Promotion/relegation does not silently copy ratings across provider IDs or seasons.
 - If a club has no defensible identity link into a competition/season, abstain or use a separately pre-registered prior; never infer a mapping from a name alone.
