@@ -5,6 +5,7 @@ This document and the matching code constants are committed before results are c
 ## Fixed configurations
 - Archived fit: team ridge 0.5, competition ridge 0.5, half-life 365 days.
 - Reference k values: 0.5 and 2.0.
+- Optimizer settings for every fit: max_iterations = 4,000; tolerance = 1e-7 (matching the shared model implementation defaults, now passed explicitly).
 - Reference team penalty: tau_team = k * mu.
 - Reference competition penalty: tau_competition = k * 2 * mu.
 - Home advantage is unpenalized in archived and both reference fits.
