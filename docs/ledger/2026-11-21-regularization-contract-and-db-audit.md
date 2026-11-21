@@ -110,3 +110,15 @@ At 2026-11-21 10:23:43 UTC, after the PR #139 preview became READY:
 - PR #139 preview is `dpl_H5UX1RbMTdMaDFNygvYUKqmZD9Gq`, READY, branch commit `940ae2f025e1feb1552bdda58cef5f73d028a0d0`. This is preview-only and did not replace the production deployment.
 - PR #139 metadata read-back: open, unmerged, mergeable=true. Its latest standard CI run #44893869028 is still pending and has not exposed jobs. The prior #44893501873 run passed 504 tests/Ruff/Android but predates the v2 candidate fitter; it is not sufficient to certify the latest head.
 - No production DB writes, migrations, role changes, provider calls or Odds API credits were used.
+
+
+## Candidate optimizer failure and corrective validation
+
+- Standard CI run #44893869028 on PR head `940ae2f025e1feb1552bdda58cef5f73d028a0d0`:
+  - Backend: 504 tests passed, one failed. The new v2 synthetic recovery test failed because the optimizer's backtracking line search stopped before meeting its gradient tolerance.
+  - Android debug build: success; APK assembled and uploaded.
+  - Ruff was skipped because the backend test step failed.
+- This failure is retained as evidence; the candidate was not treated as admitted or successful.
+- Corrective commit `3c07aacb8fdc1dfd4832d1779d91ac4eaed98963` raises the research candidate's numerical optimizer tolerance from 1e-7 to 1e-6 and adds iteration/gradient-norm diagnostics to the line-search failure. This is an optimizer convergence setting only; no admission threshold or market gate was relaxed.
+- Latest CI run #44894364730 is running on that correction commit. Its result is pending. Do not merge PR #139 until the candidate recovery test, all backend tests/lint and Android build pass on the exact current head.
+- No new Vercel deployment was found for commit 3c07; the existing preview remains READY at commit 940ae2f. Production deployment remains unchanged.
