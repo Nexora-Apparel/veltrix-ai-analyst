@@ -1,5 +1,11 @@
 import ast
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+import pytest
+
+from app.models.hierarchical_poisson import fit_hierarchical_poisson
+from app.research import corrected_shrinkage_audit as audit
 
 from app.research.corrected_shrinkage_audit import (
     ARCHIVED_CONFIG, FOLD_RULE, HOME_ADVANTAGE_TREATMENT, REFERENCE_K,
@@ -25,13 +31,6 @@ def test_audit_module_has_no_database_or_provider_imports():
             imports.append(node.module or "")
     assert not any(any(token in name for token in forbidden) for name in imports)
 
-
-from datetime import datetime, timedelta, timezone
-
-import pytest
-
-from app.models.hierarchical_poisson import HierarchicalGoalResult, fit_hierarchical_poisson
-from app.research import corrected_shrinkage_audit as audit
 
 
 def _known_league_rows() -> list[dict]:
@@ -98,7 +97,6 @@ def test_synthetic_overpenalization_suppresses_signal_and_scaled_prior_recovers_
         team_ridge=scaled_team, competition_ridge=scaled_comp,
     )
     true_order = ["strong", "upper", "lower", "weak"]
-    over_order = sorted(overfit.attack, key=overfit.attack.get, reverse=True)
     recovered_order = sorted(recovered.attack, key=recovered.attack.get, reverse=True)
     over_spread = max(overfit.attack.values()) - min(overfit.attack.values())
     recovered_spread = max(recovered.attack.values()) - min(recovered.attack.values())
