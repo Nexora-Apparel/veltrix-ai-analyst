@@ -83,3 +83,11 @@
 - `GET /v1/predictions`: HTTP 200, zero published prediction rows. This confirms the 25 research forecasts are not being exposed through the production-only feed.
 - `GET /v1/research/predictions`: HTTP 200, 25 research rows; `SHADOW_FORECASTS_READY`, `research_only=true`, `NOT_PUBLISHED`, production promotion `LOCKED`, value betting `LOCKED`.
 - This is a read-only HTTP verification. No odds-provider calls, Odds API credits, or database writes were used.
+
+
+## Android device confirmation — 2026-11-21
+- User confirmed the research forecasts are visible in the Android app after the production API repair.
+- This closes the previously outstanding physical display check for the current research feed. The confirmation is user-observed; no independent screenshot or device telemetry was supplied.
+- Combined with the live production GET verification (HTTP 200, 25 research rows) and the published-feed isolation check (HTTP 200, zero published rows), this confirms the repaired backend delivery path and user-visible Android rendering.
+- Research rows remain NOT_PUBLISHED; production promotion and value betting remain LOCKED. This device confirmation is not model-performance certification.
+- Next: inspect scheduled prospective capture, Stage 6, shadow inference and Stage 7 runs; identify any sequential duplicate inference caused by both Stage 6 completion and the 06:00 WAT cron. Do not alter schedules until actual run history is verified.
