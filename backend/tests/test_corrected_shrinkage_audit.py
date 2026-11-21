@@ -1,5 +1,5 @@
 import ast
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -40,7 +40,7 @@ def test_audit_module_has_no_database_or_provider_imports():
 def _known_league_rows() -> list[dict]:
     strengths = {"strong": 1.1, "upper": 0.45, "lower": -0.45, "weak": -1.1}
     teams = list(strengths)
-    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    start = datetime(2024, 1, 1, tzinfo=UTC)
     rows = []
     index = 0
     for round_no in range(24):
