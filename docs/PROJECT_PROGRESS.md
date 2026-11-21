@@ -8,6 +8,15 @@
 **Repository visibility:** Public  
 **Product:** Personal-use, cloud-backed native Android football analysis and prediction application
 
+## Latest execution checkpoint — PR #142 corrected shrinkage audit (2026-11-21)
+
+- [x] Commit A passed CI on exact head `c646911b112cca5329209e038c56f11b40e65091`: run [44995500969](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44899500969), 501 backend tests passed, Ruff passed, Android debug build passed.
+- [ ] Slimmed Commit B report outputs are implemented on head `ace0dec08a17a306ab877e39f6ec24e9a172f913`: same-fold training-only home-advantage climatology; centred team-effect ratio median/IQR summaries, weighted and unweighted; archived-fixture dispersion; paired date-block bootstrap; convergence diagnostics. CI run [44900062394](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44900062394) was still running at checkpoint; do not claim green until final jobs and exact test count are read.
+- [ ] Supervisor's realistic-size synthetic convergence test (about 1,000 fixtures/130 teams) and any optimizer replacement remain outstanding. No 996-row computation has run.
+- [ ] Commit C must address the push-triggered zero-job failure [44900058081](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44900058081) for the workflow-dispatch-only audit workflow, including YAML/actionlint validation. No dispatch.
+- PR #142 remains draft. Quarantine, production publication and value betting locks remain unchanged. No provider/Odds API, database, production or Android changes. Vercel rate-limit preview is not retried.
+- Detailed evidence: [2026-11-21 PR #142 ledger](ledger/2026-11-21-pr142-commit-a-b.md).
+
 ## Latest execution checkpoint — bounded cross-provider odds qualification (2026-11-18)
 
 - [x] The Odds API zero-credit catalogue authentication was confirmed in run [#44220418309](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44220418309): HTTP 200, 46 active soccer sport keys, one request, zero retries, `x-requests-last=0`, `x-requests-remaining=271`, `x-requests-used=229`.
