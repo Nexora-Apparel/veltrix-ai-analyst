@@ -35,6 +35,68 @@ def _weights(rows: list[dict[str, Any]], cutoff: datetime) -> list[float]:
     return [math.exp(-math.log(2) * max(0, (cutoff-_dt(r["kickoff_at"])).total_seconds()/86400) / 365.0) for r in rows]
 
 
+def _fold_weight_and_mean_goals(rows: list[dict[str, Any]], cutoff: datetime) -> tuple[float, float]:
+    """Return W and weighted mean goals per team per match for this fold."""
+    weights = _weights(rows, cutoff)
+    total_weight = sum(weights)
+    if total_weight <= 0:
+        raise ValueError("FOLD_WEIGHT_NOT_POSITIVE")
+    weighted_goals = sum(
+        weight * (int(row["label"]["home_goals"]) + int(row["label"]["away_goals"]))
+        for row, weight in zip(rows, weights)
+    )
+    mu = weighted_goals / (2.0 * total_weight)
+    if mu <= 0:
+        raise ValueError("FOLD_MEAN_GOALS_NOT_POSITIVE")
+    return total_weight, mu
+
+
+def _ridge_for_unnormalized_prior(k: float, mu: float, total_weight: float) -> tuple[float, float]:
+    """Convert summed-objective tau values to this model's averaged-objective ridge."""
+    if k <= 0 or mu <= 0 or total_weight <= 0:
+        raise ValueError("INVALID_REGULARIZATION_SCALE")
+    return k * mu / total_weight, k * 2.0 * mu / total_weight
+
+
+def _fit_for_audit(
+    rows: list[dict[str, Any]], cutoff: datetime, *, k: float | None,
+    archived: bool = False,
+) -> dict[str, Any]:
+    total_weight, mu = _fold_weight_and_mean_goals(rows, cutoff)
+    if archived:
+        team_ridge = ARCHIVED_CONFIG["team_ridge"]
+        competition_ridge = ARCHIVED_CONFIG["competition_ridge"]
+    else:
+        assert k is not None
+        team_ridge, competition_ridge = _ridge_for_unnormalized_prior(k, mu, total_weight)
+    try:
+        model = fit_hierarchical_poisson(
+            [_result(row) for row in rows],
+            as_of=cutoff,
+            half_life_days=365,
+            team_ridge=team_ridge,
+            competition_ridge=competition_ridge,
+        )
+    except ArithmeticError as exc:
+        return {
+            "model": None, "converged": False, "iterations": None,
+            "gradient_norm": None, "error": str(exc),
+            "total_recency_weight": total_weight,
+            "weighted_mean_goals_per_team_match": mu,
+            "team_ridge_averaged_objective": team_ridge,
+            "competition_ridge_averaged_objective": competition_ridge,
+        }
+    return {
+        "model": model, "converged": model.optimizer_converged,
+        "iterations": model.optimizer_iterations,
+        "gradient_norm": model.optimizer_gradient_norm, "error": None,
+        "total_recency_weight": total_weight,
+        "weighted_mean_goals_per_team_match": mu,
+        "team_ridge_averaged_objective": team_ridge,
+        "competition_ridge_averaged_objective": competition_ridge,
+    }
+
+
 def _result(row: dict[str, Any]) -> HierarchicalGoalResult:
     label = row["label"]
     return HierarchicalGoalResult(str(row["fixture_id"]), _dt(row["kickoff_at"]), str(row["competition_id"]), str(row["home_team_id"]), str(row["away_team_id"]), int(label["home_goals"]), int(label["away_goals"]))
@@ -127,22 +189,27 @@ def run_audit(dataset: dict[str,Any], forecast: dict[str,Any], *, commit_sha: st
         cutoff=min(_dt(r["kickoff_at"]) for r in test)
         if any(_dt(r["kickoff_at"])>=cutoff for r in train): raise ValueError("FOLD_LEAKAGE")
         fits=[]
-        configs=[("archived",.5,.5)]+[(f"reference_k_{k}",k,k*2) for k in REFERENCE_K]
-        for name,tr,cr in configs:
-            model=fit_hierarchical_poisson([_result(r) for r in train],as_of=cutoff,half_life_days=365,team_ridge=tr,competition_ridge=cr)
-            predicted=[]
-            low=0
-            counts={}
-            for r in train:
-                counts[str(r["home_team_id"])]=counts.get(str(r["home_team_id"]),0)+1
-                counts[str(r["away_team_id"])]=counts.get(str(r["away_team_id"]),0)+1
-            for r in test:
-                if counts.get(str(r["home_team_id"]),0)<5 or counts.get(str(r["away_team_id"]),0)<5: low+=1
-                predicted.append(r)
-            fits.append({"name":name,"converged":model.optimizer_converged,"iterations":model.optimizer_iterations,"gradient_norm":model.optimizer_gradient_norm,"metrics":_metrics(test,model),"dispersion_test":_dispersion(test,model),"dispersion_training_matchups":_dispersion(train,model),"low_history_test_fixtures":low,"model":model})
+        configs=[("archived",None,True)]+[(f"reference_k_{k}",k,False) for k in REFERENCE_K]
+        counts={}
+        for r in train:
+            counts[str(r["home_team_id"])]=counts.get(str(r["home_team_id"]),0)+1
+            counts[str(r["away_team_id"])]=counts.get(str(r["away_team_id"]),0)+1
+        low=sum(1 for r in test if counts.get(str(r["home_team_id"]),0)<5 or counts.get(str(r["away_team_id"]),0)<5)
+        for name,k,is_archived in configs:
+            fit=_fit_for_audit(train,cutoff,k=k,archived=is_archived)
+            model=fit["model"]
+            item={"name":name,"converged":fit["converged"],"iterations":fit["iterations"],"gradient_norm":fit["gradient_norm"],"fit_error":fit["error"],"total_recency_weight":fit["total_recency_weight"],"weighted_mean_goals_per_team_match":fit["weighted_mean_goals_per_team_match"],"team_ridge_averaged_objective":fit["team_ridge_averaged_objective"],"competition_ridge_averaged_objective":fit["competition_ridge_averaged_objective"],"low_history_test_fixtures":low,"model":model}
+            if model is not None:
+                item["metrics"]=_metrics(test,model)
+                item["dispersion_test"]=_dispersion(test,model)
+                item["dispersion_training_matchups"]=_dispersion(train,model)
+            fits.append(item)
         archived=fits[0]
         comparisons={}
         for ref in fits[1:]:
+            if archived["model"] is None or ref["model"] is None:
+                comparisons[ref["name"]]={"status":"NOT_COMPUTED_NON_CONVERGED_FIT"}
+                continue
             diffs=[]
             for r in test:
                 pa=_probabilities(archived["model"].predict(str(r["home_team_id"]),str(r["away_team_id"]),str(r["competition_id"])).home_lambda,archived["model"].predict(str(r["home_team_id"]),str(r["away_team_id"]),str(r["competition_id"])).away_lambda)
@@ -150,6 +217,6 @@ def run_audit(dataset: dict[str,Any], forecast: dict[str,Any], *, commit_sha: st
                 hg,ag=int(r["label"]["home_goals"]),int(r["label"]["away_goals"]); actual=0 if hg>ag else (1 if hg==ag else 2)
                 diffs.append((_dt(r["kickoff_at"]).date().isoformat(),-math.log(max(pa[actual],1e-15))+math.log(max(pr[actual],1e-15))))
             comparisons[ref["name"]]=_bootstrap(diffs,BOOTSTRAP_SEED+pct)
-        public_fits=[{k:v for k,v in f.items() if k!="model"} for f in fits]
+        public_fits=[{key:value for key,value in f.items() if key!="model"} for f in fits]
         folds.append({"train_date_range":[dates[0],dates[cut-1]],"test_date_range":[dates[cut],dates[test_end-1]],"train_rows":len(train),"test_rows":len(test),"cutoff_exclusive":cutoff.isoformat(),"fits":public_fits,"paired_log_loss_differences_archived_minus_reference":comparisons})
     return {"status":"DIAGNOSTIC_ONLY","commit_sha":commit_sha,"preregistration":{"reference_k":list(REFERENCE_K),"tau_team":"k*mu","tau_competition":"k*2*mu","fold_rule":FOLD_RULE,"fold_training_percentages":[60,70,80,90],"metrics":list(METRICS),"home_advantage":HOME_ADVANTAGE_TREATMENT,"half_life_days":365,"bootstrap_replicates":BOOTSTRAP_REPLICATES,"bootstrap_seed":BOOTSTRAP_SEED},"training_rows":len(rows),"dataset_sha256":dataset["dataset_sha256"],"training_data_sha256":training_data_sha256(rows),"folds":folds,"primary_evidence":"fit-to-fit comparison; paired date-block bootstrap log-loss differences","sum_w_lambda_diagnostic":"first-order approximation only; attack and defence jointly estimated","admission_conclusion":"NONE: corpus is not point-in-time certified","production_promotion":"LOCKED","value_betting":"LOCKED"}
