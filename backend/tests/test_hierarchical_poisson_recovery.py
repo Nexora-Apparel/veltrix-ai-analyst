@@ -168,3 +168,21 @@ def test_pseudo_match_candidate_recovers_known_team_strengths(known_strength_res
     assert match_contrast >= 0.70
     assert retention >= 0.50
     assert candidate.optimizer_converged
+
+
+def test_candidate_abstains_for_unseen_competition_scoped_team(known_strength_results):
+    from app.models.hierarchical_poisson_v2 import fit_hierarchical_poisson_v2
+
+    results, *_ = known_strength_results
+    candidate = fit_hierarchical_poisson_v2(
+        results,
+        as_of=datetime(2026, 11, 21, tzinfo=UTC),
+        half_life_days=365.0,
+        k_team=2.0,
+        k_competition=2.0,
+        k_home_competition=2.0,
+        k_home_global=10.0,
+    )
+
+    with pytest.raises(ValueError, match="TEAM_HISTORY_INSUFFICIENT"):
+        candidate.predict("newly-promoted-no-history", "team-135", "synthetic-league")
