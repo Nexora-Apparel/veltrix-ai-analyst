@@ -41,3 +41,18 @@ No production or default optimizer change, quarantine change, lock change, feed 
 - PR #143 body updated to v3.1 and accurately lists remaining evaluator, settlement scorer, workflow, and CI verification work.
 - No candidate grid evaluation or real-data fit was run. No workflow dispatch occurred.
 - Current branch head at this checkpoint: `f9af5b35c87f6731273306bfe00b29f4d604463c`.
+
+
+## v3.1 freeze and evaluation scaffolding — 2026-11-21
+
+- Added deterministic selection rule before any grid evaluation: primary = arithmetic mean of the three fold-level mean 1X2 log losses (equal fold weighting); secondary = arithmetic mean of fold-level multiclass Brier; tie-break larger k, then longer half-life, then larger blend weight. Any failed/missing fold excludes the candidate and is reported.
+- Updated canonical v3.1 config SHA-256 after freezing that rule: `a6b0f5484a34e4375c02c0b96bb8f0ed4e696a055fd06b1f6bf4a054fcabba24`. No candidate grid was evaluated.
+- Added `backend/app/research/shrinkage_repair_evaluation.py`: chronological development-fold selector, recency-scaled k ridge conversion, probability blend, climatology/plain pooled Poisson comparisons, paired date-block bootstrap, reliability/calibration/extreme probability/competition diagnostics. It fails closed unless training labels were observed before each fold cutoff.
+- Added `backend/app/research/prospective_shrinkage_settlement_scorer.py`: read-only frozen-hash settlement scoring with canonical fixture deduplication, timestamp checks, exclusions, and calibration/extreme-probability outputs.
+- Added tests for the settlement scorer and calibration helpers.
+- Added owner-dispatched workflow `.github/workflows/shrinkage-repair-evaluation.yml`; no schedule or push trigger. It pins evaluation commit, dataset/forecast run and artifact IDs, dataset SHA, and v3.1 config SHA. It downloads artifacts read-only, verifies fingerprints, runs focused tests and development selection, and uploads the aggregate report.
+- Updated CI actionlint command to lint the new workflow.
+- Newton model result now exposes relative objective change for reporting.
+- CI runs 44918029389, 44918267482, and 44918298716 were cancelled during rapid branch updates/concurrency; no backend test or lint pass is claimed. A fresh exact-head CI result is still required.
+- Workflow dispatch is not authorized and was not performed. Existing 996-row artifact fails the fold-4 point-in-time availability check (835/835 labels observed at/after fold-4 cutoff), so it is not a valid candidate-selection dataset. No real-data run was performed.
+- PR #143 remains draft. The selection workflow is drafted but not ready for owner dispatch until exact-head CI passes and the prospective settlement export/score path is integrated and validated.
