@@ -103,6 +103,44 @@ def _training_results(
     return results
 
 
+
+def objective_scaling_diagnostics(
+    training_rows: list[dict[str, Any]],
+    *,
+    training_cutoff_at: datetime,
+    half_life_days: float,
+    team_ridge: float,
+    competition_ridge: float,
+) -> dict[str, float]:
+    """Expose the exact scale mismatch without changing model fitting.
+
+    The fitted objective is weighted-NLL / sum(weights) + unscaled ridge.
+    Multiplying the complete objective by sum(weights) shows the equivalent
+    summed-NLL penalty coefficients. This is descriptive, not a recommendation
+    for a new coefficient.
+    """
+    if half_life_days <= 0 or team_ridge < 0 or competition_ridge < 0:
+        raise ValueError("INVALID_OBJECTIVE_SCALING_INPUT")
+    weights = []
+    for row in training_rows:
+        kickoff = _datetime(row["kickoff_at"])
+        age_days = max(0.0, (training_cutoff_at - kickoff).total_seconds() / 86400)
+        weights.append(exp(-0.6931471805599453 * age_days / half_life_days))
+    total_weight = sum(weights)
+    if not total_weight > 0:
+        raise ValueError("NON_POSITIVE_TOTAL_TRAINING_WEIGHT")
+    return {
+        "training_row_count": float(len(training_rows)),
+        "total_recency_weight": total_weight,
+        "mean_recency_weight": total_weight / len(training_rows),
+        "team_ridge_in_averaged_objective": team_ridge,
+        "competition_ridge_in_averaged_objective": competition_ridge,
+        "equivalent_team_ridge_in_summed_objective": team_ridge * total_weight,
+        "equivalent_competition_ridge_in_summed_objective": competition_ridge * total_weight,
+        "home_advantage_ridge": 0.0,
+    }
+
+
 def reproduce_shadow_fit(
     dataset: dict[str, Any],
     forecast: dict[str, Any],
@@ -133,6 +171,13 @@ def reproduce_shadow_fit(
     cutoff = _datetime(str(forecast["training_cutoff_at"]))
     results = _training_results(training_rows, cutoff)
     model_meta = forecast["model"]
+    scaling = objective_scaling_diagnostics(
+        training_rows,
+        training_cutoff_at=cutoff,
+        half_life_days=float(model_meta["half_life_days"]),
+        team_ridge=float(model_meta["team_ridge"]),
+        competition_ridge=float(model_meta["competition_ridge"]),
+    )
     model = fit_hierarchical_poisson(
         results,
         as_of=cutoff,
@@ -200,6 +245,7 @@ def reproduce_shadow_fit(
         "optimizer_converged": model.optimizer_converged,
         "optimizer_iterations": model.optimizer_iterations,
         "optimizer_gradient_norm": model.optimizer_gradient_norm,
+        "objective_scaling": scaling,
         "global_intercept": model.global_intercept,
         "home_advantage_log_rate": model.home_advantage,
         "home_advantage_rate_multiplier": exp(model.home_advantage),
