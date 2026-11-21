@@ -10,7 +10,7 @@ from typing import Any
 
 from app.models.hierarchical_poisson import fit_hierarchical_poisson
 from app.research.corrected_shrinkage_audit import (
-    _dt, _result, _ridge_for_unnormalized_prior, _probabilities,
+    _dt, _result,
 )
 from app.research.shrinkage_repair_metrics import (
     blend_probabilities, evaluation_diagnostics, paired_date_block_bootstrap,
@@ -218,6 +218,7 @@ def run_evaluation(dataset_path: Path, config_path: Path, expected_config_sha: s
                         "fit_converged": model.optimizer_converged,
                         "fit_iterations": model.optimizer_iterations,
                         "fit_gradient_norm": model.optimizer_gradient_norm,
+                        "fit_relative_objective_change": model.optimizer_relative_objective_change,
                     }
                     fold_candidates.append(record)
                     candidate_records.append(record)
