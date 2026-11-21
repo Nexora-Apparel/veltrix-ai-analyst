@@ -1,26 +1,31 @@
-# 2026-11-21 — Supervisor review and shrinkage repair v3
+# 2026-11-21 — Supervisor review and shrinkage repair v3.1
 
-## Verified supervisor corrections
-- Re-inspected sanitized artifact from run 44916186280 (artifact 14711832619). The archive includes fold-level dispersion, model metrics, climatology metrics, paired archived-minus-reference bootstrap results, fit convergence diagnostics, fold boundaries and team-effect ratio summaries.
-- Corrected interpretation: no computed comparison favours archived; fold 1 vs k=2 and fold 4 vs k=0.5 significantly favour the references; two comparisons are unavailable due non-converged reference fits. Folds share expanding training data and are not independent.
-- The JSON does not contain a per-team signal-survival metric, nor paired model-minus-climatology differences with confidence intervals. The existing team-ratio summaries are not signal-survival summaries and are not substituted.
-- Fold test counts 158/115/217/161 (651 total) are counts of fixtures in the next 10% of unique kickoff-date windows, not 10% of fixture rows. Unequal fixture density per date explains variable counts.
+## Delta from v3
 
-## PR #142 caller-path verification
-- Main's `backend/app/research/prospective_shadow.py` imports `fit_hierarchical_poisson` and calls it without an `optimizer` argument.
-- The function default remains `optimizer="gradient_descent"`; the shadow caller supplies its existing half-life/team-ridge/competition-ridge constants (365/0.5/0.5). Therefore PR #142's added optional L-BFGS implementation does not change the default prospective-shadow fitting path.
-- The shadow builder still labels output `SHADOW_ONLY_NOT_FOR_PUBLICATION`, `research_only=true`, `production_promotion=LOCKED`, `value_betting=LOCKED`, with `database_writes=0`. No PR #142 edit changes that route's quarantine behavior.
-- CI delta in PR #142: add `.github/workflows/effective-shrinkage-audit.yml`, `docs/PROJECT_PROGRESS.md`, `docs/ledger/**`, and the audit preregistration document to both push and pull-request path filters; add an actionlint validation step for the effective-shrinkage audit workflow before pytest. No provider, deployment, database, feed, or lock operation is added by this CI change.
+- Replaced the v3 k grid with `{0.5,1,2,4,8,16,32,64,128}`; half-life remains `{180,365,730}` days.
+- Added preregistered probability blend weights `{0.25,0.5,0.75,1.0}`, with `p=w*p_model+(1-w)*p_climatology`.
+- Added ten-bin HOME/DRAW/AWAY reliability tables, calibration slope/intercept, >0.80 probability counts and hit rates, paired date-block bootstrap comparisons against climatology and plain scaled Poisson, and competition-level breakdown.
+- Fixed the convergence rule before evaluation: gradient L2 norm <=1e-7 AND relative objective change <=1e-10 for two consecutive accepted steps; max 200 Newton iterations; no post-hoc tolerance relaxation.
+- Recorded exact archived-equivalent team k values: fold 1 128.3802704829587; fold 2 173.29424410186596; fold 3 206.5352382546307; fold 4 269.2584048267363 (diagnostic only).
+- Canonical config SHA-256: `14333ab670983a692605e91705bc001707bc3c2319c1e94f116ddc15adcb44dd`.
 
-## Pre-registration v3 and draft repair
-- Created draft PR #143: https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/143
-- Branch: `repair/damped-newton-prereg-v3`, based on main `25ca2d29927d3a48cf63bc6d6c451bbae5a4bf3b`.
-- Added `docs/research/SHRINKAGE_REPAIR_PREREGISTRATION_V3.md` and `docs/research/shrinkage-selection-v3.json`.
-- Frozen grid: k={0.25,0.5,1,2,4,8}; half-life={180,365,730} days. Selection restricted to development folds 1–3. Fold 4 (2026-10-28 to 2026-11-19) is explicitly disclosed as PREVIOUSLY_EXAMINED_DIAGNOSTIC_WINDOW and may only be used as a SHADOW-tier sanity check.
-- Canonical config SHA-256: `80658db5ee8a8793e9c9d747101059072dd1fb3af55b08f6f610c4e5a6346a56`.
-- PR #143 remains draft. Damped-Newton implementation, analytic Hessian/backtracking, synthetic equivalence tests, frozen candidate evaluation and prospective settlement scorer are pending. No solver change is claimed complete and no real-data run was started.
+## Fold-4 leakage review — read-only source artifact inspection
 
-## Safety / controls
-- Quarantine, production promotion, value-betting locks and feed state were not changed.
-- No audit dispatch, real-data regularization/recovery run, provider call, Odds API call, database write, Telegram notification, merge, or production change was performed.
-- Next: implement and test Newton on deterministic synthetic fixtures; only then extend the draft PR. Any merge or real-data dispatch remains owner-controlled.
+Source artifacts: Stage 6 dataset artifact 14694463354 and forecast artifact 14694089682 from the audit's pinned inputs. No model was refit and no candidate grid was evaluated.
+
+- Fold 4 partition reproduced from the 996 training rows: 835 train rows, 161 test rows, cutoff 2026-10-28 17:30:00 UTC.
+- Training kickoff timestamps at/after cutoff: 0.
+- Exact cross-fold duplicates by canonical fixture ID: 0; provider fixture ID: 0; same-direction teams/date: 0; unordered teams/date: 0.
+- Training labels with `label_observed_at >= fold cutoff`: 835/835.
+- Training labels observed after their own kickoff: 835/835 (expected for settled results, but not proof they were available at a historical forecast cutoff).
+- Per-row historical `prediction_cutoff_at` on training records: 0/835. Thus own-prediction-time availability cannot be established.
+- Dataset exposes only aggregate `fixture_identity_rows=1053`; it does not include the 28 unresolved identity-case records. Those cases cannot be cleared from the supplied artifact.
+- Therefore fold 4's 0.905 log loss for k=0.5 is not trustworthy as point-in-time evidence. It remains previously examined and is not clean validation.
+
+### Requested high-probability attribution — unavailable without a new real-data evaluation
+
+The sanitized audit JSON and source artifacts do not preserve per-test-fixture probabilities for the fold-4 k=0.5 fit, nor the per-fixture competition/outcome attribution needed to count forecasts above 0.80 and calculate their hit rate. No refit/replay was run because real-data evaluation requires the owner-dispatched workflow. These metrics remain required in the v3.1 evaluation output.
+
+## Controls
+
+No production or default optimizer change, quarantine change, lock change, feed enablement, database write, provider call, Odds API use, Telegram notification, merge, or workflow dispatch. PR #143 remains draft. All real-data evaluation remains owner-dispatched and read-only.
