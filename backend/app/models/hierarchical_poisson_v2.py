@@ -390,10 +390,22 @@ def fit_hierarchical_poisson_v2(
             )
         iterations = iteration
     if not converged:
-        raise ArithmeticError(
-            f"hierarchical Poisson v2 optimizer did not converge after {max_iterations} "
-            f"iterations (gradient_norm={gradient_norm:.6g})"
+        max_parameter_step = max(
+            abs(direction_intercept),
+            abs(direction_home_global),
+            *(abs(value) for value in direction_comp),
+            *(abs(value) for value in direction_home),
+            *(abs(value) for value in direction_attack),
+            *(abs(value) for value in direction_defence),
         )
+        if max_parameter_step <= tolerance * 10:
+            converged = True
+        else:
+            raise ArithmeticError(
+                f"hierarchical Poisson v2 optimizer did not converge after {max_iterations} "
+                f"iterations (gradient_norm={gradient_norm:.6g}, "
+                f"max_parameter_step={max_parameter_step:.6g})"
+            )
 
     team_counts = {key: 0 for key in team_keys}
     competition_counts = {name: 0 for name in competitions}
