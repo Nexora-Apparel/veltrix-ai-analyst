@@ -46,7 +46,6 @@ def test_research_mapper_preserves_markets_and_stable_nonpublication_identity() 
     assert first["prediction_id"]
 
 
-
 def test_research_api_keeps_daily_report_available_through_next_matchday() -> None:
     from app.routes.research_predictions import _RESEARCH_QUERY
 
