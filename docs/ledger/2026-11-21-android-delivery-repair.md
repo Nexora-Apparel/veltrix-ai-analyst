@@ -46,3 +46,18 @@
 
 - Final production deployment read-back: deployment `dpl_AAya7HfvdnabnZfZnwPpHtRFALsn` reached `READY` on production alias `veltrix-ai-analyst-api.vercel.app`, commit `bf6986d03d3687f36dbd7e84de7adb148e93c64d`.
 - Attempted direct external GET of `/v1/research/predictions`; the available page-fetch path returned an internal access error. Vercel runtime logs for the deployment showed no requests in the 30-minute window. Therefore HTTP status/payload and physical Android rendering remain unverified; deployment readiness alone does not prove either.
+
+## Android feed diagnostics — 2026-11-21
+
+- PR #131 merged: https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/131
+- Squash merge commit: `841d4e9864a49b76a98a10b420b5e1eea78b0ce5`.
+- Android research feed now returns a structured result separating a successful empty forecast list from request failure.
+- Failure diagnostics preserve cancellation semantics and report safe detail for missing API base URL, HTTP status, empty response, malformed payload/URL, and transport exceptions. Successful responses log the loaded forecast count using the `VeltrixPredictions` tag.
+- Existing Home, BTTS, and Over/Under screens show a compact research-feed warning when the research request fails. Existing visual design and prediction merge/deduplication logic are unchanged.
+- Research payload validation remains strict: `research_only=true`, `publication_status=NOT_PUBLISHED`, production promotion `LOCKED`, and value betting `LOCKED`.
+- CI run #44883387460 passed on PR head `f96932e0b982315d26d94a7fff75adf9cb3e0512`: backend tests/lint and Android debug build both succeeded.
+- Debug APK artifact #14698089512 (`veltrix-ai-analyst-debug-apk`) uploaded successfully; size 16,461,003 bytes. This is the diagnostic build and should be installed to expose the new in-app warning and Logcat evidence.
+- Post-merge CI run #44883524472 was queued at ledger update time; do not claim post-merge CI success until verified.
+- This PR changed Android client diagnostics only. No backend routes, model, training data, provider calls, Odds API credits, schedules, production publication, settlement, or certification gates were changed.
+- Outstanding: install and physically verify this APK on the user's device; then correlate any displayed HTTP/network error with production endpoint/runtime evidence. Public endpoint response and actual Android rendering remain unverified.
+
