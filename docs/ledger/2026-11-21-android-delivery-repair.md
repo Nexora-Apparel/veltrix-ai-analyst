@@ -27,3 +27,19 @@
 4. Have the user force-close/reopen the installed app and refresh; no APK replacement should be needed for the project-level SSO change or backend SQL-only change.
 5. If the app still shows no forecasts, capture Android Logcat entries for tag `VeltrixPredictions` and correlate request paths/status with Vercel runtime logs.
 6. Keep all research forecasts unpublished; production promotion, certification and value betting remain locked.
+
+
+## Follow-up verification — 2026-11-21 08:00 WAT
+- PR #130 merged successfully by squash merge as commit `bf6986d03d3687f36dbd7e84de7adb148e93c64d`.
+- Required CI run #44882438326 completed successfully. Both jobs passed: backend tests and lint; Android debug APK build and artifact upload.
+- Vercel production deployment was created for the merge commit and was still in `BUILDING` state at the last read-back. Do not claim production deployment ready until a subsequent deployment status check confirms it.
+- Existing automatic daily chain verified in repository workflow definitions:
+  - `prospective-5dollar-daily-capture.yml` runs daily at 03:00 UTC (04:00 WAT), capturing yesterday's settlements plus a rolling seven-day forward fixture window. It is limited to four provider requests per run.
+  - Successful capture triggers Stage 6 daily snapshot/outcome materialization.
+  - Successful Stage 6 completion triggers `prospective-shadow-predictions.yml`; that workflow also has a daily 05:00 UTC (06:00 WAT) schedule and manual dispatch. It generates up to 25 research forecasts and persists them only to the isolated research ledger.
+  - Stage 7 evaluation follows Stage 6; certification gates remain closed unless independent criteria are actually met.
+- This means tomorrow's upcoming fixtures are intended to be included automatically: the seven-day capture window covers them, then the daily shadow run refreshes the next forecast set. The 36-hour API freshness change prevents the newly generated report from expiring after six hours.
+- The inference workflow's max snapshot age remains six hours; this is an input-quality guard, not the API response expiry. Do not widen it without evidence that it blocks valid snapshots.
+- The inference workflow can be triggered both by Stage 6 completion and its daily cron. Its concurrency group prevents overlap but does not necessarily eliminate sequential duplicate runs; inspect tomorrow's run history for this behavior before changing it.
+- Verification still outstanding: production deployment readiness; live unauthenticated production endpoint response; Android screen display after app restart. No provider/Odds API credits were spent by this repair.
+- Safety unchanged: research forecasts remain unpublished; production promotion and value betting remain LOCKED.
