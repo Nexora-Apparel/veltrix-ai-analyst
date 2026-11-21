@@ -120,8 +120,8 @@ def test_preregistration_hash_and_explicit_approval_are_required():
 
 def test_mde_increases_with_variance_and_decreases_with_planned_dates():
     low_variance = {
-        BASELINE_CLIMATOLOGY: {f"d{i}": [0.04, 0.041] for i in range(20)},
-        BASELINE_TEAM_AWARE: {f"d{i}": [0.05, 0.051] for i in range(20)},
+        BASELINE_CLIMATOLOGY: {f"d{i}": [0.04 + i * 0.0001, 0.041 + i * 0.0001] for i in range(20)},
+        BASELINE_TEAM_AWARE: {f"d{i}": [0.05 + i * 0.0001, 0.051 + i * 0.0001] for i in range(20)},
     }
     high_variance = {
         BASELINE_CLIMATOLOGY: {f"d{i}": [(-1.0 if i % 2 else 1.0)] for i in range(20)},
