@@ -29,3 +29,15 @@ The sanitized audit JSON and source artifacts do not preserve per-test-fixture p
 ## Controls
 
 No production or default optimizer change, quarantine change, lock change, feed enablement, database write, provider call, Odds API use, Telegram notification, merge, or workflow dispatch. PR #143 remains draft. All real-data evaluation remains owner-dispatched and read-only.
+
+
+## Implementation delta — 2026-11-21
+
+- Added opt-in `optimizer="newton"` to `backend/app/models/hierarchical_poisson.py`; default remains `gradient_descent`. The new path uses the analytic weighted-Poisson Hessian, unchanged averaged-objective ridge scaling, diagonal damping, partial-pivoting linear solve, and Armijo backtracking.
+- Added fixed convergence guard in the implementation: max 200 iterations, gradient tolerance from the caller (v3.1 uses 1e-7), relative objective tolerance 1e-10, two consecutive accepted steps. Failure raises ArithmeticError and does not return a model.
+- Added deterministic equivalence tests against gradient descent and L-BFGS, plus singular linear-system and explicit non-convergence tests.
+- Added `shrinkage_repair_metrics.py` with blend, ten-bin reliability, logistic calibration slope/intercept, >0.80 probability hit-rate, competition breakdown, and paired date-block bootstrap helpers.
+- GitHub Actions CI run 44918029389 was observed pending at ledger update time; backend and Android jobs were still in progress. No pass is claimed.
+- PR #143 body updated to v3.1 and accurately lists remaining evaluator, settlement scorer, workflow, and CI verification work.
+- No candidate grid evaluation or real-data fit was run. No workflow dispatch occurred.
+- Current branch head at this checkpoint: `f9af5b35c87f6731273306bfe00b29f4d604463c`.
