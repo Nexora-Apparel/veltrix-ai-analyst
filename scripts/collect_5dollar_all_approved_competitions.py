@@ -1,4 +1,4 @@
-"""Sequential, resumable batch collection for all approved 5Dollar competitions."""
+"""Sequential, resumable batch collection for approved 5Dollar competitions."""
 from __future__ import annotations
 
 import argparse
@@ -18,16 +18,9 @@ from app.providers.historical_import import (
     run_competition_historical_import,
 )
 from app.providers.historical_validation import validate_competition_import
+from app.providers.prospective_capture_scope import PROSPECTIVE_CAPTURE_COMPETITIONS
 
-COMPETITIONS = (
-    ("3118717965", "Brazil Serie A"),
-    ("522514093", "Brazil Serie B"),
-    ("4160026622", "England Premier League"),
-    ("3614399544", "France Ligue 1"),
-    ("686337048", "Germany Bundesliga I"),
-    ("3405541143", "Italy Serie A"),
-    ("4212821298", "Spain La Liga"),
-)
+COMPETITIONS = PROSPECTIVE_CAPTURE_COMPETITIONS
 
 
 def completed_run(
@@ -200,7 +193,6 @@ def main() -> int:
             failures.append(item)
             results.append(item)
             print(json.dumps(item, sort_keys=True), flush=True)
-            # Continue to the next competition; each importer run is independently scoped.
     validated = sum(
         item.get("status") in {"COMPLETED_VALIDATED", "SKIPPED_ALREADY_VALIDATED"}
         for item in results
@@ -218,9 +210,6 @@ def main() -> int:
         "failed_competitions": len(failures),
     }
     print("BATCH_SUMMARY " + json.dumps(summary, sort_keys=True), flush=True)
-    # A single source-identity conflict must not block Stage 6 from materializing
-    # other independently validated competition scopes. Preserve each failure in
-    # the run log and fail only when no competition produced validated evidence.
     return 1 if validated == 0 else 0
 
 

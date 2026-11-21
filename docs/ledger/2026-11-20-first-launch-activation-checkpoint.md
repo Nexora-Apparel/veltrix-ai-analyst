@@ -221,3 +221,33 @@
 - The collector continues independently across competition scopes, records each scope failure, and returns success only when at least one scope validates. This is designed to permit Stage 6 to consume validated scopes after partial success.
 - This source review establishes that current main differs from the failed run's validator; it does **not** establish that the current implementation passes against live provider data. A fresh scheduled/manual capture is still required for runtime proof.
 - No provider call, database query/write, workflow dispatch, deployment or Odds API request was made during this follow-on review.
+
+
+## 2026-11-21 06:38 WAT — prospective capture scope correction
+
+### Live repository review
+- Confirmed current main before the change: `26d38becb0d7b1294a01cd084c276f3465c2cfbc`.
+- Confirmed PR #74 remains the only pre-existing open PR.
+- Re-read the active collector, capture workflow, historical validator/importer, and the full historical-import integration test file.
+- Found that the active collector tuple still included France Ligue 1 (provider competition ID `3614399544`) even though the prior ledger explicitly said France remained excluded pending identity reconciliation. This was an implementation/configuration mismatch.
+
+### Change prepared on PR #126
+- Created `backend/app/providers/prospective_capture_scope.py` as the single explicit allowlist for the prospective capture's active competitions.
+- Excluded France Ligue 1 without changing source-rights approvals, historical records, or other ingestion scopes.
+- Kept Brazil Serie A, Brazil Serie B, England Premier League, Germany Bundesliga I, Italy Serie A, and Spain La Liga.
+- Updated `scripts/collect_5dollar_all_approved_competitions.py` to consume the centralized allowlist.
+- Added `backend/tests/test_prospective_capture_scope.py` to enforce six unique approved active competition IDs and prevent France from being reintroduced accidentally.
+- PR: [#126](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/126)
+- PR head at creation: `b352f65e1bed70ddd106fc350925d7cc972871df`.
+- CI run [44871749422](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44871749422) was queued when this ledger entry was prepared; no test result is claimed yet.
+
+### Validator assessment
+- Current validator already has a regression test for repeated identical fixture objects and repeated fixture sightings across provider responses.
+- Legacy duplicate-counter recovery is conditional on zero rejects/quarantines and is followed by independent checks for captured fixture sightings, distinct sighting tuples, materialized provider fixture rows, request/response lineage, and PIT timestamp provenance. It does not bypass those evidence checks.
+- The source review does not establish live-provider correctness; the corrected capture still needs a controlled runtime execution after CI and merge.
+
+### Execution boundary
+- No provider request, production DB query/write, workflow dispatch, Odds API request, Vercel deployment, or Android change was performed.
+- Do not dispatch capture while PR #126 is unmerged or CI is pending.
+- Next: inspect CI run #44871749422 and its exact head SHA; resolve any failures; merge only after all required checks pass; then manually dispatch the corrected workflow once and inspect per-competition counters and immutable evidence.
+- Production prediction publication, model promotion, and value betting remain LOCKED.
