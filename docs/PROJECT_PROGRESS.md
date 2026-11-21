@@ -665,3 +665,23 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 5. Keep the PIT timestamp gap open unless authoritative source-publication/availability evidence is found. No kickoff or retrieval timestamp substitution.
 6. Keep Android integration deferred until genuine prediction endpoints exist; keep value betting locked pending separate certification.
 
+
+
+## Latest execution checkpoint — effective shrinkage audit and two-tier admission contract (2026-11-21)
+
+- [x] PR [#138](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/138) merged as `d1c55fffe078ebf78910ea75195083984f079a15`. Its exact head `6acca21d7e0ec87496d13a781651bb7add73108d` passed CI run [#44892716222](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44892716222): 496 backend tests passed, Ruff passed, Android debug build passed.
+- [x] Added `backend/app/research/effective_shrinkage_audit.py` and a synthetic report-structure test. The audit emits per-team attack/defence fitted effects, near-unpenalized references, signed ratios and prior/data-information ratios. It does not change model fitting or production behavior.
+- [x] Independent numerical reproduction of archived run #44873166128 / artifact 14694089682 against Stage 6 dataset artifact 14694463354 matched all 25 archived expected-goal rates within approximately 1.1e-7.
+- [x] Effective runtime confirmed from the archived artifact: team_ridge=0.5, competition_ridge=0.5, half-life=365 days. The function default competition_ridge=2.0 was not the runtime value.
+- [x] 996 training-only labels, 136 teams, seven competitions; total recency weight 868.5811214801818; summed-objective team tau 434.2905607400909.
+- [x] Median absolute attack effect retained versus near-unpenalized fit: 3.01%; defence: 3.39%. Median prior/data-information ratios: 30.58x attack and 30.31x defence. This supports severe over-regularization but is not predictive validation and does not select replacement hyperparameters.
+- [x] Production API read-back: `/v1/research/predictions` HTTP 200, MODEL_QUARANTINED, NOT_PUBLISHED, zero predictions, promotion/value locked; `/v1/predictions` HTTP 200, zero predictions. Latest production deployment remained READY at commit `95445c9b7aaba045f15a97afe443211da341a2fe`; no deployment was triggered by this audit.
+- [x] 5Dollar Community terms/docs reviewed: last 12 months of results/odds; 300 requests/hour and 20/minute burst limit. Two complete prior seasons are not available under the current Community history entitlement. No purchase or provider request was made.
+- [x] Existing 28 identity/reconciliation cases remain unresolved. No cross-season identity stitching, alias promotion or provider-ID rewrite is permitted before evidence-backed resolution.
+- [x] Dated ledger entry: [2026-11-21 effective shrinkage audit](ledger/2026-11-21-effective-shrinkage-audit.md).
+- [ ] Execute the new per-team CLI against the actual archived artifacts and retain its complete per-team report; current headline numbers are from an independent offline numerical reproduction.
+- [ ] Implement synthetic recovery/shrinkage tests that fail the current 0.5/0.5/365 configuration and an excessive-prior negative control.
+- [ ] Implement the approved two-tier admission registry, hash immutability, controlled forecast write function, application-role INSERT revocation and API read-time admission join.
+- [ ] Draft the primary 1X2 log-loss threshold, MDE/power and baseline comparison protocol for explicit user approval; final holdout is single-use.
+- [ ] Design Community-bounded season backfill only after resolving identity mapping and confirming each competition's accessible season coverage.
+- **Release state unchanged:** model QUARANTINED; no production forecasts; value betting LOCKED; Android UI preserved. No Neon writes, provider calls, Odds API credits or production deployment were used for this work.
