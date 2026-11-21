@@ -28,7 +28,6 @@
 5. If the app still shows no forecasts, capture Android Logcat entries for tag `VeltrixPredictions` and correlate request paths/status with Vercel runtime logs.
 6. Keep all research forecasts unpublished; production promotion, certification and value betting remain locked.
 
-
 ## Follow-up verification — 2026-11-21 08:00 WAT
 - PR #130 merged successfully by squash merge as commit `bf6986d03d3687f36dbd7e84de7adb148e93c64d`.
 - Required CI run #44882438326 completed successfully. Both jobs passed: backend tests and lint; Android debug APK build and artifact upload.
@@ -43,12 +42,10 @@
 - The inference workflow can be triggered both by Stage 6 completion and its daily cron. Its concurrency group prevents overlap but does not necessarily eliminate sequential duplicate runs; inspect tomorrow's run history for this behavior before changing it.
 - Verification still outstanding: production deployment readiness; live unauthenticated production endpoint response; Android screen display after app restart. No provider/Odds API credits were spent by this repair.
 - Safety unchanged: research forecasts remain unpublished; production promotion and value betting remain LOCKED.
-
 - Final production deployment read-back: deployment `dpl_AAya7HfvdnabnZfZnwPpHtRFALsn` reached `READY` on production alias `veltrix-ai-analyst-api.vercel.app`, commit `bf6986d03d3687f36dbd7e84de7adb148e93c64d`.
-- Attempted direct external GET of `/v1/research/predictions`; the available page-fetch path returned an internal access error. Vercel runtime logs for the deployment showed no requests in the 30-minute window. Therefore HTTP status/payload and physical Android rendering remain unverified; deployment readiness alone does not prove either.
+- Attempted direct external GET of `/v1/research/predictions`; the available page-fetch path returned an internal access error. Vercel runtime logs for the deployment showed no requests in the 30-minute window. Therefore HTTP status/payload and physical Android rendering remain unverified.
 
 ## Android feed diagnostics — 2026-11-21
-
 - PR #131 merged: https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/131
 - Squash merge commit: `841d4e9864a49b76a98a10b420b5e1eea78b0ce5`.
 - Android research feed now returns a structured result separating a successful empty forecast list from request failure.
@@ -70,4 +67,13 @@
 - This is a backend query defect, not missing forecasts, Android parsing, or an empty feed. No database writes, provider calls, Odds API credits, or publication changes were made.
 - Repair branch `fix/research-feed-http-503`: include `status` in the CTE projection and add a regression assertion that the selected CTE columns include status before filtering.
 - All research-only, NOT_PUBLISHED, production-promotion LOCKED, value-betting LOCKED, release_eligible=false and 36-hour freshness gates remain unchanged.
-- Next: CI, merge after required checks pass, verify production deployment READY, then perform live HTTP GET and confirm 25 research forecasts are returned. Physical Android refresh remains a separate confirmation.
+
+## PR #132 production verification — 2026-11-21
+- PR #132 merged after both required CI jobs passed. Squash merge commit: `0c0628bcc2f419b6baf488179cf327059c0160e5`.
+- Vercel production deployment `dpl_3uE7ahucYiB9AiqX35pkisoXxws6` reached `READY` on `main` with the exact merge commit; production alias includes `veltrix-ai-analyst-api.vercel.app`.
+- Performed an actual unauthenticated HTTPS GET from an isolated Vercel sandbox to `https://veltrix-ai-analyst-api.vercel.app/v1/research/predictions`.
+- Observed HTTP 200 and `Content-Type: application/json`. Response status `SHADOW_FORECASTS_READY`; 25 predictions returned; `research_only=true`; `publication_status=NOT_PUBLISHED`; `production_promotion=LOCKED`; `value_betting=LOCKED`; generated_at `2026-11-21T05:59:20.681143+00:00`.
+- This verifies the live production API query repair and confirms the existing 25-row research report is readable through the public production hostname. No provider calls, Odds API credits, or database writes were made for the HTTP check.
+- The sample forecast in the response was Man City vs Fulham, kickoff `2026-11-21T12:30:00Z`; sample only, not a production-published prediction.
+- Android physical display remains unverified until the user refreshes the installed diagnostic APK. Because PR #132 is backend-only, no APK reinstall is required for this SQL correction; force-close/reopen or refresh the existing diagnostic app.
+- Research predictions remain isolated and unpublished; production promotion and value betting remain locked. Certification criteria were not changed or waived.
