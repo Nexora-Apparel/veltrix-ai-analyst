@@ -1,4 +1,5 @@
 import ast
+import math
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -356,3 +357,94 @@ def test_sanitizer_allowlists_aggregates_and_centered_team_effects_only():
     }
     assert clean["production_promotion"] == "LOCKED"
     assert clean["value_betting"] == "LOCKED"
+
+
+
+def _realistic_synthetic_rows() -> list[dict]:
+    """Deterministic 1,000-fixture/130-team/7-competition convergence fixture."""
+    start = datetime(2023, 1, 1, tzinfo=UTC)
+    strengths = {
+        f"team-{team:03d}": 0.22 * math.sin(team * 0.31)
+        for team in range(130)
+    }
+    competition_strength = {
+        f"comp-{comp}": 0.10 * math.cos(comp * 0.7)
+        for comp in range(7)
+    }
+    rows = []
+    for index in range(1000):
+        home_index = index % 130
+        away_index = (index * 37 + 19) % 130
+        if away_index == home_index:
+            away_index = (away_index + 1) % 130
+        home = f"team-{home_index:03d}"
+        away = f"team-{away_index:03d}"
+        competition = f"comp-{index % 7}"
+        home_rate = math.exp(
+            0.20 + 0.16 + strengths[home] - 0.5 * strengths[away]
+            + competition_strength[competition]
+        )
+        away_rate = math.exp(
+            0.20 + strengths[away] - 0.5 * strengths[home]
+            + competition_strength[competition]
+        )
+        home_goals = max(0, round(home_rate + ((index * 7) % 5 - 2) * 0.28))
+        away_goals = max(0, round(away_rate + ((index * 11) % 5 - 2) * 0.25))
+        rows.append({
+            "fixture_id": f"large-synthetic-{index}",
+            "kickoff_at": (start + timedelta(days=index)).isoformat(),
+            "competition_id": competition,
+            "home_team_id": home,
+            "away_team_id": away,
+            "label": {"home_goals": home_goals, "away_goals": away_goals},
+        })
+    return rows
+
+
+def test_lbfgs_matches_existing_gradient_descent_on_small_case():
+    rows = _known_league_rows()[:96]
+    cutoff = datetime.fromisoformat(rows[-1]["kickoff_at"])
+    total_weight, mu = audit._fold_weight_and_mean_goals(rows, cutoff)
+    team_ridge, competition_ridge = audit._ridge_for_unnormalized_prior(
+        2.0, mu, total_weight
+    )
+    results = [audit._result(row) for row in rows]
+    baseline = fit_hierarchical_poisson(
+        results, as_of=cutoff, half_life_days=365,
+        team_ridge=team_ridge, competition_ridge=competition_ridge,
+        max_iterations=4000, tolerance=1e-7,
+    )
+    accelerated = fit_hierarchical_poisson(
+        results, as_of=cutoff, half_life_days=365,
+        team_ridge=team_ridge, competition_ridge=competition_ridge,
+        max_iterations=4000, tolerance=1e-7, optimizer="lbfgs",
+    )
+    assert baseline.optimizer_converged
+    assert accelerated.optimizer_converged
+    for home in ("strong", "upper", "lower", "weak"):
+        for away in ("strong", "upper", "lower", "weak"):
+            if home == away:
+                continue
+            old_rates = baseline.predict(home, away, "league")
+            new_rates = accelerated.predict(home, away, "league")
+            assert new_rates.home_lambda == pytest.approx(old_rates.home_lambda, abs=2e-3)
+            assert new_rates.away_lambda == pytest.approx(old_rates.away_lambda, abs=2e-3)
+
+
+@pytest.mark.parametrize("k", [0.5, 2.0])
+def test_lbfgs_converges_on_realistic_1000_fixture_130_team_synthetic(k):
+    rows = _realistic_synthetic_rows()
+    assert len(rows) == 1000
+    assert len({row["home_team_id"] for row in rows} | {
+        row["away_team_id"] for row in rows
+    }) == 130
+    assert len({row["competition_id"] for row in rows}) == 7
+    cutoff = datetime.fromisoformat(rows[-1]["kickoff_at"])
+    fit = audit._fit_for_audit(rows, cutoff, k=k)
+    assert fit["solver"] == "L-BFGS"
+    assert fit["converged"] is True
+    assert fit["model"].optimizer_converged is True
+    assert fit["iterations"] <= audit.MAX_ITERATIONS
+    assert fit["gradient_norm"] <= audit.OPTIMIZER_TOLERANCE
+    assert fit["total_recency_weight"] > 0
+    assert fit["weighted_mean_goals_per_team_match"] > 0

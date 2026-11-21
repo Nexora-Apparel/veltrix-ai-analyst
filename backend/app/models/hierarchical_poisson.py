@@ -299,8 +299,6 @@ def _lbfgs_minimize(
                 break
             step *= 0.5
         if not accepted:
-            if gradient_norm <= tolerance * 10:
-                return vector, True, iteration, gradient_norm
             return vector, False, iteration, gradient_norm
 
         s_vec = [new - old for new, old in zip(candidate, vector)]
