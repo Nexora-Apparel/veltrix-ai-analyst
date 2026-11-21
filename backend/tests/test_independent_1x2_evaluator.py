@@ -7,6 +7,8 @@ from math import log
 import pytest
 
 from app.validation.independent_1x2_evaluator import (
+    _date_block_bootstrap,
+    _log_loss,
     BASELINE_CLIMATOLOGY,
     BASELINE_TEAM_AWARE,
     EvaluationRow,
@@ -15,8 +17,6 @@ from app.validation.independent_1x2_evaluator import (
     evaluate_primary_1x2,
     preregistration_sha256,
     validate_preregistration,
-    _date_block_bootstrap,
-    _log_loss,
 )
 
 
