@@ -294,3 +294,34 @@
 ### Evidence classification
 - **Verified from job 136748574209 logs:** checked-out SHA, database/schema preflight success, capture window, six competition results, 12 total requests, 18 inserted records, zero failed scopes, and job success.
 - **Pending independent verification:** Stage 6 materialization, shadow forecast artifact, detailed per-run raw evidence reconciliation and any research-ledger persistence.
+
+
+## 2026-11-21 06:58 WAT — Stage 6 downstream run located and verified
+
+### Run identity
+- Capture run [44872062807](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44872062807) completed successfully at 05:54:11Z.
+- Its automatic `workflow_run` downstream Stage 6 run is [44873016040](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44873016040), created 05:54:14Z, on main SHA `5735b4126ea228c078d60af18e5b5b97dd6f86ca`.
+- Stage 6 job `materialize` (job ID `136751518630`) completed successfully. All workflow steps passed, including strict PIT dataset build, release-gate validation, snapshot persistence, database verification and artifact upload.
+
+### Dataset and persistence evidence
+- Dataset builder status: `READY_FOR_RESEARCH`; read-only validation status: `VALIDATED_READ_ONLY`.
+- Eligible prospective rows: **54**.
+- Settled label rows: **0**; unsettled rows: **54**.
+- Feature lineage records: **1,220**.
+- Dataset SHA-256: `80148b3f0f42e70d94391d9283c42f35b5b92e1631a9a1cb7baee899373dad0c`.
+- Persistence result: **45 inserted**, **9 unchanged**, **54 total rows**, **0 labels inserted**, **0 labels unchanged**.
+- Independent post-write verification: **54 snapshots**, **54 distinct canonical fixtures**, **0 latest label events**; status `DAILY_MATERIALIZATION_VERIFIED`.
+- Snapshot append-only trigger and both label guards were verified active.
+- Release eligibility remained false; production promotion and value betting remained LOCKED.
+- Audit artifact: [veltrix-stage6-daily-materialization-audit](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44873016040/artifacts/14694463354), 252,409 bytes, SHA-256 zip digest `3a2ebfb7dd94899bc1cf5000bb365c440753afcfa474869a733bbeeda0a1ad81`, retained until 2027-02-19.
+
+### Downstream shadow/evaluation state at 06:58 WAT
+- Automatic shadow workflow run [44873166128](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44873166128) was created on the same main SHA. Its build step was still in progress; no forecast artifact or terminal status was yet available.
+- Stage 7 evaluation run [44873166148](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44873166148) was also created on the same SHA. Its expanding-window evaluation step was still in progress; no certification conclusion was yet available.
+- These runs must be re-polled before reporting their outcomes. The 0 settled labels in today's Stage 6 dataset mean today's capture did not itself add settled training outcomes; do not represent 54 snapshots as 54 labelled training fixtures.
+- No shadow forecast has been persisted to the research ledger or published. No production prediction/publication rows were written by Stage 6.
+
+### Follow-up
+1. Poll shadow run #44873166128 through completion and inspect its log and artifact. Confirm terminal status, training labels, freshness, hashes, convergence, abstentions, distributions and forecast count.
+2. Poll Stage 7 run #44873166148 and inspect its evaluation/certification artifact. Keep certification and promotion locked unless every independently agreed criterion is satisfied.
+3. Preserve the 54 immutable snapshots and do not rerun capture merely to manufacture settled labels. Continue daily prospective observation and settle outcomes only when source results become available.
