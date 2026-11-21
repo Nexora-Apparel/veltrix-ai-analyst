@@ -685,3 +685,20 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [ ] Draft the primary 1X2 log-loss threshold, MDE/power and baseline comparison protocol for explicit user approval; final holdout is single-use.
 - [ ] Design Community-bounded season backfill only after resolving identity mapping and confirming each competition's accessible season coverage.
 - **Release state unchanged:** model QUARANTINED; no production forecasts; value betting LOCKED; Android UI preserved. No Neon writes, provider calls, Odds API credits or production deployment were used for this work.
+
+
+## Latest execution checkpoint — regularization contract tests and database admission audit (2026-11-21)
+
+- [x] Opened PR [#139](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/139), branch `research/regularization-contract-tests`, latest head `6ac289436af299887143ed124ed10e5e9ab40413`. PR remains open and unmerged.
+- [x] Added `docs/ML_REGULARIZATION_CONTRACT.md`, the pseudo-match scale helper, and deterministic synthetic tests. Current quarantined 0.5/0.5/365 configuration is rejected by recovery/shrinkage gates; the excessive-prior negative control is also rejected.
+- [x] CI run [#44893189043](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893189043) passed: 504 backend tests, Ruff, Android debug build and APK upload.
+- [x] Read-only Neon audit found 0 published prediction rows, one research shadow run, and two model artifacts. The research run's model_version is nullable; there is no model_versions table or FK; report hash is required but not bound to admission. Research runs have append-only UPDATE/DELETE triggers but no INSERT admission trigger. Predictions have a pre-match INSERT trigger but no admission check.
+- [x] DB grants show direct INSERT for neondb_owner on forecast tables; no dedicated restricted application role/controlled-write boundary is present in the visible grants. This is a confirmed database architecture gap, not an applied migration.
+- [x] Production API read-back at 10:13:40 UTC: research endpoint HTTP 200 MODEL_QUARANTINED/NOT_PUBLISHED/zero predictions; published endpoint HTTP 200/zero predictions. Production deployment remains READY at commit `95445c9b7aaba045f15a97afe443211da341a2fe`; no deployment created for PR #139.
+- [x] Dated ledger entry: [2026-11-21 regularization contract and DB audit](ledger/2026-11-21-regularization-contract-and-db-audit.md).
+- [ ] Wire the pseudo-match scales into a separate candidate fitter; add tests showing the corrected candidate passes recovery while current and excessive-prior controls fail.
+- [ ] Implement the independent primary 1X2 log-loss evaluator, MDE/power, both baselines, date-block bootstrap and immutable run log.
+- [ ] Design the model_versions registry and two-tier SHADOW/PUBLISHED database enforcement, including immutable hashes, restricted application role, controlled write function and API read-time admission join.
+- [ ] Draft thresholds for explicit user approval; do not freeze numeric thresholds or k values without sign-off.
+- [ ] Resolve/quarantine the 28 identity cases and verify 5Dollar Community per-competition history coverage before any cross-season backfill.
+- **Release state unchanged:** model QUARANTINED, no production forecasts, value betting LOCKED, Android UI preserved. No DB writes, provider requests, Odds API credits or production deployment.
