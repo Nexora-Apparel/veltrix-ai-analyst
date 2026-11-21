@@ -51,3 +51,11 @@ def test_research_api_keeps_daily_report_available_through_next_matchday() -> No
 
     assert "INTERVAL '36 hours'" in _RESEARCH_QUERY
     assert "INTERVAL '6 hours'" not in _RESEARCH_QUERY
+
+
+def test_research_query_selects_status_before_filtering_latest_run() -> None:
+    from app.routes.research_predictions import _RESEARCH_QUERY
+
+    cte = _RESEARCH_QUERY.split("FROM veltrix_ai_analyst.research_shadow_forecast_runs", 1)[0]
+    assert "SELECT run_key, generated_at, status," in cte
+    assert "WHERE latest_run.status = 'SHADOW_FORECASTS_READY'" in _RESEARCH_QUERY
