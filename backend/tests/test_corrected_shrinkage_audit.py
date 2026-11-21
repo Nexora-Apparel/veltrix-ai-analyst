@@ -227,8 +227,8 @@ def test_centered_team_ratio_summary_uses_match_count_centering():
         team_match_counts={"a": 8, "b": 4, "c": 4},
     )
     reference = SimpleNamespace(
-        attack={"a": 1.2, "b": -0.3, "c": -0.2},
-        defence={"a": 0.6, "b": -0.6, "c": 0.0},
+        attack={"a": 1.2, "b": -0.3, "c": 0.7},
+        defence={"a": 0.6, "b": -0.6, "c": 0.1875},
         team_match_counts={"a": 8, "b": 4, "c": 4},
     )
     result = audit._centered_team_ratio_summary(archived, reference)
