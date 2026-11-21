@@ -1,0 +1,94 @@
+name: One-off archived effective-shrinkage audit
+
+on:
+  push:
+    branches:
+      - research/run-archived-shrinkage-audit
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  audit:
+    if: github.event_name == 'push' || github.head_ref == 'research/regularization-contract-tests'
+    name: Reproduce archived 996-label shrinkage report
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout audited main implementation
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend
+        run: python -m pip install -e "backend[dev]"
+
+      - name: Download immutable archived shadow forecast artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 14694089682
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: /tmp/veltrix-shadow-forecast
+
+      - name: Download matching immutable Stage 6 dataset artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: 14694463354
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: /tmp/veltrix-stage6-dataset
+
+      - name: Run exact repository audit against archived artifacts
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: |
+          FORECAST="$(find /tmp/veltrix-shadow-forecast -name 'prospective-shadow-forecasts.json' -print -quit)"
+          DATASET="$(find /tmp/veltrix-stage6-dataset -name 'prospective-dataset.json' -print -quit)"
+          test -n "$FORECAST"
+          test -n "$DATASET"
+          python -m app.research.effective_shrinkage_audit \
+            --dataset "$DATASET" \
+            --forecast "$FORECAST" \
+            --output /tmp/effective-shrinkage-report.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("/tmp/effective-shrinkage-report.json").read_text())
+          assert report["status"] == "EFFECTIVE_SHRINKAGE_AUDIT_COMPLETE"
+          assert report["training_fixture_count"] == 996
+          assert report["team_count"] == 136
+          assert len(report["teams"]) == 136
+          print("AUDIT_REPORT_VERIFIED")
+          print(json.dumps({
+              "training_fixture_count": report["training_fixture_count"],
+              "team_count": report["team_count"],
+              "effective_runtime": report["effective_runtime"],
+              "attack_absolute_effect_ratio_median": report["attack_absolute_effect_ratio_median"],
+              "defence_absolute_effect_ratio_median": report["defence_absolute_effect_ratio_median"],
+              "attack_tau_to_data_information_median": report["attack_tau_to_data_information_median"],
+              "defence_tau_to_data_information_median": report["defence_tau_to_data_information_median"],
+              "fit_reproduction": report["fit_reproduction"],
+          }, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload full per-team audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-effective-shrinkage-report
+          path: /tmp/effective-shrinkage-report.json
+          if-no-files-found: error
+          retention-days: 90
