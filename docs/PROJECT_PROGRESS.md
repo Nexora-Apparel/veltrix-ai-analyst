@@ -702,3 +702,13 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [ ] Draft thresholds for explicit user approval; do not freeze numeric thresholds or k values without sign-off.
 - [ ] Resolve/quarantine the 28 identity cases and verify 5Dollar Community per-competition history coverage before any cross-season backfill.
 - **Release state unchanged:** model QUARANTINED, no production forecasts, value betting LOCKED, Android UI preserved. No DB writes, provider requests, Odds API credits or production deployment.
+
+
+## Latest design checkpoint — two-tier database admission enforcement (2026-11-21)
+
+- [x] Drafted [MODEL_ADMISSION_DB_CONTRACT.md](MODEL_ADMISSION_DB_CONTRACT.md) from live read-only schema evidence. It defines SHADOW/PUBLISHED tiers, ADMITTED/QUARANTINED status, immutable hashes, monotonic transitions, model-version binding for both research runs and published predictions, SECURITY DEFINER controlled writers, least-privilege runtime role, and read-time admission-aware API views.
+- [x] Current database evidence confirms `model_versions` does not exist. The two `model_artifacts` rows are legacy `attack-defence-poisson-v1` and `attack-defence-poisson-v2-nested-tuned` artifacts (380 fixtures/20 provider teams); neither is the current `hierarchical-poisson-shadow-v1` run (996 labels/136 teams). Do not attach the current run to either legacy artifact.
+- [x] Existing research run already has a required report_sha256 value, but its model_version column is nullable at schema level and has no registry FK. Its append-only triggers protect UPDATE/DELETE only; no admission-controlled INSERT trigger exists.
+- [x] Current published predictions table has zero rows. Current research-shadow run is preserved as QUARANTINED when registry backfill is designed; never mark it ADMITTED based on its prior SHADOW_FORECASTS_READY status.
+- [ ] Compute and independently verify the current shadow config SHA from the immutable archived report/config before any migration backfill. Never invent the hash.
+- [ ] Build migrations and disposable-Neon-branch tests first. No production migration, role creation, Vercel secret rotation, or database write has been performed.
