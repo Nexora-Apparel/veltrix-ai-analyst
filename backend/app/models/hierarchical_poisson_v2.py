@@ -101,7 +101,7 @@ def fit_hierarchical_poisson_v2(
     k_home_global: float,
     learning_rate: float = 1.0,
     max_iterations: int = 4000,
-    tolerance: float = 1e-6,
+    tolerance: float = 1e-7,
 ) -> HierarchicalPoissonV2Model:
     """Fit the unnormalized likelihood with common pseudo-match prior strengths.
 
@@ -246,7 +246,9 @@ def fit_hierarchical_poisson_v2(
     iterations = 0
 
     for iteration in range(1, max_iterations + 1):
-        gi = gh0 = 0.0
+        gi = 0.0
+        # The global home-effect prior contributes to both objective and gradient.
+        gh0 = global_home_tau * home_global
         gc = [
             competition_tau[name] * competition_effects[index]
             for index, name in enumerate(competitions)
