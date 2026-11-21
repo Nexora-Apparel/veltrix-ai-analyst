@@ -38,6 +38,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           artifact-ids: 14694089682
+          run-id: 44873166128
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           path: /tmp/veltrix-shadow-forecast
@@ -46,6 +47,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           artifact-ids: 14694463354
+          run-id: 44873016040
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           path: /tmp/veltrix-stage6-dataset
