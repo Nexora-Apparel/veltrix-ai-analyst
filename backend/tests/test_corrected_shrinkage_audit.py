@@ -146,9 +146,8 @@ def test_fold_prior_conversion_matches_summed_objective_stationarity_scale():
 
 
 def test_synthetic_overpenalization_suppresses_signal_and_scaled_prior_recovers_ranking():
-    rows = _known_league_rows()
-    cutoff = datetime.fromisoformat(rows[-1]["kickoff_at"])
     rows = _known_league_rows()[:96]
+    cutoff = datetime.fromisoformat(rows[-1]["kickoff_at"])
     total_weight, mu = audit._fold_weight_and_mean_goals(rows, cutoff)
     scaled_team, scaled_comp = audit._ridge_for_unnormalized_prior(2.0, mu, total_weight)
     results = [audit._result(row) for row in rows]
