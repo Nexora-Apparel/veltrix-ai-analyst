@@ -19,12 +19,6 @@ _RESEARCH_QUERY = """
     WITH latest_run AS (
         SELECT run_key, generated_at, training_fixture_count, model_version, report
         FROM veltrix_ai_analyst.research_shadow_forecast_runs
-        WHERE status = 'SHADOW_FORECASTS_READY'
-          AND report->>'research_only' = 'true'
-          AND report->>'production_promotion' = 'LOCKED'
-          AND report->>'value_betting' = 'LOCKED'
-          AND report->>'release_eligible' = 'false'
-          AND generated_at > NOW() - INTERVAL '6 hours'
         ORDER BY generated_at DESC, created_at DESC
         LIMIT 1
     )
@@ -50,7 +44,13 @@ _RESEARCH_QUERY = """
       ON home_team.id = fixture.home_canonical_team_id
     JOIN veltrix_ai_analyst.canonical_teams away_team
       ON away_team.id = fixture.away_canonical_team_id
-    WHERE fixture.kickoff_at > %s
+    WHERE latest_run.status = 'SHADOW_FORECASTS_READY'
+      AND latest_run.report->>'research_only' = 'true'
+      AND latest_run.report->>'production_promotion' = 'LOCKED'
+      AND latest_run.report->>'value_betting' = 'LOCKED'
+      AND latest_run.report->>'release_eligible' = 'false'
+      AND latest_run.generated_at > NOW() - INTERVAL '6 hours'
+      AND fixture.kickoff_at > %s
       AND forecast.value->>'publication_status' = 'NOT_PUBLISHED'
       AND forecast.value->>'value_betting_status' = 'LOCKED'
     ORDER BY fixture.kickoff_at, fixture.id
