@@ -13,6 +13,8 @@ REFERENCE_K = (0.5, 2.0)
 FOLD_RULE = "kickoff-date expanding windows: first 60%, 70%, 80%, 90% unique dates train; next 10% dates test; all boundaries are exclusive/inclusive as recorded"
 BOOTSTRAP_REPLICATES = 2000
 BOOTSTRAP_SEED = 20261121
+MAX_ITERATIONS = 4000
+OPTIMIZER_TOLERANCE = 1e-7
 HOME_ADVANTAGE_TREATMENT = "unpenalized in archived and both reference fits"
 ARCHIVED_CONFIG = {"team_ridge": 0.5, "competition_ridge": 0.5, "half_life_days": 365.0}
 METRICS = ("1X2_log_loss", "1X2_multiclass_brier")
@@ -76,6 +78,8 @@ def _fit_for_audit(
             half_life_days=365,
             team_ridge=team_ridge,
             competition_ridge=competition_ridge,
+            max_iterations=MAX_ITERATIONS,
+            tolerance=OPTIMIZER_TOLERANCE,
         )
     except ArithmeticError as exc:
         return {
@@ -219,4 +223,4 @@ def run_audit(dataset: dict[str,Any], forecast: dict[str,Any], *, commit_sha: st
             comparisons[ref["name"]]=_bootstrap(diffs,BOOTSTRAP_SEED+pct)
         public_fits=[{key:value for key,value in f.items() if key!="model"} for f in fits]
         folds.append({"train_date_range":[dates[0],dates[cut-1]],"test_date_range":[dates[cut],dates[test_end-1]],"train_rows":len(train),"test_rows":len(test),"cutoff_exclusive":cutoff.isoformat(),"fits":public_fits,"paired_log_loss_differences_archived_minus_reference":comparisons})
-    return {"status":"DIAGNOSTIC_ONLY","commit_sha":commit_sha,"preregistration":{"reference_k":list(REFERENCE_K),"tau_team":"k*mu","tau_competition":"k*2*mu","fold_rule":FOLD_RULE,"fold_training_percentages":[60,70,80,90],"metrics":list(METRICS),"home_advantage":HOME_ADVANTAGE_TREATMENT,"half_life_days":365,"bootstrap_replicates":BOOTSTRAP_REPLICATES,"bootstrap_seed":BOOTSTRAP_SEED},"training_rows":len(rows),"dataset_sha256":dataset["dataset_sha256"],"training_data_sha256":training_data_sha256(rows),"folds":folds,"primary_evidence":"fit-to-fit comparison; paired date-block bootstrap log-loss differences","sum_w_lambda_diagnostic":"first-order approximation only; attack and defence jointly estimated","admission_conclusion":"NONE: corpus is not point-in-time certified","production_promotion":"LOCKED","value_betting":"LOCKED"}
+    return {"status":"DIAGNOSTIC_ONLY","commit_sha":commit_sha,"preregistration":{"reference_k":list(REFERENCE_K),"tau_team":"k*mu","tau_competition":"k*2*mu","fold_rule":FOLD_RULE,"fold_training_percentages":[60,70,80,90],"metrics":list(METRICS),"home_advantage":HOME_ADVANTAGE_TREATMENT,"half_life_days":365,"bootstrap_replicates":BOOTSTRAP_REPLICATES,"bootstrap_seed":BOOTSTRAP_SEED,"max_iterations":MAX_ITERATIONS,"optimizer_tolerance":OPTIMIZER_TOLERANCE},"training_rows":len(rows),"dataset_sha256":dataset["dataset_sha256"],"training_data_sha256":training_data_sha256(rows),"folds":folds,"primary_evidence":"fit-to-fit comparison; paired date-block bootstrap log-loss differences","sum_w_lambda_diagnostic":"first-order approximation only; attack and defence jointly estimated","admission_conclusion":"NONE: corpus is not point-in-time certified","production_promotion":"LOCKED","value_betting":"LOCKED"}
