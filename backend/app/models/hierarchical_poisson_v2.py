@@ -66,6 +66,8 @@ class HierarchicalPoissonV2Model:
             raise ArithmeticError("predicted goal-rate linear predictor outside safe range")
         home_history = self.team_match_counts.get(home_key, 0)
         away_history = self.team_match_counts.get(away_key, 0)
+        if home_history < 1 or away_history < 1:
+            raise ValueError("TEAM_HISTORY_INSUFFICIENT: unseen competition-scoped teams must abstain")
         if competition_seen and home_history > 0 and away_history > 0:
             mode = "TEAM_AND_COMPETITION_HISTORY"
         elif competition_seen and (home_history > 0 or away_history > 0):
@@ -368,13 +370,23 @@ def fit_hierarchical_poisson_v2(
                 break
             step *= 0.5
         if not accepted:
-            if gradient_norm <= tolerance * 10:
+            max_parameter_step = max(
+                abs(direction_intercept),
+                abs(direction_home_global),
+                *(abs(value) for value in direction_comp),
+                *(abs(value) for value in direction_home),
+                *(abs(value) for value in direction_attack),
+                *(abs(value) for value in direction_defence),
+            )
+            if max_parameter_step <= tolerance * 10:
                 converged = True
                 iterations = iteration
                 break
             raise ArithmeticError(
                 "optimizer line search failed before convergence "
-                f"(iteration={iteration}, gradient_norm={gradient_norm:.8g})"
+                f"(iteration={iteration}, gradient_norm={gradient_norm:.8g}, "
+                f"max_parameter_step={max_parameter_step:.8g}, "
+                f"objective={current_loss:.12g}, final_step={step:.8g})"
             )
         iterations = iteration
     if not converged:
