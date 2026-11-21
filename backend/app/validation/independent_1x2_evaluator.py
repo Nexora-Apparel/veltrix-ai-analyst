@@ -29,6 +29,10 @@ class EvaluationRow:
     prediction_cutoff_at: datetime
     forecast_generated_at: datetime
     training_cutoff_at: datetime
+    climatology_generated_at: datetime
+    climatology_training_cutoff_at: datetime
+    team_baseline_generated_at: datetime
+    team_baseline_training_cutoff_at: datetime
     label_observed_at: datetime
     outcome: Outcome
     candidate_probabilities: tuple[float, float, float]
@@ -178,6 +182,10 @@ def _validate_row(row: EvaluationRow, evaluation_as_of: datetime) -> None:
         "prediction_cutoff_at",
         "forecast_generated_at",
         "training_cutoff_at",
+        "climatology_generated_at",
+        "climatology_training_cutoff_at",
+        "team_baseline_generated_at",
+        "team_baseline_training_cutoff_at",
         "label_observed_at",
         "rights_valid_from",
     ):
@@ -190,6 +198,10 @@ def _validate_row(row: EvaluationRow, evaluation_as_of: datetime) -> None:
         row.training_cutoff_at <= row.forecast_generated_at
         <= row.prediction_cutoff_at < row.kickoff_at < row.label_observed_at
         <= evaluation_as_of
+        and row.climatology_training_cutoff_at <= row.climatology_generated_at
+        <= row.prediction_cutoff_at
+        and row.team_baseline_training_cutoff_at <= row.team_baseline_generated_at
+        <= row.prediction_cutoff_at
     ):
         raise ValueError("FIXTURE_CHRONOLOGY_INVALID")
     if (
