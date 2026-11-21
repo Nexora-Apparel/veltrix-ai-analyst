@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from math import log
 
 import pytest
 
@@ -108,8 +109,8 @@ def _rows(count=40):
 
 
 def test_log_loss_uses_probability_of_observed_1x2_outcome():
-    assert _log_loss((0.7, 0.2, 0.1), "HOME") == pytest.approx(-__import__("math").log(0.7))
-    assert _log_loss((0.1, 0.8, 0.1), "DRAW") == pytest.approx(-__import__("math").log(0.8))
+    assert _log_loss((0.7, 0.2, 0.1), "HOME") == pytest.approx(-log(0.7))
+    assert _log_loss((0.1, 0.8, 0.1), "DRAW") == pytest.approx(-log(0.8))
     assert _log_loss((0.1, 0.2, 0.7), "AWAY") == pytest.approx(-__import__("math").log(0.7))
 
 
@@ -161,6 +162,8 @@ def test_insufficient_power_fails_closed_before_scoring():
         smallest_worthwhile_improvement=protocol.smallest_worthwhile_improvement,
         alpha=protocol.alpha,
         target_power=protocol.target_power,
+        bootstrap_replicates=protocol.bootstrap_replicates,
+        bootstrap_seed=protocol.bootstrap_seed,
     )
     report = evaluate_primary_1x2(
         _rows(),
