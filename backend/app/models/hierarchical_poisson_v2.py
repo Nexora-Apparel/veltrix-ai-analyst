@@ -258,6 +258,15 @@ def fit_hierarchical_poisson_v2(
         ga = [team_tau[key] * attack[index] for index, key in enumerate(team_keys)]
         gd = [team_tau[key] * defence[index] for index, key in enumerate(team_keys)]
 
+        # Diagonal Fisher information provides parameter-specific scaling. The
+        # line search still evaluates the full unnormalized objective.
+        hi = 0.0
+        hh0 = global_home_tau
+        hc = [competition_tau[name] for name in competitions]
+        hh = [home_tau[name] for name in competitions]
+        ha = [team_tau[key] for key in team_keys]
+        hd = [team_tau[key] for key in team_keys]
+
         for row, weight in zip(rows, weights):
             comp = competition_index[row.competition_id]
             home = team_index[(row.competition_id, row.home_team_id)]
@@ -270,8 +279,10 @@ def fit_hierarchical_poisson_v2(
             away_eta = shared + attack[away] - defence[home]
             if not (-20.0 < home_eta < 20.0 and -20.0 < away_eta < 20.0):
                 raise ArithmeticError("optimizer linear predictor outside safe range")
-            error_home = weight * (exp(home_eta) - row.home_goals)
-            error_away = weight * (exp(away_eta) - row.away_goals)
+            home_rate = exp(home_eta)
+            away_rate = exp(away_eta)
+            error_home = weight * (home_rate - row.home_goals)
+            error_away = weight * (away_rate - row.away_goals)
             gi += error_home + error_away
             gh0 += error_home
             gc[comp] += error_home + error_away
@@ -280,6 +291,17 @@ def fit_hierarchical_poisson_v2(
             gd[away] -= error_home
             ga[away] += error_away
             gd[home] -= error_away
+
+            home_information = weight * home_rate
+            away_information = weight * away_rate
+            hi += home_information + away_information
+            hh0 += home_information
+            hc[comp] += home_information + away_information
+            hh[comp] += home_information
+            ha[home] += home_information
+            hd[away] += home_information
+            ha[away] += away_information
+            hd[home] += away_information
 
         gradient_norm = sqrt(
             gi * gi + gh0 * gh0 + sum(value * value for value in gc)
@@ -293,15 +315,42 @@ def fit_hierarchical_poisson_v2(
             iterations = iteration
             break
 
-        step = learning_rate / total_weight
+        direction_intercept = gi / max(hi, 1e-12)
+        direction_home_global = gh0 / max(hh0, 1e-12)
+        direction_comp = [
+            grad / max(info, 1e-12) for grad, info in zip(gc, hc)
+        ]
+        direction_home = [
+            grad / max(info, 1e-12) for grad, info in zip(gh, hh)
+        ]
+        direction_attack = [
+            grad / max(info, 1e-12) for grad, info in zip(ga, ha)
+        ]
+        direction_defence = [
+            grad / max(info, 1e-12) for grad, info in zip(gd, hd)
+        ]
+
+        step = learning_rate
         accepted = False
         for _ in range(40):
-            next_intercept = global_intercept - step * gi
-            next_home_global = home_global - step * gh0
-            next_comp = [value - step * grad for value, grad in zip(competition_effects, gc)]
-            next_home = [value - step * grad for value, grad in zip(home_deviations, gh)]
-            next_attack = [value - step * grad for value, grad in zip(attack, ga)]
-            next_defence = [value - step * grad for value, grad in zip(defence, gd)]
+            next_intercept = global_intercept - step * direction_intercept
+            next_home_global = home_global - step * direction_home_global
+            next_comp = [
+                value - step * direction
+                for value, direction in zip(competition_effects, direction_comp)
+            ]
+            next_home = [
+                value - step * direction
+                for value, direction in zip(home_deviations, direction_home)
+            ]
+            next_attack = [
+                value - step * direction
+                for value, direction in zip(attack, direction_attack)
+            ]
+            next_defence = [
+                value - step * direction
+                for value, direction in zip(defence, direction_defence)
+            ]
             next_loss = objective(
                 next_intercept, next_home_global, next_comp, next_home, next_attack, next_defence
             )
@@ -326,7 +375,6 @@ def fit_hierarchical_poisson_v2(
                 f"(iteration={iteration}, gradient_norm={gradient_norm:.8g})"
             )
         iterations = iteration
-
     if not converged:
         raise ArithmeticError(
             f"hierarchical Poisson v2 optimizer did not converge after {max_iterations} "
