@@ -757,3 +757,11 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [x] Drafted [INDEPENDENT_EVALUATOR_CONTRACT.md](INDEPENDENT_EVALUATOR_CONTRACT.md): single primary 1X2 log-loss metric, both required baselines, nested chronology, pre-evaluation MDE/power, paired date-block bootstrap, single-use final holdout, immutable run ledger, and secondary-market sequencing.
 - [ ] Implement evaluator code separately from model-building code, with independent tests for probability scoring, fold chronology, label-observed cutoffs, date-block bootstrap, MDE/power, baseline comparison, and single-use holdout enforcement.
 - [ ] Draft numeric thresholds for explicit user approval; no threshold hash is frozen yet.
+
+
+## Candidate optimizer correction — validation remains open (2026-11-21)
+
+- [x] CI #44893869028 exposed a real failure: 504 tests passed, but the new v2 synthetic recovery test failed at the optimizer line search. Android debug build passed; Ruff was skipped after the test failure.
+- [x] Corrective commit `3c07aacb8fdc1dfd4832d1779d91ac4eaed98963` raises only the candidate optimizer numerical tolerance from 1e-7 to 1e-6 and adds iteration/gradient-norm diagnostics. No admission or performance threshold was relaxed.
+- [ ] Latest CI #44894364730 is pending on the correction commit. Require full backend tests, Ruff and Android build to pass before merging.
+- [x] No new Vercel deployment was created for 3c07; the last preview remains READY on 940ae2f. Production deployment/API remain unchanged and quarantined.
