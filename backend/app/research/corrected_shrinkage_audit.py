@@ -80,10 +80,11 @@ def _fit_for_audit(
             competition_ridge=competition_ridge,
             max_iterations=MAX_ITERATIONS,
             tolerance=OPTIMIZER_TOLERANCE,
+            optimizer="lbfgs",
         )
     except ArithmeticError as exc:
         return {
-            "model": None, "converged": False, "iterations": None,
+            "model": None, "solver": "L-BFGS", "converged": False, "iterations": None,
             "gradient_norm": None, "error": str(exc),
             "total_recency_weight": total_weight,
             "weighted_mean_goals_per_team_match": mu,
@@ -91,7 +92,7 @@ def _fit_for_audit(
             "competition_ridge_averaged_objective": competition_ridge,
         }
     return {
-        "model": model, "converged": model.optimizer_converged,
+        "model": model, "solver": "L-BFGS", "converged": model.optimizer_converged,
         "iterations": model.optimizer_iterations,
         "gradient_norm": model.optimizer_gradient_norm, "error": None,
         "total_recency_weight": total_weight,
@@ -218,6 +219,88 @@ def _centered_team_ratio_summary(archived: Any, reference: Any) -> dict[str,Any]
     }
 
 
+def _centered_team_effects(archived: Any, reference: Any) -> list[dict[str,Any]]:
+    """Return canonical team IDs and match-count-centred identified effects only."""
+    def centre(model: Any, effects: dict[str,float]) -> dict[str,float]:
+        counts=model.team_match_counts
+        total=sum(counts[team] for team in effects)
+        mean_effect=sum(effects[team]*counts[team] for team in effects)/total
+        return {team: effects[team]-mean_effect for team in effects}
+    aa=centre(archived,archived.attack)
+    ra=centre(reference,reference.attack)
+    ad=centre(archived,archived.defence)
+    rd=centre(reference,reference.defence)
+    return [
+        {
+            "canonical_team_id": team,
+            "archived_attack_centered": aa[team],
+            "reference_attack_centered": ra[team],
+            "archived_defence_centered": ad[team],
+            "reference_defence_centered": rd[team],
+        }
+        for team in sorted(set(aa)&set(ra)&set(ad)&set(rd))
+    ]
+
+
+def sanitize_audit_report(report: dict[str,Any]) -> dict[str,Any]:
+    """Allowlist-only serialization boundary for the externally downloadable report."""
+    top_keys=(
+        "status","commit_sha","preregistration","training_rows","dataset_sha256",
+        "training_data_sha256","folds","primary_evidence","sum_w_lambda_diagnostic",
+        "admission_conclusion","production_promotion","value_betting",
+    )
+    prereg_keys=(
+        "reference_k","tau_team","tau_competition","fold_rule",
+        "fold_training_percentages","metrics","home_advantage","half_life_days",
+        "bootstrap_replicates","bootstrap_seed","max_iterations",
+        "optimizer_tolerance","solver",
+    )
+    fit_keys=(
+        "name","solver","converged","iterations","gradient_norm","fit_error",
+        "total_recency_weight","weighted_mean_goals_per_team_match",
+        "team_ridge_averaged_objective","competition_ridge_averaged_objective",
+        "low_history_test_fixtures","metrics","dispersion_test",
+        "dispersion_training_matchups","dispersion_archived_fixtures",
+    )
+    def pick(source: dict[str,Any], keys: tuple[str,...]) -> dict[str,Any]:
+        return {key: source[key] for key in keys if key in source}
+    clean={"status":report["status"],"commit_sha":report["commit_sha"]}
+    clean["preregistration"]=pick(report["preregistration"],prereg_keys)
+    for key in top_keys[3:]:
+        if key=="folds":
+            folds=[]
+            for fold in report["folds"]:
+                clean_fits=[pick(fit,fit_keys) for fit in fold["fits"]]
+                ratios={}
+                for name,value in fold["team_ratio_summaries_archived_vs_reference"].items():
+                    if value.get("status")=="NOT_COMPUTED_NON_CONVERGED_FIT":
+                        ratios[name]={"status":value["status"]}
+                    else:
+                        ratios[name]={
+                            "ratio_definition":value["ratio_definition"],
+                            "attack":value["attack"],"defence":value["defence"],
+                            "attack_omitted_near_zero_reference":value["attack_omitted_near_zero_reference"],
+                            "defence_omitted_near_zero_reference":value["defence_omitted_near_zero_reference"],
+                            "attack_sign_reversals":value["attack_sign_reversals"],
+                            "defence_sign_reversals":value["defence_sign_reversals"],
+                            "team_effects":value["team_effects"],
+                        }
+                folds.append({
+                    "train_date_range":fold["train_date_range"],
+                    "test_date_range":fold["test_date_range"],
+                    "train_rows":fold["train_rows"],"test_rows":fold["test_rows"],
+                    "cutoff_exclusive_date":fold["cutoff_exclusive"][:10],
+                    "home_advantage_climatology":fold["home_advantage_climatology"],
+                    "fits":clean_fits,
+                    "team_ratio_summaries_archived_vs_reference":ratios,
+                    "paired_log_loss_differences_archived_minus_reference":fold["paired_log_loss_differences_archived_minus_reference"],
+                })
+            clean[key]=folds
+        elif key in report:
+            clean[key]=report[key]
+    return clean
+
+
 def _home_advantage_climatology(train: list[dict[str,Any]], test: list[dict[str,Any]], cutoff: datetime) -> dict[str,Any]:
     """Training-only recency-weighted 1X2 frequencies, evaluated on this fold."""
     weights=_weights(train,cutoff)
@@ -315,7 +398,7 @@ def run_audit(dataset: dict[str,Any], forecast: dict[str,Any], *, commit_sha: st
         for name,k,is_archived in configs:
             fit=_fit_for_audit(train,cutoff,k=k,archived=is_archived)
             model=fit["model"]
-            item={"name":name,"converged":fit["converged"],"iterations":fit["iterations"],"gradient_norm":fit["gradient_norm"],"fit_error":fit["error"],"total_recency_weight":fit["total_recency_weight"],"weighted_mean_goals_per_team_match":fit["weighted_mean_goals_per_team_match"],"team_ridge_averaged_objective":fit["team_ridge_averaged_objective"],"competition_ridge_averaged_objective":fit["competition_ridge_averaged_objective"],"low_history_test_fixtures":low,"model":model}
+            item={"name":name,"solver":fit["solver"],"converged":fit["converged"],"iterations":fit["iterations"],"gradient_norm":fit["gradient_norm"],"fit_error":fit["error"],"total_recency_weight":fit["total_recency_weight"],"weighted_mean_goals_per_team_match":fit["weighted_mean_goals_per_team_match"],"team_ridge_averaged_objective":fit["team_ridge_averaged_objective"],"competition_ridge_averaged_objective":fit["competition_ridge_averaged_objective"],"low_history_test_fixtures":low,"model":model}
             if model is not None:
                 item["metrics"]=_metrics(test,model)
                 item["dispersion_test"]=_dispersion(test,model)
@@ -348,6 +431,9 @@ def run_audit(dataset: dict[str,Any], forecast: dict[str,Any], *, commit_sha: st
                 ratios[ref["name"]]=_centered_team_ratio_summary(
                     archived["model"],ref["model"]
                 )
+                ratios[ref["name"]]["team_effects"]=_centered_team_effects(
+                    archived["model"],ref["model"]
+                )
         public_fits=[{key:value for key,value in f.items() if key!="model"} for f in fits]
         folds.append({
             "train_date_range":[dates[0],dates[cut-1]],
@@ -360,4 +446,4 @@ def run_audit(dataset: dict[str,Any], forecast: dict[str,Any], *, commit_sha: st
             "team_ratio_summaries_archived_vs_reference":ratios,
             "paired_log_loss_differences_archived_minus_reference":comparisons,
         })
-    return {"status":"DIAGNOSTIC_ONLY","commit_sha":commit_sha,"preregistration":{"reference_k":list(REFERENCE_K),"tau_team":"k*mu","tau_competition":"k*2*mu","fold_rule":FOLD_RULE,"fold_training_percentages":[60,70,80,90],"metrics":list(METRICS),"home_advantage":HOME_ADVANTAGE_TREATMENT,"half_life_days":365,"bootstrap_replicates":BOOTSTRAP_REPLICATES,"bootstrap_seed":BOOTSTRAP_SEED,"max_iterations":MAX_ITERATIONS,"optimizer_tolerance":OPTIMIZER_TOLERANCE},"training_rows":len(rows),"dataset_sha256":dataset["dataset_sha256"],"training_data_sha256":training_data_sha256(rows),"folds":folds,"primary_evidence":"fit-to-fit comparison; paired date-block bootstrap log-loss differences","sum_w_lambda_diagnostic":"first-order approximation only; attack and defence jointly estimated","admission_conclusion":"NONE: corpus is not point-in-time certified","production_promotion":"LOCKED","value_betting":"LOCKED"}
+    return {"status":"DIAGNOSTIC_ONLY","commit_sha":commit_sha,"preregistration":{"reference_k":list(REFERENCE_K),"tau_team":"k*mu","tau_competition":"k*2*mu","fold_rule":FOLD_RULE,"fold_training_percentages":[60,70,80,90],"metrics":list(METRICS),"home_advantage":HOME_ADVANTAGE_TREATMENT,"half_life_days":365,"bootstrap_replicates":BOOTSTRAP_REPLICATES,"bootstrap_seed":BOOTSTRAP_SEED,"max_iterations":MAX_ITERATIONS,"optimizer_tolerance":OPTIMIZER_TOLERANCE,"solver":"L-BFGS with Armijo backtracking"},"training_rows":len(rows),"dataset_sha256":dataset["dataset_sha256"],"training_data_sha256":training_data_sha256(rows),"folds":folds,"primary_evidence":"fit-to-fit comparison; paired date-block bootstrap log-loss differences","sum_w_lambda_diagnostic":"first-order approximation only; attack and defence jointly estimated","admission_conclusion":"NONE: corpus is not point-in-time certified","production_promotion":"LOCKED","value_betting":"LOCKED"}

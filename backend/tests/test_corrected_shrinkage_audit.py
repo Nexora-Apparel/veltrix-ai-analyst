@@ -261,3 +261,98 @@ def test_archived_fixture_dispersion_reports_match_and_missing_counts():
     assert result["matched_archived_fixture_count"] == 1
     assert result["missing_archived_fixture_count"] == 1
     assert result["expected_home_goals"]["mean"] == pytest.approx(1.8)
+
+
+
+def test_import_isolation_keeps_offline_audit_out_of_runtime_entrypoints():
+    root = Path(__file__).parents[1]
+    entrypoints = [root / "index.py", root / "app" / "main.py"]
+    for path in entrypoints:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        imported = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.extend(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                imported.append(node.module or "")
+        assert not any("corrected_shrinkage_audit" in name for name in imported)
+
+
+def test_sanitizer_allowlists_aggregates_and_centered_team_effects_only():
+    raw = {
+        "status": "DIAGNOSTIC_ONLY",
+        "commit_sha": "a" * 40,
+        "dataset_sha256": "b" * 64,
+        "training_data_sha256": "c" * 64,
+        "training_rows": 996,
+        "preregistration": {
+            "reference_k": [0.5, 2.0],
+            "tau_team": "k*mu",
+            "tau_competition": "k*2*mu",
+            "solver": "L-BFGS",
+            "unapproved_extra": "must be removed",
+        },
+        "folds": [{
+            "train_date_range": ["2020-01-01", "2021-01-01"],
+            "test_date_range": ["2021-01-02", "2021-02-01"],
+            "cutoff_exclusive": "2021-01-02T12:30:00+00:00",
+            "train_rows": 700,
+            "test_rows": 100,
+            "home_advantage_climatology": {"test_metrics": {"1X2_log_loss": 1.0}},
+            "fits": [{
+                "name": "reference_k_0.5",
+                "solver": "L-BFGS",
+                "converged": True,
+                "iterations": 30,
+                "gradient_norm": 1e-8,
+                "metrics": {"1X2_log_loss": 1.1},
+                "raw_score": 3,
+                "kickoff_time": "2021-01-02T12:30:00+00:00",
+                "display_name": "Sensitive Club Name",
+                "provider_id": "vendor-123",
+            }],
+            "team_ratio_summaries_archived_vs_reference": {
+                "reference_k_0.5": {
+                    "ratio_definition": "centred",
+                    "attack": {"median": 0.7},
+                    "defence": {"median": 0.8},
+                    "attack_omitted_near_zero_reference": 1,
+                    "defence_omitted_near_zero_reference": 2,
+                    "attack_sign_reversals": 0,
+                    "defence_sign_reversals": 1,
+                    "team_effects": [{
+                        "canonical_team_id": "canonical-team-001",
+                        "archived_attack_centered": 0.1,
+                        "reference_attack_centered": 0.2,
+                        "archived_defence_centered": -0.1,
+                        "reference_defence_centered": -0.2,
+                        "display_name": "must not survive",
+                        "score": "must not survive",
+                    }],
+                    "provider_id": "must not survive",
+                }
+            },
+            "paired_log_loss_differences_archived_minus_reference": {
+                "reference_k_0.5": {"mean": 0.01, "ci95_low": -0.01, "ci95_high": 0.02}
+            },
+            "raw_rows": [{"score": "3-1", "kickoff": "raw"}],
+        }],
+        "production_promotion": "LOCKED",
+        "value_betting": "LOCKED",
+        "fixture_id": "must not survive",
+        "display_name": "must not survive",
+    }
+    clean = audit.sanitize_audit_report(raw)
+    serialized = __import__("json").dumps(clean).lower()
+    for forbidden in ("raw_score", "kickoff_time", "display_name", "provider_id",
+                      "raw_rows", "fixture_id", '"score"', '"kickoff"'):
+        assert forbidden not in serialized
+    team = clean["folds"][0]["team_ratio_summaries_archived_vs_reference"][
+        "reference_k_0.5"
+    ]["team_effects"][0]
+    assert set(team) == {
+        "canonical_team_id", "archived_attack_centered", "reference_attack_centered",
+        "archived_defence_centered", "reference_defence_centered",
+    }
+    assert clean["production_promotion"] == "LOCKED"
+    assert clean["value_betting"] == "LOCKED"

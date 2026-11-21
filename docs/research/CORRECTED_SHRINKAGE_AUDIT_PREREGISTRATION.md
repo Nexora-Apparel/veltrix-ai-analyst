@@ -2,10 +2,15 @@
 
 This document and the matching code constants are committed before results are computed. Diagnostic only; the 996 imported labels are not point-in-time certified and cannot support admission.
 
+## Version history and optimizer pre-registration
+- Version 1.0 fixed the fold-specific prior scaling and synthetic stationarity negative control. No computation on the 996-row corpus has been performed.
+- Version 2.0 (2026-11-21, before any real-corpus audit): replace the shared fitter's slow plain gradient descent with a pure-Python limited-memory BFGS solver for this audit and the subsequent repair. The objective, parameterization, recency weights, priors and penalty units are unchanged. The solver uses the same analytic gradient, L-BFGS history size 10, Armijo sufficient-decrease coefficient 1e-4, initial step 1.0, up to 50 backtracking reductions, max_iterations 4,000 and Euclidean gradient tolerance 1e-7. The existing gradient-descent solver remains available as the default for unrelated callers. Audit fits explicitly select L-BFGS.
+- Version 2.0 is a documented pre-result method change prompted by supervisor review of a 4,000-iteration synthetic convergence failure. The 996-row data have not been loaded or fitted. A 1,000-fixture/130-team synthetic test is required for both k=0.5 and k=2.0, plus a small-case comparison against the existing gradient-descent fitter. A fit that does not converge remains invalid and is not used for comparative metrics.
+
 ## Fixed configurations
 - Archived fit: team ridge 0.5, competition ridge 0.5, half-life 365 days.
 - Reference k values: 0.5 and 2.0.
-- Optimizer settings for every fit: max_iterations = 4,000; tolerance = 1e-7 (matching the shared model implementation defaults, now passed explicitly).
+- Optimizer settings for every audit fit: solver = L-BFGS with Armijo backtracking; history size = 10; sufficient-decrease coefficient = 1e-4; initial step = 1.0; max_iterations = 4,000; Euclidean gradient tolerance = 1e-7. The audit explicitly selects L-BFGS; the existing gradient-descent solver remains the default for unrelated callers.
 - Reference team penalty: tau_team = k * mu.
 - Reference competition penalty: tau_competition = k * 2 * mu.
 - Home advantage is unpenalized in archived and both reference fits.
@@ -23,6 +28,7 @@ On identical test fixtures, report 1X2 log loss and multiclass Brier. For archiv
 - Report expected home goals, expected away goals and P(home) dispersion (mean, SD, minimum, maximum) on the fixed archived forecast fixtures, plus the already specified test-fold and training-matchup dispersion. Explicitly report expected, matched and missing archived-fixture counts.
 - Preserve paired archived-minus-reference log-loss differences with the pre-registered date-block bootstrap and per-fit convergence/iteration/gradient diagnostics. A failed or non-converged fit remains visible and is excluded from comparative metrics, never silently dropped.
 - Commit B adds report calculations and synthetic unit tests only. It does not load, fit, or evaluate the 996-row artifact.
+- Version 2.0 adds synthetic convergence tests on approximately 1,000 fixtures and 130 teams for both reference k values, plus a small-case numerical comparison against the original gradient-descent solver. These tests are synthetic only.
 
 ## Reporting
 Report convergence, iterations, gradient norm per fit/fold; centered/identified effects; dispersion of expected home goals, expected away goals and P(home) on archived 25 and training matchups; team effect ratio medians/IQRs weighted and unweighted by match count. The sum(w*lambda) diagnostic is first-order only; joint attack/defence estimation means it is not a standalone shrinkage estimate. No team display names, fixture scores or raw provider fields in JSON.
