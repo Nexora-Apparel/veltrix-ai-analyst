@@ -61,3 +61,13 @@
 - This PR changed Android client diagnostics only. No backend routes, model, training data, provider calls, Odds API credits, schedules, production publication, settlement, or certification gates were changed.
 - Outstanding: install and physically verify this APK on the user's device; then correlate any displayed HTTP/network error with production endpoint/runtime evidence. Public endpoint response and actual Android rendering remain unverified.
 
+## Research feed HTTP 503 diagnosis and repair — 2026-11-21
+- User reported the Android app displays `research feed HTTP 503`.
+- Verified post-merge GitHub Actions run #44883524472 completed successfully: backend tests/lint and Android debug build both passed.
+- Confirmed latest Vercel production deployment is READY on main commit `3c726e342fa339efe83575a72391dc2eceac94b2`, aliased to `veltrix-ai-analyst-api.vercel.app`.
+- Read-only Neon verification confirmed the latest research run exists: 25 forecast rows, 996 training fixtures, status `SHADOW_FORECASTS_READY`.
+- Reproduced the endpoint SQL failure against the production Neon database. The `latest_run` CTE selected run_key, generated_at, training_fixture_count, model_version and report, but omitted `status`; the outer WHERE clause referenced `latest_run.status`. PostgreSQL raises SQLSTATE 42703 (undefined column), which the route converts to HTTP 503.
+- This is a backend query defect, not missing forecasts, Android parsing, or an empty feed. No database writes, provider calls, Odds API credits, or publication changes were made.
+- Repair branch `fix/research-feed-http-503`: include `status` in the CTE projection and add a regression assertion that the selected CTE columns include status before filtering.
+- All research-only, NOT_PUBLISHED, production-promotion LOCKED, value-betting LOCKED, release_eligible=false and 36-hour freshness gates remain unchanged.
+- Next: CI, merge after required checks pass, verify production deployment READY, then perform live HTTP GET and confirm 25 research forecasts are returned. Physical Android refresh remains a separate confirmation.
