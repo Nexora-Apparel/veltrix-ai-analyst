@@ -283,7 +283,14 @@ def sanitize_audit_report(report: dict[str,Any]) -> dict[str,Any]:
                             "defence_omitted_near_zero_reference":value["defence_omitted_near_zero_reference"],
                             "attack_sign_reversals":value["attack_sign_reversals"],
                             "defence_sign_reversals":value["defence_sign_reversals"],
-                            "team_effects":value["team_effects"],
+                            "team_effects":[
+                                pick(effect, (
+                                    "canonical_team_id", "archived_attack_centered",
+                                    "reference_attack_centered", "archived_defence_centered",
+                                    "reference_defence_centered",
+                                ))
+                                for effect in value["team_effects"]
+                            ],
                         }
                 folds.append({
                     "train_date_range":fold["train_date_range"],
