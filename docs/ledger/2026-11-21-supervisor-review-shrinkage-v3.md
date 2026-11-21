@@ -67,3 +67,17 @@ No production or default optimizer change, quarantine change, lock change, feed 
 - Workflow remains **NOT READY FOR OWNER DISPATCH**: prospective settlement export/scoring is not yet integrated into an executable owner workflow; exact-head CI has not completed successfully; fold-4 per-fixture high-probability attribution is absent from the pinned artifacts.
 - Current implementation checkpoint commit: `3ac024ea8c4341f13da1b621d5bab54f109d9793`. Subsequent ledger-only commit records this checkpoint.
 - Quarantine, production-promotion lock, value-betting lock, and feed state unchanged. No real-data evaluation, workflow dispatch, provider/odds call, database write, Telegram notification, merge, or production-default change.
+
+
+## Supervisor amendment v3.2 — 2026-11-21
+
+- Corrected leakage interpretation: `label_observed_at` records bulk-ingestion time and is not a historical availability signal. The leakage checks supplied by the owner are zero training kickoffs at/after cutoff, zero cross-fold fixture-ID matches, zero same-team/same-date matches, goals-only model inputs; 28 identity cases remain unresolved. Fold 4 is statistically suspicious but not proven invalid by ingestion timestamps.
+- Preregistered retrospective historical availability: result available at kickoff + 3 hours; training rows require kickoff + 3 hours strictly before each fold cutoff. All outputs are labelled `RETROSPECTIVE_NOT_PIT_CERTIFIED`; this supports SHADOW-tier research display at most, never PIT certification.
+- Expanded k grid to `[0.5,1,2,4,8,16,32,64,128,256]`; half-lives `[180,365,730]`; blends `[0.25,0.5,0.75,1.0]`. Selection rule and Newton stopping rule unchanged.
+- Canonical v3.2 config SHA-256: `90aea1d84cbe2301f71f5e3d6910d913ae2d1b79c7658319e5cf3ee0817df62a`. No evaluation has been run.
+- Pinned artifacts verified available and digests recorded: Stage 6 run 44873016040 / artifact 14694463354 / ZIP SHA-256 `3a2ebfb7dd94899bc1cf5000bb365c440753afcfa474869a733bbeeda0a1ad81`; shadow run 44873166128 / artifact 14694089682 / ZIP SHA-256 `44164d6e9ead148b6fa0e663f81bde18ad5f75e839143e408a2ecce98cc7f16f`. Dataset fingerprint `80148b3f0f42e70d94391d9283c42f35b5b92e1631a9a1cb7baee899373dad0c`; training pool `d70ee34940c8fc6681f3cd5751d4fdcc2e876b307fe388d9f3a792c73e34b262`.
+- Replaced evaluator with a four-window chronological fold builder. Development grid is folds 1-3 only; fold 4 is replayed for the selected config and k=0.5 using selected half-life/blend, as a previously examined sanity check.
+- Aggregate report includes the full development loss surface, selected config, baseline paired date-block bootstrap intervals, reliability/calibration, >0.80 hit rate, competition breakdown, expected-goal/P(home) dispersion, and fold-4 high-probability gain attribution. It emits no fixture IDs, team names, or scores.
+- Replaced workflow with manual-dispatch-only, read-only workflow. It validates exact merged commit ancestry, pinned artifact IDs/names, ZIP digests, embedded content hashes and row counts; uploads one sanitized JSON with 30-day retention. No schedule or write permissions.
+- The prior CI run 44918617920 passed backend tests and Android build but failed Ruff only on import ordering in the evaluator and metrics modules. The CI actionlint step passed. This has been corrected in the v3.2 batch.
+- No evaluation, workflow dispatch, merge, feed change, provider/odds call, DB write, Telegram notification, or lock change has occurred. Fold 4 remains previously examined and cannot count as independent validation.
