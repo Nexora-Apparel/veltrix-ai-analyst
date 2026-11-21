@@ -100,3 +100,15 @@ No production or default optimizer change, quarantine change, lock change, feed 
 
 - Exact head `42df084cc2e06d5a2730f140143a331c694dc9b8`, run `44920661558`: 521 backend tests passed with 1 warning; actionlint passed; Android debug build passed. Ruff I001 remained in the metrics module because the import block had two blank lines before the module constant; this is the sole reported lint issue.
 - Removed the extra blank line after imports. No runtime code or evaluation logic changed.
+
+
+### v3.2 exact-head CI green — 2026-11-21
+
+- Exact head: `650479155df36f2ee04f9faa0fc747e6de51b0f4`.
+- GitHub Actions CI run: `44920843696` — SUCCESS.
+- Backend job `136896317410`: actionlint PASS; pytest `521 passed, 1 warning`; Ruff PASS.
+- Android job `136896317606`: debug APK build PASS; artifact upload PASS.
+- This is the first successful CI head for the v3.2 implementation. No real-data evaluation or workflow dispatch was run.
+- Evaluation workflow is now structurally ready for the owner-controlled merge/dispatch sequence: manual `workflow_dispatch` only; contents/actions read-only; exact merged commit SHA and main ancestry validation; pinned dataset/forecast run IDs, artifact IDs, names, ZIP digests, embedded dataset/training fingerprints and row-count checks; one aggregate sanitized JSON artifact with 30-day retention.
+- Owner next step: review and merge PR #143. After merge, re-read `main`, verify the workflow file and config hash on main, then provide the exact main commit SHA and dispatch input values. Do not dispatch before owner instruction.
+- No merge, dispatch, feed re-enable, provider/odds request, database write, Telegram notification, production promotion, or lock change.
