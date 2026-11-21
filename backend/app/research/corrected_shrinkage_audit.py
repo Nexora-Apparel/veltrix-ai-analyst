@@ -148,15 +148,128 @@ def _dispersion(rows: list[dict[str, Any]], model: Any) -> dict[str,Any]:
 
 
 def _weighted_summary(values: list[tuple[float,int]]) -> dict[str,Any]:
-    ordered=sorted(x for x,_ in values)
-    if not ordered: return {"median":None,"q1":None,"q3":None,"weighted_median":None}
-    def quantile(v: list[float],q:float)->float:
-        z=(len(v)-1)*q;lo=int(z);hi=min(lo+1,len(v)-1);return v[lo]+(v[hi]-v[lo])*(z-lo)
-    pairs=sorted(values); total=sum(w for _,w in pairs); acc=0; wm=pairs[-1][0]
-    for value,weight in pairs:
-        acc+=weight
-        if acc>=total/2: wm=value;break
-    return {"median":median(ordered),"q1":quantile(ordered,.25),"q3":quantile(ordered,.75),"weighted_median":wm}
+    """Return ordinary and match-count-weighted median/IQR for team ratios."""
+    ordered=sorted(value for value,_ in values)
+    if not ordered:
+        return {
+            "n": 0, "median": None, "q1": None, "q3": None,
+            "weighted_median": None, "weighted_q1": None, "weighted_q3": None,
+        }
+    def quantile(items: list[float], q: float) -> float:
+        position=(len(items)-1)*q
+        lower=int(position); upper=min(lower+1,len(items)-1)
+        return items[lower]+(items[upper]-items[lower])*(position-lower)
+    pairs=sorted((value,weight) for value,weight in values if weight>0)
+    def weighted_quantile(q: float) -> float:
+        total=sum(weight for _,weight in pairs)
+        threshold=q*total
+        cumulative=0
+        for value,weight in pairs:
+            cumulative+=weight
+            if cumulative>=threshold:
+                return value
+        return pairs[-1][0]
+    return {
+        "n": len(ordered),
+        "median": median(ordered),
+        "q1": quantile(ordered,.25),
+        "q3": quantile(ordered,.75),
+        "weighted_median": weighted_quantile(.5),
+        "weighted_q1": weighted_quantile(.25),
+        "weighted_q3": weighted_quantile(.75),
+    }
+
+
+def _centered_team_ratio_summary(archived: Any, reference: Any) -> dict[str,Any]:
+    """Compare absolute centred effects; omit undefined near-zero references."""
+    def centred(model: Any, effects: dict[str,float]) -> dict[str,float]:
+        counts=model.team_match_counts
+        total=sum(counts.values())
+        mean_effect=sum(effects[team]*counts[team] for team in effects)/total
+        return {team: effects[team]-mean_effect for team in effects}
+    archived_attack=centred(archived,archived.attack)
+    reference_attack=centred(reference,reference.attack)
+    archived_defence=centred(archived,archived.defence)
+    reference_defence=centred(reference,reference.defence)
+    attack=[]; defence=[]; attack_sign_reversals=0; defence_sign_reversals=0
+    omitted_attack=0; omitted_defence=0
+    for team in sorted(set(archived_attack)&set(reference_attack)):
+        count=min(archived.team_match_counts.get(team,0),reference.team_match_counts.get(team,0))
+        if abs(reference_attack[team])<=1e-8:
+            omitted_attack+=1
+        else:
+            attack.append((abs(archived_attack[team])/abs(reference_attack[team]),count))
+            if archived_attack[team]*reference_attack[team]<0:
+                attack_sign_reversals+=1
+        if abs(reference_defence[team])<=1e-8:
+            omitted_defence+=1
+        else:
+            defence.append((abs(archived_defence[team])/abs(reference_defence[team]),count))
+            if archived_defence[team]*reference_defence[team]<0:
+                defence_sign_reversals+=1
+    return {
+        "ratio_definition": "absolute match-count-centred archived effect divided by absolute match-count-centred reference effect; reference magnitudes <=1e-8 omitted",
+        "attack": _weighted_summary(attack),
+        "defence": _weighted_summary(defence),
+        "attack_omitted_near_zero_reference": omitted_attack,
+        "defence_omitted_near_zero_reference": omitted_defence,
+        "attack_sign_reversals": attack_sign_reversals,
+        "defence_sign_reversals": defence_sign_reversals,
+    }
+
+
+def _home_advantage_climatology(train: list[dict[str,Any]], test: list[dict[str,Any]], cutoff: datetime) -> dict[str,Any]:
+    """Training-only recency-weighted 1X2 frequencies, evaluated on this fold."""
+    weights=_weights(train,cutoff)
+    counts=[0.0,0.0,0.0]
+    for row,weight in zip(train,weights):
+        hg=int(row["label"]["home_goals"]); ag=int(row["label"]["away_goals"])
+        counts[0 if hg>ag else (1 if hg==ag else 2)]+=weight
+    total=sum(counts)
+    if total<=0:
+        raise ValueError("EMPTY_HOME_ADVANTAGE_CLIMATOLOGY")
+    probabilities=[value/total for value in counts]
+    losses=[]; briers=[]
+    for row in test:
+        hg=int(row["label"]["home_goals"]); ag=int(row["label"]["away_goals"])
+        actual=0 if hg>ag else (1 if hg==ag else 2)
+        losses.append(-math.log(max(probabilities[actual],1e-15)))
+        briers.append(sum((p-(1.0 if i==actual else 0.0))**2 for i,p in enumerate(probabilities)))
+    return {
+        "method": "training-only recency-weighted home/draw/away outcome frequencies",
+        "training_weighted_outcome_counts": counts,
+        "probabilities": {"HOME":probabilities[0],"DRAW":probabilities[1],"AWAY":probabilities[2]},
+        "test_metrics": {
+            "1X2_log_loss":sum(losses)/len(losses),
+            "1X2_multiclass_brier":sum(briers)/len(briers),
+            "n":len(test),
+        },
+    }
+
+
+def _archived_fixture_dispersion(
+    dataset: dict[str,Any], forecast: dict[str,Any], model: Any
+) -> dict[str,Any]:
+    """Dispersion over the fixed archived forecast fixtures, independent of test fold."""
+    rows={
+        str(row.get("canonical_fixture_id")):row
+        for row in dataset.get("rows",[])
+        if row.get("canonical_fixture_id")
+    }
+    selected=[]
+    missing=[]
+    for prediction in forecast.get("predictions",[]):
+        fixture_id=str(prediction.get("canonical_fixture_id",""))
+        row=rows.get(fixture_id)
+        if row is None:
+            missing.append(fixture_id)
+        else:
+            selected.append(row)
+    result=_dispersion(selected,model) if selected else {"n":0}
+    result["expected_archived_fixture_count"]=len(forecast.get("predictions",[]))
+    result["matched_archived_fixture_count"]=len(selected)
+    result["missing_archived_fixture_count"]=len(missing)
+    return result
 
 
 def _bootstrap(diffs: list[tuple[str,float]], seed: int) -> dict[str,float]:
@@ -207,6 +320,9 @@ def run_audit(dataset: dict[str,Any], forecast: dict[str,Any], *, commit_sha: st
                 item["metrics"]=_metrics(test,model)
                 item["dispersion_test"]=_dispersion(test,model)
                 item["dispersion_training_matchups"]=_dispersion(train,model)
+                item["dispersion_archived_fixtures"]=_archived_fixture_dispersion(
+                    dataset,forecast,model
+                )
             fits.append(item)
         archived=fits[0]
         comparisons={}
@@ -220,7 +336,28 @@ def run_audit(dataset: dict[str,Any], forecast: dict[str,Any], *, commit_sha: st
                 pr=_probabilities(ref["model"].predict(str(r["home_team_id"]),str(r["away_team_id"]),str(r["competition_id"])).home_lambda,ref["model"].predict(str(r["home_team_id"]),str(r["away_team_id"]),str(r["competition_id"])).away_lambda)
                 hg,ag=int(r["label"]["home_goals"]),int(r["label"]["away_goals"]); actual=0 if hg>ag else (1 if hg==ag else 2)
                 diffs.append((_dt(r["kickoff_at"]).date().isoformat(),-math.log(max(pa[actual],1e-15))+math.log(max(pr[actual],1e-15))))
-            comparisons[ref["name"]]=_bootstrap(diffs,BOOTSTRAP_SEED+pct)
+            comparisons[ref["name"]]={
+                "status":"COMPUTED",
+                **_bootstrap(diffs,BOOTSTRAP_SEED+pct),
+            }
+        ratios={}
+        for ref in fits[1:]:
+            if archived["model"] is None or ref["model"] is None:
+                ratios[ref["name"]]={"status":"NOT_COMPUTED_NON_CONVERGED_FIT"}
+            else:
+                ratios[ref["name"]]=_centered_team_ratio_summary(
+                    archived["model"],ref["model"]
+                )
         public_fits=[{key:value for key,value in f.items() if key!="model"} for f in fits]
-        folds.append({"train_date_range":[dates[0],dates[cut-1]],"test_date_range":[dates[cut],dates[test_end-1]],"train_rows":len(train),"test_rows":len(test),"cutoff_exclusive":cutoff.isoformat(),"fits":public_fits,"paired_log_loss_differences_archived_minus_reference":comparisons})
+        folds.append({
+            "train_date_range":[dates[0],dates[cut-1]],
+            "test_date_range":[dates[cut],dates[test_end-1]],
+            "train_rows":len(train),
+            "test_rows":len(test),
+            "cutoff_exclusive":cutoff.isoformat(),
+            "home_advantage_climatology":_home_advantage_climatology(train,test,cutoff),
+            "fits":public_fits,
+            "team_ratio_summaries_archived_vs_reference":ratios,
+            "paired_log_loss_differences_archived_minus_reference":comparisons,
+        })
     return {"status":"DIAGNOSTIC_ONLY","commit_sha":commit_sha,"preregistration":{"reference_k":list(REFERENCE_K),"tau_team":"k*mu","tau_competition":"k*2*mu","fold_rule":FOLD_RULE,"fold_training_percentages":[60,70,80,90],"metrics":list(METRICS),"home_advantage":HOME_ADVANTAGE_TREATMENT,"half_life_days":365,"bootstrap_replicates":BOOTSTRAP_REPLICATES,"bootstrap_seed":BOOTSTRAP_SEED,"max_iterations":MAX_ITERATIONS,"optimizer_tolerance":OPTIMIZER_TOLERANCE},"training_rows":len(rows),"dataset_sha256":dataset["dataset_sha256"],"training_data_sha256":training_data_sha256(rows),"folds":folds,"primary_evidence":"fit-to-fit comparison; paired date-block bootstrap log-loss differences","sum_w_lambda_diagnostic":"first-order approximation only; attack and defence jointly estimated","admission_conclusion":"NONE: corpus is not point-in-time certified","production_promotion":"LOCKED","value_betting":"LOCKED"}
