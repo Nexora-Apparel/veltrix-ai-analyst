@@ -1,0 +1,189 @@
+name: Shrinkage repair retrospective evaluation (owner dispatch only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      evaluation_commit_sha:
+        description: Exact merged main commit SHA containing this evaluator and preregistration
+        required: true
+        type: string
+      dataset_run_id:
+        description: Pinned Stage 6 dataset workflow run
+        required: true
+        default: "44873016040"
+        type: string
+      dataset_artifact_id:
+        description: Pinned Stage 6 dataset artifact ID
+        required: true
+        default: "14694463354"
+        type: string
+      dataset_sha256:
+        description: Embedded Stage 6 dataset fingerprint
+        required: true
+        default: "80148b3f0f42e70d94391d9283c42f35b5b92e1631a9a1cb7baee899373dad0c"
+        type: string
+      forecast_run_id:
+        description: Pinned shadow forecast workflow run
+        required: true
+        default: "44873166128"
+        type: string
+      forecast_artifact_id:
+        description: Pinned shadow forecast artifact ID
+        required: true
+        default: "14694089682"
+        type: string
+      config_sha256:
+        description: Frozen v3.2 canonical config SHA-256
+        required: true
+        default: "90aea1d84cbe2301f71f5e3d6910d913ae2d1b79c7658319e5cf3ee0817df62a"
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Validate immutable inputs
+        env:
+          EVALUATION_COMMIT_SHA: ${{ inputs.evaluation_commit_sha }}
+          DATASET_RUN_ID: ${{ inputs.dataset_run_id }}
+          DATASET_ARTIFACT_ID: ${{ inputs.dataset_artifact_id }}
+          DATASET_SHA256: ${{ inputs.dataset_sha256 }}
+          FORECAST_RUN_ID: ${{ inputs.forecast_run_id }}
+          FORECAST_ARTIFACT_ID: ${{ inputs.forecast_artifact_id }}
+          CONFIG_SHA256: ${{ inputs.config_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$EVALUATION_COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$DATASET_RUN_ID" == "44873016040" ]]
+          [[ "$DATASET_ARTIFACT_ID" == "14694463354" ]]
+          [[ "$DATASET_SHA256" == "80148b3f0f42e70d94391d9283c42f35b5b92e1631a9a1cb7baee899373dad0c" ]]
+          [[ "$FORECAST_RUN_ID" == "44873166128" ]]
+          [[ "$FORECAST_ARTIFACT_ID" == "14694089682" ]]
+          [[ "$CONFIG_SHA256" == "90aea1d84cbe2301f71f5e3d6910d913ae2d1b79c7658319e5cf3ee0817df62a" ]]
+
+      - name: Checkout exact merged evaluation commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # actions/checkout@v4
+        with:
+          ref: ${{ inputs.evaluation_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify commit is on main and preregistration hash is frozen
+        env:
+          EVALUATION_COMMIT_SHA: ${{ inputs.evaluation_commit_sha }}
+          CONFIG_SHA256: ${{ inputs.config_sha256 }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$EVALUATION_COMMIT_SHA" origin/main
+          test "$(git rev-parse HEAD)" = "$EVALUATION_COMMIT_SHA"
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          config=json.loads(Path("docs/research/shrinkage-selection-v3.json").read_text())
+          canonical=json.dumps(config,sort_keys=True,separators=(",",":"),ensure_ascii=False,allow_nan=False)+"\n"
+          if config.get("schema_version")!="veltrix-shrinkage-selection-v3.2":
+              raise SystemExit("UNEXPECTED_PREREGISTRATION_VERSION")
+          if hashlib.sha256(canonical.encode()).hexdigest()!=os.environ["CONFIG_SHA256"]:
+              raise SystemExit("FROZEN_CONFIG_HASH_MISMATCH")
+          PY
+
+      - name: Install backend evaluation dependencies
+        run: python -m pip install --disable-pip-version-check -e "backend[dev]"
+
+      - name: Verify pinned artifact names, IDs, run ownership, and archive hashes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DATASET_RUN_ID: ${{ inputs.dataset_run_id }}
+          DATASET_ARTIFACT_ID: ${{ inputs.dataset_artifact_id }}
+          FORECAST_RUN_ID: ${{ inputs.forecast_run_id }}
+          FORECAST_ARTIFACT_ID: ${{ inputs.forecast_artifact_id }}
+          DATASET_SHA256: ${{ inputs.dataset_sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/veltrix-v32/dataset /tmp/veltrix-v32/forecast
+          gh api "/repos/$GH_REPO/actions/runs/$DATASET_RUN_ID/artifacts" > /tmp/dataset-artifacts.json
+          gh api "/repos/$GH_REPO/actions/runs/$FORECAST_RUN_ID/artifacts" > /tmp/forecast-artifacts.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          checks = (
+              (Path("/tmp/dataset-artifacts.json"), os.environ["DATASET_ARTIFACT_ID"], "veltrix-stage6-daily-materialization-audit"),
+              (Path("/tmp/forecast-artifacts.json"), os.environ["FORECAST_ARTIFACT_ID"], "veltrix-prospective-shadow-forecasts"),
+          )
+          for path, artifact_id, name in checks:
+              artifacts=json.loads(path.read_text()).get("artifacts", [])
+              found=[a for a in artifacts if str(a.get("id"))==artifact_id]
+              if len(found)!=1 or found[0].get("name")!=name or found[0].get("expired"):
+                  raise SystemExit(f"ARTIFACT_ID_NAME_OR_EXPIRY_MISMATCH:{artifact_id}")
+          PY
+          gh api "/repos/$GH_REPO/actions/artifacts/$DATASET_ARTIFACT_ID/zip" > /tmp/dataset.zip
+          gh api "/repos/$GH_REPO/actions/artifacts/$FORECAST_ARTIFACT_ID/zip" > /tmp/forecast.zip
+          echo "3a2ebfb7dd94899bc1cf5000bb365c440753afcfa474869a733bbeeda0a1ad81  /tmp/dataset.zip" | sha256sum --check -
+          echo "44164d6e9ead148b6fa0e663f81bde18ad5f75e839143e408a2ecce98cc7f16f  /tmp/forecast.zip" | sha256sum --check -
+          unzip -tq /tmp/dataset.zip
+          unzip -tq /tmp/forecast.zip
+          python - <<'PY'
+          from zipfile import ZipFile
+          checks = (
+              ("/tmp/dataset.zip", ["prospective-dataset.json"]),
+              ("/tmp/forecast.zip", ["prospective-shadow-forecasts.json"]),
+          )
+          for archive, expected in checks:
+              with ZipFile(archive) as zipped:
+                  files = [name for name in zipped.namelist() if not name.endswith("/")]
+              if files != expected:
+                  raise SystemExit(f"ARTIFACT_FILE_LAYOUT_MISMATCH:{archive}:{files}")
+          PY
+          unzip -q /tmp/dataset.zip -d /tmp/veltrix-v32/dataset
+          unzip -q /tmp/forecast.zip -d /tmp/veltrix-v32/forecast
+          test -f /tmp/veltrix-v32/dataset/prospective-dataset.json
+          test -f /tmp/veltrix-v32/forecast/prospective-shadow-forecasts.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from app.research.shrinkage_repair_evaluation import validate_artifact_fingerprints
+          dataset=json.loads(Path("/tmp/veltrix-v32/dataset/prospective-dataset.json").read_text())
+          forecast=json.loads(Path("/tmp/veltrix-v32/forecast/prospective-shadow-forecasts.json").read_text())
+          validated=validate_artifact_fingerprints(
+              dataset,
+              forecast,
+              expected_dataset_sha=os.environ["DATASET_SHA256"],
+              expected_training_sha="d70ee34940c8fc6681f3cd5751d4fdcc2e876b307fe388d9f3a792c73e34b262",
+          )
+          print("Verified dataset fingerprint:", validated["dataset_sha256"])
+          print("Recomputed training_data_sha256:", validated["training_data_sha256"])
+          print("Forecast training_data_sha256:", validated["forecast_training_data_sha256"])
+          print("Stored training_pool_sha256 (informational; not a gate):", validated["training_pool_sha256_observed"])
+          if len(dataset.get("training_only_rows",[]))!=996 or len(forecast.get("predictions",[]))!=25:
+              raise SystemExit("PINNED_SOURCE_ROW_COUNT_MISMATCH")
+          PY
+
+      - name: Run focused Newton and evaluation tests
+        working-directory: backend
+        run: python -m pytest -q tests/test_hierarchical_poisson_newton.py tests/test_shrinkage_repair_metrics.py tests/test_shrinkage_repair_evaluation.py
+
+      - name: Run retrospective v3.2 evaluation
+        working-directory: backend
+        env:
+          CONFIG_SHA256: ${{ inputs.config_sha256 }}
+          DATASET_SHA256: ${{ inputs.dataset_sha256 }}
+        run: |
+          python -m app.research.shrinkage_repair_evaluation \
+            /tmp/veltrix-v32/dataset/prospective-dataset.json \
+            ../docs/research/shrinkage-selection-v3.json \
+            "$CONFIG_SHA256" "$DATASET_SHA256"
+
+      - name: Upload one sanitized aggregate JSON
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # actions/upload-artifact@v4
+        with:
+          name: veltrix-shrinkage-v32-retrospective-aggregate-report
+          path: backend/shrinkage-retrospective-evaluation.json
+          if-no-files-found: error
+          retention-days: 30

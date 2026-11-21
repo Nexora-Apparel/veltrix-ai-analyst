@@ -1,0 +1,52 @@
+{
+  "schema_version": "veltrix-shrinkage-selection-v3.1",
+  "status": "PRE_REGISTERED_NOT_EXECUTED",
+  "selection_scope": "chronological_development_folds_1_to_3_only",
+  "k_grid": [0.5, 1, 2, 4, 8, 16, 32, 64, 128],
+  "half_life_days_grid": [180, 365, 730],
+  "archived_equivalent_reference": {
+    "definition": "k_team_equivalent = archived_team_ridge_averaged_objective * total_recency_weight / weighted_mean_goals_per_team_match",
+    "archived_team_ridge_averaged_objective": 0.5,
+    "fold_values": {
+      "fold_1": 128.3802704829587,
+      "fold_2": 173.29424410186596,
+      "fold_3": 206.5352382546307,
+      "fold_4": 269.2584048267363
+    },
+    "note": "Fold 4 value is diagnostic only; archived-equivalent k values are reference points, not selected candidates."
+  },
+  "blend_weight_grid": [0.25, 0.5, 0.75, 1.0],
+  "blend_definition": "p = w * p_model + (1-w) * p_climatology",
+  "blend_selection_scope": "chronological_development_folds_1_to_3_only",
+  "convergence": {
+    "solver": "damped_newton_analytic_hessian_backtracking_line_search",
+    "gradient_norm_l2_max": 1e-7,
+    "relative_objective_change_max": 1e-10,
+    "both_conditions_required": true,
+    "relative_change_definition": "abs(f_new-f_old)/max(1,abs(f_old))",
+    "consecutive_accepted_steps_required": 2,
+    "max_iterations": 200,
+    "no_posthoc_tolerance_relaxation": true,
+    "failed_fit_policy": "INVALID_EXCLUDED_AND_REPORTED"
+  },
+  "calibration_admission": {
+    "reliability_bins": 10,
+    "markets": ["HOME", "DRAW", "AWAY"],
+    "metrics": ["bin_count", "mean_predicted_probability", "observed_frequency", "calibration_slope", "calibration_intercept"],
+    "extreme_probability_threshold": 0.8,
+    "required_extreme_probability_metrics": ["forecast_count_any_outcome_above_threshold", "hit_count", "hit_rate"],
+    "paired_baseline_differences": ["climatology", "plain_scaled_poisson"],
+    "uncertainty": "paired_date_block_bootstrap_2000_replicates"
+  },
+  "examined_diagnostic_window": {
+    "fold": 4,
+    "date_range": ["2026-10-28", "2026-11-19"],
+    "status": "PREVIOUSLY_EXAMINED_DIAGNOSTIC_WINDOW",
+    "permitted_use": "SHADOW_TIER_SANITY_CHECK_ONLY",
+    "leakage_review_required_before_use": true,
+    "known_limitation": "Historical labels were imported retrospectively; point-in-time label availability must be checked per row. Fold 4 is not an untouched holdout."
+  },
+  "prospective_validation": "fixtures settled after 2026-11-21, scored against frozen config hash",
+  "research_display_admission": "candidate must beat both climatology and plain scaled Poisson on development folds 1-3, pass calibration and extreme-probability reporting, and not fail the previously examined diagnostic window",
+  "promotion": "research-only display at most; anything beyond requires prospective settled evidence and owner sign-off"
+}

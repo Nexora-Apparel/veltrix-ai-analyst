@@ -77,6 +77,7 @@ class HierarchicalPoissonModel:
     optimizer_converged: bool
     optimizer_iterations: int
     optimizer_gradient_norm: float
+    optimizer_relative_objective_change: float | None
 
     def predict(
         self, home_team_id: str, away_team_id: str, competition_id: str
@@ -319,6 +320,207 @@ def _lbfgs_minimize(
     return vector, False, max_iterations, gradient_norm
 
 
+
+def _solve_linear_system(matrix: list[list[float]], rhs: list[float]) -> list[float]:
+    """Solve a dense system by Gaussian elimination with partial pivoting."""
+    size = len(rhs)
+    work = [row[:] + [rhs[i]] for i, row in enumerate(matrix)]
+    for column in range(size):
+        pivot = max(range(column, size), key=lambda row: abs(work[row][column]))
+        pivot_value = work[pivot][column]
+        if not isfinite(pivot_value) or abs(pivot_value) <= 1e-14:
+            raise ArithmeticError("singular damped Newton system")
+        if pivot != column:
+            work[column], work[pivot] = work[pivot], work[column]
+        pivot_row = work[column]
+        for row_index in range(column + 1, size):
+            row = work[row_index]
+            factor = row[column] / pivot_row[column]
+            if factor == 0.0:
+                continue
+            row[column] = 0.0
+            for j in range(column + 1, size + 1):
+                row[j] -= factor * pivot_row[j]
+    solution = [0.0] * size
+    for i in range(size - 1, -1, -1):
+        solution[i] = (
+            work[i][size] - sum(work[i][j] * solution[j] for j in range(i + 1, size))
+        ) / work[i][i]
+    if not all(isfinite(value) for value in solution):
+        raise ArithmeticError("non-finite damped Newton direction")
+    return solution
+
+
+def _newton_minimize(
+    rows: list[HierarchicalGoalResult],
+    weights: list[float],
+    total_weight: float,
+    team_index: dict[str, int],
+    competition_index: dict[str, int],
+    initial: list[float],
+    team_ridge: float,
+    competition_ridge: float,
+    *,
+    max_iterations: int,
+    tolerance: float,
+    relative_objective_tolerance: float = 1e-10,
+) -> tuple[list[float], bool, int, float, float]:
+    """Damped Newton on the unchanged averaged Poisson objective."""
+    from math import sqrt
+
+    competition_count = len(competition_index)
+    team_count = len(team_index)
+    size = 2 + competition_count + 2 * team_count
+    comp_start = 2
+    attack_start = comp_start + competition_count
+    defence_start = attack_start + team_count
+
+    def evaluate(vector: list[float], with_hessian: bool):
+        gradient = [0.0] * size
+        hessian = [[0.0] * size for _ in range(size)] if with_hessian else None
+        intercept, home_advantage = vector[0], vector[1]
+        loss = 0.0
+        for row, weight in zip(rows, weights):
+            home = team_index[row.home_team_id]
+            away = team_index[row.away_team_id]
+            comp = competition_index[row.competition_id]
+            shared = intercept + vector[comp_start + comp]
+            eta_home = (
+                shared + home_advantage
+                + vector[attack_start + home] - vector[defence_start + away]
+            )
+            eta_away = (
+                shared + vector[attack_start + away] - vector[defence_start + home]
+            )
+            if not (-20.0 < eta_home < 20.0 and -20.0 < eta_away < 20.0):
+                return float("inf"), [float("nan")] * size, None
+            rate_home, rate_away = exp(eta_home), exp(eta_away)
+            loss += weight * (
+                rate_home - row.home_goals * eta_home + lgamma(row.home_goals + 1)
+                + rate_away - row.away_goals * eta_away + lgamma(row.away_goals + 1)
+            )
+            error_home = weight * (rate_home - row.home_goals) / total_weight
+            error_away = weight * (rate_away - row.away_goals) / total_weight
+            x_home = (
+                (0, 1.0), (1, 1.0), (comp_start + comp, 1.0),
+                (attack_start + home, 1.0), (defence_start + away, -1.0),
+            )
+            x_away = (
+                (0, 1.0), (comp_start + comp, 1.0),
+                (attack_start + away, 1.0), (defence_start + home, -1.0),
+            )
+            for index, value in x_home:
+                gradient[index] += error_home * value
+            for index, value in x_away:
+                gradient[index] += error_away * value
+            if hessian is not None:
+                scale_home = weight * rate_home / total_weight
+                scale_away = weight * rate_away / total_weight
+                for i, vi in x_home:
+                    for j, vj in x_home:
+                        hessian[i][j] += scale_home * vi * vj
+                for i, vi in x_away:
+                    for j, vj in x_away:
+                        hessian[i][j] += scale_away * vi * vj
+
+        penalty = 0.0
+        for index in range(comp_start, attack_start):
+            value = vector[index]
+            penalty += 0.5 * competition_ridge * value * value
+            gradient[index] += competition_ridge * value
+            if hessian is not None:
+                hessian[index][index] += competition_ridge
+        for index in range(attack_start, size):
+            value = vector[index]
+            penalty += 0.5 * team_ridge * value * value
+            gradient[index] += team_ridge * value
+            if hessian is not None:
+                hessian[index][index] += team_ridge
+        return loss / total_weight + penalty, gradient, hessian
+
+    def norm(values: list[float]) -> float:
+        return sqrt(sum(value * value for value in values))
+
+    vector = initial[:]
+    value, gradient, _ = evaluate(vector, False)
+    gradient_norm = norm(gradient)
+    stable_steps = 0
+    relative_change = float("inf")
+    if gradient_norm <= tolerance:
+        # At an exact stationary initialization, repeat the unchanged state
+        # twice; both fixed convergence criteria must hold on both checks.
+        stable_checks = 0
+        for _ in range(2):
+            confirmed_value, confirmed_gradient, _ = evaluate(vector, False)
+            confirmed_norm = norm(confirmed_gradient)
+            relative_change = abs(confirmed_value - value) / max(1.0, abs(value))
+            if confirmed_norm <= tolerance and relative_change <= relative_objective_tolerance:
+                stable_checks += 1
+            value = confirmed_value
+        if stable_checks == 2:
+            return vector, True, 0, confirmed_norm, relative_change
+
+    for iteration in range(1, max_iterations + 1):
+        value, gradient, hessian = evaluate(vector, True)
+        gradient_norm = norm(gradient)
+        if not isfinite(value) or not isfinite(gradient_norm):
+            raise ArithmeticError("non-finite Newton objective or gradient")
+        accepted = False
+        damping = 1e-10
+        direction = None
+        directional_derivative = float("inf")
+        for _ in range(10):
+            damped = [row[:] for row in hessian]
+            for diagonal in range(size):
+                damped[diagonal][diagonal] += damping
+            try:
+                candidate_direction = _solve_linear_system(damped, [-g for g in gradient])
+            except ArithmeticError:
+                damping *= 10.0
+                continue
+            directional = sum(g * d for g, d in zip(gradient, candidate_direction))
+            if isfinite(directional) and directional < 0.0:
+                direction = candidate_direction
+                directional_derivative = directional
+                break
+            damping *= 10.0
+        if direction is None:
+            raise ArithmeticError("damped Newton could not obtain a descent direction")
+
+        step = 1.0
+        for _ in range(50):
+            candidate = [x + step * d for x, d in zip(vector, direction)]
+            next_value, next_gradient, _ = evaluate(candidate, False)
+            if (
+                isfinite(next_value)
+                and all(isfinite(g) for g in next_gradient)
+                and next_value <= value + 1e-4 * step * directional_derivative
+            ):
+                accepted = True
+                break
+            step *= 0.5
+        if not accepted:
+            raise ArithmeticError(
+                f"damped Newton Armijo line search failed at iteration {iteration} "
+                f"(gradient_norm={gradient_norm:.6g}, relative_objective_change={relative_change:.6g})"
+            )
+
+        relative_change = abs(next_value - value) / max(1.0, abs(value))
+        vector = candidate
+        gradient_norm = norm(next_gradient)
+        if gradient_norm <= tolerance and relative_change <= relative_objective_tolerance:
+            stable_steps += 1
+        else:
+            stable_steps = 0
+        if stable_steps >= 2:
+            return vector, True, iteration, gradient_norm, relative_change
+
+    raise ArithmeticError(
+        f"damped Newton did not converge after {max_iterations} iterations "
+        f"(gradient_norm={gradient_norm:.6g})"
+    )
+
+
 def fit_hierarchical_poisson(
     results: Iterable[HierarchicalGoalResult],
     *,
@@ -331,7 +533,7 @@ def fit_hierarchical_poisson(
     tolerance: float = 1e-7,
     optimizer: str = "gradient_descent",
 ) -> HierarchicalPoissonModel:
-    """Fit the penalized likelihood with gradient descent or L-BFGS.
+    """Fit the penalized likelihood with gradient descent, L-BFGS, or damped Newton.
 
     Hyperparameters are not production defaults; select them on chronological
     development folds and freeze them before prospective evaluation.
@@ -345,7 +547,7 @@ def fit_hierarchical_poisson(
         or not isfinite(competition_ridge) or competition_ridge < 0
         or not isfinite(learning_rate) or learning_rate <= 0
         or max_iterations < 1 or not isfinite(tolerance) or tolerance <= 0
-        or optimizer not in {"gradient_descent", "lbfgs"}
+        or optimizer not in {"gradient_descent", "lbfgs", "newton"}
     ):
         raise ValueError("invalid optimizer configuration")
     if len({row.fixture_id for row in rows}) != len(rows):
@@ -385,18 +587,26 @@ def fit_hierarchical_poisson(
     )
     converged = False
     gradient_norm = float("inf")
+    relative_objective_change: float | None = None
     iterations = 0
 
-    if optimizer == "lbfgs":
+    if optimizer in {"lbfgs", "newton"}:
         initial = [
             global_intercept, home_advantage,
             *competition_effects, *attack, *defence,
         ]
-        fitted, converged, iterations, gradient_norm = _lbfgs_minimize(
-            rows, weights, total_weight, team_index, competition_index, initial,
-            team_ridge, competition_ridge,
-            max_iterations=max_iterations, tolerance=tolerance,
-        )
+        if optimizer == "lbfgs":
+            fitted, converged, iterations, gradient_norm = _lbfgs_minimize(
+                rows, weights, total_weight, team_index, competition_index, initial,
+                team_ridge, competition_ridge,
+                max_iterations=max_iterations, tolerance=tolerance,
+            )
+        else:
+            fitted, converged, iterations, gradient_norm, relative_objective_change = _newton_minimize(
+                rows, weights, total_weight, team_index, competition_index, initial,
+                team_ridge, competition_ridge,
+                max_iterations=min(max_iterations, 200), tolerance=tolerance,
+            )
         competition_effects = fitted[2:2 + competition_count]
         attack = fitted[2 + competition_count:2 + competition_count + team_count]
         defence = fitted[2 + competition_count + team_count:]
@@ -490,4 +700,5 @@ def fit_hierarchical_poisson(
         optimizer_converged=converged,
         optimizer_iterations=iterations,
         optimizer_gradient_norm=gradient_norm,
+        optimizer_relative_objective_change=relative_objective_change,
     )
