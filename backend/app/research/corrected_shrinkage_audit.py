@@ -1,8 +1,6 @@
 """Pre-registered, retrospective shrinkage diagnostic. Never admission evidence."""
 from __future__ import annotations
 
-import hashlib
-import json
 import math
 from datetime import datetime
 from statistics import median
@@ -118,7 +116,7 @@ def run_audit(dataset: dict[str,Any], forecast: dict[str,Any], *, commit_sha: st
     if training_data_sha256(rows) != EXPECTED_TRAINING_SHA: raise ValueError("TRAINING_SHA_MISMATCH")
     if len(rows)!=996: raise ValueError("TRAINING_ROW_COUNT_MISMATCH")
     dates=sorted({_dt(r["kickoff_at"]).date().isoformat() for r in rows})
-    folds=[]; overall={}
+    folds=[]
     for pct in (60,70,80,90):
         cut=max(1,min(len(dates)-1,math.floor(len(dates)*pct/100)))
         test_end=min(len(dates),cut+max(1,math.ceil(len(dates)*.10)))
