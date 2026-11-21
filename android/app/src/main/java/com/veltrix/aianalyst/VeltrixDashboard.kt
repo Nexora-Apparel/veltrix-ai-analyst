@@ -284,7 +284,7 @@ private fun HomeScreen(
     onRefresh: () -> Unit,
 ) {
     val p = LocalPal.current
-    val matches = predictions.orEmpty() + researchPredictions.orEmpty()
+    val matches = mergePredictions(predictions, researchPredictions)
     Screen("Veltrix", "Published and research-only match analysis") {
         Row(
             Modifier.fillMaxWidth(),
@@ -311,7 +311,7 @@ private fun HomeScreen(
                     Column(Modifier.padding(16.dp)) {
                         MatchHeader(
                             "${match.homeTeam} vs ${match.awayTeam}",
-                            "${match.competition} · ${formatKickoff(match.kickoffAt)}",
+                            matchMeta(match),
                         ) {
                             Pill(
                                 if (match.researchOnly) "RESEARCH ONLY" else "1X2",
@@ -415,7 +415,7 @@ private fun BttsScreen(
     loading: Boolean,
 ) {
     val p = LocalPal.current
-    val matches = predictions.orEmpty() + researchPredictions.orEmpty()
+    val matches = mergePredictions(predictions, researchPredictions)
     Screen("BTTS", "Both teams to score") {
         when {
             loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
@@ -469,7 +469,7 @@ private fun OverUnderScreen(
     loading: Boolean,
 ) {
     val p = LocalPal.current
-    val matches = predictions.orEmpty() + researchPredictions.orEmpty()
+    val matches = mergePredictions(predictions, researchPredictions)
     var line by remember { mutableStateOf("2.5") }
     Screen("Over / Under", "Total goals") {
         Row(
@@ -549,6 +549,22 @@ private fun InfoRow(label: String, value: String) {
         Text(label, style = t(17, c = p.text))
         Text(value, style = t(17, c = p.sub))
     }
+}
+
+private fun mergePredictions(
+    published: List<FixturePrediction>?,
+    research: List<FixturePrediction>?,
+): List<FixturePrediction> {
+    val publishedPredictions = published.orEmpty()
+    val publishedFixtureIds = publishedPredictions.map { it.fixtureId }.toSet()
+    return publishedPredictions + research.orEmpty().filterNot {
+        it.fixtureId in publishedFixtureIds
+    }
+}
+
+private fun matchMeta(match: FixturePrediction): String {
+    val kickoff = "${match.competition} · ${formatKickoff(match.kickoffAt)}"
+    return if (match.researchOnly) "$kickoff · RESEARCH ONLY" else kickoff
 }
 
 private fun percent(value: Double): Int = (value * 100.0).roundToInt().coerceIn(0, 100)
