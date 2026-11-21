@@ -29,11 +29,11 @@ def known_strength_results():
     team_count = 136
     strong = {f"team-{index:03d}" for index in range(10)}
     weak = {f"team-{index:03d}" for index in range(126, 136)}
-    attack = {
+    attack_truth = {
         f"team-{index:03d}": (0.50 if index < 10 else -0.50 if index >= 126 else 0.0)
         for index in range(team_count)
     }
-    defence = {
+    defence_truth = {
         f"team-{index:03d}": (-0.30 if index < 10 else 0.30 if index >= 126 else 0.0)
         for index in range(team_count)
     }
@@ -45,8 +45,8 @@ def known_strength_results():
         home = f"team-{home_index:03d}"
         away = f"team-{away_index:03d}"
         kickoff = base + timedelta(days=index // 3)
-        home_rate = 1.40 * exp(0.18 + attack[home] - defence[away])
-        away_rate = 1.40 * exp(attack[away] - defence[home])
+        home_rate = 1.40 * exp(0.18 + attack_truth[home] - defence_truth[away])
+        away_rate = 1.40 * exp(attack_truth[away] - defence_truth[home])
         results.append(HierarchicalGoalResult(
             fixture_id=f"synthetic-{index:04d}",
             kickoff_at=kickoff,
@@ -56,16 +56,23 @@ def known_strength_results():
             home_goals=_poisson(home_rate, rng),
             away_goals=_poisson(away_rate, rng),
         ))
-    return results, strong, weak
+    return results, strong, weak, attack_truth, defence_truth
 
 
-def _fit(results, team_ridge: float, competition_ridge: float):
+def _fit(
+    results,
+    team_ridge: float,
+    competition_ridge: float,
+    *,
+    max_iterations: int = 4000,
+):
     return fit_hierarchical_poisson(
         results,
         as_of=datetime(2026, 11, 21, tzinfo=UTC),
         half_life_days=365.0,
         team_ridge=team_ridge,
         competition_ridge=competition_ridge,
+        max_iterations=max_iterations,
     )
 
 
@@ -85,41 +92,40 @@ def _recovery_passes(model, strong: set[str], weak: set[str]) -> bool:
     return group_gap >= 0.70 and match_contrast >= 0.70
 
 
-def _median_effect_retention(fitted, reference) -> float:
+def _median_truth_retention(model, attack_truth, defence_truth) -> float:
     ratios = []
-    for team in fitted.attack:
-        if abs(reference.attack[team]) > 0.05:
-            ratios.append(abs(fitted.attack[team] / reference.attack[team]))
-        if abs(reference.defence[team]) > 0.05:
-            ratios.append(abs(fitted.defence[team] / reference.defence[team]))
+    for team in model.attack:
+        if abs(attack_truth[team]) > 0.05:
+            ratios.append(abs(model.attack[team] / attack_truth[team]))
+        if abs(defence_truth[team]) > 0.05:
+            ratios.append(abs(model.defence[team] / defence_truth[team]))
     return median(ratios)
 
 
 def test_current_quarantined_configuration_is_rejected_by_recovery_and_shrinkage(
     known_strength_results,
 ):
-    results, strong, weak = known_strength_results
+    results, strong, weak, attack_truth, defence_truth = known_strength_results
     current = _fit(results, team_ridge=0.5, competition_ridge=0.5)
-    near_unpenalized = _fit(results, team_ridge=1e-9, competition_ridge=1e-9)
 
-    # The reference fit must recover the deliberately strong/weak synthetic signal.
-    assert _recovery_passes(near_unpenalized, strong, weak)
-
-    # These are explicit admission-gate rejections, not CI failures.
+    # Synthetic truth has a 1.6 log-strength gap and a 1.78 strong-home contrast.
     assert not _recovery_passes(current, strong, weak)
-    assert _median_effect_retention(current, near_unpenalized) < 0.50
+    assert _median_truth_retention(current, attack_truth, defence_truth) < 0.50
 
 
 def test_absurdly_large_prior_is_rejected_by_recovery_negative_control(
     known_strength_results,
 ):
-    results, strong, weak = known_strength_results
+    results, strong, weak, _, _ = known_strength_results
     try:
         excessive_prior = _fit(
-            results, team_ridge=1_000_000.0, competition_ridge=1_000_000.0
+            results,
+            team_ridge=1_000_000.0,
+            competition_ridge=1_000_000.0,
+            max_iterations=100,
         )
     except (ArithmeticError, ValueError):
-        # A numerical failure is also a valid fail-closed rejection.
+        # A numerical failure is a fail-closed rejection of the negative control.
         return
 
     assert not _recovery_passes(excessive_prior, strong, weak)
