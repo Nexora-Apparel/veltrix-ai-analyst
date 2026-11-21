@@ -53,6 +53,8 @@ def test_newton_matches_existing_gradient_descent_predictions():
     assert candidate.optimizer_converged
     assert candidate.optimizer_iterations <= 200
     assert candidate.optimizer_gradient_norm <= 1e-7
+    assert candidate.optimizer_relative_objective_change is not None
+    assert candidate.optimizer_relative_objective_change <= 1e-10
     for home, away, competition in (
         ("A", "B", "L1"),
         ("D", "F", "L2"),
