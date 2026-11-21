@@ -1,6 +1,4 @@
 from datetime import UTC, datetime, timedelta
-from math import exp
-
 import pytest
 
 from app.models.hierarchical_poisson import fit_hierarchical_poisson, HierarchicalGoalResult
