@@ -132,7 +132,7 @@ def _score_rows(test, model, climate, plain_rates, weight, competition_by_fixtur
     return output
 
 
-def run_evaluation(dataset_path: Path, config_path: Path, expected_config_sha: str) -> dict[str, Any]:
+def run_evaluation(dataset_path: Path, config_path: Path, expected_config_sha: str, expected_dataset_sha: str) -> dict[str, Any]:
     config = json.loads(config_path.read_text(encoding="utf-8"))
     actual_sha = _sha256_config(config)
     if actual_sha != expected_config_sha:
@@ -143,7 +143,7 @@ def run_evaluation(dataset_path: Path, config_path: Path, expected_config_sha: s
     rows = dataset.get("training_only_rows")
     if not isinstance(rows, list) or len(rows) != 996:
         raise ValueError("EXPECTED_996_TRAINING_ROWS")
-    if dataset.get("dataset_sha256") != "80148b3f0f42e70d94391d9283c42f35b5b92e1631a9a1cb7baee899373dad0c":
+    if dataset.get("dataset_sha256") != expected_dataset_sha:
         raise ValueError("UNPINNED_DATASET_FINGERPRINT")
 
     fold_results = []
@@ -166,17 +166,30 @@ def run_evaluation(dataset_path: Path, config_path: Path, expected_config_sha: s
             for k in config["k_grid"]:
                 team_ridge = float(k) * mu / total_weight
                 competition_ridge = 2.0 * float(k) * mu / total_weight
-                model = fit_hierarchical_poisson(
-                    [_result(row) for row in train],
-                    as_of=latest,
-                    half_life_days=float(half_life),
-                    team_ridge=team_ridge,
-                    competition_ridge=competition_ridge,
-                    optimizer="newton",
-                    max_iterations=int(config["convergence"]["max_iterations"]),
-                    tolerance=float(config["convergence"]["gradient_norm_l2_max"]),
-                )
+                fit_failure = None
+                try:
+                    model = fit_hierarchical_poisson(
+                        [_result(row) for row in train],
+                        as_of=latest,
+                        half_life_days=float(half_life),
+                        team_ridge=team_ridge,
+                        competition_ridge=competition_ridge,
+                        optimizer="newton",
+                        max_iterations=int(config["convergence"]["max_iterations"]),
+                        tolerance=float(config["convergence"]["gradient_norm_l2_max"]),
+                    )
+                except (ArithmeticError, ValueError, OverflowError) as exc:
+                    model = None
+                    fit_failure = f"{type(exc).__name__}:{exc}"
                 for blend_weight in config["blend_weight_grid"]:
+                    if model is None:
+                        fold_candidates.append({
+                            "fold": fold_number, "training_percent": percent,
+                            "k": float(k), "half_life_days": int(half_life),
+                            "blend_weight": float(blend_weight), "fit_converged": False,
+                            "fit_failure": fit_failure, "status": "INVALID_FIT_EXCLUDED",
+                        })
+                        continue
                     scored = _score_rows(test, model, climatology, plain_rates, float(blend_weight), {})
                     model_rows = [{"competition_id":r["competition_id"],"kickoff_at":r["kickoff_at"],"label":r["label"],"probabilities":r["probabilities"]} for r in scored]
                     climate_rows = [{"competition_id":r["competition_id"],"kickoff_at":r["kickoff_at"],"label":r["label"],"probabilities":r["climatology_probabilities"]} for r in scored]
@@ -192,6 +205,7 @@ def run_evaluation(dataset_path: Path, config_path: Path, expected_config_sha: s
                     metrics = evaluation_diagnostics(model_rows)
                     record = {
                         "fold": fold_number, "training_percent": percent,
+                        "test_rows": len(test),
                         "k": float(k), "half_life_days": int(half_life),
                         "blend_weight": float(blend_weight),
                         "log_loss": metrics["log_loss"],
@@ -217,9 +231,10 @@ def run_evaluation(dataset_path: Path, config_path: Path, expected_config_sha: s
         grouped.setdefault(key, []).append(record)
     selection = []
     for key, records_for_key in grouped.items():
-        n = sum(item["test_rows"] if "test_rows" in item else 0 for item in records_for_key)
-        loss = sum(item["log_loss"] for item in records_for_key) / len(records_for_key)
-        brier = sum(item["multiclass_brier"] for item in records_for_key) / len(records_for_key)
+        if len(records_for_key) != 3 or any(not item.get("fit_converged") for item in records_for_key):
+            continue
+        loss = sum(item["log_loss"] for item in records_for_key) / 3
+        brier = sum(item["multiclass_brier"] for item in records_for_key) / 3
         selection.append({"k":key[0],"half_life_days":key[1],"blend_weight":key[2],"mean_fold_log_loss":loss,"mean_fold_brier":brier})
     selection.sort(key=lambda x:(x["mean_fold_log_loss"],x["mean_fold_brier"],-x["k"],-x["half_life_days"],-x["blend_weight"]))
     return {
@@ -229,6 +244,9 @@ def run_evaluation(dataset_path: Path, config_path: Path, expected_config_sha: s
         "folds":fold_results,
         "selection_ranking":selection,
         "selected_config":selection[0] if selection else None,
+        "selection_rule":config["selection_rule"],
+        "invalid_fit_count":sum(1 for fold in fold_results for item in fold["candidates"] if not item.get("fit_converged")),
+        "fold_4_status":"NOT_RUN_BY_DEVELOPMENT_SELECTOR; PREVIOUSLY_EXAMINED_DIAGNOSTIC_WINDOW REQUIRES SEPARATE LEAKAGE-CLEARED SANITY CHECK",
         "admission":"NOT_ADMITTED_PENDING_PREVIOUSLY_EXAMINED_WINDOW_AND_OWNER_REVIEW",
         "production_promotion":"LOCKED",
         "value_betting":"LOCKED",
@@ -236,9 +254,9 @@ def run_evaluation(dataset_path: Path, config_path: Path, expected_config_sha: s
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        raise SystemExit("usage: evaluate_shrinkage_repair.py DATASET_JSON CONFIG_JSON CONFIG_SHA256")
-    report = run_evaluation(Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3])
+    if len(sys.argv) != 5:
+        raise SystemExit("usage: evaluate_shrinkage_repair.py DATASET_JSON CONFIG_JSON CONFIG_SHA256 DATASET_SHA256")
+    report = run_evaluation(Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], sys.argv[4])
     Path("shrinkage-development-report.json").write_text(
         json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8"
     )
