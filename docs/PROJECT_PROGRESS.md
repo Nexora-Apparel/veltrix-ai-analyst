@@ -787,3 +787,19 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [x] Chronological nested development, MDE/power before holdout, paired date-block bootstrap, one-use final holdout and immutable evaluation-run logging specified.
 - [x] Evaluator must accept predictions/labels and must not import model fitting or feature-generation code.
 - [ ] Numeric thresholds remain unapproved and unfrozen. Suggested alpha=0.05/power=0.80 are draft-only. No final holdout access is permitted until the user approves and the protocol hash is frozen.
+
+
+## Latest PR #139 candidate verification — 2026-11-21
+
+- [x] PR #139 branch `research/regularization-contract-tests`: 16 commits ahead of main, 0 behind. Latest verified code SHA: `d58d993645f4a9edf25f0a4c4bfc092ef8be9586`.
+- [x] Added research-only pseudo-match Poisson candidate fitter with global/per-competition home priors and fail-closed abstention for unseen competition-scoped teams.
+- [x] Recorded two earlier synthetic optimizer failures and their evidence; did not suppress them.
+- [x] Latest CI [#44895139262](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44895139262): backend tests 506 passed; Ruff passed; Android debug build and APK upload passed.
+- [x] Archived shrinkage audit rerun [#44895139250](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44895139250), report artifact #14703656111.
+- [x] Vercel preview deployment `dpl_2xkxXzqYpq89BeTKiPrYRhBLsrrD` READY for exact code SHA. Preview research endpoint remains quarantined/empty; preview published endpoint returned HTTP 503 and remains a preview-only blocker under investigation.
+- [x] Production API read-back: research HTTP 200 `MODEL_QUARANTINED` / `NOT_PUBLISHED` / 0 forecasts; published HTTP 200 / 0 forecasts. Production DB: 0 prediction rows, 1 historical research-shadow run.
+- [ ] Diagnose preview-only 503 before preview API can be called healthy.
+- [ ] Continue independent candidate mathematical review and sparse-team/home-effect tests. CI success is not model admission.
+- [ ] Implement independent 1X2 scoring evaluator and immutable evaluation-run ledger.
+- [ ] No final holdout until numeric thresholds are explicitly approved and protocol hash frozen.
+- **Release state unchanged:** model QUARANTINED; no production forecasts; value betting LOCKED; Android UI preserved; no DB writes, provider requests, Odds API credits or production deployment.
