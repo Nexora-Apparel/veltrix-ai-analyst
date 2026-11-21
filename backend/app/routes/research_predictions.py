@@ -6,7 +6,7 @@ from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
 import psycopg
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 
 from app.routes.public_predictions import (
     _database_connection,
