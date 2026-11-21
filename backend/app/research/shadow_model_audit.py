@@ -20,7 +20,7 @@ from app.models.hierarchical_poisson import (
 
 
 def _datetime(value: str) -> datetime:
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    parsed = datetime.fromisoformat(value)
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError("artifact timestamps must be timezone-aware")
     return parsed
@@ -86,7 +86,7 @@ def _training_results(
             raise ValueError("TRAINING_LABEL_OR_FIXTURE_AFTER_MODEL_CUTOFF")
         label = row.get("label")
         if not isinstance(label, dict):
-            raise ValueError("TRAINING_LABEL_REQUIRED")
+            raise TypeError("TRAINING_LABEL_REQUIRED")
         results.append(
             HierarchicalGoalResult(
                 fixture_id=str(row["fixture_id"]),
@@ -119,7 +119,7 @@ def reproduce_shadow_fit(
 
     training_rows = dataset.get("training_only_rows")
     if not isinstance(training_rows, list):
-        raise ValueError("TRAINING_ONLY_ROWS_REQUIRED")
+        raise TypeError("TRAINING_ONLY_ROWS_REQUIRED")
     if len(training_rows) != int(dataset.get("training_only_label_rows", -1)):
         raise ValueError("TRAINING_POOL_COUNT_MISMATCH")
 
