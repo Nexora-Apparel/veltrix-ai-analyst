@@ -156,16 +156,7 @@ def test_pseudo_match_candidate_recovers_known_team_strengths(known_strength_res
     )
     rates = candidate.predict("team-000", "team-135", "synthetic-league")
     match_contrast = log(rates.home_lambda / rates.away_lambda)
-    retention = _median_truth_retention(
-        type("ModelView", (), {
-            "attack": {
-                team: candidate.attack[("synthetic-league", team)]
-                for team in candidate.attack_truth_ids
-            }
-        })(),
-        attack_truth,
-        defence_truth,
-    ) if False else median([
+    retention = median([
         abs(candidate.attack[("synthetic-league", team)] / attack_truth[team])
         for team in attack_truth if abs(attack_truth[team]) > 0.05
     ] + [
