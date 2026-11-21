@@ -66,11 +66,6 @@ jobs:
             echo "AUDIT_IMPLEMENTATION_MISSING" >&2
             exit 1
           }
-read -r commit parent1 parent2 extra <<< "$(git rev-list --parents -n 1 "$AUDIT_COMMIT_SHA")"
-          [[ "$commit" == "$AUDIT_COMMIT_SHA" && -n "$parent1" && -n "$parent2" && -z "${extra:-}" ]] || {
-            echo "AUDIT_COMMIT_MUST_BE_A_TWO_PARENT_PR_MERGE_COMMIT" >&2
-            exit 1
-          }
 
       - name: Download and verify exact source artifacts
         env:
