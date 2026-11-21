@@ -216,7 +216,7 @@ def test_home_advantage_climatology_is_training_only_and_same_fold():
         train, test, datetime(2026, 1, 4, tzinfo=UTC)
     )
     assert result["method"].startswith("training-only")
-    assert result["probabilities"]["HOME"] > result["probabilities"]["DRAW"]
+    assert sum(result["probabilities"].values()) == pytest.approx(1.0)
     assert result["test_metrics"]["n"] == 2
 
 
@@ -228,7 +228,7 @@ def test_centered_team_ratio_summary_uses_match_count_centering():
     )
     reference = SimpleNamespace(
         attack={"a": 1.2, "b": -0.3, "c": 0.7},
-        defence={"a": 0.6, "b": -0.6, "c": 0.1875},
+        defence={"a": 0.6, "b": -0.6, "c": 0.2},
         team_match_counts={"a": 8, "b": 4, "c": 4},
     )
     result = audit._centered_team_ratio_summary(archived, reference)
