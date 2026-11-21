@@ -721,3 +721,13 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [x] The PR remains open and unmerged. Vercel reports `build-rate-limit`; no preview deployment was found and production deployment remains unchanged.
 - [ ] The archived per-team CLI workflow has been added to the review branch, but its push-triggered execution has not been independently verified. Do not claim a full 136-team report until its run and artifact are read back.
 - [x] DB admission design is documented in [MODEL_ADMISSION_DB_CONTRACT.md](MODEL_ADMISSION_DB_CONTRACT.md); no production migration or write has been applied.
+
+
+## Archived per-team shrinkage CLI verified (2026-11-21)
+
+- [x] Workflow run [#44893869016](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893869016) successfully downloaded the immutable forecast and Stage 6 artifacts, ran the repository's exact `effective_shrinkage_audit` CLI, and verified `FIT_REPRODUCTION_VERIFIED`.
+- [x] Full report contains all 136 team rows across seven competitions, based on 996 training-only labels. Report artifact ID `14703192024`; SHA-256 `4997f0b6a93c2fc02c1a164c2daff33e2dd532b8b50b57a35a41ec609e64fab0`.
+- [x] Exact CLI results: median absolute attack ratio 3.110425%; defence 3.393930%; median prior/data information 30.57635× attack and 30.30684× defence; effective runtime team_ridge=0.5, competition_ridge=0.5, half-life=365; summed-objective team tau=434.29056074.
+- [x] Signed median ratios: attack 3.006544%, defence 3.277747%; sign agreement 90.44% and 91.18%. Absolute-ratio P10–P90: attack 1.327%–8.863%; defence 1.657%–9.433%.
+- [x] The exact repository CLI output matches the independent numerical reproduction. This is a fit/shrinkage diagnosis, not predictive validation or a selected replacement k.
+- [x] Full per-team report is available from [workflow run #44893869016](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893869016).
