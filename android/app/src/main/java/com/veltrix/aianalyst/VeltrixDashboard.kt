@@ -79,6 +79,7 @@ fun VeltrixDashboard() {
     val pal = if (isSystemInDarkTheme()) DarkPal else LightPal
     var tab by remember { mutableStateOf(Tab.Home) }
     var predictions by remember { mutableStateOf<List<FixturePrediction>?>(null) }
+    var researchPredictions by remember { mutableStateOf<List<FixturePrediction>?>(null) }
     var history by remember { mutableStateOf<List<PredictionHistoryEntry>?>(null) }
     var loading by remember { mutableStateOf(true) }
     var refreshToken by remember { mutableIntStateOf(0) }
@@ -86,6 +87,7 @@ fun VeltrixDashboard() {
     LaunchedEffect(refreshToken) {
         loading = true
         predictions = PredictionApi.fetchUpcoming()
+        researchPredictions = PredictionApi.fetchResearchUpcoming()
         history = PredictionApi.fetchHistory()
         loading = false
     }
@@ -93,11 +95,11 @@ fun VeltrixDashboard() {
     CompositionLocalProvider(LocalPal provides pal) {
         Box(Modifier.fillMaxSize().background(pal.bg)) {
             when (tab) {
-                Tab.Home -> HomeScreen(predictions, loading) { refreshToken++ }
+                Tab.Home -> HomeScreen(predictions, researchPredictions, loading) { refreshToken++ }
                 Tab.History -> HistoryScreen(history, loading)
-                Tab.Btts -> BttsScreen(predictions, loading)
+                Tab.Btts -> BttsScreen(predictions, researchPredictions, loading)
                 Tab.Value -> ValueScreen()
-                Tab.OverUnder -> OverUnderScreen(predictions, loading)
+                Tab.OverUnder -> OverUnderScreen(predictions, researchPredictions, loading)
                 Tab.Menu -> MenuScreen()
             }
             BottomMenu(tab, { tab = it }, Modifier.align(Alignment.BottomCenter))
@@ -277,12 +279,13 @@ private fun EmptyState(message: String) {
 @Composable
 private fun HomeScreen(
     predictions: List<FixturePrediction>?,
+    researchPredictions: List<FixturePrediction>?,
     loading: Boolean,
     onRefresh: () -> Unit,
 ) {
     val p = LocalPal.current
-    val matches = predictions.orEmpty()
-    Screen("Veltrix", "Published match analysis") {
+    val matches = predictions.orEmpty() + researchPredictions.orEmpty()
+    Screen("Veltrix", "Published and research-only match analysis") {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -299,8 +302,8 @@ private fun HomeScreen(
         }
 
         when {
-            loading && predictions == null -> EmptyState("Loading predictions…")
-            predictions == null -> EmptyState("Predictions are temporarily unavailable.")
+            loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
+            predictions == null && researchPredictions == null -> EmptyState("Predictions are temporarily unavailable.")
             matches.isEmpty() -> EmptyState("No upcoming predictions.")
             else -> Card {
                 matches.forEachIndexed { index, match ->
@@ -309,7 +312,12 @@ private fun HomeScreen(
                         MatchHeader(
                             "${match.homeTeam} vs ${match.awayTeam}",
                             "${match.competition} · ${formatKickoff(match.kickoffAt)}",
-                        ) { Pill("1X2", p.blue) }
+                        ) {
+                            Pill(
+                                if (match.researchOnly) "RESEARCH ONLY" else "1X2",
+                                if (match.researchOnly) p.orange else p.blue,
+                            )
+                        }
                         SplitBar(
                             listOf(
                                 percent(match.home) to p.blue,
@@ -401,13 +409,17 @@ private fun HistoryScreen(
 }
 
 @Composable
-private fun BttsScreen(predictions: List<FixturePrediction>?, loading: Boolean) {
+private fun BttsScreen(
+    predictions: List<FixturePrediction>?,
+    researchPredictions: List<FixturePrediction>?,
+    loading: Boolean,
+) {
     val p = LocalPal.current
-    val matches = predictions.orEmpty()
+    val matches = predictions.orEmpty() + researchPredictions.orEmpty()
     Screen("BTTS", "Both teams to score") {
         when {
-            loading && predictions == null -> EmptyState("Loading predictions…")
-            predictions == null -> EmptyState("Predictions are temporarily unavailable.")
+            loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
+            predictions == null && researchPredictions == null -> EmptyState("Predictions are temporarily unavailable.")
             matches.isEmpty() -> EmptyState("No upcoming predictions.")
             else -> Card {
                 matches.sortedByDescending { it.bttsYes }.forEachIndexed { index, match ->
@@ -451,9 +463,13 @@ private fun ValueScreen() {
 }
 
 @Composable
-private fun OverUnderScreen(predictions: List<FixturePrediction>?, loading: Boolean) {
+private fun OverUnderScreen(
+    predictions: List<FixturePrediction>?,
+    researchPredictions: List<FixturePrediction>?,
+    loading: Boolean,
+) {
     val p = LocalPal.current
-    val matches = predictions.orEmpty()
+    val matches = predictions.orEmpty() + researchPredictions.orEmpty()
     var line by remember { mutableStateOf("2.5") }
     Screen("Over / Under", "Total goals") {
         Row(
@@ -476,8 +492,8 @@ private fun OverUnderScreen(predictions: List<FixturePrediction>?, loading: Bool
         Spacer(Modifier.height(14.dp))
 
         when {
-            loading && predictions == null -> EmptyState("Loading predictions…")
-            predictions == null -> EmptyState("Predictions are temporarily unavailable.")
+            loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
+            predictions == null && researchPredictions == null -> EmptyState("Predictions are temporarily unavailable.")
             matches.isEmpty() -> EmptyState("No upcoming predictions.")
             else -> Card {
                 matches.forEachIndexed { index, match ->
