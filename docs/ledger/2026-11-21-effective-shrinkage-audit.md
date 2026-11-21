@@ -130,3 +130,8 @@ Reviewed the provider's current public documentation and terms on 2026-11-21:
 - Community history depth is limited to 12 months; two complete prior seasons are not available under the current plan.
 - No prospective settled evidence exists; PUBLISHED admission is unavailable.
 - Numeric admission thresholds still require drafting and explicit user approval.
+
+
+### Pseudo-match interpretation
+
+The pooled weighted mean goal rate was `mu=1.373023674` goals per team per match. The old effective summed-objective prior coefficient `tau=434.2905607400905` therefore corresponds to approximately `tau / mu = 316.30` pseudo-matches. Median observed per-team data information was only 14.20 (attack) and 14.33 (defence), which yields the approximately 30× prior-to-data ratios above. This is a scale interpretation of the old normalized objective, not an approved replacement (k).
