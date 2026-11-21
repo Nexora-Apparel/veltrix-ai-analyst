@@ -56,3 +56,14 @@ No production or default optimizer change, quarantine change, lock change, feed 
 - CI runs 44918029389, 44918267482, and 44918298716 were cancelled during rapid branch updates/concurrency; no backend test or lint pass is claimed. A fresh exact-head CI result is still required.
 - Workflow dispatch is not authorized and was not performed. Existing 996-row artifact fails the fold-4 point-in-time availability check (835/835 labels observed at/after fold-4 cutoff), so it is not a valid candidate-selection dataset. No real-data run was performed.
 - PR #143 remains draft. The selection workflow is drafted but not ready for owner dispatch until exact-head CI passes and the prospective settlement export/score path is integrated and validated.
+
+
+## Final checkpoint — 2026-11-21
+
+- Added Newton relative-objective-change telemetry to the fitted model result and development report. L-BFGS retains its original four-value return contract; an intermediate return-contract regression was found by source inspection and corrected before any successful CI claim.
+- Corrected development recency weighting to use each fold's prediction cutoff, not the latest training kickoff. Training rows are admitted only when both kickoff and label-observation timestamps precede that cutoff.
+- Added owner-dispatched evaluation workflow with inputs: exact evaluation commit SHA; dataset run ID/artifact ID/dataset SHA; forecast run ID/artifact ID; frozen config SHA. The workflow has no schedule or automatic trigger and is not dispatched.
+- Added prospective settlement scorer unit tests. The scorer accepts frozen-hash forecast and settlement JSON, joins by canonical fixture ID, enforces post-2026-11-21 settlement timing, and is read-only.
+- Workflow remains **NOT READY FOR OWNER DISPATCH**: prospective settlement export/scoring is not yet integrated into an executable owner workflow; exact-head CI has not completed successfully; fold-4 per-fixture high-probability attribution is absent from the pinned artifacts.
+- Current implementation checkpoint commit: `3ac024ea8c4341f13da1b621d5bab54f109d9793`. Subsequent ledger-only commit records this checkpoint.
+- Quarantine, production-promotion lock, value-betting lock, and feed state unchanged. No real-data evaluation, workflow dispatch, provider/odds call, database write, Telegram notification, merge, or production-default change.
