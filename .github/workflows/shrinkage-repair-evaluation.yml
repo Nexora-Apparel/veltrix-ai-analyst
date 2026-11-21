@@ -35,7 +35,7 @@ on:
       config_sha256:
         description: Frozen v3.2 canonical config SHA-256
         required: true
-        default: "90aea1d84cbe2301f71f5e3d6910d913ae2d1b79c7658319e5cf3ee0817df62a"
+        default: "d087f3d641eccf8b81a6717d691db1edab0fd5402119182d18e01e56eadd176a"
         type: string
 
 permissions:
@@ -64,7 +64,7 @@ jobs:
           [[ "$DATASET_SHA256" == "80148b3f0f42e70d94391d9283c42f35b5b92e1631a9a1cb7baee899373dad0c" ]]
           [[ "$FORECAST_RUN_ID" == "44873166128" ]]
           [[ "$FORECAST_ARTIFACT_ID" == "14694089682" ]]
-          [[ "$CONFIG_SHA256" == "90aea1d84cbe2301f71f5e3d6910d913ae2d1b79c7658319e5cf3ee0817df62a" ]]
+          [[ "$CONFIG_SHA256" == "d087f3d641eccf8b81a6717d691db1edab0fd5402119182d18e01e56eadd176a" ]]
 
       - name: Checkout exact merged evaluation commit
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # actions/checkout@v4
@@ -163,6 +163,19 @@ jobs:
           print("Stored training_pool_sha256 (informational; not a gate):", validated["training_pool_sha256_observed"])
           if len(dataset.get("training_only_rows",[]))!=996 or len(forecast.get("predictions",[]))!=25:
               raise SystemExit("PINNED_SOURCE_ROW_COUNT_MISMATCH")
+          config=json.loads(Path("docs/research/shrinkage-selection-v3.json").read_text())
+          if config.get("schema_version") != "veltrix-shrinkage-selection-v3.2":
+              raise SystemExit("UNEXPECTED_PREREGISTRATION_VERSION")
+          if (len(config.get("k_grid", [])), len(config.get("half_life_days_grid", [])),
+              len(config.get("blend_weight_grid", []))) != (10, 3, 4):
+              raise SystemExit("PREREGISTERED_GRID_SIZE_MISMATCH")
+          if len(config["k_grid"]) * len(config["half_life_days_grid"]) * len(config["blend_weight_grid"]) != 120:
+              raise SystemExit("PREREGISTERED_CONFIGURATION_COUNT_MISMATCH")
+          from app.research.corrected_shrinkage_audit import _result
+          for row in dataset["training_only_rows"]:
+              _result(row)
+          print("Verified evaluator field contract for all 996 real training rows")
+          print("Verified v3.2 grid: 10 k values x 3 half-lives x 4 blend weights = 120 configurations")
           PY
 
       - name: Run focused Newton and evaluation tests
