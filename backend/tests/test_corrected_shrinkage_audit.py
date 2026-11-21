@@ -24,3 +24,100 @@ def test_audit_module_has_no_database_or_provider_imports():
         elif isinstance(node, ast.ImportFrom):
             imports.append(node.module or "")
     assert not any(any(token in name for token in forbidden) for name in imports)
+
+
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from app.models.hierarchical_poisson import HierarchicalGoalResult, fit_hierarchical_poisson
+from app.research import corrected_shrinkage_audit as audit
+
+
+def _known_league_rows() -> list[dict]:
+    strengths = {"strong": 1.1, "upper": 0.45, "lower": -0.45, "weak": -1.1}
+    teams = list(strengths)
+    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    rows = []
+    index = 0
+    for round_no in range(24):
+        for home_index in range(len(teams)):
+            for away_index in range(len(teams)):
+                if home_index == away_index:
+                    continue
+                home, away = teams[home_index], teams[away_index]
+                home_signal = strengths[home] - strengths[away] + 0.35
+                away_signal = strengths[away] - strengths[home]
+                hg = max(0, round(1.45 + 0.62 * home_signal + ((round_no + home_index) % 3 - 1) * 0.25))
+                ag = max(0, round(1.05 + 0.58 * away_signal + ((round_no + away_index) % 3 - 1) * 0.25))
+                kickoff = start + timedelta(days=index)
+                rows.append({
+                    "fixture_id": f"known-{index}",
+                    "kickoff_at": kickoff.isoformat(),
+                    "competition_id": "league",
+                    "home_team_id": home,
+                    "away_team_id": away,
+                    "label": {"home_goals": hg, "away_goals": ag},
+                })
+                index += 1
+    return rows
+
+
+def test_fold_prior_conversion_matches_summed_objective_stationarity_scale():
+    rows = _known_league_rows()[:36]
+    cutoff = datetime.fromisoformat(rows[-1]["kickoff_at"])
+    total_weight, mu = audit._fold_weight_and_mean_goals(rows, cutoff)
+    k = 0.5
+    team_ridge, competition_ridge = audit._ridge_for_unnormalized_prior(k, mu, total_weight)
+    model = fit_hierarchical_poisson(
+        [audit._result(row) for row in rows],
+        as_of=cutoff,
+        half_life_days=365,
+        team_ridge=team_ridge,
+        competition_ridge=competition_ridge,
+    )
+    assert model.optimizer_converged
+    # Multiplying the averaged-objective gradient penalty back by W
+    # must recover the pre-registered summed-objective tau coefficients.
+    assert total_weight * model.team_ridge == pytest.approx(k * mu, rel=1e-12)
+    assert total_weight * model.competition_ridge == pytest.approx(k * 2 * mu, rel=1e-12)
+
+
+def test_synthetic_overpenalization_suppresses_signal_and_scaled_prior_recovers_ranking():
+    rows = _known_league_rows()
+    cutoff = datetime.fromisoformat(rows[-1]["kickoff_at"])
+    total_weight, mu = audit._fold_weight_and_mean_goals(rows, cutoff)
+    scaled_team, scaled_comp = audit._ridge_for_unnormalized_prior(0.5, mu, total_weight)
+    results = [audit._result(row) for row in rows]
+    overfit = fit_hierarchical_poisson(
+        results, as_of=cutoff, half_life_days=365,
+        team_ridge=0.5, competition_ridge=0.5,
+    )
+    recovered = fit_hierarchical_poisson(
+        results, as_of=cutoff, half_life_days=365,
+        team_ridge=scaled_team, competition_ridge=scaled_comp,
+    )
+    true_order = ["strong", "upper", "lower", "weak"]
+    over_order = sorted(overfit.attack, key=overfit.attack.get, reverse=True)
+    recovered_order = sorted(recovered.attack, key=recovered.attack.get, reverse=True)
+    over_spread = max(overfit.attack.values()) - min(overfit.attack.values())
+    recovered_spread = max(recovered.attack.values()) - min(recovered.attack.values())
+    assert over_spread < recovered_spread
+    assert recovered_order == true_order
+    assert recovered_spread > 0.25
+
+
+def test_nonconverging_fit_is_reported_and_not_dropped(monkeypatch):
+    rows = _known_league_rows()[:12]
+    cutoff = datetime.fromisoformat(rows[-1]["kickoff_at"])
+
+    def fail_fit(*args, **kwargs):
+        raise ArithmeticError("optimizer did not converge after 1 iterations")
+
+    monkeypatch.setattr(audit, "fit_hierarchical_poisson", fail_fit)
+    result = audit._fit_for_audit(rows, cutoff, k=0.5)
+    assert result["converged"] is False
+    assert result["model"] is None
+    assert "did not converge" in result["error"]
+    assert result["total_recency_weight"] > 0
+    assert result["weighted_mean_goals_per_team_match"] > 0
