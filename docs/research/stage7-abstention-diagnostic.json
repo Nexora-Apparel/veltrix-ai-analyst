@@ -1,0 +1,16 @@
+{
+  "schema_version": "veltrix-stage7-abstention-diagnostic-v1",
+  "source_dataset_sha256": "80148b3f0f42e70d94391d9283c42f35b5b92e1631a9a1cb7baee899373dad0c",
+  "source_evaluation_run_id": 44929166889,
+  "development_folds": [1, 2, 3],
+  "rule": "ABSTAIN_INSUFFICIENT_TEAM_HISTORY if either side has fewer than 5 training matches at that fold cutoff",
+  "test_fixture_count": 490,
+  "affected_fixture_count": 220,
+  "affected_share": 0.4489795918367347,
+  "folds": [
+    {"fold": 1, "training_fixture_count": 360, "test_fixture_count": 158, "affected_fixture_count": 127, "affected_share": 0.8037974683544304},
+    {"fold": 2, "training_fixture_count": 516, "test_fixture_count": 115, "affected_fixture_count": 66, "affected_share": 0.5739130434782609},
+    {"fold": 3, "training_fixture_count": 622, "test_fixture_count": 217, "affected_fixture_count": 27, "affected_share": 0.12442396313364056}
+  ],
+  "interpretation": "Diagnostic only; historical dev-fold fixtures were not retroactively removed from Stage 7 scoring."
+}

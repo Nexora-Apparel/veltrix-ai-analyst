@@ -1,5 +1,19 @@
 # VELTRIX AI ANALYST — Project Progress Register
 
+## Latest execution checkpoint — Stage 7 Newton research-only shadow integration (2026-11-21)
+
+- Integration implementation is proposed in draft PR from `da86cef52d51a7b8924ad837fe91208a30f562c5`; no merge or live inference dispatch.
+- Selected model version: `hierarchical-poisson-newton-shadow-v2` (k=4, half-life 730 days, blend 1.0, damped Newton). Frozen config SHA-256: `87063b2ddec253c65ce4071ce9e508d396c2ee5bb11b8dd85513dc97260d0698`.
+- Stage 7 evaluation run 44929166889 / artifact 14717051631 / aggregate JSON SHA-256 `c724bb52677f3b93040028824ecc547f756e69c01586c7e9f9a587f75132f83d`.
+- Research API requires a matching committed SHADOW admission record and an owner-controlled display flag, default off. Existing schedule remains hard-disabled; new inference workflow is manual-dispatch only and requires explicit write confirmation.
+- Abstention rule: either team below five training matches => `ABSTAIN_INSUFFICIENT_TEAM_HISTORY`. Development-fold diagnostic: 220/490 fixtures (44.90%) affected.
+- Per-run concentration quarantine: on slates >=15, P(home) SD outside [0.08,0.22], any 1X2 top pick >85%, BTTS-yes >90%, or Over-2.5 >90%. Also report P(draw)>0.50 and any probability>0.80 shares.
+- Release remains SHADOW / RETROSPECTIVE_NOT_PIT_CERTIFIED. No production/value betting promotion, no app display, no accuracy claims. Owner gates: merge, manual inference write, display flag, and any schedule/lock change remain owner-only.
+- Non-blocking unresolved items: archived-model paired intervals; training-fixture P(home) dispersion; fold-4 competition-name mapping; 28 unresolved identity cases remain unverified.
+- Detailed evidence and owner steps: `docs/ledger/2026-11-21-stage7-shadow-integration.md`.
+
+
+
 > Canonical execution tracker for the VELTRIX AI ANALYST project. Update this document whenever implementation status, scope, decisions, blockers, or validation evidence changes.
 
 **Last updated:** 2026-11-21 (PR #142 corrected shrinkage audit implementation)

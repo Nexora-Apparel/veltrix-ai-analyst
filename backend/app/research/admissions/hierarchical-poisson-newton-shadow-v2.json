@@ -1,0 +1,15 @@
+{
+  "schema_version": "veltrix-model-admission-v1",
+  "model_version": "hierarchical-poisson-newton-shadow-v2",
+  "tier": "SHADOW",
+  "certification": "RETROSPECTIVE_NOT_PIT_CERTIFIED",
+  "config_sha256": "87063b2ddec253c65ce4071ce9e508d396c2ee5bb11b8dd85513dc97260d0698",
+  "training_data_sha256": "d70ee34940c8fc6681f3cd5751d4fdcc2e876b307fe388d9f3a792c73e34b262",
+  "report_sha256": "c724bb52677f3b93040028824ecc547f756e69c01586c7e9f9a587f75132f83d",
+  "evaluation_run_id": 44929166889,
+  "evaluation_artifact_id": 14717051631,
+  "evaluation_commit": "da86cef52d51a7b8924ad837fe91208a30f562c5",
+  "production_promotion": "LOCKED",
+  "value_betting": "LOCKED",
+  "app_display_enabled": false
+}

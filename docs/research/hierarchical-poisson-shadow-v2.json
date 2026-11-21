@@ -1,0 +1,38 @@
+{
+  "schema_version": "veltrix-hierarchical-poisson-shadow-v2",
+  "model_version": "hierarchical-poisson-newton-shadow-v2",
+  "tier": "SHADOW",
+  "selection": {
+    "k": 4.0,
+    "half_life_days": 730.0,
+    "blend_weight": 1.0,
+    "solver": "damped_newton_analytic_hessian_backtracking_line_search"
+  },
+  "ridge_scaling": {
+    "team_ridge": "k * weighted_mean_goals_per_team_match / total_recency_weight",
+    "competition_ridge": "2 * k * weighted_mean_goals_per_team_match / total_recency_weight"
+  },
+  "convergence": {
+    "gradient_norm_l2_max": 1e-7,
+    "relative_objective_change_max": 1e-10,
+    "consecutive_accepted_steps_required": 2,
+    "max_iterations": 200,
+    "failed_fit_policy": "ABSTAIN"
+  },
+  "abstention": {
+    "minimum_matches_per_team": 5,
+    "reason": "ABSTAIN_INSUFFICIENT_TEAM_HISTORY"
+  },
+  "admission": {
+    "certification": "RETROSPECTIVE_NOT_PIT_CERTIFIED",
+    "permitted_use": "RESEARCH_ONLY_SHADOW_DISPLAY",
+    "production_promotion": "LOCKED",
+    "value_betting": "LOCKED"
+  },
+  "evaluation": {
+    "workflow_run_id": 44929166889,
+    "artifact_id": 14717051631,
+    "evaluation_commit": "da86cef52d51a7b8924ad837fe91208a30f562c5",
+    "aggregate_json_sha256": "c724bb52677f3b93040028824ecc547f756e69c01586c7e9f9a587f75132f83d"
+  }
+}
