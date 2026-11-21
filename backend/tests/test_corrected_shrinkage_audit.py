@@ -19,6 +19,8 @@ def test_preregistered_design_is_frozen():
     assert ARCHIVED_CONFIG == {"team_ridge": 0.5, "competition_ridge": 0.5, "half_life_days": 365.0}
     assert "60%" in FOLD_RULE and "90%" in FOLD_RULE
     assert HOME_ADVANTAGE_TREATMENT == "unpenalized in archived and both reference fits"
+    assert audit.MAX_ITERATIONS == 4000
+    assert audit.OPTIMIZER_TOLERANCE == 1e-7
 
 
 def test_audit_module_has_no_database_or_provider_imports():
