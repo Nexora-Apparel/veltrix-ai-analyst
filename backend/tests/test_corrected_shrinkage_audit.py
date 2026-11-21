@@ -78,10 +78,43 @@ def test_fold_prior_conversion_matches_summed_objective_stationarity_scale():
         competition_ridge=competition_ridge,
     )
     assert model.optimizer_converged
-    # Multiplying the averaged-objective gradient penalty back by W
-    # must recover the pre-registered summed-objective tau coefficients.
-    assert total_weight * model.team_ridge == pytest.approx(k * mu, rel=1e-12)
-    assert total_weight * model.competition_ridge == pytest.approx(k * 2 * mu, rel=1e-12)
+    tau_team = k * mu
+    tau_competition = k * 2 * mu
+    assert total_weight * model.team_ridge == pytest.approx(tau_team, rel=1e-12)
+    assert total_weight * model.competition_ridge == pytest.approx(tau_competition, rel=1e-12)
+
+    # Reconstruct the gradient of the *summed* weighted NLL plus summed
+    # penalties at the fitted parameters. Its norm must agree with the
+    # optimizer's averaged-objective gradient after multiplying by W.
+    weights = audit._weights(rows, cutoff)
+    team_gradient = {team: 0.0 for team in model.attack}
+    defence_gradient = {team: 0.0 for team in model.defence}
+    competition_gradient = {competition: 0.0 for competition in model.competition_effects}
+    global_gradient = 0.0
+    home_gradient = 0.0
+    for row, weight in zip(rows, weights):
+        rates = model.predict(row["home_team_id"], row["away_team_id"], row["competition_id"])
+        residual_home = rates.home_lambda - row["label"]["home_goals"]
+        residual_away = rates.away_lambda - row["label"]["away_goals"]
+        global_gradient += weight * (residual_home + residual_away)
+        home_gradient += weight * residual_home
+        competition_gradient[row["competition_id"]] += weight * (residual_home + residual_away)
+        team_gradient[row["home_team_id"]] += weight * residual_home
+        team_gradient[row["away_team_id"]] += weight * residual_away
+        defence_gradient[row["away_team_id"]] -= weight * residual_home
+        defence_gradient[row["home_team_id"]] -= weight * residual_away
+    for team in team_gradient:
+        team_gradient[team] += tau_team * model.attack[team]
+        defence_gradient[team] += tau_team * model.defence[team]
+    for competition in competition_gradient:
+        competition_gradient[competition] += tau_competition * model.competition_effects[competition]
+    summed_gradient_norm = (
+        global_gradient**2 + home_gradient**2
+        + sum(value**2 for value in competition_gradient.values())
+        + sum(value**2 for value in team_gradient.values())
+        + sum(value**2 for value in defence_gradient.values())
+    ) ** 0.5
+    assert summed_gradient_norm <= total_weight * model.optimizer_gradient_norm * 1.01 + 1e-8
 
 
 def test_synthetic_overpenalization_suppresses_signal_and_scaled_prior_recovers_ranking():
