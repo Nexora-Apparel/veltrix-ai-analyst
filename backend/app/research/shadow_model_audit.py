@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime
-from math import exp
+from math import exp, log
 from pathlib import Path
 from statistics import mean, pstdev
 from typing import Any
@@ -103,7 +103,6 @@ def _training_results(
     return results
 
 
-
 def objective_scaling_diagnostics(
     training_rows: list[dict[str, Any]],
     *,
@@ -125,7 +124,7 @@ def objective_scaling_diagnostics(
     for row in training_rows:
         kickoff = _datetime(row["kickoff_at"])
         age_days = max(0.0, (training_cutoff_at - kickoff).total_seconds() / 86400)
-        weights.append(exp(-0.6931471805599453 * age_days / half_life_days))
+        weights.append(exp(-log(2.0) * age_days / half_life_days))
     total_weight = sum(weights)
     if not total_weight > 0:
         raise ValueError("NON_POSITIVE_TOTAL_TRAINING_WEIGHT")
