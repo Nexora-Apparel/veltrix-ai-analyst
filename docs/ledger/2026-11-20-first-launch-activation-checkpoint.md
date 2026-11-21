@@ -325,3 +325,42 @@
 1. Poll shadow run #44873166128 through completion and inspect its log and artifact. Confirm terminal status, training labels, freshness, hashes, convergence, abstentions, distributions and forecast count.
 2. Poll Stage 7 run #44873166148 and inspect its evaluation/certification artifact. Keep certification and promotion locked unless every independently agreed criterion is satisfied.
 3. Preserve the 54 immutable snapshots and do not rerun capture merely to manufacture settled labels. Continue daily prospective observation and settle outcomes only when source results become available.
+
+
+## 2026-11-21 06:00 WAT — automatic shadow inference and Stage 7 evaluation verified
+
+### Automatic workflow chain
+- Capture [#44872062807](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44872062807) was manually dispatched by the project operator; do not describe this particular capture as a scheduled execution.
+- Successful capture automatically triggered Stage 6 [#44873016040](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44873016040).
+- Successful Stage 6 automatically triggered shadow inference [#44873166128](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44873166128) and Stage 7 evaluation [#44873166148](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44873166148).
+- Both downstream jobs completed with conclusion `success` on main SHA `5735b4126ea228c078d60af18e5b5b97dd6f86ca`. Their artifacts were downloaded and inspected.
+
+### Shadow forecast artifact
+- Artifact [veltrix-prospective-shadow-forecasts](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44873166128/artifacts/14694089682), artifact ID `14694089682`, ZIP SHA-256 `44164d6e9ead148b6fa0e663f81bde18ad5f75e839143e408a2ecce98cc7f16f`.
+- Terminal status: `SHADOW_FORECASTS_READY`; 25 forecasts from 25 fresh upcoming snapshots, within the configured six-hour freshness limit. Candidate snapshot rows: 54; abstentions: 0.
+- Historical training pool: 996 cutoff-valid training-only labels, 136 teams, seven competitions. This is historical training data, not 996 prospective settled selections.
+- Model: `HIERARCHICAL_POISSON_DIXON_COLES`, optimizer converged (57 iterations; gradient norm approximately `9.42e-8`). Dixon–Coles rho remained zero because inner out-of-fold evidence was insufficient (`ZERO_RHO_INSUFFICIENT_INNER_OOF`).
+- Probability inputs are historical goal outcomes only. Captured shot, possession and attack-event features are audited but explicitly not yet used in probabilities pending prospective feature validation.
+- No bookmaker odds were used; provider calls: 0; database writes: 0; all forecasts have `publication_status=NOT_PUBLISHED`; release eligibility false; production promotion and value betting LOCKED.
+- Dataset SHA-256 matches Stage 6: `80148b3f0f42e70d94391d9283c42f35b5b92e1631a9a1cb7baee899373dad0c`.
+
+### Stage 7 evaluation and certification
+- Artifact [veltrix-stage7-prospective-research-evaluation](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44873166148/artifacts/14695066735), artifact ID `14695066735`, ZIP SHA-256 `ea539a8901fc3f3ab18d8fc7d3c0a79c7f75ba8f05eaaa7b012de2010557e28a`.
+- Evaluation terminal status: `INSUFFICIENT_PROSPECTIVE_DATA`; production certification: `BLOCKED_INSUFFICIENT_OR_UNCERTIFIED_EVIDENCE`.
+- Dataset has 54 eligible prospective rows across seven competitions and five kickoff dates, but zero settled prospective labels. Consequently zero walk-forward folds and zero evaluated fixtures per market.
+- Observed certification counts: 0/300 prospective settled fixtures; 0/90 distinct settled kickoff dates; 0/1,000 walk-forward fixtures for each of 1X2, BTTS, O/U 1.5, O/U 2.5 and O/U 3.5.
+- Bookmaker Brier/log-loss comparison was not evaluated because no bookmaker odds were used. Timestamped odds coverage and ROI/confidence-bound gates were also not evaluated.
+- Evaluation explicitly reports `certification_is_approval=false`, `release_eligible=false`, production promotion LOCKED and value betting LOCKED. A successful workflow job is not a successful certification.
+
+### Persistence and release boundary
+- The shadow artifact was generated read-only; its `database_writes=0` and `provider_calls=0` fields were verified. It was not written to the research shadow ledger and was not published.
+- No production prediction or publication rows were inserted by these downstream runs.
+- Preserve the 54 prospective snapshots and allow outcomes to settle naturally. Do not manufacture prospective labels, backdate observations, or rerun capture to fabricate sample size.
+- The 21 November capture was manual. The configured daily schedule at 03:00 UTC / 04:00 WAT still requires independent verification on its next scheduled occurrence; this run does not prove scheduled capture reliability.
+
+### Next engineering sequence
+1. Keep the current shadow artifact immutable and use it as the first research-only forecast evidence; do not route it to the Android published endpoint.
+2. Inspect settlement ingestion and daily capture schedule execution on the next scheduled cycle; reconcile per-scope provider sightings, duplicates, rejects and quarantines.
+3. Continue prospective collection and settlement until there is sufficient dated evidence; preserve timestamped odds coverage for later baseline and ROI evaluation without spending Odds API credits unnecessarily.
+4. Validate why the current probability engine does not yet consume the captured attack/shot/possession features; add feature usage only with point-in-time leakage tests and prospective validation.
+5. Keep production promotion, prediction publication and value betting locked until every certification gate passes.
