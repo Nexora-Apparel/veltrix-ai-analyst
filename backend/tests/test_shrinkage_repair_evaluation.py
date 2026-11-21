@@ -1,5 +1,10 @@
+import hashlib
+import json
+import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
+from app.research.corrected_shrinkage_audit import _result
 from app.research.shrinkage_repair_evaluation import _folds
 
 
@@ -51,14 +56,6 @@ def test_retrospective_availability_uses_kickoff_plus_three_hours_not_ingestion_
     )
 
 
-import hashlib
-import json
-import re
-from pathlib import Path
-
-from app.research.corrected_shrinkage_audit import _result
-
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_V32_CONFIG_SHA256 = "d087f3d641eccf8b81a6717d691db1edab0fd5402119182d18e01e56eadd176a"
 
@@ -71,21 +68,21 @@ def test_v32_canonical_config_hash_matches_workflow_and_preregistration():
     config = json.loads(config_path.read_text(encoding="utf-8"))
     canonical = json.dumps(
         config, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
-    ) + "\\n"
+    ) + "\n"
     actual_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     workflow = workflow_path.read_text(encoding="utf-8")
     preregistration = preregistration_path.read_text(encoding="utf-8")
 
     default_match = re.search(
-        r'config_sha256:\\s*\\n(?:[^\\n]*\\n)*?\\s+default:\\s*"([0-9a-f]{64})"',
+        r'config_sha256:\s*\n(?:[^\n]*\n)*?\s+default:\s*"([0-9a-f]{64})"',
         workflow,
     )
     hardcoded_match = re.search(
-        r'\\[\\[ "\\$CONFIG_SHA256" == "([0-9a-f]{64})" \\]\\]',
+        r'\[\[ "\$CONFIG_SHA256" == "([0-9a-f]{64})" \]\]',
         workflow,
     )
     preregistration_match = re.search(
-        r"Canonical SHA-256: `([0-9a-f]{64})`", preregistration
+        r"Canonical SHA-256: \x60([0-9a-f]{64})\x60", preregistration
     )
 
     assert config["schema_version"] == "veltrix-shrinkage-selection-v3.2"
@@ -102,7 +99,12 @@ def test_v32_preregistered_grid_is_exactly_120_configurations():
     assert len(config["k_grid"]) == 10
     assert len(config["half_life_days_grid"]) == 3
     assert len(config["blend_weight_grid"]) == 4
-    assert len(config["k_grid"]) * len(config["half_life_days_grid"]) * len(config["blend_weight_grid"]) == 120
+    assert (
+        len(config["k_grid"])
+        * len(config["half_life_days_grid"])
+        * len(config["blend_weight_grid"])
+        == 120
+    )
 
 
 def test_evaluator_accepts_pinned_dataset_training_row_field_contract():
