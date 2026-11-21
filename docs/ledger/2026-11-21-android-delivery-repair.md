@@ -91,3 +91,15 @@
 - Combined with the live production GET verification (HTTP 200, 25 research rows) and the published-feed isolation check (HTTP 200, zero published rows), this confirms the repaired backend delivery path and user-visible Android rendering.
 - Research rows remain NOT_PUBLISHED; production promotion and value betting remain LOCKED. This device confirmation is not model-performance certification.
 - Next: inspect scheduled prospective capture, Stage 6, shadow inference and Stage 7 runs; identify any sequential duplicate inference caused by both Stage 6 completion and the 06:00 WAT cron. Do not alter schedules until actual run history is verified.
+
+
+## Prospective pipeline verification — 2026-11-21
+- Inspected GitHub Actions run history and job logs for capture, Stage 6, shadow inference and Stage 7. All four runs in the 21 Nov chain completed successfully:
+  - Capture #44872062807 (run 4, event `workflow_dispatch`, not `schedule`): six approved competitions validated; 18 records inserted; 12 provider requests total (two per competition); no Odds API calls. France Ligue 1 remained excluded because its mapping/identity issue was unresolved.
+  - Stage 6 #44873016040: `DAILY_MATERIALIZATION_VERIFIED`; 54 snapshots across 54 distinct fixtures; zero latest label events; dataset SHA-256 `80148b3f0f42e70d94391d9283c42f35b5b92e1631a9a1cb7baee899373dad0c`.
+  - Shadow inference #44873166128 (event `workflow_run`, after Stage 6): `SHADOW_FORECASTS_READY`; 25 forecasts; 996 training fixtures; zero abstentions; zero provider calls and zero database writes in inference; production promotion and value betting both LOCKED.
+  - Stage 7 #44873166148: `INSUFFICIENT_PROSPECTIVE_DATA`; zero settled labels, zero evaluated fixtures, zero distinct settled-label dates and zero walk-forward fixtures in every market; production certification BLOCKED, promotion/value betting LOCKED.
+- The recent Actions run listing contained one shadow inference run for this chain, triggered by successful Stage 6 completion. No sequential duplicate inference run was observed in the inspected run history. The 06:00 WAT cron path was not independently observed as a second run; do not infer its behavior beyond this history.
+- Important schedule distinction: the 21 Nov capture run was manually dispatched at 05:41 UTC, not triggered by the 04:00 WAT schedule. The preceding scheduled capture run #44725750217 (20 Nov) failed its validation stage: multiple competitions reported fixture-sighting/import-counter reconciliation mismatches and France Ligue 1 reported `PROVIDER_FIXTURE_IDENTITY_CONFLICT`. The successful 21 Nov manual run validated six competitions and is not evidence that the cron itself fired successfully.
+- No schedule change made. Next scheduled capture is expected at 03:00 UTC / 04:00 WAT on 22 Nov; inspect the actual event and result before treating automation as healthy. Continue to protect provider budgets and do not use Odds API for this capture path.
+- Research forecasts remain unpublished. Stage 7 evidence is far below certification requirements; no production promotion or value betting unlock is justified.
