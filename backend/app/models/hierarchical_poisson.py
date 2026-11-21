@@ -316,7 +316,7 @@ def _lbfgs_minimize(
         vector, value, gradient = candidate, next_value, next_gradient
         gradient_norm = norm(gradient)
         if gradient_norm <= tolerance:
-            return vector, True, iteration, gradient_norm, relative_change
+            return vector, True, iteration, gradient_norm
     return vector, False, max_iterations, gradient_norm
 
 
