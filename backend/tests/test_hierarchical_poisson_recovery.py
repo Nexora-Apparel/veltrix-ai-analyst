@@ -131,19 +131,72 @@ def test_absurdly_large_prior_is_rejected_by_recovery_negative_control(
     assert not _recovery_passes(excessive_prior, strong, weak)
 
 
-def test_pseudo_match_candidate_recovers_known_team_strengths(known_strength_results):
+@pytest.fixture(scope="module")
+def abundant_strength_results():
+    rng = random.Random(20261122)
+    team_count = 16
+    strong = {f"team-{index:03d}" for index in range(3)}
+    weak = {f"team-{index:03d}" for index in range(13, 16)}
+    attack_truth = {
+        f"team-{index:03d}": (0.45 if index < 3 else -0.45 if index >= 13 else 0.0)
+        for index in range(team_count)
+    }
+    defence_truth = {
+        f"team-{index:03d}": (-0.25 if index < 3 else 0.25 if index >= 13 else 0.0)
+        for index in range(team_count)
+    }
+    base = datetime(2025, 11, 22, tzinfo=UTC)
+    results = []
+    for index in range(1000):
+        home_index = index % team_count
+        away_index = (index * 5 + 1) % team_count
+        home = f"team-{home_index:03d}"
+        away = f"team-{away_index:03d}"
+        kickoff = base + timedelta(days=index // 3)
+        home_rate = 1.40 * exp(0.18 + attack_truth[home] - defence_truth[away])
+        away_rate = 1.40 * exp(attack_truth[away] - defence_truth[home])
+        results.append(HierarchicalGoalResult(
+            fixture_id=f"abundant-{index:04d}",
+            kickoff_at=kickoff,
+            competition_id="synthetic-league",
+            home_team_id=home,
+            away_team_id=away,
+            home_goals=_poisson(home_rate, rng),
+            away_goals=_poisson(away_rate, rng),
+        ))
+    return results, strong, weak, attack_truth, defence_truth
+
+
+@pytest.fixture(scope="module")
+def candidate_and_unpenalized_reference(abundant_strength_results):
     from app.models.hierarchical_poisson_v2 import fit_hierarchical_poisson_v2
 
-    results, strong, weak, attack_truth, defence_truth = known_strength_results
+    results, *_ = abundant_strength_results
+    as_of = datetime(2026, 11, 21, tzinfo=UTC)
     candidate = fit_hierarchical_poisson_v2(
         results,
-        as_of=datetime(2026, 11, 21, tzinfo=UTC),
+        as_of=as_of,
         half_life_days=365.0,
         k_team=2.0,
         k_competition=2.0,
         k_home_competition=2.0,
         k_home_global=10.0,
     )
+    reference = fit_hierarchical_poisson(
+        results,
+        as_of=as_of,
+        half_life_days=365.0,
+        team_ridge=1e-9,
+        competition_ridge=1e-9,
+    )
+    return candidate, reference
+
+
+def test_pseudo_match_candidate_recovers_strength_and_matches_unpenalized_fit(
+    abundant_strength_results, candidate_and_unpenalized_reference
+):
+    results, strong, weak, attack_truth, defence_truth = abundant_strength_results
+    candidate, reference = candidate_and_unpenalized_reference
 
     group_gap = mean(
         candidate.attack[("synthetic-league", team)]
@@ -154,7 +207,7 @@ def test_pseudo_match_candidate_recovers_known_team_strengths(known_strength_res
         - candidate.defence[("synthetic-league", team)]
         for team in weak
     )
-    rates = candidate.predict("team-000", "team-135", "synthetic-league")
+    rates = candidate.predict("team-000", "team-015", "synthetic-league")
     match_contrast = log(rates.home_lambda / rates.away_lambda)
     retention = median([
         abs(candidate.attack[("synthetic-league", team)] / attack_truth[team])
@@ -163,26 +216,28 @@ def test_pseudo_match_candidate_recovers_known_team_strengths(known_strength_res
         abs(candidate.defence[("synthetic-league", team)] / defence_truth[team])
         for team in defence_truth if abs(defence_truth[team]) > 0.05
     ])
+    attack_reference_ratios = [
+        abs(candidate.attack[("synthetic-league", team)] / reference.attack[team])
+        for team in candidate.attack
+        if abs(reference.attack[team[1]]) > 0.05
+    ]
+    defence_reference_ratios = [
+        abs(candidate.defence[("synthetic-league", team)] / reference.defence[team[1]])
+        for team in candidate.defence
+        if abs(reference.defence[team[1]]) > 0.05
+    ]
 
     assert group_gap >= 0.70
     assert match_contrast >= 0.70
     assert retention >= 0.50
+    assert median(attack_reference_ratios) >= 0.90
+    assert median(defence_reference_ratios) >= 0.90
     assert candidate.optimizer_converged
 
 
-def test_candidate_abstains_for_unseen_competition_scoped_team(known_strength_results):
-    from app.models.hierarchical_poisson_v2 import fit_hierarchical_poisson_v2
-
-    results, *_ = known_strength_results
-    candidate = fit_hierarchical_poisson_v2(
-        results,
-        as_of=datetime(2026, 11, 21, tzinfo=UTC),
-        half_life_days=365.0,
-        k_team=2.0,
-        k_competition=2.0,
-        k_home_competition=2.0,
-        k_home_global=10.0,
-    )
-
+def test_candidate_abstains_for_unseen_competition_scoped_team(
+    candidate_and_unpenalized_reference
+):
+    candidate, _ = candidate_and_unpenalized_reference
     with pytest.raises(ValueError, match="TEAM_HISTORY_INSUFFICIENT"):
-        candidate.predict("newly-promoted-no-history", "team-135", "synthetic-league")
+        candidate.predict("newly-promoted-no-history", "team-015", "synthetic-league")
