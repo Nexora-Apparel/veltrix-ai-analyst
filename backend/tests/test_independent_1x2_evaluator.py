@@ -54,6 +54,8 @@ def _power(protocol, daily_value=0.05):
         smallest_worthwhile_improvement=protocol.smallest_worthwhile_improvement,
         alpha=protocol.alpha,
         target_power=protocol.target_power,
+        bootstrap_replicates=protocol.bootstrap_replicates,
+        bootstrap_seed=protocol.bootstrap_seed,
     )
 
 
@@ -138,6 +140,8 @@ def test_mde_increases_with_variance_and_decreases_with_planned_dates():
             smallest_worthwhile_improvement=0.01,
             alpha=0.05,
             target_power=0.80,
+            bootstrap_replicates=500,
+            bootstrap_seed=11,
         )
     low = calc(low_variance, 20)
     high = calc(high_variance, 20)
