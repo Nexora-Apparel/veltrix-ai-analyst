@@ -17,7 +17,7 @@ router = APIRouter(prefix="/v1/research/predictions", tags=["research-prediction
 
 _RESEARCH_QUERY = """
     WITH latest_run AS (
-        SELECT run_key, generated_at, training_fixture_count, model_version, report
+        SELECT run_key, generated_at, status, training_fixture_count, model_version, report
         FROM veltrix_ai_analyst.research_shadow_forecast_runs
         ORDER BY generated_at DESC, created_at DESC
         LIMIT 1
