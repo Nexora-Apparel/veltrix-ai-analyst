@@ -1,9 +1,9 @@
 """Calibration and probability diagnostics for the preregistered shrinkage repair."""
 from __future__ import annotations
 
+from collections import defaultdict
 import math
 import random
-from collections import defaultdict
 from typing import Any
 
 

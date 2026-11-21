@@ -101,6 +101,7 @@ jobs:
           DATASET_ARTIFACT_ID: ${{ inputs.dataset_artifact_id }}
           FORECAST_RUN_ID: ${{ inputs.forecast_run_id }}
           FORECAST_ARTIFACT_ID: ${{ inputs.forecast_artifact_id }}
+          DATASET_SHA256: ${{ inputs.dataset_sha256 }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/veltrix-v32/dataset /tmp/veltrix-v32/forecast

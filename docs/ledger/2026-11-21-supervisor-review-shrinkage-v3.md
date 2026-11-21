@@ -81,3 +81,10 @@ No production or default optimizer change, quarantine change, lock change, feed 
 - Replaced workflow with manual-dispatch-only, read-only workflow. It validates exact merged commit ancestry, pinned artifact IDs/names, ZIP digests, embedded content hashes and row counts; uploads one sanitized JSON with 30-day retention. No schedule or write permissions.
 - The prior CI run 44918617920 passed backend tests and Android build but failed Ruff only on import ordering in the evaluator and metrics modules. The CI actionlint step passed. This has been corrected in the v3.2 batch.
 - No evaluation, workflow dispatch, merge, feed change, provider/odds call, DB write, Telegram notification, or lock change has occurred. Fold 4 remains previously examined and cannot count as independent validation.
+
+
+### CI result and final workflow correction — 2026-11-21
+
+- Exact v3.2 head `692e118ecc9a7552e1bdc20fc1686416197ee000`, run `44920132842`: backend tests passed `520 passed, 1 warning`; actionlint passed; Android debug build passed. Backend job failed only Ruff import sorting in `shrinkage_repair_metrics.py`. No other failures were reported.
+- Corrected the remaining metrics import order, added a focused retrospective availability test proving bulk `label_observed_at` is ignored and kickoff+3h is enforced, and fixed the workflow's missing `DATASET_SHA256` environment binding in the archive content-hash check.
+- The workflow remains manual-only, read-only, and uploads exactly one sanitized aggregate JSON. It has not been dispatched.
