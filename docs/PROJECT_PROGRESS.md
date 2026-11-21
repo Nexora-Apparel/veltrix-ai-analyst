@@ -777,3 +777,13 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [ ] Continue optimizer convergence work: the latest CI run #44894997224 failed the candidate synthetic recovery test at 4,000 iterations (gradient norm 2.51062e-5). Increasing the iteration budget/learning rate is under test; do not claim candidate recovery until CI passes.
 - [ ] Next CI run #44895139262 is pending at this checkpoint; Android build and backend test job results must be read back individually.
 - [x] Detailed findings recorded in [2026-11-21 regularization and DB audit ledger](ledger/2026-11-21-regularization-contract-and-db-audit.md).
+
+
+## Independent evaluator pre-registration draft (2026-11-21)
+
+- [x] Drafted [INDEPENDENT_1X2_EVALUATOR_PREREGISTRATION_DRAFT.md](INDEPENDENT_1X2_EVALUATOR_PREREGISTRATION_DRAFT.md).
+- [x] Primary endpoint fixed conceptually to 1X2 log loss only; secondary markets are non-regression checks after primary passes.
+- [x] Both mandatory baselines specified: league climatology with home advantage and a tuned team-aware Poisson/Elo baseline.
+- [x] Chronological nested development, MDE/power before holdout, paired date-block bootstrap, one-use final holdout and immutable evaluation-run logging specified.
+- [x] Evaluator must accept predictions/labels and must not import model fitting or feature-generation code.
+- [ ] Numeric thresholds remain unapproved and unfrozen. Suggested alpha=0.05/power=0.80 are draft-only. No final holdout access is permitted until the user approves and the protocol hash is frozen.
