@@ -17,7 +17,10 @@ concurrency:
 
 jobs:
   shadow-forecasts:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    # Hard quarantine after the 2026-11-21 cross-market concentration audit.
+    # Re-enable only through a reviewed PR after model admission tests pass.
+    if: false
+    # if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     environment: veltrix-historical-import
     runs-on: ubuntu-latest
     timeout-minutes: 20
