@@ -30,7 +30,6 @@ def effective_shrinkage_report(
     dataset: dict[str, Any], forecast: dict[str, Any]
 ) -> dict[str, Any]:
     """Report per-team fitted/reference ratios and prior/data information."""
-    # Reuse the established integrity checks and exact archived-fit reproduction.
     reproduction = reproduce_shadow_fit(dataset, forecast)
     rows = dataset["training_only_rows"]
     model_meta = forecast["model"]
@@ -58,7 +57,7 @@ def effective_shrinkage_report(
         team_ridge=team_ridge,
         competition_ridge=competition_ridge,
     )
-    # The 1e-9 reference is the numerical zero-penalty limit in this optimizer.
+    # 1e-9 is the numerical zero-penalty limit for this optimizer.
     reference = fit_hierarchical_poisson(
         results,
         as_of=cutoff,
@@ -67,20 +66,18 @@ def effective_shrinkage_report(
         competition_ridge=1e-9,
     )
 
-    total_weight = sum(
+    weights = [
         exp(-log(2.0) * max(
             0.0, (cutoff - _aware(row["kickoff_at"])).total_seconds() / 86400.0
         ) / half_life)
         for row in rows
-    )
+    ]
+    total_weight = sum(weights)
     tau = team_ridge * total_weight
     attack_information = {team: 0.0 for team in fitted.attack}
     defence_information = {team: 0.0 for team in fitted.defence}
 
-    for row in rows:
-        weight = exp(-log(2.0) * max(
-            0.0, (cutoff - _aware(row["kickoff_at"])).total_seconds() / 86400.0
-        ) / half_life)
+    for row, weight in zip(rows, weights):
         rates = fitted.predict(
             row["home_team_id"], row["away_team_id"], row["competition_id"]
         )
@@ -120,8 +117,6 @@ def effective_shrinkage_report(
         abs(row["defence_effect_ratio"]) for row in team_rows
         if row["defence_effect_ratio"] is not None
     ]
-    attack_tau_ratios = [row["attack_tau_to_data_information"] for row in team_rows]
-    defence_tau_ratios = [row["defence_tau_to_data_information"] for row in team_rows]
     return {
         "status": "EFFECTIVE_SHRINKAGE_AUDIT_COMPLETE",
         "evaluation_type": "RETROSPECTIVE_FIT_DIAGNOSTIC_NOT_PREDICTIVE_EVALUATION",
@@ -138,8 +133,12 @@ def effective_shrinkage_report(
         },
         "attack_absolute_effect_ratio_median": median(attack_ratios),
         "defence_absolute_effect_ratio_median": median(defence_ratios),
-        "attack_tau_to_data_information_median": median(attack_tau_ratios),
-        "defence_tau_to_data_information_median": median(defence_tau_ratios),
+        "attack_tau_to_data_information_median": median(
+            row["attack_tau_to_data_information"] for row in team_rows
+        ),
+        "defence_tau_to_data_information_median": median(
+            row["defence_tau_to_data_information"] for row in team_rows
+        ),
         "teams": team_rows,
         "fit_reproduction": reproduction["status"],
         "production_promotion": "LOCKED",
@@ -158,7 +157,7 @@ def main() -> None:
     report = effective_shrinkage_report(dataset, forecast)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\\n", encoding="utf-8"
+        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     print(json.dumps({
         key: value for key, value in report.items() if key != "teams"
