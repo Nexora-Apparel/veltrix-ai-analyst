@@ -731,3 +731,13 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [x] Signed median ratios: attack 3.006544%, defence 3.277747%; sign agreement 90.44% and 91.18%. Absolute-ratio P10–P90: attack 1.327%–8.863%; defence 1.657%–9.433%.
 - [x] The exact repository CLI output matches the independent numerical reproduction. This is a fit/shrinkage diagnosis, not predictive validation or a selected replacement k.
 - [x] Full per-team report is available from [workflow run #44893869016](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893869016).
+
+
+## Candidate fitter and archived CLI execution checkpoint (2026-11-21)
+
+- [x] Added research-only `backend/app/models/hierarchical_poisson_v2.py` to PR #139. It uses the unnormalized weighted Poisson NLL, common pseudo-match k values, per-competition team effects, explicit competition/global home priors, and no unvalidated defaults. It is not wired to production inference.
+- [x] Added a synthetic candidate recovery test alongside current-configuration and excessive-prior rejection controls. Candidate test is awaiting the latest CI run.
+- [x] Archived audit workflow [#44893869016](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44893869016) completed successfully and uploaded the 136-team report artifact 14703192024 (SHA-256 `4997f0b6a93c2fc02c1a164c2daff33e2dd532b8b50b57a35a41ec609e64fab0`).
+- [x] PR #139 metadata read-back: open, unmerged, mergeable; current head `940ae2f025e1feb1552bdda58cef5f73d028a0d0`. Latest preview deployment `dpl_H5UX1RbMTdMaDFNygvYUKqmZD9Gq` is READY for this branch only. No production deployment.
+- [ ] Latest standard CI run #44893869028 is still pending with no jobs exposed yet; do not merge until backend tests/lint and Android debug build complete on this exact head.
+- **Production remains unchanged:** API research feed MODEL_QUARANTINED/NOT_PUBLISHED/zero forecasts; published feed zero forecasts; Neon tables unchanged. No provider calls, Odds API credits or database writes.
