@@ -134,7 +134,11 @@ def assess_power(
     log loss minus candidate log loss). Dates, not individual fixtures, are
     the independent units for the normal-approximation power calculation.
     """
-    if planned_distinct_dates < 2 or smallest_worthwhile_improvement <= 0:
+    if (
+        planned_distinct_dates < 2
+        or not math.isfinite(smallest_worthwhile_improvement)
+        or smallest_worthwhile_improvement <= 0
+    ):
         raise ValueError("INVALID_POWER_PLAN")
     if not 0 < alpha < 1 or not 0 < target_power < 1:
         raise ValueError("INVALID_POWER_LEVELS")
@@ -232,8 +236,15 @@ def _validate_row(row: EvaluationRow, evaluation_as_of: datetime) -> None:
         raise ValueError("VALIDATION_LABEL_NOT_POINT_IN_TIME_CERTIFIABLE")
     if (
         row.rights_status != "APPROVED"
+        or row.rights_valid_from > row.label_observed_at
         or row.rights_valid_from > evaluation_as_of
-        or (row.rights_valid_until is not None and row.rights_valid_until <= evaluation_as_of)
+        or (
+            row.rights_valid_until is not None
+            and (
+                row.rights_valid_until <= row.label_observed_at
+                or row.rights_valid_until <= evaluation_as_of
+            )
+        )
         or _REQUIRED_RIGHTS_USE not in row.rights_permitted_uses
     ):
         raise ValueError("VALIDATION_LABEL_RIGHTS_INVALID")
