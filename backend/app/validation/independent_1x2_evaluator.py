@@ -62,7 +62,7 @@ class PreRegistration:
 @dataclass(frozen=True, slots=True)
 class PowerAssessment:
     status: Literal["POWER_SUFFICIENT", "INSUFFICIENT_POWER"]
-    mde_by_baseline: dict[str, float]
+    mde_by_baseline: dict[str, float | None]
     development_date_count_by_baseline: dict[str, int]
     planned_distinct_dates: int
     smallest_worthwhile_improvement: float
@@ -132,7 +132,7 @@ def assess_power(
         raise ValueError("INVALID_POWER_LEVELS")
     z_alpha = NormalDist().inv_cdf(1.0 - alpha / 2.0)
     z_power = NormalDist().inv_cdf(target_power)
-    mde_by_baseline: dict[str, float] = {}
+    mde_by_baseline: dict[str, float | None] = {}
     date_counts: dict[str, int] = {}
     for baseline_name in (BASELINE_CLIMATOLOGY, BASELINE_TEAM_AWARE):
         date_values = development_daily_improvements.get(baseline_name)
@@ -143,7 +143,7 @@ def assess_power(
         ]
         date_counts[baseline_name] = len(daily_means)
         if len(daily_means) < 2:
-            mde_by_baseline[baseline_name] = math.inf
+            mde_by_baseline[baseline_name] = None
             continue
         standard_error = stdev(daily_means) / math.sqrt(planned_distinct_dates)
         mde_by_baseline[baseline_name] = (z_alpha + z_power) * standard_error
@@ -279,8 +279,8 @@ def evaluate_primary_1x2(
         raise ValueError("POWER_ASSESSMENT_PROTOCOL_MISMATCH")
     if power.status == "POWER_SUFFICIENT" and (
         any(
-            power.mde_by_baseline.get(name, math.inf)
-            > protocol.smallest_worthwhile_improvement
+            power.mde_by_baseline.get(name) is None
+            or power.mde_by_baseline[name] > protocol.smallest_worthwhile_improvement
             for name in (BASELINE_CLIMATOLOGY, BASELINE_TEAM_AWARE)
         )
         or any(
