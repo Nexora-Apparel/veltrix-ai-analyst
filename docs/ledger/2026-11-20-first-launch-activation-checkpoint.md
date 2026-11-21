@@ -251,3 +251,46 @@
 - Do not dispatch capture while PR #126 is unmerged or CI is pending.
 - Next: inspect CI run #44871749422 and its exact head SHA; resolve any failures; merge only after all required checks pass; then manually dispatch the corrected workflow once and inspect per-competition counters and immutable evidence.
 - Production prediction publication, model promotion, and value betting remain LOCKED.
+
+
+## 2026-11-21 06:55 WAT — corrected prospective capture completed
+
+### Run identity and execution
+- Manually dispatched prospective capture run [44872062807](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44872062807), job [136748574209](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/44872062807/job/136748574209).
+- Job conclusion: `success`; all setup, database/schema preflight, capture and cleanup steps completed.
+- The job checked out corrected main commit `5735b4126ea228c078d60af18e5b5b97dd6f86ca`, confirming execution included PR #126's centralized six-competition allowlist and France exclusion.
+- Capture window: `2026-11-20T00:00:00Z` through `2026-11-29T00:00:00Z`, covering yesterday's settlements and the rolling forward fixture horizon.
+- Provider used: 5DollarFootballAPI. The Odds API was not called.
+
+### Per-competition outcomes
+| Competition | Import run | Inserted | Provider requests | Status |
+|---|---:|---:|---:|---|
+| Brazil Serie A | 33 | 3 | 2 | COMPLETED_VALIDATED |
+| Brazil Serie B | 34 | 0 | 2 | COMPLETED_VALIDATED |
+| England Premier League | 35 | 3 | 2 | COMPLETED_VALIDATED |
+| Germany Bundesliga I | 36 | 5 | 2 | COMPLETED_VALIDATED |
+| Italy Serie A | 37 | 3 | 2 | COMPLETED_VALIDATED |
+| Spain La Liga | 38 | 4 | 2 | COMPLETED_VALIDATED |
+| **Total** | — | **18** | **12** | **6/6 validated** |
+
+- Batch summary: `competitions_total=6`, `failed_competitions=0`, `validated_competitions=6`, status `COMPLETED`.
+- France Ligue 1 (provider ID `3614399544`) was not included, as required while its identity conflict remains unresolved.
+- Brazil Serie B inserted zero new records but its import scope passed validation. This does not establish complete historical coverage for that competition.
+- The log reports inserted counts and validation statuses. Do not infer that all observed provider records were new inserts; detailed sighting/duplicate/reject/quarantine reconciliation remains a downstream audit item.
+- Total provider requests for this run: 12. No Odds API credits were used.
+
+### Downstream gates and boundaries
+- Capture job success is verified. Stage 6 materialization and the subsequent shadow workflow are **not yet verified** in this entry; inspect their own run IDs, job logs and artifacts before claiming snapshots or forecasts exist.
+- The capture job itself uploaded no artifacts.
+- No production prediction or publication rows were created by this capture workflow. The workflow performed the approved prospective source-data ingestion into the production research dataset; this is distinct from forecast publication.
+- Production publication, model promotion and value betting remain LOCKED. No forecasts are approved for the Android published-prediction endpoint based on capture success alone.
+
+### Next actions
+1. Verify the automatic Stage 6 workflow_run execution, its exact commit/run ID, materialization outcome, snapshot/label counts, PIT lineage and append-only checks.
+2. If Stage 6 succeeds, inspect the downstream shadow workflow and its artifact for terminal status, cutoff-valid training count, snapshot freshness, hashes, convergence, abstentions, market distributions and <=25 fixture cap.
+3. If a valid research report exists, validate and persist it only through the previously approved research-only ledger writer; independently verify append-only persistence. Never write it into production prediction/publication tables.
+4. Audit the import-run rows and immutable provider-response/sighting evidence for all six import runs, including duplicates, rejects and quarantines. Treat zero inserts for Brazil Serie B as an observed result, not as a failed scope or a proof of completeness.
+
+### Evidence classification
+- **Verified from job 136748574209 logs:** checked-out SHA, database/schema preflight success, capture window, six competition results, 12 total requests, 18 inserted records, zero failed scopes, and job success.
+- **Pending independent verification:** Stage 6 materialization, shadow forecast artifact, detailed per-run raw evidence reconciliation and any research-ledger persistence.
