@@ -115,7 +115,7 @@ def fit_hierarchical_poisson_v2(
         raise ValueError("at least one completed result is required")
     if (
         not isfinite(half_life_days) or half_life_days <= 0
-        or any(not isfinite(value) or value < 0 for value in (
+        or any(not isfinite(value) or value <= 0 for value in (
             k_team, k_competition, k_home_competition, k_home_global
         ))
         or not isfinite(learning_rate) or learning_rate <= 0
