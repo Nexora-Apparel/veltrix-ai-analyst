@@ -245,3 +245,44 @@ def test_date_block_bootstrap_resamples_whole_date_clusters():
     )
     assert lower in {0.0, 0.2, 1.0}
     assert upper in {0.0, 0.2, 1.0}
+
+
+def test_invalid_probability_triplets_are_rejected():
+    protocol = _protocol()
+    rows = _rows()
+    rows[0] = replace(rows[0], candidate_probabilities=(0.8, 0.3, 0.1))
+    with pytest.raises(ValueError, match="NON_NORMALIZED_CANDIDATE"):
+        evaluate_primary_1x2(
+            rows,
+            evaluation_as_of=datetime(2026, 3, 1, tzinfo=UTC),
+            protocol=protocol,
+            power=_power(protocol),
+        )
+
+
+def test_baseline_generated_after_prediction_cutoff_is_rejected():
+    protocol = _protocol()
+    rows = _rows()
+    rows[0] = replace(
+        rows[0],
+        team_baseline_generated_at=rows[0].kickoff_at + timedelta(minutes=1),
+    )
+    with pytest.raises(ValueError, match="CHRONOLOGY_INVALID"):
+        evaluate_primary_1x2(
+            rows,
+            evaluation_as_of=datetime(2026, 3, 1, tzinfo=UTC),
+            protocol=protocol,
+            power=_power(protocol),
+        )
+
+
+def test_power_assessment_must_match_frozen_protocol():
+    protocol = _protocol()
+    mismatched_power = replace(_power(protocol), planned_distinct_dates=21)
+    with pytest.raises(ValueError, match="POWER_ASSESSMENT_PROTOCOL_MISMATCH"):
+        evaluate_primary_1x2(
+            _rows(),
+            evaluation_as_of=datetime(2026, 3, 1, tzinfo=UTC),
+            protocol=protocol,
+            power=mismatched_power,
+        )
