@@ -750,3 +750,10 @@ Read-only audit of Neon project `veltrix-ai-analyst-db`, database `veltrix_ai_an
 - [x] Production Vercel deployment remains READY at `dpl_4qjTXEBsVXHxJ13Ap7fjX7Zmk8b4`, main SHA `95445c9b7aaba045f15a97afe443211da341a2fe`.
 - [x] PR #139 preview `dpl_H5UX1RbMTdMaDFNygvYUKqmZD9Gq` is READY at head `940ae2f025e1feb1552bdda58cef5f73d028a0d0`; preview-only.
 - [ ] Standard CI #44893869028 remains pending with no job details. The 504-test pass on #44893501873 predates the v2 candidate fitter; do not merge until latest-head checks complete.
+
+
+## Next architecture component drafted — independent evaluator (2026-11-21)
+
+- [x] Drafted [INDEPENDENT_EVALUATOR_CONTRACT.md](INDEPENDENT_EVALUATOR_CONTRACT.md): single primary 1X2 log-loss metric, both required baselines, nested chronology, pre-evaluation MDE/power, paired date-block bootstrap, single-use final holdout, immutable run ledger, and secondary-market sequencing.
+- [ ] Implement evaluator code separately from model-building code, with independent tests for probability scoring, fold chronology, label-observed cutoffs, date-block bootstrap, MDE/power, baseline comparison, and single-use holdout enforcement.
+- [ ] Draft numeric thresholds for explicit user approval; no threshold hash is frozen yet.
