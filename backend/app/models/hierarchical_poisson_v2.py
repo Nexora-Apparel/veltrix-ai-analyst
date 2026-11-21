@@ -101,7 +101,7 @@ def fit_hierarchical_poisson_v2(
     k_home_global: float,
     learning_rate: float = 1.0,
     max_iterations: int = 4000,
-    tolerance: float = 1e-7,
+    tolerance: float = 1e-6,
 ) -> HierarchicalPoissonV2Model:
     """Fit the unnormalized likelihood with common pseudo-match prior strengths.
 
@@ -321,7 +321,10 @@ def fit_hierarchical_poisson_v2(
                 converged = True
                 iterations = iteration
                 break
-            raise ArithmeticError("optimizer line search failed before convergence")
+            raise ArithmeticError(
+                "optimizer line search failed before convergence "
+                f"(iteration={iteration}, gradient_norm={gradient_norm:.8g})"
+            )
         iterations = iteration
 
     if not converged:
