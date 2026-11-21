@@ -63,3 +63,17 @@ At 2026-11-21 10:13:40 UTC:
 ## Release state
 
 Model remains QUARANTINED. No production forecasts. Value betting LOCKED. Android UI preserved. No DB writes, provider calls, Odds API credits, or production deployment.
+
+
+## Additional model-artifact registry reconciliation
+
+A direct SELECT of the two `model_artifacts` rows confirmed:
+
+- `attack-defence-poisson-v1` and `attack-defence-poisson-v2-nested-tuned` are the only stored model artifacts.
+- Both use the 380-fixture / 20-provider-team training fingerprint `5790da5427a7029b9267778728386b8df2cd583b922a421341dc586c8d03b839`.
+- Both are explicitly `RESEARCH_ARTIFACT_ONLY` and `point_in_time_certified=false`.
+- Neither represents `hierarchical-poisson-shadow-v1`, whose separate research run uses 996 training-only labels and 136 teams.
+
+Therefore the new `model_versions` registry must not bind the current hierarchical shadow run to either legacy attack-defence artifact. The migration must create a distinct quarantined version record using the archived hierarchical artifact's verified config hash, training-data hash and report hash. The config hash must be computed from canonical archived configuration bytes and independently verified before any database migration.
+
+No rows were inserted, updated, or deleted during this reconciliation.
