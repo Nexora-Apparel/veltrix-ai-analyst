@@ -66,6 +66,8 @@ class PowerAssessment:
     development_date_count_by_baseline: dict[str, int]
     planned_distinct_dates: int
     smallest_worthwhile_improvement: float
+    alpha: float
+    target_power: float
 
 
 def _aware(value: datetime, field: str) -> None:
@@ -155,6 +157,8 @@ def assess_power(
         development_date_count_by_baseline=date_counts,
         planned_distinct_dates=planned_distinct_dates,
         smallest_worthwhile_improvement=smallest_worthwhile_improvement,
+        alpha=alpha,
+        target_power=target_power,
     )
 
 
@@ -266,6 +270,25 @@ def evaluate_primary_1x2(
     """
     _aware(evaluation_as_of, "evaluation_as_of")
     validate_preregistration(protocol)
+    if (
+        power.planned_distinct_dates != protocol.planned_distinct_dates
+        or power.smallest_worthwhile_improvement != protocol.smallest_worthwhile_improvement
+        or power.alpha != protocol.alpha
+        or power.target_power != protocol.target_power
+    ):
+        raise ValueError("POWER_ASSESSMENT_PROTOCOL_MISMATCH")
+    if power.status == "POWER_SUFFICIENT" and (
+        any(
+            power.mde_by_baseline.get(name, math.inf)
+            > protocol.smallest_worthwhile_improvement
+            for name in (BASELINE_CLIMATOLOGY, BASELINE_TEAM_AWARE)
+        )
+        or any(
+            power.development_date_count_by_baseline.get(name, 0) < 2
+            for name in (BASELINE_CLIMATOLOGY, BASELINE_TEAM_AWARE)
+        )
+    ):
+        raise ValueError("POWER_ASSESSMENT_FALSE_SUFFICIENCY")
     if power.status != "POWER_SUFFICIENT":
         return {
             "status": "INSUFFICIENT_POWER",
