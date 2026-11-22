@@ -1,7 +1,10 @@
 """Read-only API for explicitly isolated research shadow forecasts."""
 from __future__ import annotations
 
+import json
+import os
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
@@ -14,11 +17,54 @@ from app.routes.public_predictions import (
 )
 
 router = APIRouter(prefix="/v1/research/predictions", tags=["research-predictions"])
+MODEL_VERSION = "hierarchical-poisson-newton-shadow-v2"
+_ADMISSION_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "research" / "admissions" / f"{MODEL_VERSION}.json"
+)
+
+
+def _model_admitted() -> bool:
+    try:
+        record = json.loads(_ADMISSION_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return (
+        record.get("model_version") == MODEL_VERSION
+        and record.get("tier") == "SHADOW"
+        and record.get("certification") == "RETROSPECTIVE_NOT_PIT_CERTIFIED"
+        and record.get("production_promotion") == "LOCKED"
+        and record.get("value_betting") == "LOCKED"
+        and record.get("app_display_enabled") is False
+        and all(
+            isinstance(record.get(field), str)
+            and len(record[field]) == 64
+            and all(char in "0123456789abcdef" for char in record[field])
+            for field in ("config_sha256", "training_data_sha256", "report_sha256")
+        )
+    )
+
+
+def _quarantined_response() -> dict[str, Any]:
+    return {
+        "status": "MODEL_QUARANTINED",
+        "research_only": True,
+        "research_label": "RESEARCH ONLY",
+        "certification": "RETROSPECTIVE_NOT_PIT_CERTIFIED",
+        "publication_status": "NOT_PUBLISHED",
+        "production_promotion": "LOCKED",
+        "value_betting": "LOCKED",
+        "generated_at": None,
+        "training_fixture_count": 0,
+        "model_version": None,
+        "predictions": [],
+    }
 
 _RESEARCH_QUERY = """
     WITH latest_run AS (
         SELECT run_key, generated_at, status, training_fixture_count, model_version, report
         FROM veltrix_ai_analyst.research_shadow_forecast_runs
+        WHERE model_version = %s
         ORDER BY generated_at DESC, created_at DESC
         LIMIT 1
     )
@@ -86,29 +132,24 @@ def _research_prediction(row: dict[str, Any]) -> dict[str, Any]:
 @router.get("")
 def list_research_predictions() -> dict[str, Any]:
     """Return upcoming shadow forecasts without exposing them as published predictions."""
-    # Release quarantine: the current model's cross-market concentration audit
-    # failed admission. Keep the existing app/API contract but serve no forecasts
-    # until a replacement or repaired model passes independent validation.
-    return {
-        "status": "MODEL_QUARANTINED",
-        "research_only": True,
-        "publication_status": "NOT_PUBLISHED",
-        "production_promotion": "LOCKED",
-        "value_betting": "LOCKED",
-        "generated_at": None,
-        "training_fixture_count": 0,
-        "model_version": None,
-        "predictions": [],
-    }
+    # The code admission record is necessary but not sufficient: an owner must
+    # separately enable research display after reviewing the first live run.
+    if (
+        os.getenv("VELTRIX_RESEARCH_SHADOW_DISPLAY_ENABLED") != "true"
+        or not _model_admitted()
+    ):
+        return _quarantined_response()
 
     connection = _database_connection()
     try:
         with connection:
-            rows = connection.execute(_RESEARCH_QUERY, (datetime.now(UTC),)).fetchall()
+            rows = connection.execute(_RESEARCH_QUERY, (MODEL_VERSION, datetime.now(UTC))).fetchall()
         if not rows:
             return {
                 "status": "NO_RESEARCH_FORECASTS_AVAILABLE",
                 "research_only": True,
+                "research_label": "RESEARCH ONLY",
+                "certification": "RETROSPECTIVE_NOT_PIT_CERTIFIED",
                 "publication_status": "NOT_PUBLISHED",
                 "production_promotion": "LOCKED",
                 "value_betting": "LOCKED",
@@ -121,6 +162,8 @@ def list_research_predictions() -> dict[str, Any]:
         return {
             "status": "SHADOW_FORECASTS_READY",
             "research_only": True,
+            "research_label": "RESEARCH ONLY",
+            "certification": "RETROSPECTIVE_NOT_PIT_CERTIFIED",
             "publication_status": "NOT_PUBLISHED",
             "production_promotion": "LOCKED",
             "value_betting": "LOCKED",
