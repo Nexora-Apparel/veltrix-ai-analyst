@@ -12,7 +12,7 @@ from psycopg.rows import dict_row
 from build_prospective_dataset import build_report
 from build_prospective_shadow_predictions import _dataset_row
 
-from app.research.stage7_shadow import build_stage7_shadow_predictions
+from app.research.stage7_shadow import build_run_summary, build_stage7_shadow_predictions
 
 
 def main() -> int:
@@ -96,33 +96,7 @@ def main() -> int:
         json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
-    monitor = report.get("concentration_monitor", {})
-    summary = {
-        "status": report["status"],
-        "model_version": report["model"]["version"],
-        "fixtures_considered": report.get("sanitized_summary", {}).get("fixtures_considered", 0),\n        "fitted_fixture_count": report.get("sanitized_summary", {}).get("fitted", 0),\n        "shown_fixture_count": report.get("sanitized_summary", {}).get("shown", 0),\n        "fixture_count": report.get("forecast_count", 0),\n        "p_home_mean": monitor.get("p_home_mean"),\n        "p_home_min": monitor.get("p_home_min"),\n        "p_home_max": monitor.get("p_home_max"),\n        "expected_goals_sd": report.get("sanitized_summary", {}).get("expected_goals_sd"),\n        "p_draw_above_050_share": monitor.get("p_draw_above_050_share"),\n        "any_probability_above_080_share": monitor.get("any_probability_above_080_share"),\n        "monitor_status": "QUARANTINED" if monitor.get("quarantined", False) else "PASS",\n        "extreme_forecasts": report.get("sanitized_summary", {}).get("extremes"),
-        "abstention_count": report.get("abstention_count", 0),
-        "p_home_sd": monitor.get("p_home_sd"),
-        "top_pick_shares": monitor.get("top_pick_shares"),
-        "concentration_quarantined": monitor.get("quarantined", False),
-        "concentration_violations": monitor.get("violations", []),
-        "certification": report["certification"],
-        "research_label": report["research_label"],
-        "provider_calls": 0,
-        "odds_used": False,
-        "production_promotion": "LOCKED",
-        "value_betting": "LOCKED",
-        "sample_forecasts": [
-            {
-                "home_team": prediction.get("home_team"),
-                "away_team": prediction.get("away_team"),
-                "p_home": prediction["markets"]["1X2"]["HOME"],
-                "p_draw": prediction["markets"]["1X2"]["DRAW"],
-                "p_away": prediction["markets"]["1X2"]["AWAY"],
-            }
-            for prediction in report.get("predictions", [])[:5]
-        ],
-    }
+    summary = build_run_summary(report)
     summary_path = output.with_name("stage7-shadow-sanitized-summary.json")
     summary_path.write_text(
         json.dumps(summary, indent=2, sort_keys=True, allow_nan=False) + "\n",
