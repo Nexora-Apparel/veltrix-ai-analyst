@@ -17,6 +17,53 @@ MIN_TEAM_HISTORY = 5
 OUTCOMES = ("HOME", "DRAW", "AWAY")
 
 
+
+def build_run_summary(report: dict[str, Any]) -> dict[str, Any]:
+    """Build the sanitized, stable summary artifact for one Stage 7 run."""
+    monitor = report.get("concentration_monitor", {})
+    sanitized = report.get("sanitized_summary", {})
+    return {
+        "status": report["status"],
+        "model_version": report["model"]["version"],
+        "fixtures_considered": sanitized.get("fixtures_considered", 0),
+        "fitted_fixture_count": sanitized.get("fitted", 0),
+        "shown_fixture_count": sanitized.get("shown", 0),
+        "fixture_count": report.get("forecast_count", 0),
+        "p_home_mean": monitor.get("p_home_mean"),
+        "p_home_min": monitor.get("p_home_min"),
+        "p_home_max": monitor.get("p_home_max"),
+        "expected_goals_sd": sanitized.get("expected_goals_sd"),
+        "p_draw_above_050_share": monitor.get("p_draw_above_050_share"),
+        "any_probability_above_080_share": monitor.get("any_probability_above_080_share"),
+        "monitor_status": "QUARANTINED" if monitor.get("quarantined", False) else "PASS",
+        "extreme_forecasts": sanitized.get("extremes"),
+        "abstention_count": report.get("abstention_count", 0),
+        "p_home_sd": monitor.get("p_home_sd"),
+        "top_pick_shares": monitor.get("top_pick_shares"),
+        "concentration_quarantined": monitor.get("quarantined", False),
+        "concentration_violations": monitor.get("violations", []),
+        "certification": report["certification"],
+        "research_label": report["research_label"],
+        "provider_calls": report.get("provider_calls", 0),
+        "odds_used": report.get("odds_used", False),
+        "production_promotion": report["production_promotion"],
+        "value_betting": report["value_betting"],
+        "sample_forecasts": [
+            {
+                "home_team": prediction.get("home_team"),
+                "away_team": prediction.get("away_team"),
+                "competition": prediction.get("competition"),
+                "p_home": prediction["markets"]["1X2"]["HOME"],
+                "p_draw": prediction["markets"]["1X2"]["DRAW"],
+                "p_away": prediction["markets"]["1X2"]["AWAY"],
+                "btts_yes": prediction["markets"]["BTTS"]["YES"],
+                "over_2_5": prediction["markets"]["TOTALS_2_5"]["OVER"],
+            }
+            for prediction in report.get("predictions", [])[:5]
+        ],
+    }
+
+
 def insufficient_team_history(home_matches: int, away_matches: int) -> bool:
     return home_matches < MIN_TEAM_HISTORY or away_matches < MIN_TEAM_HISTORY
 
