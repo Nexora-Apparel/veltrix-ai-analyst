@@ -7,12 +7,14 @@ import os
 from pathlib import Path
 
 import psycopg
-from psycopg.rows import dict_row
-
 from build_prospective_dataset import build_report
 from build_prospective_shadow_predictions import _dataset_row
+from psycopg.rows import dict_row
 
-from app.research.stage7_shadow import build_run_summary, build_stage7_shadow_predictions
+from app.research.stage7_shadow import (
+    build_run_summary,
+    build_stage7_shadow_predictions,
+)
 
 
 def main() -> int:
