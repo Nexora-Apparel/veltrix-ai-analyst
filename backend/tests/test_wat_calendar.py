@@ -31,6 +31,7 @@ def test_wat_window_rejects_naive_datetime():
 
 def test_published_and_research_daily_queries_use_inclusive_exclusive_wat_bounds():
     import inspect
+
     from app.routes.public_predictions import _load_public_predictions
     from app.routes.research_predictions import _RESEARCH_QUERY
 
