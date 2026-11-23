@@ -27,3 +27,15 @@ def test_wat_window_rolls_at_2300_utc():
 def test_wat_window_rejects_naive_datetime():
     with pytest.raises(ValueError, match="NOW_MUST_BE_TIMEZONE_AWARE"):
         wat_day_window_utc(datetime(2026, 11, 23, 12, 0))
+
+
+def test_published_and_research_daily_queries_use_inclusive_exclusive_wat_bounds():
+    from app.routes.public_predictions import _FIXTURE_QUERY
+    from app.routes.research_predictions import _RESEARCH_QUERY
+
+    assert "fixture.kickoff_at >= %s" in _RESEARCH_QUERY
+    assert "fixture.kickoff_at < %s" in _RESEARCH_QUERY
+    assert "fixture.kickoff_at > %s" not in _RESEARCH_QUERY
+    assert "fixture.kickoff_at >= %s" in _FIXTURE_QUERY
+    assert "fixture.kickoff_at < %s" in _FIXTURE_QUERY
+    assert "fixture.kickoff_at > %s" not in _FIXTURE_QUERY
