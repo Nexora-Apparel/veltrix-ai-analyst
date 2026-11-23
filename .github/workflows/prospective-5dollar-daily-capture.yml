@@ -2,11 +2,12 @@ name: VELTRIX prospective 5Dollar evidence capture
 
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "17 3 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: veltrix-prospective-5dollar-capture
@@ -108,6 +109,7 @@ jobs:
           print(f"end_at={(day + timedelta(days=8)).isoformat()}")
           PY
       - name: Capture recent results and upcoming fixtures sequentially
+        id: capture
         run: |
           python scripts/collect_5dollar_all_approved_competitions.py \
             --start-at "${{ steps.window.outputs.start_at }}" \
@@ -115,3 +117,22 @@ jobs:
             --request-budget 4 \
             --import-type prospective_capture \
             --execute
+
+      - name: Report schedule timing and capture conclusion
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_json=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+          created=$(echo "$run_json" | jq -r '.created_at')
+          started=$(echo "$run_json" | jq -r '.run_started_at // "not-started"')
+          outcome="${{ steps.capture.outcome }}"
+          {
+            echo "### Prospective capture timing"
+            echo "- Event: $GITHUB_EVENT_NAME"
+            echo "- Scheduled cron: 17 3 UTC (03:17 UTC / 04:17 WAT)"
+            echo "- Run created: $created"
+            echo "- Run started: $started"
+            echo "- Capture step conclusion: $outcome"
+            echo "- Run ID: $GITHUB_RUN_ID"
+          } >> "$GITHUB_STEP_SUMMARY"

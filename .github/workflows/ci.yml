@@ -23,6 +23,7 @@ on:
       - "scripts/probe_5dollar_entitlement.py"
       - ".github/workflows/5dollar-all-approved-competitions.yml"
       - ".github/workflows/prospective-5dollar-daily-capture.yml"
+      - ".github/workflows/stage-6-daily-snapshot-materialization.yml"
       - ".github/workflows/5dollar-multi-season-history-import.yml"
       - ".github/workflows/prospective-hierarchical-evaluation.yml"
       - ".github/workflows/5dollar-competition-history-import.yml"
@@ -120,7 +121,7 @@ jobs:
       - name: Install package
         run: python -m pip install -e ".[dev]"
       - name: Validate corrected shrinkage workflow with actionlint
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 ../.github/workflows/effective-shrinkage-audit.yml ../.github/workflows/shrinkage-repair-evaluation.yml ../.github/workflows/research-shadow-inference.yml
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 ../.github/workflows/effective-shrinkage-audit.yml ../.github/workflows/shrinkage-repair-evaluation.yml ../.github/workflows/research-shadow-inference.yml ../.github/workflows/prospective-5dollar-daily-capture.yml ../.github/workflows/stage-6-daily-snapshot-materialization.yml
       - name: Compile backend application and scripts
         run: python -m compileall -q app scripts
       - name: Run tests

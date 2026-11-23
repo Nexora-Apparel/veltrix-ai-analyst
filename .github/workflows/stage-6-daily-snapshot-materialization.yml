@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: veltrix-stage6-daily-materialization
@@ -95,6 +96,7 @@ jobs:
             --confirm-persist
 
       - name: Verify persisted snapshots and exact latest label events
+        id: verify
         run: |
           python - <<'PY'
           import json
@@ -198,3 +200,29 @@ jobs:
           path: backend/artifacts/prospective-dataset.json
           if-no-files-found: error
           retention-days: 90
+
+      - name: Report Stage 6 completion and capture timing
+        if: always() && github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          capture_id="${{ github.event.workflow_run.id }}"
+          capture_json=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$capture_id")
+          capture_created=$(echo "$capture_json" | jq -r '.created_at')
+          capture_started=$(echo "$capture_json" | jq -r '.run_started_at // "not-started"')
+          capture_conclusion=$(echo "$capture_json" | jq -r '.conclusion // "pending"')
+          stage6_json=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+          stage6_created=$(echo "$stage6_json" | jq -r '.created_at')
+          stage6_started=$(echo "$stage6_json" | jq -r '.run_started_at // "not-started"')
+          materialize_outcome="${{ steps.verify.outcome }}"
+          {
+            echo "### Stage 6 timing and outcome"
+            echo "- Capture run ID: $capture_id"
+            echo "- Capture created: $capture_created"
+            echo "- Capture started: $capture_started"
+            echo "- Capture conclusion: $capture_conclusion"
+            echo "- Stage 6 created: $stage6_created"
+            echo "- Stage 6 started: $stage6_started"
+            echo "- Stage 6 verification step: $materialize_outcome"
+            echo "- Stage 6 run ID: $GITHUB_RUN_ID"
+          } >> "$GITHUB_STEP_SUMMARY"
