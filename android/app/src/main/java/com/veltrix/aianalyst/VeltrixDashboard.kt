@@ -450,7 +450,7 @@ private fun HistoryScreen(
                 entries.forEachIndexed { index, entry ->
                     val day = historyDateLabel(entry.publishedAt)
                     val previousDay = entries.getOrNull(index - 1)?.let {
-                        formatHistoryDate(it.publishedAt)
+                        historyDateLabel(it.publishedAt)
                     }
                     if (index == 0 || day != previousDay) {
                         if (index > 0) Divider()
