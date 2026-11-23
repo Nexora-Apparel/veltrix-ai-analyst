@@ -37,7 +37,7 @@ def test_published_and_research_daily_queries_use_inclusive_exclusive_wat_bounds
     published_loader = inspect.getsource(_load_public_predictions)
     assert "fixture.kickoff_at >= %s" in published_loader
     assert "fixture.kickoff_at < %s" in published_loader
-    assert "fixture.kickoff_at > %s" not in published_loader
+    assert "wat_day_window_utc()" in published_loader
     assert "fixture.kickoff_at >= %s" in _RESEARCH_QUERY
     assert "fixture.kickoff_at < %s" in _RESEARCH_QUERY
     assert "fixture.kickoff_at > %s" not in _RESEARCH_QUERY
