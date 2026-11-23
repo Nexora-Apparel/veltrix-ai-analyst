@@ -11,6 +11,8 @@ import psycopg
 from fastapi import APIRouter, HTTPException, status
 from psycopg.rows import dict_row
 
+from app.wat_calendar import wat_day_window_utc
+
 from app.contracts.public_prediction import (
     PublicFinalScore,
     PublicFixture,
@@ -111,11 +113,12 @@ def _load_public_predictions(*, prediction_id: UUID | None = None) -> tuple[Publ
             if prediction_id is None:
                 fixtures = connection.execute(
                     _FIXTURE_QUERY + """
-                    WHERE fixture.kickoff_at > %s
+                    WHERE fixture.kickoff_at >= %s
+                      AND fixture.kickoff_at < %s
                     ORDER BY fixture.kickoff_at, published.prediction_id
                     LIMIT 100
                     """,
-                    (datetime.now(UTC),),
+                    wat_day_window_utc(),
                 ).fetchall()
             else:
                 fixtures = connection.execute(
@@ -158,7 +161,7 @@ def _load_public_predictions(*, prediction_id: UUID | None = None) -> tuple[Publ
 
 @router.get("", response_model=PublicPredictionList)
 def list_predictions() -> PublicPredictionList:
-    """Return upcoming published predictions with market probabilities only."""
+    """Return published predictions for the complete WAT calendar day."""
     return PublicPredictionList(predictions=_load_public_predictions())
 
 
