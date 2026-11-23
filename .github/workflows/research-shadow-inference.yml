@@ -1,6 +1,9 @@
-name: VELTRIX Stage 7 research shadow inference (manual only)
+name: VELTRIX Stage 7 automatic research shadow inference
 
 on:
+  workflow_run:
+    workflows: ["Stage 6 daily immutable snapshot and outcome materialization"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       confirm_research_ledger_write:
@@ -18,7 +21,17 @@ concurrency:
 
 jobs:
   infer:
-    if: inputs.confirm_research_ledger_write == true
+    if: >-
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.workflow_id == 423623285 &&
+        github.event.workflow_run.event == 'workflow_run' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.conclusion == 'success'
+      ) || (
+        github.event_name == 'workflow_dispatch' &&
+        inputs.confirm_research_ledger_write == true
+      )
     environment: veltrix-historical-import
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -37,11 +50,11 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - name: Install backend
         run: python -m pip install --disable-pip-version-check -e .
-      - name: Build selected Stage 7 shadow forecasts (read-only)
+      - name: Build selected Stage 7 shadow forecasts (read-only; after verified daily Stage 6)
         run: |
           mkdir -p artifacts
           python scripts/build_stage7_shadow_predictions.py --output artifacts/stage7-shadow-report.json --max-fixtures 25 --max-snapshot-age-hours 6
-      - name: Persist to isolated research ledger (explicit manual dispatch only)
+      - name: Persist validated forecasts to isolated research ledger (automatic after Stage 6 or explicitly confirmed manual run)
         env:
           VELTRIX_SHADOW_LEDGER_WRITE_ENABLED: "true"
           VELTRIX_SHADOW_LEDGER_DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
