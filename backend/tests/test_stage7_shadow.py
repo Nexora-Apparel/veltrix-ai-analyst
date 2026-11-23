@@ -120,14 +120,20 @@ def test_committed_admission_is_shadow_only_and_app_display_is_off():
 
 
 
-def test_inference_workflow_is_manual_only_and_old_schedule_remains_disabled():
+def test_inference_workflow_runs_after_verified_stage6_and_keeps_manual_gate():
     root = Path(__file__).resolve().parents[2]
-    manual = (root / ".github/workflows/research-shadow-inference.yml").read_text()
+    workflow = (root / ".github/workflows/research-shadow-inference.yml").read_text()
     existing = (root / ".github/workflows/prospective-shadow-predictions.yml").read_text()
-    assert "workflow_dispatch:" in manual
-    assert "schedule:" not in manual
-    assert "workflow_run:" not in manual
-    assert "confirm_research_ledger_write" in manual
+    assert "workflow_run:" in workflow
+    assert 'workflows: ["Stage 6 daily immutable snapshot and outcome materialization"]' in workflow
+    assert "github.event.workflow_run.workflow_id == 423623285" in workflow
+    assert "github.event.workflow_run.event == 'workflow_run'" in workflow
+    assert "github.event.workflow_run.head_branch == 'main'" in workflow
+    assert "github.event.workflow_run.conclusion == 'success'" in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "inputs.confirm_research_ledger_write == true" in workflow
+    assert "max-snapshot-age-hours 6" in workflow
+    assert "--max-fixtures 25" in workflow
     assert "if: false" in existing
 
 def test_research_query_has_two_placeholders_and_model_version_filter():
