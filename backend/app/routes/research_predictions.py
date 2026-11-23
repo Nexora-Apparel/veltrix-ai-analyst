@@ -10,12 +10,11 @@ from uuid import NAMESPACE_URL, uuid5
 import psycopg
 from fastapi import APIRouter, HTTPException, status
 
-from app.wat_calendar import wat_day_window_utc
-
 from app.routes.public_predictions import (
     _database_connection,
     _public_prediction,
 )
+from app.wat_calendar import wat_day_window_utc
 
 router = APIRouter(prefix="/v1/research/predictions", tags=["research-predictions"])
 MODEL_VERSION = "hierarchical-poisson-newton-shadow-v2"
