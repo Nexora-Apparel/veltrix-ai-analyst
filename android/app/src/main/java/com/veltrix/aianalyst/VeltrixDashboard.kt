@@ -448,9 +448,9 @@ private fun HistoryScreen(
             entries.isEmpty() -> EmptyState("No previously published predictions yet.")
             else -> Card {
                 entries.forEachIndexed { index, entry ->
-                    val day = formatHistoryDate(entry.publishedAt)
+                    val day = historyDateLabel(entry.publishedAt)
                     val previousDay = entries.getOrNull(index - 1)?.let {
-                        formatHistoryDate(it.publishedAt)
+                        historyDateLabel(it.publishedAt)
                     }
                     if (index == 0 || day != previousDay) {
                         if (index > 0) Divider()
@@ -708,7 +708,7 @@ internal fun forecastIsAvailable(kickoffAt: String, now: Instant = Instant.now()
 
 private fun percent(value: Double): Int = (value * 100.0).roundToInt().coerceIn(0, 100)
 
-private fun formatHistoryDate(value: String): String = runCatching {
+internal fun historyDateLabel(value: String): String = runCatching {
     DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy", Locale.getDefault())
         .withZone(ZoneId.of("Africa/Lagos"))
         .format(Instant.parse(value))
