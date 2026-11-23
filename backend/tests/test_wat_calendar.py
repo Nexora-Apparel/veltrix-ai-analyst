@@ -30,12 +30,14 @@ def test_wat_window_rejects_naive_datetime():
 
 
 def test_published_and_research_daily_queries_use_inclusive_exclusive_wat_bounds():
-    from app.routes.public_predictions import _FIXTURE_QUERY
+    import inspect
+    from app.routes.public_predictions import _load_public_predictions
     from app.routes.research_predictions import _RESEARCH_QUERY
 
+    published_loader = inspect.getsource(_load_public_predictions)
+    assert "fixture.kickoff_at >= %s" in published_loader
+    assert "fixture.kickoff_at < %s" in published_loader
+    assert "fixture.kickoff_at > %s" not in published_loader
     assert "fixture.kickoff_at >= %s" in _RESEARCH_QUERY
     assert "fixture.kickoff_at < %s" in _RESEARCH_QUERY
     assert "fixture.kickoff_at > %s" not in _RESEARCH_QUERY
-    assert "fixture.kickoff_at >= %s" in _FIXTURE_QUERY
-    assert "fixture.kickoff_at < %s" in _FIXTURE_QUERY
-    assert "fixture.kickoff_at > %s" not in _FIXTURE_QUERY
