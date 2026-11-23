@@ -19,6 +19,9 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -84,6 +88,17 @@ fun VeltrixDashboard() {
     var history by remember { mutableStateOf<List<PredictionHistoryEntry>?>(null) }
     var loading by remember { mutableStateOf(true) }
     var refreshToken by remember { mutableIntStateOf(0) }
+    var lastCheckedAt by remember { mutableStateOf<Instant?>(null) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(5 * 60 * 1000L)
+                refreshToken++
+            }
+        }
+    }
 
     LaunchedEffect(refreshToken) {
         loading = true
@@ -92,13 +107,14 @@ fun VeltrixDashboard() {
         researchPredictions = researchFeed.predictions
         researchError = researchFeed.error
         history = PredictionApi.fetchHistory()
+        lastCheckedAt = Instant.now()
         loading = false
     }
 
     CompositionLocalProvider(LocalPal provides pal) {
         Box(Modifier.fillMaxSize().background(pal.bg)) {
             when (tab) {
-                Tab.Home -> HomeScreen(predictions, researchPredictions, researchError, loading) { refreshToken++ }
+                Tab.Home -> HomeScreen(predictions, researchPredictions, researchError, loading, lastCheckedAt) { refreshToken++ }
                 Tab.History -> HistoryScreen(history, loading)
                 Tab.Btts -> BttsScreen(predictions, researchPredictions, researchError, loading)
                 Tab.Value -> ValueScreen()
@@ -296,6 +312,7 @@ private fun HomeScreen(
     researchPredictions: List<FixturePrediction>?,
     researchError: String?,
     loading: Boolean,
+    lastCheckedAt: Instant?,
     onRefresh: () -> Unit,
 ) {
     val p = LocalPal.current
@@ -317,6 +334,12 @@ private fun HomeScreen(
         }
 
         ResearchFeedWarning(researchError)
+        Text(
+            lastCheckedAt?.let { "Last checked · ${formatHistoryKickoff(it.toString())}" }
+                ?: "Waiting for first sync",
+            style = t(12, c = p.sub),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+        )
         when {
             loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
             predictions == null && researchPredictions == null -> EmptyState("Predictions are temporarily unavailable.")
