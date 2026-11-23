@@ -136,15 +136,15 @@ def test_inference_workflow_runs_after_verified_stage6_and_keeps_manual_gate():
     assert "--max-fixtures 25" in workflow
     assert "if: false" in existing
 
-def test_research_query_has_two_placeholders_and_model_version_filter():
+def test_research_query_has_three_placeholders_and_model_version_filter():
     from app.routes import research_predictions
 
-    assert research_predictions._RESEARCH_QUERY.count("%s") == 2
+    assert research_predictions._RESEARCH_QUERY.count("%s") == 3
     assert "WHERE model_version = %s" in research_predictions._RESEARCH_QUERY
     assert "latest_run.model_version" in research_predictions._RESEARCH_QUERY
 
 
-def test_research_route_passes_model_version_then_now(monkeypatch):
+def test_research_route_passes_model_version_then_wat_window(monkeypatch):
     from app.routes import research_predictions
 
     class FakeConnection:
@@ -174,9 +174,11 @@ def test_research_route_passes_model_version_then_now(monkeypatch):
     monkeypatch.setattr(research_predictions, "_model_admitted", lambda: True)
     monkeypatch.setattr(research_predictions, "_database_connection", lambda: fake)
     response = research_predictions.list_research_predictions()
-    assert fake.query.count("%s") == len(fake.params) == 2
-    assert fake.query.count("%s") == 2
+    assert fake.query.count("%s") == len(fake.params) == 3
     assert fake.params[0] == research_predictions.MODEL_VERSION
-    assert fake.params[1].tzinfo is not None
+    day_start, day_end = fake.params[1:]
+    assert day_start.tzinfo is not None
+    assert day_end.tzinfo is not None
+    assert day_start < day_end
     assert response["status"] == "NO_RESEARCH_FORECASTS_AVAILABLE"
     assert fake.closed
