@@ -26,13 +26,21 @@ Implemented against the existing Compose application and preserved its screen/na
   - Merge commit: `0b44169417b511b9bf08928cc128019322b314d2`
   - Exact-head CI run `45268476965`: completed SUCCESS.
   - Merged after PR #159 using a merge commit to preserve dependency ancestry.
-- Post-merge combined status read-back for merge commit `0b44169417b511b9bf08928cc128019322b314d2` showed Vercel PENDING at time of check; no post-merge GitHub Actions run was returned by the PR-only workflow-run lookup.
-- Physical-device verification has NOT been performed. The owner explicitly authorized merging despite this outstanding manual test. Treat device validation as a release blocker; do not claim the app has been tested on hardware.
+- PR #164 merged: https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/164
+  - Merge commit: `37f18612d72beb800a55a465ef23c0b61c564afd`
+  - Added deterministic WAT history date-boundary tests for UTC-to-WAT midnight conversion and invalid timestamps.
+  - Initial compile failure was corrected in commit `d6b007305e52c299370384286a23557b8e3041bf`.
+  - Exact-head CI run `45269810785`: Backend tests/lint SUCCESS; Android debug build SUCCESS; APK upload step SUCCESS.
+  - PR head was three commits ahead of main and zero behind before merge.
+- PR #160 remains unmerged. Exact-head run `45269479785`: backend tests/lint SUCCESS, Android debug build FAILURE, APK upload skipped. Do not treat the PR as release-ready; inspect the Android build failure before any merge.
+- Physical-device verification has NOT been performed. Treat device validation as a release blocker; do not claim the app has been tested on hardware.
 - No production API, database, provider, Odds API, production forecast, research/production gate, certification, value-betting lock or scheduled pipeline was changed by these Android merges.
 
 ## Remaining work
 
-1. Install/update-compatible APK and verify on the target Android device: future fixtures show probabilities; exact/past kickoff and invalid kickoff hide all probabilities while retaining metadata.
-2. Verify five-minute foreground refresh, suspension/resumption after backgrounding, manual refresh, history grouping and settled 1X2 totals.
-3. Continue implementing remaining existing-app surfaces against verified backend contracts. Do not fabricate dashboard performance, operational status, market certification, AI explanations or value-bet selections.
-4. PR #160 (WAT calendar-day backend feed bounds) remains separate and unmerged; do not assume it was included in these two merges.
+1. Obtain a fresh APK built from the integrated main branch after PR #164, verify artifact provenance, package/version, signing certificate and SHA-256.
+2. Establish update compatibility without uninstalling the user's existing app; if the installed signing certificate cannot be established, treat update installation as a manual blocker and preserve the current installation.
+3. Verify on the target Android device: future fixtures show probabilities; exact/past kickoff and invalid kickoff hide all probabilities while retaining metadata.
+4. Verify five-minute foreground refresh, suspension/resumption after backgrounding, manual refresh, history grouping and settled 1X2 totals.
+5. Continue implementing remaining existing-app surfaces against verified backend contracts. Do not fabricate dashboard performance, operational status, market certification, AI explanations or value-bet selections.
+6. PR #160 (WAT calendar-day backend feed bounds) remains separate and unmerged; its Android build failure must be diagnosed independently.
