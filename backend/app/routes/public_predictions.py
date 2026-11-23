@@ -11,8 +11,6 @@ import psycopg
 from fastapi import APIRouter, HTTPException, status
 from psycopg.rows import dict_row
 
-from app.wat_calendar import wat_day_window_utc
-
 from app.contracts.public_prediction import (
     PublicFinalScore,
     PublicFixture,
@@ -22,6 +20,7 @@ from app.contracts.public_prediction import (
     PublicPredictionList,
     PublicPredictionMarkets,
 )
+from app.wat_calendar import wat_day_window_utc
 
 router = APIRouter(prefix="/v1/predictions", tags=["predictions"])
 DATABASE_NAME = "veltrix_ai_analyst"
