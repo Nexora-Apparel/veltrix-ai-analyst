@@ -54,3 +54,25 @@ Connect Stage 7 research-only inference automatically to a successful Stage 6 da
 2. Merge the reviewed automation workflow change to main after checks pass.
 3. Trigger or await the next scheduled capture; verify the full capture → Stage 6 → Stage 7 chain from run events, jobs, artifacts, and isolated-ledger run key.
 4. Report the first automatic Stage 7 run separately from any manual historical run.
+
+## Follow-up verification — 2026-11-23 evening
+
+### Capture timing finding
+- The configured capture cron on main is `0 3 * * *` (03:00 UTC = 04:00 WAT).
+- Capture job `137680551170` in run `45171104634` began at `2026-11-23T12:06:10Z` (13:06:10 WAT), approximately 9 hours 6 minutes after the configured time.
+- The six-competition batch completed at `12:18:00Z` (13:18:00 WAT).
+- This is an observed start-time delay, not a timezone conversion error. The capture schedule is UTC and the WAT conversion is +1 hour.
+- GitHub's official Actions documentation confirms scheduled events are best-effort and may be delayed during high load; it recommends moving away from the top of the hour. An off-peak timing/diagnostics proposal already exists separately as PR #146. Its 03:17 UTC schedule is a mitigation only, not a punctuality guarantee.
+- Stage 6 run `45172986846` completed successfully after capture and verified 14 snapshots, 14 distinct fixtures, and 0 latest label events.
+
+### CI failure and correction
+- Initial PR #150 CI run `45250606777`: actionlint and Python compile passed; Android debug build passed; backend suite had 1 failure and 540 passes.
+- The single failure was a stale test assertion, `test_inference_workflow_is_manual_only_and_old_schedule_remains_disabled`, which explicitly rejected the new `workflow_run` trigger. It did not indicate a production/runtime failure.
+- Updated `backend/tests/test_stage7_shadow.py` on this branch to assert the intended Stage 6 lineage conditions, success/branch/workflow-ID gates, manual confirmation gate, six-hour freshness limit, and 25-fixture cap.
+- Correction commit: `4357a7e11d3b32c122fcd433d8f9de10304b4d6c`.
+- CI for the corrected head must be rechecked before merge.
+
+### Current limitations
+- The run/job log establishes the runner start time; the exact scheduled-event enqueue timestamp is not available from the connected GitHub read tools in this session. The 9h06m figure is measured from configured cron time to runner start.
+- No schedule change has been merged. PR #146 is a separate open draft and must be reviewed independently.
+- No fresh provider capture, Stage 6/7 inference, Odds API request, production deployment, or model/value-betting promotion was initiated during this follow-up.
