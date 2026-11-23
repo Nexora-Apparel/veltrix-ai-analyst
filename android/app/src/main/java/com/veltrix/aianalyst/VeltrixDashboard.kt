@@ -395,20 +395,65 @@ private fun HomeScreen(
 }
 
 @Composable
+private fun HistorySummary(entries: List<PredictionHistoryEntry>) {
+    val p = LocalPal.current
+    val scored = entries.mapNotNull { entry ->
+        settledOneXTwoCorrect(
+            entry.prediction.home,
+            entry.prediction.draw,
+            entry.prediction.away,
+            entry.homeGoals,
+            entry.awayGoals,
+            entry.settlementStatus,
+        )
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        listOf(
+            Triple("Won", scored.count { it }, p.green),
+            Triple("Lost", scored.count { !it }, p.red),
+        ).forEach { (label, count, color) ->
+            Column(
+                Modifier.weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(p.card)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            ) {
+                Text(count.toString(), style = t(28, FontWeight.Bold, color))
+                Text(label, style = t(14, c = p.sub))
+            }
+        }
+    }
+}
+
+@Composable
 private fun HistoryScreen(
     history: List<PredictionHistoryEntry>?,
     loading: Boolean,
 ) {
     val p = LocalPal.current
-    val entries = history.orEmpty()
+    val entries = history.orEmpty().sortedByDescending { it.publishedAt }
     Screen("History", "Published predictions and verified results") {
+        if (entries.isNotEmpty()) HistorySummary(entries)
         when {
             loading && history == null -> EmptyState("Loading prediction history…")
             history == null -> EmptyState("Prediction history is temporarily unavailable.")
             entries.isEmpty() -> EmptyState("No previously published predictions yet.")
             else -> Card {
                 entries.forEachIndexed { index, entry ->
-                    if (index > 0) Divider()
+                    val day = formatHistoryDate(entry.publishedAt)
+                    val previousDay = entries.getOrNull(index - 1)?.let {
+                        formatHistoryDate(it.publishedAt)
+                    }
+                    if (index == 0 || day != previousDay) {
+                        if (index > 0) Divider()
+                        Text(
+                            day,
+                            style = t(13, FontWeight.SemiBold, p.sub),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        )
+                    } else {
+                        Divider()
+                    }
                     val match = entry.prediction
                     Column(Modifier.padding(16.dp)) {
                         MatchHeader(
@@ -654,6 +699,12 @@ internal fun forecastIsAvailable(kickoffAt: String, now: Instant = Instant.now()
     runCatching { Instant.parse(kickoffAt).isAfter(now) }.getOrDefault(false)
 
 private fun percent(value: Double): Int = (value * 100.0).roundToInt().coerceIn(0, 100)
+
+private fun formatHistoryDate(value: String): String = runCatching {
+    DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy", Locale.getDefault())
+        .withZone(ZoneId.of("Africa/Lagos"))
+        .format(Instant.parse(value))
+}.getOrDefault("Date unavailable")
 
 private fun formatHistoryKickoff(value: String): String = runCatching {
     DateTimeFormatter.ofPattern("dd MMM yyyy · HH:mm", Locale.getDefault())
