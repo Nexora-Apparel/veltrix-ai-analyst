@@ -43,6 +43,7 @@ on:
       - ".github/workflows/the-odds-api-event-discovery.yml"
       - ".github/workflows/5dollar-odds-snapshot-probe.yml"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/research-shadow-inference.yml"
       - ".github/workflows/effective-shrinkage-audit.yml"
       - "docs/PROJECT_PROGRESS.md"
       - "docs/ledger/**"
@@ -70,6 +71,7 @@ on:
       - ".github/workflows/the-odds-api-5dollar-fixture-qualification.yml"
       - ".github/workflows/5dollar-odds-snapshot-probe.yml"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/research-shadow-inference.yml"
       - ".github/workflows/effective-shrinkage-audit.yml"
       - "docs/PROJECT_PROGRESS.md"
       - "docs/ledger/**"
@@ -118,7 +120,7 @@ jobs:
       - name: Install package
         run: python -m pip install -e ".[dev]"
       - name: Validate corrected shrinkage workflow with actionlint
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 ../.github/workflows/effective-shrinkage-audit.yml ../.github/workflows/shrinkage-repair-evaluation.yml
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 ../.github/workflows/effective-shrinkage-audit.yml ../.github/workflows/shrinkage-repair-evaluation.yml ../.github/workflows/research-shadow-inference.yml
       - name: Compile backend application and scripts
         run: python -m compileall -q app scripts
       - name: Run tests
