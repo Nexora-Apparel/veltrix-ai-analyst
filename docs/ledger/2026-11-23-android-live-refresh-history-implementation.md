@@ -56,3 +56,17 @@ Implemented against the existing Compose application and preserved its screen/na
 - APK artifact ID `14866310869`, name `veltrix-ai-analyst-debug-apk`, run `45271840825`, SHA-256 of uploaded artifact ZIP `6741bcdf7d31e0aad92019a47b402d465ac34ddc6bbf1a7379e617c4ea8d3e2a`, expires 2026-11-30 21:40:18 UTC.
 - Artifact was built from the exact PR head immediately before merge; it includes the same source changes as merge commit, but is not a post-merge main-branch build. Do not describe it as a main-branch artifact.
 - Device install, launch, live API connectivity, rendering and functional checks remain unverified until performed on the user's Realme 5 Pro.
+
+
+## First physical-device report — 2026-11-23
+
+- User reports the side-by-side test APK installs and launches successfully on the Realme 5 Pro (Android 11).
+- User reports Home has no fixtures/predictions and Value Bet is locked.
+- This is user-reported device evidence, not independently reproduced by CI or a device test harness.
+- Value Bet being locked is the intended safety state; do not change it.
+- The UI's current Home empty state is consistent with an empty merged feed: `No matches for today.` If both API requests fail, it instead shows `Predictions are temporarily unavailable.`
+- Prior verified backend evidence from 2026-11-23: Stage 6 run `45257770836` had 14 eligible immutable snapshots but no settled labels and release_eligible=false; Stage 7 run `45258094322` produced zero forecasts due `NO_FRESH_UPCOMING_SNAPSHOTS`; latest upcoming snapshot age was approximately 8.27 hours against the six-hour freshness gate. These facts explain why no research fixtures were available at that check; they do not prove the API response at the exact time of the user's device test.
+- The published feed contains only published production predictions; the research feed remains separately quarantined and unpublished. No fixture should be invented or displayed from a stale snapshot.
+- Current Android client does not expose a detailed empty-feed reason when the API returns HTTP 200 with an empty predictions array. A follow-up should add a truthful empty-state distinction using actual API response metadata, without hardcoding pipeline status.
+- PR #160 (WAT daily feed bounds) has exact-head CI run `45265970048` SUCCESS (backend tests/lint and Android debug build). However its branch `12dcb369a44f120ee7be048d56ddfac0ae984ee7` is now 6 commits ahead and 22 behind current main `8f91ab7637f7766ed46f95da0c12ff9269d98214`; compare reports DIVERGED. It must be rebased/transplanted and revalidated before merge. Do not merge the stale branch.
+- Next safe sequence: preserve all publication/freshness/value-bet gates; allow the already scheduled read-only/normal capture cycle to run; inspect its resulting capture, Stage 6 and Stage 7 evidence; only then diagnose missing fixtures from actual API response metadata. No manual workflow dispatch/rerun, provider/Odds API calls, database writes or production gate changes.
