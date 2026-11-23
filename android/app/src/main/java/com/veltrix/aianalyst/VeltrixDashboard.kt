@@ -306,7 +306,7 @@ private fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SectionTitle("Upcoming predictions")
+            SectionTitle("Today's matches")
             Row(
                 Modifier.clip(CircleShape).clickable(onClick = onRefresh).padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -320,7 +320,7 @@ private fun HomeScreen(
         when {
             loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
             predictions == null && researchPredictions == null -> EmptyState("Predictions are temporarily unavailable.")
-            matches.isEmpty() -> EmptyState("No upcoming predictions.")
+            matches.isEmpty() -> EmptyState("No matches for today.")
             else -> Card {
                 matches.forEachIndexed { index, match ->
                     if (index > 0) Divider()
@@ -330,8 +330,16 @@ private fun HomeScreen(
                             matchMeta(match),
                         ) {
                             Pill(
-                                if (match.researchOnly) "RESEARCH ONLY" else "1X2",
-                                if (match.researchOnly) p.orange else p.blue,
+                                when {
+                                    !forecastIsAvailable(match.kickoffAt) -> "KICKOFF"
+                                    match.researchOnly -> "RESEARCH ONLY"
+                                    else -> "1X2"
+                                },
+                                when {
+                                    !forecastIsAvailable(match.kickoffAt) -> p.sub
+                                    match.researchOnly -> p.orange
+                                    else -> p.blue
+                                },
                             )
                         }
                         if (forecastIsAvailable(match.kickoffAt)) {
