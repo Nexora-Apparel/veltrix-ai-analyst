@@ -76,3 +76,37 @@ Connect Stage 7 research-only inference automatically to a successful Stage 6 da
 - The run/job log establishes the runner start time; the exact scheduled-event enqueue timestamp is not available from the connected GitHub read tools in this session. The 9h06m figure is measured from configured cron time to runner start.
 - No schedule change has been merged. PR #146 is a separate open draft and must be reviewed independently.
 - No fresh provider capture, Stage 6/7 inference, Odds API request, production deployment, or model/value-betting promotion was initiated during this follow-up.
+
+## Final execution update — 2026-11-23
+
+### Stage 7 automation merged
+- PR #150 merged successfully to main as commit `2158a0a4b7ae5eff77f67a04ff170b7e4bfe6234`.
+- Exact-head CI run `45252072956` completed successfully. Backend tests/lint and Android debug build passed; Vercel preview check passed.
+- Main now subscribes Stage 7 to successful Stage 6 workflow completion, with strict workflow ID, event lineage, main-branch and success checks.
+- Manual dispatch remains gated by explicit confirmation. Six-hour snapshot freshness, 25-fixture cap, isolated research ledger and closed production/value-betting gates remain unchanged.
+
+### Capture timing mitigation merged
+- PR #146 rebased onto the new main head, expanded CI path coverage to include both capture and Stage 6 workflow files, and added actionlint validation for both.
+- Exact-head CI run `45254675406` completed successfully:
+  - Backend tests and lint: success.
+  - actionlint: success (within backend validation step).
+  - Python compile: success.
+  - Android debug build/APK upload: success.
+  - Vercel preview check: success.
+- PR #146 merged as commit `eafc30fca814ddf41e3ffd1fc115406210699fff`.
+- Main capture cron is now `17 3 * * *`: 03:17 UTC / 04:17 WAT.
+- Capture and Stage 6 workflow summaries now record run creation/start timestamps and step outcomes; Stage 6 summary also records capture-to-Stage-6 lineage/timing.
+- This is an off-peak scheduling mitigation and observability improvement, not a hard punctuality guarantee. GitHub Actions scheduled events remain best-effort.
+
+### Verified current main
+- Main head: `eafc30fca814ddf41e3ffd1fc115406210699fff`.
+- Capture workflow contains the 03:17 UTC cron and timing summary.
+- Stage 6 workflow contains capture/Stage 6 timing summary.
+- Stage 7 workflow contains the automatic Stage 6 lineage trigger and success gates.
+
+### Remaining verification
+- No new capture was dispatched after the schedule change in this session. The first post-merge scheduled capture must be checked to confirm actual run-created and runner-start times against the 04:17 WAT target.
+- The connected GitHub interface used here supports workflow-run reads and reruns but does not expose a workflow-dispatch operation; rerunning the prior successful capture would execute its old workflow revision and is not a valid test of the merged schedule.
+- After the next successful capture, verify capture → Stage 6 → Stage 7 and inspect the Stage 7 artifact plus isolated research-ledger run key.
+- Stage 7 forecasts remain research-only. No published production predictions, release eligibility, or value betting were unlocked or modified.
+- No The Odds API requests were made.
