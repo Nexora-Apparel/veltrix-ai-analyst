@@ -306,7 +306,7 @@ private fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SectionTitle("Upcoming predictions")
+            SectionTitle("Today's matches")
             Row(
                 Modifier.clip(CircleShape).clickable(onClick = onRefresh).padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -320,7 +320,7 @@ private fun HomeScreen(
         when {
             loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
             predictions == null && researchPredictions == null -> EmptyState("Predictions are temporarily unavailable.")
-            matches.isEmpty() -> EmptyState("No upcoming predictions.")
+            matches.isEmpty() -> EmptyState("No matches for today.")
             else -> Card {
                 matches.forEachIndexed { index, match ->
                     if (index > 0) Divider()
@@ -330,24 +330,40 @@ private fun HomeScreen(
                             matchMeta(match),
                         ) {
                             Pill(
-                                if (match.researchOnly) "RESEARCH ONLY" else "1X2",
-                                if (match.researchOnly) p.orange else p.blue,
+                                when {
+                                    !forecastIsAvailable(match.kickoffAt) -> "KICKOFF"
+                                    match.researchOnly -> "RESEARCH ONLY"
+                                    else -> "1X2"
+                                },
+                                when {
+                                    !forecastIsAvailable(match.kickoffAt) -> p.sub
+                                    match.researchOnly -> p.orange
+                                    else -> p.blue
+                                },
                             )
                         }
-                        SplitBar(
-                            listOf(
-                                percent(match.home) to p.blue,
-                                percent(match.draw) to p.sub,
-                                percent(match.away) to p.orange,
-                            ),
-                        )
-                        Legend(
-                            listOf(
-                                "1" to "${percent(match.home)}%",
-                                "X" to "${percent(match.draw)}%",
-                                "2" to "${percent(match.away)}%",
-                            ),
-                        )
+                        if (forecastIsAvailable(match.kickoffAt)) {
+                            SplitBar(
+                                listOf(
+                                    percent(match.home) to p.blue,
+                                    percent(match.draw) to p.sub,
+                                    percent(match.away) to p.orange,
+                                ),
+                            )
+                            Legend(
+                                listOf(
+                                    "1" to "${percent(match.home)}%",
+                                    "X" to "${percent(match.draw)}%",
+                                    "2" to "${percent(match.away)}%",
+                                ),
+                            )
+                        } else {
+                            Text(
+                                "Kickoff reached · forecast hidden",
+                                style = t(13, FontWeight.Medium, p.sub),
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -447,23 +463,35 @@ private fun BttsScreen(
                             "${match.homeTeam} vs ${match.awayTeam}",
                             "${match.competition} · ${formatKickoff(match.kickoffAt)}",
                         ) {
-                            Ring(
-                                percent(match.bttsYes),
-                                if (match.bttsYes >= 0.6) p.green else p.orange,
+                            if (forecastIsAvailable(match.kickoffAt)) {
+                                Ring(
+                                    percent(match.bttsYes),
+                                    if (match.bttsYes >= 0.6) p.green else p.orange,
+                                )
+                            } else {
+                                Pill("KICKOFF", p.sub)
+                            }
+                        }
+                        if (forecastIsAvailable(match.kickoffAt)) {
+                            SplitBar(
+                                listOf(
+                                    percent(match.bttsYes) to p.green,
+                                    percent(match.bttsNo) to p.red,
+                                ),
+                            )
+                            Legend(
+                                listOf(
+                                    "Yes" to "${percent(match.bttsYes)}%",
+                                    "No" to "${percent(match.bttsNo)}%",
+                                ),
+                            )
+                        } else {
+                            Text(
+                                "Kickoff reached · forecast hidden",
+                                style = t(13, FontWeight.Medium, p.sub),
+                                modifier = Modifier.padding(top = 12.dp),
                             )
                         }
-                        SplitBar(
-                            listOf(
-                                percent(match.bttsYes) to p.green,
-                                percent(match.bttsNo) to p.red,
-                            ),
-                        )
-                        Legend(
-                            listOf(
-                                "Yes" to "${percent(match.bttsYes)}%",
-                                "No" to "${percent(match.bttsNo)}%",
-                            ),
-                        )
                     }
                 }
             }
@@ -533,13 +561,25 @@ private fun OverUnderScreen(
                             "${match.homeTeam} vs ${match.awayTeam}",
                             "${match.competition} · ${formatKickoff(match.kickoffAt)}",
                         ) {
-                            Pill(
-                                if (over >= 0.5) "Over $line" else "Under $line",
-                                if (over >= 0.5) p.green else p.orange,
+                            if (forecastIsAvailable(match.kickoffAt)) {
+                                Pill(
+                                    if (over >= 0.5) "Over $line" else "Under $line",
+                                    if (over >= 0.5) p.green else p.orange,
+                                )
+                            } else {
+                                Pill("KICKOFF", p.sub)
+                            }
+                        }
+                        if (forecastIsAvailable(match.kickoffAt)) {
+                            SplitBar(listOf(percent(over) to p.green, percent(under) to p.red))
+                            Legend(listOf("Over" to "${percent(over)}%", "Under" to "${percent(under)}%"))
+                        } else {
+                            Text(
+                                "Kickoff reached · forecast hidden",
+                                style = t(13, FontWeight.Medium, p.sub),
+                                modifier = Modifier.padding(top = 12.dp),
                             )
                         }
-                        SplitBar(listOf(percent(over) to p.green, percent(under) to p.red))
-                        Legend(listOf("Over" to "${percent(over)}%", "Under" to "${percent(under)}%"))
                     }
                 }
             }
@@ -586,6 +626,9 @@ private fun matchMeta(match: FixturePrediction): String {
     val kickoff = "${match.competition} · ${formatKickoff(match.kickoffAt)}"
     return if (match.researchOnly) "$kickoff · RESEARCH ONLY" else kickoff
 }
+
+internal fun forecastIsAvailable(kickoffAt: String, now: Instant = Instant.now()): Boolean =
+    runCatching { Instant.parse(kickoffAt).isAfter(now) }.getOrDefault(false)
 
 private fun percent(value: Double): Int = (value * 100.0).roundToInt().coerceIn(0, 100)
 
