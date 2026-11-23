@@ -24,6 +24,14 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"$escapedVeltrixApiBaseUrl\"")
     }
 
+    buildTypes {
+        getByName("debug") {
+            // Side-by-side QA install; never replaces the user's existing app.
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
