@@ -407,6 +407,14 @@ private fun HistorySummary(entries: List<PredictionHistoryEntry>) {
             entry.settlementStatus,
         )
     }
+    if (scored.isEmpty()) {
+        Text(
+            "No settled 1X2 results yet",
+            style = t(13, c = p.sub),
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
+        return
+    }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         listOf(
             Triple("Won", scored.count { it }, p.green),
