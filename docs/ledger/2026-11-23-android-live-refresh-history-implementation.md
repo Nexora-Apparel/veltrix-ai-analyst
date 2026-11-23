@@ -44,3 +44,15 @@ Implemented against the existing Compose application and preserved its screen/na
 4. Verify five-minute foreground refresh, suspension/resumption after backgrounding, manual refresh, history grouping and settled 1X2 totals.
 5. Continue implementing remaining existing-app surfaces against verified backend contracts. Do not fabricate dashboard performance, operational status, market certification, AI explanations or value-bet selections.
 6. PR #160 (WAT calendar-day backend feed bounds) remains separate and unmerged; its Android build failure must be diagnosed independently.
+
+
+## Side-by-side QA install — PR #166
+
+- PR #166: https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/166 — merged.
+- Merge commit: `53eb45bd47a3b41712a9846f6f5ebb55f388c1a3`.
+- Exact-head CI run `45271840825` for `d353f80640142bd03bffcd3212230d12a153ce03`: Android debug build SUCCESS; backend tests/lint SUCCESS; APK upload SUCCESS.
+- The debug build uses application ID `com.veltrix.aianalyst.test` and version suffix `-test`; release application ID remains `com.veltrix.aianalyst`. This permits side-by-side QA installation and avoids replacing the existing app or relying on the old debug signing key.
+- CI log confirms `VELTRIX_API_BASE_URL=https://veltrix-ai-analyst-api.vercel.app` was supplied to Gradle.
+- APK artifact ID `14866310869`, name `veltrix-ai-analyst-debug-apk`, run `45271840825`, SHA-256 of uploaded artifact ZIP `6741bcdf7d31e0aad92019a47b402d465ac34ddc6bbf1a7379e617c4ea8d3e2a`, expires 2026-11-30 21:40:18 UTC.
+- Artifact was built from the exact PR head immediately before merge; it includes the same source changes as merge commit, but is not a post-merge main-branch build. Do not describe it as a main-branch artifact.
+- Device install, launch, live API connectivity, rendering and functional checks remain unverified until performed on the user's Realme 5 Pro.
