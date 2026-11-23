@@ -1,7 +1,7 @@
 """Authoritative Nigeria/WAT calendar-day boundaries for fixture feeds."""
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 WAT = ZoneInfo("Africa/Lagos")
