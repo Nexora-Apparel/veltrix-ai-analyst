@@ -19,6 +19,9 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -84,6 +88,17 @@ fun VeltrixDashboard() {
     var history by remember { mutableStateOf<List<PredictionHistoryEntry>?>(null) }
     var loading by remember { mutableStateOf(true) }
     var refreshToken by remember { mutableIntStateOf(0) }
+    var lastCheckedAt by remember { mutableStateOf<Instant?>(null) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(5 * 60 * 1000L)
+                refreshToken++
+            }
+        }
+    }
 
     LaunchedEffect(refreshToken) {
         loading = true
@@ -92,13 +107,14 @@ fun VeltrixDashboard() {
         researchPredictions = researchFeed.predictions
         researchError = researchFeed.error
         history = PredictionApi.fetchHistory()
+        lastCheckedAt = Instant.now()
         loading = false
     }
 
     CompositionLocalProvider(LocalPal provides pal) {
         Box(Modifier.fillMaxSize().background(pal.bg)) {
             when (tab) {
-                Tab.Home -> HomeScreen(predictions, researchPredictions, researchError, loading) { refreshToken++ }
+                Tab.Home -> HomeScreen(predictions, researchPredictions, researchError, loading, lastCheckedAt) { refreshToken++ }
                 Tab.History -> HistoryScreen(history, loading)
                 Tab.Btts -> BttsScreen(predictions, researchPredictions, researchError, loading)
                 Tab.Value -> ValueScreen()
@@ -296,6 +312,7 @@ private fun HomeScreen(
     researchPredictions: List<FixturePrediction>?,
     researchError: String?,
     loading: Boolean,
+    lastCheckedAt: Instant?,
     onRefresh: () -> Unit,
 ) {
     val p = LocalPal.current
@@ -317,6 +334,12 @@ private fun HomeScreen(
         }
 
         ResearchFeedWarning(researchError)
+        Text(
+            lastCheckedAt?.let { "Last checked · ${formatHistoryKickoff(it.toString())}" }
+                ?: "Waiting for first sync",
+            style = t(12, c = p.sub),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+        )
         when {
             loading && predictions == null && researchPredictions == null -> EmptyState("Loading predictions…")
             predictions == null && researchPredictions == null -> EmptyState("Predictions are temporarily unavailable.")
@@ -372,20 +395,73 @@ private fun HomeScreen(
 }
 
 @Composable
+private fun HistorySummary(entries: List<PredictionHistoryEntry>) {
+    val p = LocalPal.current
+    val scored = entries.mapNotNull { entry ->
+        settledOneXTwoCorrect(
+            entry.prediction.home,
+            entry.prediction.draw,
+            entry.prediction.away,
+            entry.homeGoals,
+            entry.awayGoals,
+            entry.settlementStatus,
+        )
+    }
+    if (scored.isEmpty()) {
+        Text(
+            "No settled 1X2 results yet",
+            style = t(13, c = p.sub),
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
+        return
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        listOf(
+            Triple("Won", scored.count { it }, p.green),
+            Triple("Lost", scored.count { !it }, p.red),
+        ).forEach { (label, count, color) ->
+            Column(
+                Modifier.weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(p.card)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            ) {
+                Text(count.toString(), style = t(28, FontWeight.Bold, color))
+                Text(label, style = t(14, c = p.sub))
+            }
+        }
+    }
+}
+
+@Composable
 private fun HistoryScreen(
     history: List<PredictionHistoryEntry>?,
     loading: Boolean,
 ) {
     val p = LocalPal.current
-    val entries = history.orEmpty()
+    val entries = history.orEmpty().sortedByDescending { it.publishedAt }
     Screen("History", "Published predictions and verified results") {
+        if (entries.isNotEmpty()) HistorySummary(entries)
         when {
             loading && history == null -> EmptyState("Loading prediction history…")
             history == null -> EmptyState("Prediction history is temporarily unavailable.")
             entries.isEmpty() -> EmptyState("No previously published predictions yet.")
             else -> Card {
                 entries.forEachIndexed { index, entry ->
-                    if (index > 0) Divider()
+                    val day = formatHistoryDate(entry.publishedAt)
+                    val previousDay = entries.getOrNull(index - 1)?.let {
+                        formatHistoryDate(it.publishedAt)
+                    }
+                    if (index == 0 || day != previousDay) {
+                        if (index > 0) Divider()
+                        Text(
+                            day,
+                            style = t(13, FontWeight.SemiBold, p.sub),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        )
+                    } else {
+                        Divider()
+                    }
                     val match = entry.prediction
                     Column(Modifier.padding(16.dp)) {
                         MatchHeader(
@@ -631,6 +707,12 @@ internal fun forecastIsAvailable(kickoffAt: String, now: Instant = Instant.now()
     runCatching { Instant.parse(kickoffAt).isAfter(now) }.getOrDefault(false)
 
 private fun percent(value: Double): Int = (value * 100.0).roundToInt().coerceIn(0, 100)
+
+private fun formatHistoryDate(value: String): String = runCatching {
+    DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy", Locale.getDefault())
+        .withZone(ZoneId.of("Africa/Lagos"))
+        .format(Instant.parse(value))
+}.getOrDefault("Date unavailable")
 
 private fun formatHistoryKickoff(value: String): String = runCatching {
     DateTimeFormatter.ofPattern("dd MMM yyyy · HH:mm", Locale.getDefault())
