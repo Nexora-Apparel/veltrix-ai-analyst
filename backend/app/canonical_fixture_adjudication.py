@@ -87,3 +87,19 @@ def evidence_sha256(evidence: dict[str, Any]) -> str:
         allow_nan=False,
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def exact_fixture_link_decision(
+    *,
+    identity_status: str,
+    collision_link_ids: tuple[int, ...],
+    mappings_reviewed: bool,
+) -> str | None:
+    """Return a fail-closed source-link decision without inferring real-world identity."""
+    if identity_status == "CONFLICT":
+        return "CONFLICT"
+    if not mappings_reviewed:
+        return None
+    if collision_link_ids:
+        return "CONFLICT"
+    return "SOURCE_FIXTURE_LINK_REVIEWED"
