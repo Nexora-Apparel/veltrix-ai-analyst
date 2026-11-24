@@ -192,7 +192,7 @@ def sync_canonical_fixture_states(
           AND latest.effective_approval_status = 'APPROVED'
           AND latest.valid_from <= latest.observed_at
           AND (latest.valid_until IS NULL OR latest.valid_until > latest.observed_at)
-          AND latest.permitted_uses @> '["FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb
+          AND latest.permitted_uses @> '["STORAGE", "INTERNAL_ANALYSIS", "FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb
           AND lower(latest.payload->>'status') = lower(latest.status)
           AND NULLIF(latest.payload->>'kickoff_at', '')::timestamptz = latest.kickoff_at
           AND latest.payload->>'competition_id' = latest.provider_competition_id
