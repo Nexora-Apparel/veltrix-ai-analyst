@@ -1,10 +1,6 @@
 name: Stage 6 daily immutable snapshot and outcome materialization
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/stage-6-daily-snapshot-materialization.yml'
   workflow_dispatch:
   workflow_run:
     workflows: ["VELTRIX prospective 5Dollar evidence capture"]
@@ -21,7 +17,6 @@ concurrency:
 jobs:
   materialize:
     if: >-
-      github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     environment: veltrix-historical-import
