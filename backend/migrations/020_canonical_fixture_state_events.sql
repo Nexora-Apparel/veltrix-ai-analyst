@@ -275,6 +275,40 @@ BEGIN
 
     IF EXISTS (
         SELECT 1
+        FROM veltrix_ai_analyst.source_observations newer_observation
+        LEFT JOIN LATERAL (
+            SELECT candidate.*
+            FROM veltrix_ai_analyst.source_observation_sightings candidate
+            WHERE candidate.source_observation_id = newer_observation.id
+            ORDER BY
+                COALESCE(candidate.system_observed_at, candidate.retrieved_at) DESC,
+                candidate.id DESC
+            LIMIT 1
+        ) newer_sighting ON TRUE
+        WHERE newer_observation.provider = link.provider
+          AND newer_observation.source_id = link.source_id
+          AND newer_observation.data_type = 'fixtures_and_results'
+          AND newer_observation.entity_type = 'fixture'
+          AND newer_observation.provider_entity_id = link.provider_fixture_id
+          AND (
+              COALESCE(
+                  newer_sighting.system_observed_at,
+                  newer_sighting.retrieved_at,
+                  newer_observation.retrieved_at
+              ),
+              COALESCE(newer_sighting.id, 0),
+              newer_observation.id
+          ) > (
+              NEW.observed_at,
+              NEW.source_sighting_id,
+              NEW.source_observation_id
+          )
+    ) THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_EVENT_NOT_LATEST_SOURCE_OBSERVATION';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
         FROM veltrix_ai_analyst.canonical_fixture_state_events existing
         WHERE existing.canonical_fixture_id = NEW.canonical_fixture_id
           AND existing.observed_at >= NEW.observed_at
@@ -339,6 +373,9 @@ SELECT
         WHEN state.id IS NOT NULL
          AND state.fixture_source_link_id = link.id
          AND state.provider_fixture_row_id = fixture.id
+         AND state.source_observation_id = latest_source.observation_id
+         AND state.source_sighting_id = latest_source.sighting_id
+         AND state.provider_response_id = latest_source.provider_response_id
          AND state.kickoff_at = fixture.kickoff_at
          AND state.status = fixture.status
          AND state.home_goals IS NOT DISTINCT FROM fixture.home_goals
@@ -359,4 +396,30 @@ JOIN veltrix_ai_analyst.canonical_fixtures canonical
 LEFT JOIN veltrix_ai_analyst.effective_canonical_fixture_sources effective_link
   ON effective_link.id = link.id
 LEFT JOIN veltrix_ai_analyst.latest_canonical_fixture_states state
-  ON state.canonical_fixture_id = canonical.id;
+  ON state.canonical_fixture_id = canonical.id
+LEFT JOIN LATERAL (
+    SELECT
+        observation.id AS observation_id,
+        sighting.id AS sighting_id,
+        sighting.provider_response_id
+    FROM veltrix_ai_analyst.source_observations observation
+    LEFT JOIN LATERAL (
+        SELECT candidate.*
+        FROM veltrix_ai_analyst.source_observation_sightings candidate
+        WHERE candidate.source_observation_id = observation.id
+        ORDER BY
+            COALESCE(candidate.system_observed_at, candidate.retrieved_at) DESC,
+            candidate.id DESC
+        LIMIT 1
+    ) sighting ON TRUE
+    WHERE observation.provider = fixture.provider
+      AND observation.source_id = fixture.source_id
+      AND observation.data_type = 'fixtures_and_results'
+      AND observation.entity_type = 'fixture'
+      AND observation.provider_entity_id = fixture.provider_fixture_id
+    ORDER BY
+        COALESCE(sighting.system_observed_at, sighting.retrieved_at, observation.retrieved_at) DESC,
+        sighting.id DESC NULLS LAST,
+        observation.id DESC
+    LIMIT 1
+) latest_source ON TRUE;
