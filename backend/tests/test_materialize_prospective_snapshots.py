@@ -6,6 +6,7 @@ import pytest
 
 from scripts.materialize_prospective_snapshots import (
     canonical_json,
+    resolve_existing_snapshot,
     snapshot_conflict_context,
     snapshot_digest,
     validate_report,
@@ -205,3 +206,27 @@ def test_snapshot_conflict_context_reports_matching_payloads():
     )
     assert context["feature_payloads_differ"] is False
     assert context["feature_lineage_payloads_differ"] is False
+
+
+def test_same_key_and_same_digest_is_an_idempotent_replay():
+    row = valid_report()["rows"][0]
+    snapshot_id = resolve_existing_snapshot(
+        row,
+        (123, snapshot_digest(row), row["features"], row["feature_lineage"]),
+    )
+    assert snapshot_id == 123
+
+
+def test_same_key_and_different_digest_fails_closed_without_mutating_existing_payload():
+    row = valid_report()["rows"][0]
+    existing_features = {"home_matches_last5": 4.0}
+    existing_lineage = [{"source_observation_id": 10}]
+    original_features = dict(existing_features)
+    original_lineage = list(existing_lineage)
+    with pytest.raises(RuntimeError, match="IMMUTABLE_SNAPSHOT_IDEMPOTENCY_CONFLICT"):
+        resolve_existing_snapshot(
+            row,
+            (123, "f" * 64, existing_features, existing_lineage),
+        )
+    assert existing_features == original_features
+    assert existing_lineage == original_lineage
