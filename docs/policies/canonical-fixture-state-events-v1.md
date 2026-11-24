@@ -20,7 +20,7 @@ A state event is accepted only when:
 3. The latest source observation for the provider fixture matches the provider fixture projection exactly, including kickoff, competition, teams, status, score and provider record ID.
 4. The sighting is SYSTEM_OBSERVED_AT, point-in-time certifiable, has available_at equal to system_observed_at, has no source-published timestamp, and is not observed before retrieval.
 5. The provider response is successful and its fetched/system-observed timestamps and response hash match the sighting.
-6. The source approval is effective and APPROVED at the observation timestamp, is scoped to the exact competition, and permits FEATURE_ENGINEERING, MODEL_TRAINING and MODEL_VALIDATION.
+6. The source approval is effective and APPROVED at the observation timestamp, is scoped to the exact competition, and permits STORAGE, INTERNAL_ANALYSIS, FEATURE_ENGINEERING, MODEL_TRAINING and MODEL_VALIDATION.
 7. The event is strictly newer than the prior state event for that canonical fixture.
 
 The database trigger validates these conditions and appends the event. A second trigger updates only the canonical fixture's current status and score projection from the event. The event itself cannot be updated or deleted.
