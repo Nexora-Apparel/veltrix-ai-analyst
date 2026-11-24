@@ -151,6 +151,7 @@ def test_canonical_fixture_state_migration_is_append_only_and_pit_gated() -> Non
     assert "MODEL_VALIDATION" in migration
     assert "SOURCE_FIXTURE_LINK_REVIEWED" in migration
     assert "CANONICAL_FIXTURE_STATE_EVENT_NOT_MONOTONIC" in migration
+    assert "CANONICAL_FIXTURE_STATE_EVENT_NOT_LATEST_SOURCE_OBSERVATION" in migration
     assert "latest_canonical_fixture_states" in migration
     assert "canonical_fixture_state_provenance_audit" in migration
 
