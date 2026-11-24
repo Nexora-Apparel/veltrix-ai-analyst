@@ -153,6 +153,8 @@ def test_canonical_fixture_state_migration_is_append_only_and_pit_gated() -> Non
     assert "CANONICAL_FIXTURE_STATE_EVENT_NOT_MONOTONIC" in migration
     assert "CANONICAL_FIXTURE_STATE_EVENT_NOT_LATEST_SOURCE_OBSERVATION" in migration
     assert "latest_canonical_fixture_states" in migration
+    assert "(home_goals IS NOT NULL AND away_goals IS NOT NULL)" in migration
+    assert "payload_home_goals IS DISTINCT FROM NEW.home_goals" in migration
     assert "canonical_fixture_state_provenance_audit" in migration
 
 
