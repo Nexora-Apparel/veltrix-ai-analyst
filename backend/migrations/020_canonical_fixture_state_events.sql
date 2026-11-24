@@ -200,6 +200,8 @@ BEGIN
     END IF;
     IF approval.provider <> link.provider
        OR approval.source_id <> link.source_id
+       OR approval.scope_type <> 'competition_id'
+       OR NOT (approval.scope_values @> jsonb_build_array(link.provider_competition_id))
        OR approval.valid_from > NEW.observed_at
        OR (approval.valid_until IS NOT NULL AND approval.valid_until <= NEW.observed_at)
        OR NOT (
