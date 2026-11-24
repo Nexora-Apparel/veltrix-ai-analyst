@@ -141,11 +141,11 @@ BEGIN
     END IF;
 
     IF lower(COALESCE(observation.payload->>'status', '')) <> lower(NEW.status)
-       OR NULLIF(observation.payload->>'kickoff_at', '')::timestamptz <> NEW.kickoff_at
-       OR observation.payload->>'competition_id' <> link.provider_competition_id
-       OR observation.payload->>'home_team_id' <> link.home_team_provider_id
-       OR observation.payload->>'away_team_id' <> link.away_team_provider_id
-       OR observation.payload #>> '{provenance,provider_record_id}' <> link.provider_fixture_id
+       OR NULLIF(observation.payload->>'kickoff_at', '')::timestamptz IS DISTINCT FROM NEW.kickoff_at
+       OR observation.payload->>'competition_id' IS DISTINCT FROM link.provider_competition_id
+       OR observation.payload->>'home_team_id' IS DISTINCT FROM link.home_team_provider_id
+       OR observation.payload->>'away_team_id' IS DISTINCT FROM link.away_team_provider_id
+       OR observation.payload #>> '{provenance,provider_record_id}' IS DISTINCT FROM link.provider_fixture_id
        OR CASE
             WHEN jsonb_typeof(observation.payload->'home_goals') = 'number'
                 THEN (observation.payload->>'home_goals')::integer
@@ -208,12 +208,16 @@ BEGIN
     END IF;
     IF approval.provider <> link.provider
        OR approval.source_id <> link.source_id
-       OR approval.scope_type <> 'competition_id'
-       OR NOT (approval.scope_values @> jsonb_build_array(link.provider_competition_id))
+       OR approval.scope_type IS DISTINCT FROM 'competition_id'
+       OR NOT COALESCE(
+           approval.scope_values @> jsonb_build_array(link.provider_competition_id),
+           FALSE
+       )
        OR approval.valid_from > NEW.observed_at
        OR (approval.valid_until IS NOT NULL AND approval.valid_until <= NEW.observed_at)
-       OR NOT (
-           approval.permitted_uses @> '["STORAGE", "INTERNAL_ANALYSIS", "FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb
+       OR NOT COALESCE(
+           approval.permitted_uses @> '["STORAGE", "INTERNAL_ANALYSIS", "FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb,
+           FALSE
        ) THEN
         RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_SOURCE_RIGHTS_INVALID';
     END IF;
@@ -231,7 +235,7 @@ BEGIN
     )
     INTO effective_approval_status;
 
-    IF effective_approval_status <> 'APPROVED' THEN
+    IF effective_approval_status IS DISTINCT FROM 'APPROVED' THEN
         RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_SOURCE_APPROVAL_NOT_ACTIVE';
     END IF;
 
