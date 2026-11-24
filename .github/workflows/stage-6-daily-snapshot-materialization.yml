@@ -17,8 +17,11 @@ concurrency:
 jobs:
   materialize:
     if: >-
-      github.ref == 'refs/heads/main' && (
-        github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        github.ref == 'refs/heads/main'
+      ) || (
+        github.event.workflow_run.head_branch == 'main' &&
         github.event.workflow_run.conclusion == 'success'
       )
     environment: veltrix-historical-import
