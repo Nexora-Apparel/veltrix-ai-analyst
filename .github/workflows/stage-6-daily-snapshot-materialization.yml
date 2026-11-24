@@ -1,10 +1,7 @@
 name: Stage 6 daily immutable snapshot and outcome materialization
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/stage-6-daily-snapshot-materialization.yml'
+  workflow_dispatch:
   workflow_run:
     workflows: ["VELTRIX prospective 5Dollar evidence capture"]
     types: [completed]
@@ -20,11 +17,16 @@ concurrency:
 jobs:
   materialize:
     if: >-
-      github.event_name == 'push' ||
-      github.event.workflow_run.conclusion == 'success'
+      (
+        github.event_name == 'workflow_dispatch' &&
+        github.ref == 'refs/heads/main'
+      ) || (
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.conclusion == 'success'
+      )
     environment: veltrix-historical-import
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     env:
       DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
       VELTRIX_AI_ANALYST_DATABASE_URL: ${{ secrets.VELTRIX_AI_ANALYST_DATABASE_URL }}
@@ -42,6 +44,15 @@ jobs:
 
       - name: Install backend
         run: python -m pip install -e .
+
+      - name: Materialize and adjudicate exact source-local fixture links
+        env:
+          VELTRIX_DAILY_CANONICALIZATION_CONFIRMATION: RUN_DAILY_EXACT_SOURCE_FIXTURE_LINK_ADJUDICATION_V1
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python scripts/materialize_and_adjudicate_daily_fixtures.py \
+            | tee artifacts/canonical-fixture-linkage.json
 
       - name: Build canonical identity and strict PIT dataset (read only)
         run: |
@@ -197,7 +208,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: veltrix-stage6-daily-materialization-audit
-          path: backend/artifacts/prospective-dataset.json
+          path: |
+            backend/artifacts/prospective-dataset.json
+            backend/artifacts/canonical-fixture-linkage.json
           if-no-files-found: error
           retention-days: 90
 

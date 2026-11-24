@@ -72,3 +72,67 @@ PR #169 merged successfully as commit `81ff45e2b7e3658d458abb5ee20aa407e85000cb`
 3. Confirm fresh prospective snapshots are actually persisted for upcoming fixtures before Stage 7 starts; preserve the six-hour freshness and PIT gates.
 4. Re-run only after the upstream eligibility defect is fixed and tests cover current upcoming fixtures, stale kickoff exclusion, and fresh snapshot selection.
 5. Then verify non-zero research forecasts in Stage 7, the research API response, and the existing Android feed/parser/display path. Production publication and certification remain separate locked workstreams.
+
+## Canonical fixture-linkage root cause and guarded repair proposal (24 November 2026)
+
+### Live database evidence (read-only inspection)
+
+- The production Neon project is veltrix-ai-analyst-db; inspection used its default main branch and the veltrix_ai_analyst database.
+- Across the six active prospective capture competitions, the database contains **47 upcoming scheduled fixtures**.
+- All 47 have a valid SYSTEM_OBSERVED_AT point-in-time source observation and successful response provenance; response hash length, fetched/retrieved timestamp equality, system-observed timestamp equality, and required feature/model-use approval coverage each passed for all 47.
+- All 47 have effective reviewed home-team, away-team, and competition identity mappings.
+- All 47 lack a row in canonical_fixture_sources; therefore none can pass the Stage 6 builder's reviewed canonical fixture source join.
+- A read-only collision check found zero duplicate pairs among the 47 when grouped by canonical competition, ordered canonical home/away teams, and kickoff within 120 seconds.
+- This is not limited to the five records newly inserted by capture runs 51–56. Those five are included in the 47; the other upcoming fixtures were already in the provider fixture store but also lacked canonical fixture source links.
+- Stage 6 currently builds its dataset read-only and does not run canonical source fixture materialization. The existing approved-scope materialization workflow is a separate manual operation. The previous Stage 6 dataset consequently selected nine old fixtures with past kickoffs and no usable feature history; Stage 7 correctly rejected them as stale.
+
+### Root cause
+
+The daily capture path stores provider fixture rows and point-in-time observations, but it does not incrementally create and adjudicate the corresponding canonical fixture/source-link rows. The dataset builder intentionally requires an exact, provenance-verified, reviewed canonical source link plus reviewed team/competition mappings. The missing fixture links—not the Android parser—are the immediate blocker.
+
+### Guarded code change under review
+
+Branch: fix/daily-canonical-fixture-linkage
+
+- Adds a versioned deterministic source-local fixture-link adjudication policy. It requires exact provider fixture ID, matching observation/sighting/response/payload/rights provenance, effective source approval at observation time, required feature/model-use rights, exact copied fixture facts, reviewed canonical team and competition mappings, one source per canonical fixture, and a 120-second canonical-team duplicate check.
+- Appends an evidence-hashed SOURCE_FIXTURE_LINK_REVIEWED event only when all checks pass. Duplicate candidates receive CONFLICT; unresolved evidence stays pending and blocks Stage 6 when it affects an upcoming scheduled fixture.
+- No cross-provider merge, source-row update/delete, PIT timestamp fabrication, provider request, Odds API request, model promotion, production publication, or Value Bet unlock is part of this change.
+- The Stage 6 workflow is changed to run guarded materialization/adjudication before dataset construction, and gains workflow_dispatch for same-day recovery without another provider capture.
+- The entire six-scope operation is preflighted and executed in one serializable transaction. It verifies that upcoming fixtures are either eligible or explicitly conflicted before allowing Stage 6 to proceed.
+- This policy certifies only the source-local link; the prospective dataset builder still independently enforces PIT cutoff, rights and feature-lineage rules.
+
+### Verification status and next actions
+
+- Database investigation was read-only. No production database rows have been changed by this repair work.
+- New unit tests cover collision detection, evidence-hash stability, and fail-closed adjudication decisions. Exact-head CI has not yet been run; do not merge until it passes and the workflow/script are reviewed.
+- After merge, manually dispatch Stage 6 once to materialize the currently stored fixtures without consuming another 5Dollar API request. Then verify the Stage 6 dataset has fresh upcoming rows and Stage 7 generates non-zero research forecasts before checking the research API and Android feed.
+- If preflight, source rights, mapping review, provenance or collision checks fail, the transaction must roll back and Stage 6 must remain blocked. Do not weaken the gates.
+
+
+### Canonical fixture state drift discovered and addressed in the same repair branch
+
+- A read-only audit found **50 existing canonical fixture rows** whose current status or score no longer matched the mutable provider-fixture projection. All 50 were exact provider-fixture links, effectively reviewed, canonical identity VERIFIED, and single-source. This would make the existing all-scope materializer reject the run as existing fixture mapping drift.
+- The immutable source observation referenced by each source identity link is the original schedule observation. Separate later source observations exist for the current live/finished state. The provider-fixture projection had advanced, but the canonical fixture current-state projection had not.
+- A second read-only audit found that **all 50/50** have a latest valid PIT observation whose status, score, kickoff, competition, teams and provider record ID exactly match the current provider-fixture projection. All 50 also pass successful-response timestamps/hash, effective approval, full STORAGE/INTERNAL_ANALYSIS/FEATURE_ENGINEERING/MODEL_TRAINING/MODEL_VALIDATION rights, exact competition approval scope, single-source and reviewed-link checks.
+- The repair now separates source identity from mutable fixture state. Migration 020 adds append-only canonical fixture state events, strict database provenance/PIT/rights triggers, a current-state projection trigger, and a state provenance audit view. State events reference the latest valid source observation/sighting/response and update only the canonical fixture's current status and score projection; source observations and the original source identity link remain unchanged.
+- The Stage 6 dataset builder now requires STATE_PROVENANCE_VERIFIED in addition to the existing canonical source-link and PIT feature-lineage gates. The daily materializer syncs existing state before canonical materialization, then syncs newly linked fixtures after adjudication.
+- The migration workflow applies migration 020 and synchronizes existing reviewed fixture states before running its canonical provenance verification. This is required so the existing 50 stale projections are reconciled from valid source observations rather than silently overwritten.
+- The state sync runner is serializable, exact-database guarded, competition-scoped and provider-request-free. The Stage 6 workflow can be manually dispatched on main for recovery; automatic capture completion still triggers it. A merge alone does not trigger Stage 6 canonicalization.
+- No production database rows have been changed by this branch. The state-event migration and workflow changes are still under PR review; exact-head CI and the migration workflow must pass before Stage 6 is manually dispatched.
+
+
+### PR #170 CI correction and next verification
+
+- Exact-head CI initially exposed a PostgreSQL migration parse failure in the PL/pgSQL payload score comparison. The score extraction was simplified into typed local variables before comparison, and the follow-up CI run was queued against head `758c15bcb424a8fe398a0656776a6a6341f06976`.
+- Migration 020's state-event table constraint was also corrected to allow a live match to carry a score while still requiring home/away score values to be both present or both absent.
+- The source-link audit confirms 963 existing links across the six prospective competitions have matching original observation, first sighting, provider response, rights approval and payload hash. All six competition groups have zero team/competition materializer drift.
+- The migration and state sync remain unmerged. The live Neon branch checks were read-only; no production DB changes have been made by PR #170.
+- Next gate: exact-head CI must pass both backend tests/lint and Android debug build. Then review PR diff and mergeability. After merge, the main-branch migration workflow applies migration 020 and runs the guarded state sync. Only after that succeeds should Stage 6 be manually dispatched on main to materialize the 47 already-captured upcoming fixtures; no additional provider capture is required for that recovery attempt.
+
+
+### PR #170 exact-head CI lint correction (24 November 2026)
+
+- Exact-head CI run `45345323202` on head `f77f542352da4cfb007d50960352907b5af1ae9e` completed: Android debug build passed; backend test suite passed (565 tests); backend lint failed on two auto-fixable import rules only.
+- Ruff findings: move `Sequence` from `typing` to `collections.abc` in `backend/app/canonical_fixture_states.py`; sort `typing.Any` before `urllib.parse.urlsplit` in `backend/scripts/materialize_and_adjudicate_daily_fixtures.py`.
+- No test, migration, runtime, database or Android failure was reported in this run. These are formatting/import-order corrections; no functional behavior is changed.
+- Next gate: rerun exact-head CI after the two corrections. Do not merge or apply migration 020 until all required checks pass.
