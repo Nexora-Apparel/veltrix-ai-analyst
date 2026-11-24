@@ -24,6 +24,7 @@ from app.canonical_fixture_adjudication import (
     exact_fixture_link_decision,
     find_fixture_link_collisions,
 )
+from app.canonical_fixture_states import sync_canonical_fixture_states
 from app.canonicalization import (
     BRAZIL_SERIE_B_RUN_3,
     CanonicalMaterializationScope,
@@ -409,6 +410,11 @@ def run(connection: psycopg.Connection[Any]) -> dict[str, Any]:
     if len(scopes) != len(PROSPECTIVE_CAPTURE_COMPETITIONS):
         raise RuntimeError("APPROVED_PROSPECTIVE_SCOPE_COUNT_MISMATCH")
 
+    competition_ids = [scope.competition_id for scope in scopes]
+    pre_materialization_state_sync = sync_canonical_fixture_states(
+        connection, competition_ids
+    )
+
     plans = [
         (scope, build_canonical_materialization_plan(connection, scope))
         for scope in scopes
@@ -451,7 +457,9 @@ def run(connection: psycopg.Connection[Any]) -> dict[str, Any]:
             }
         )
 
-    competition_ids = [scope.competition_id for scope in scopes]
+    post_materialization_state_sync = sync_canonical_fixture_states(
+        connection, competition_ids
+    )
     with connection.cursor(row_factory=dict_row) as cursor:
         cursor.execute(
             """
@@ -461,6 +469,7 @@ def run(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                     WHERE link.id IS NOT NULL
                       AND effective_link.effective_mapping_status = 'SOURCE_FIXTURE_LINK_REVIEWED'
                       AND canonical_fixture.identity_status = 'VERIFIED'
+                      AND state_audit.state_provenance_status = 'STATE_PROVENANCE_VERIFIED'
                 ) AS eligible_upcoming,
                 COUNT(*) FILTER (
                     WHERE link.id IS NOT NULL
@@ -468,11 +477,20 @@ def run(connection: psycopg.Connection[Any]) -> dict[str, Any]:
                       AND canonical_fixture.identity_status = 'CONFLICT'
                 ) AS conflicted_upcoming,
                 COUNT(*) FILTER (
-                    WHERE link.id IS NULL
-                       OR effective_link.effective_mapping_status NOT IN (
-                           'SOURCE_FIXTURE_LINK_REVIEWED', 'CONFLICT'
-                       )
-                       OR canonical_fixture.identity_status NOT IN ('VERIFIED', 'CONFLICT')
+                    WHERE NOT (
+                        (
+                            link.id IS NOT NULL
+                            AND effective_link.effective_mapping_status = 'SOURCE_FIXTURE_LINK_REVIEWED'
+                            AND canonical_fixture.identity_status = 'VERIFIED'
+                            AND state_audit.state_provenance_status = 'STATE_PROVENANCE_VERIFIED'
+                        )
+                        OR
+                        (
+                            link.id IS NOT NULL
+                            AND effective_link.effective_mapping_status = 'CONFLICT'
+                            AND canonical_fixture.identity_status = 'CONFLICT'
+                        )
+                    )
                 ) AS unresolved_upcoming
             FROM veltrix_ai_analyst.provider_fixtures provider_fixture
             LEFT JOIN veltrix_ai_analyst.canonical_fixture_sources link
@@ -481,6 +499,8 @@ def run(connection: psycopg.Connection[Any]) -> dict[str, Any]:
               ON effective_link.id = link.id
             LEFT JOIN veltrix_ai_analyst.canonical_fixtures canonical_fixture
               ON canonical_fixture.id = link.canonical_fixture_id
+            LEFT JOIN veltrix_ai_analyst.canonical_fixture_state_provenance_audit state_audit
+              ON state_audit.fixture_source_link_id = link.id
             WHERE provider_fixture.provider = %s
               AND provider_fixture.source_id = %s
               AND provider_fixture.provider_competition_id = ANY(%s)
@@ -505,8 +525,10 @@ def run(connection: psycopg.Connection[Any]) -> dict[str, Any]:
         "policy_version": POLICY_VERSION,
         "reviewer_id": REVIEWER_ID,
         "provider_requests_made": 0,
+        "pre_materialization_state_sync": pre_materialization_state_sync,
         "materialized_scopes": materialized,
         "adjudication_scopes": adjudication,
+        "post_materialization_state_sync": post_materialization_state_sync,
         "upcoming_fixture_coverage": {
             "total": int(coverage["total_upcoming"]),
             "eligible": int(coverage["eligible_upcoming"]),
