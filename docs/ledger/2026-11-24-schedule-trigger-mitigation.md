@@ -26,3 +26,12 @@ PR #169 changes the cron to `17 0 * * *` (00:17 UTC / 01:17 WAT) and updates the
 - PR #169 must pass CI and be reviewed/merged before the new cron becomes active on `main`.
 - After merge, verify the next natural scheduled capture, fresh import IDs/observations, its exact Stage 6 child, and Stage 7 inference outcome. A green workflow conclusion alone is not evidence that forecasts were produced.
 - Keep production publication, promotion, and Value Bet locked until independent certification criteria are met.
+
+## User-confirmed delivery-window correction (24 November 2026)
+
+- The required user-facing prediction availability window is **07:00–09:00 WAT**, not 07:00–10:00 WAT.
+- The capture workflow's previous summary text incorrectly stated 07:00–10:00 WAT. PR #169 now changes that line to 07:00–09:00 WAT while retaining the proposed 00:17 UTC / 01:17 WAT capture cron.
+- This is a target window, not yet a proven delivery SLA. Stage 6 and Stage 7 are chained automatically after successful capture, but Stage 7 currently selects only snapshots no older than six hours and can correctly emit zero forecasts when data is stale or ineligible.
+- No dedicated 07:00–09:00 publication/notification job was verified in the inspected workflow files. Android refreshes its API feed while the app is in foreground; this does not by itself prove forecasts will exist by 07:00.
+- Required follow-up: validate natural capture timing and actual Stage 7 forecast counts, then add/verify a bounded pre-window readiness check and user-facing publication path without bypassing PIT, freshness, or certification gates.
+- CI on the previous PR head `770ba1ec35f483b23b53ce882b6b56f9b16119fe` had passed, but the timing correction creates a new head and must receive its own CI result before merge.
