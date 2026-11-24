@@ -298,11 +298,14 @@ def _adjudicate_scope(
             continue
 
         collision_ids = collisions.get(int(row["link_id"]), ())
+        mappings_reviewed = _identity_mappings_are_reviewed(row)
         decision = (
             "CONFLICT"
-            if collision_ids or row["identity_status"] == "CONFLICT"
+            if row["identity_status"] == "CONFLICT"
+            else "CONFLICT"
+            if collision_ids and mappings_reviewed
             else "SOURCE_FIXTURE_LINK_REVIEWED"
-            if _identity_mappings_are_reviewed(row)
+            if mappings_reviewed
             else None
         )
         if decision is None:
