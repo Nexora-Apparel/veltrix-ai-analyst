@@ -128,3 +128,11 @@ Branch: fix/daily-canonical-fixture-linkage
 - The source-link audit confirms 963 existing links across the six prospective competitions have matching original observation, first sighting, provider response, rights approval and payload hash. All six competition groups have zero team/competition materializer drift.
 - The migration and state sync remain unmerged. The live Neon branch checks were read-only; no production DB changes have been made by PR #170.
 - Next gate: exact-head CI must pass both backend tests/lint and Android debug build. Then review PR diff and mergeability. After merge, the main-branch migration workflow applies migration 020 and runs the guarded state sync. Only after that succeeds should Stage 6 be manually dispatched on main to materialize the 47 already-captured upcoming fixtures; no additional provider capture is required for that recovery attempt.
+
+
+### PR #170 exact-head CI lint correction (24 November 2026)
+
+- Exact-head CI run `45345323202` on head `f77f542352da4cfb007d50960352907b5af1ae9e` completed: Android debug build passed; backend test suite passed (565 tests); backend lint failed on two auto-fixable import rules only.
+- Ruff findings: move `Sequence` from `typing` to `collections.abc` in `backend/app/canonical_fixture_states.py`; sort `typing.Any` before `urllib.parse.urlsplit` in `backend/scripts/materialize_and_adjudicate_daily_fixtures.py`.
+- No test, migration, runtime, database or Android failure was reported in this run. These are formatting/import-order corrections; no functional behavior is changed.
+- Next gate: rerun exact-head CI after the two corrections. Do not merge or apply migration 020 until all required checks pass.
