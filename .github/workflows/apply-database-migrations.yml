@@ -62,6 +62,101 @@ jobs:
           if "006_pre_match_feature_pit_gate.sql" not in applied:
               print("Migration 006 was already applied with a matching checksum.")
           PY
+      - name: Sync canonical fixture state from latest valid PIT observations
+        env:
+          CANONICAL_FIXTURE_STATE_SYNC_CONFIRMATION: SYNC_PIT_BACKED_CANONICAL_FIXTURE_STATES_V1
+        run: python scripts/sync_canonical_fixture_states.py
+
+      - name: Verify canonical fixture state-event migration 020
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import psycopg
+
+          migration = Path("migrations/020_canonical_fixture_state_events.sql")
+          checksum = hashlib.sha256(migration.read_bytes()).hexdigest()
+          with psycopg.connect(os.environ["DATABASE_URL"]) as connection:
+              if connection.info.dbname != "veltrix_ai_analyst":
+                  raise SystemExit("DATABASE_TARGET_NAME_MISMATCH")
+              recorded = connection.execute(
+                  "SELECT checksum FROM public.schema_migrations WHERE version = %s",
+                  (migration.name,),
+              ).fetchone()
+              if recorded is None or recorded[0].strip() != checksum:
+                  raise SystemExit("MIGRATION_020_CHECKSUM_NOT_APPLIED")
+
+              required_relations = {
+                  "canonical_fixture_state_events",
+                  "latest_canonical_fixture_states",
+                  "canonical_fixture_state_provenance_audit",
+              }
+              relations = {
+                  row[0] for row in connection.execute(
+                      """
+                      SELECT c.relname
+                      FROM pg_class c
+                      JOIN pg_namespace n ON n.oid=c.relnamespace
+                      WHERE n.nspname='veltrix_ai_analyst'
+                      """
+                  ).fetchall()
+              }
+              if not required_relations.issubset(relations):
+                  raise SystemExit("MIGRATION_020_REQUIRED_RELATIONS_MISSING")
+
+              required_functions = {
+                  "enforce_canonical_fixture_state_event()",
+                  "apply_canonical_fixture_state_event()",
+              }
+              for function in required_functions:
+                  if connection.execute(
+                      "SELECT to_regprocedure(%s)",
+                      (f"veltrix_ai_analyst.{function}",),
+                  ).fetchone()[0] is None:
+                      raise SystemExit(f"MIGRATION_020_FUNCTION_MISSING:{function}")
+
+              expected_triggers = {
+                  "canonical_fixture_state_event_provenance_guard",
+                  "canonical_fixture_state_projection",
+                  "canonical_fixture_state_events_append_only",
+              }
+              triggers = {
+                  row[0] for row in connection.execute(
+                      """
+                      SELECT t.tgname
+                      FROM pg_trigger t
+                      JOIN pg_class c ON c.oid=t.tgrelid
+                      JOIN pg_namespace n ON n.oid=c.relnamespace
+                      WHERE n.nspname='veltrix_ai_analyst'
+                        AND c.relname='canonical_fixture_state_events'
+                        AND NOT t.tgisinternal
+                        AND t.tgenabled IN ('O','A')
+                      """
+                  ).fetchall()
+              }
+              if triggers != expected_triggers:
+                  raise SystemExit(f"MIGRATION_020_TRIGGER_SET_MISMATCH:{sorted(triggers)}")
+
+              event_count = connection.execute(
+                  "SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_fixture_state_events"
+              ).fetchone()[0]
+              verified_count = connection.execute(
+                  """
+                  SELECT COUNT(*)
+                  FROM veltrix_ai_analyst.canonical_fixture_state_provenance_audit
+                  WHERE state_provenance_status='STATE_PROVENANCE_VERIFIED'
+                  """
+              ).fetchone()[0]
+              if event_count < 1 or verified_count < 1:
+                  raise SystemExit(
+                      f"MIGRATION_020_STATE_EVIDENCE_MISSING:{event_count}:{verified_count}"
+                  )
+
+          print(f"MIGRATION_020_VERIFIED: {checksum}")
+          print("CANONICAL_FIXTURE_STATE_EVENTS: append-only, PIT and rights gated")
+          PY
+
       - name: Verify migration 006-010 checksum ledgers and database objects
         run: |
           python - <<'PY'
