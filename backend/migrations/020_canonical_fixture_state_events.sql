@@ -85,6 +85,14 @@ BEGIN
         RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_SOURCE_LINK_MISMATCH';
     END IF;
 
+    IF (
+        SELECT COUNT(*)
+        FROM veltrix_ai_analyst.canonical_fixture_sources source_link
+        WHERE source_link.canonical_fixture_id = NEW.canonical_fixture_id
+    ) <> 1 THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_CROSS_SOURCE_LINK_NOT_ALLOWED';
+    END IF;
+
     IF NOT EXISTS (
         SELECT 1
         FROM veltrix_ai_analyst.effective_canonical_fixture_sources effective_link
