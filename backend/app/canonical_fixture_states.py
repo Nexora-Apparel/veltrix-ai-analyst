@@ -64,6 +64,8 @@ def sync_canonical_fixture_states(
                 response.rights_approval_id AS response_approval_id,
                 approval.provider AS approval_provider,
                 approval.source_id AS approval_source_id,
+                approval.scope_type AS approval_scope_type,
+                approval.scope_values AS approval_scope_values,
                 approval.valid_from,
                 approval.valid_until,
                 approval.permitted_uses,
@@ -185,6 +187,8 @@ def sync_canonical_fixture_states(
           AND length(latest.response_sha256) = 64
           AND latest.approval_provider = %s
           AND latest.approval_source_id = %s
+          AND latest.approval_scope_type = 'competition_id'
+          AND latest.approval_scope_values @> jsonb_build_array(latest.provider_competition_id)
           AND latest.effective_approval_status = 'APPROVED'
           AND latest.valid_from <= latest.observed_at
           AND (latest.valid_until IS NULL OR latest.valid_until > latest.observed_at)
