@@ -6,6 +6,7 @@ import pytest
 
 from scripts.materialize_prospective_snapshots import (
     canonical_json,
+    snapshot_conflict_context,
     snapshot_digest,
     validate_report,
 )
@@ -167,3 +168,40 @@ def test_snapshot_digest_preserves_existing_null_label_hash():
     }
     expected = hashlib.sha256(canonical_json(legacy_row).encode("utf-8")).hexdigest()
     assert snapshot_digest(row) == expected
+
+
+def test_snapshot_conflict_context_identifies_key_and_payload_differences():
+    row = valid_report()["rows"][0]
+    existing_features = {"home_matches_last5": 4.0}
+    existing_lineage = [{"source_observation_id": 10}]
+    context = snapshot_conflict_context(
+        row,
+        existing_id=99,
+        existing_digest="f" * 64,
+        existing_features=existing_features,
+        existing_lineage=existing_lineage,
+    )
+    assert context["canonical_fixture_id"] == row["canonical_fixture_id"]
+    assert context["provider_fixture_id"] == row["provider_fixture_id"]
+    assert context["prediction_cutoff_at"] == row["prediction_cutoff_at"]
+    assert context["feature_schema_version"] == "veltrix-pit-features-v1"
+    assert context["existing_snapshot_id"] == 99
+    assert context["existing_snapshot_sha256"] == "f" * 64
+    assert context["proposed_snapshot_sha256"] == snapshot_digest(row)
+    assert context["feature_payloads_differ"] is True
+    assert context["feature_lineage_payloads_differ"] is True
+    assert "features" not in context
+    assert "feature_lineage" not in context
+
+
+def test_snapshot_conflict_context_reports_matching_payloads():
+    row = valid_report()["rows"][0]
+    context = snapshot_conflict_context(
+        row,
+        existing_id=99,
+        existing_digest=snapshot_digest(row),
+        existing_features=row["features"],
+        existing_lineage=row["feature_lineage"],
+    )
+    assert context["feature_payloads_differ"] is False
+    assert context["feature_lineage_payloads_differ"] is False
