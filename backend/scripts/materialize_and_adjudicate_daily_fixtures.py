@@ -166,6 +166,8 @@ def _fixture_links_for_adjudication(
                 response.fetched_at AS response_fetched_at,
                 response.system_observed_at AS response_system_observed_at,
                 response.response_sha256,
+                approval.provider AS approval_provider,
+                approval.source_id AS approval_source_id,
                 approval.status AS approval_status,
                 approval.valid_from AS approval_valid_from,
                 approval.valid_until AS approval_valid_until,
@@ -252,6 +254,8 @@ def _provenance_is_valid(row: dict[str, Any]) -> bool:
         and len(str(row["response_sha256"] or "").strip()) == 64
         and row["http_status"] is not None
         and 200 <= int(row["http_status"]) <= 299
+        and row["approval_provider"] == EXPECTED_PROVIDER
+        and row["approval_source_id"] == EXPECTED_SOURCE_ID
         and row["effective_approval_status"] == "APPROVED"
         and row["approval_valid_from"] <= observed_at
         and (
@@ -322,6 +326,8 @@ def _adjudicate_scope(
             "response_sha256": str(row["response_sha256"]).strip(),
             "retrieved_at": row["retrieved_at"],
             "system_observed_at": row["system_observed_at"],
+            "approval_provider": row["approval_provider"],
+            "approval_source_id": row["approval_source_id"],
             "effective_approval_status": row["effective_approval_status"],
             "approval_valid_from": row["approval_valid_from"],
             "approval_valid_until": row["approval_valid_until"],
