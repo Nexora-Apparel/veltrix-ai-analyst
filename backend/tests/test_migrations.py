@@ -138,6 +138,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "017_append_only_prospective_snapshot_labels.sql",
             "018_prediction_settlement_ledger.sql",
             "019_research_shadow_forecast_ledger.sql",
+            "020_canonical_fixture_state_events.sql",
         }
     )
 
@@ -185,6 +186,7 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "017_append_only_prospective_snapshot_labels.sql",
             "018_prediction_settlement_ledger.sql",
             "019_research_shadow_forecast_ledger.sql",
+            "020_canonical_fixture_state_events.sql",
         }.issubset(migration_versions)
 
         timestamp_columns = {
@@ -265,6 +267,9 @@ def test_migrations_are_idempotent_and_provenance_constraints_hold() -> None:
             "prediction_settlement_events",
             "latest_prediction_settlements",
             "research_shadow_forecast_runs",
+            "canonical_fixture_state_events",
+            "latest_canonical_fixture_states",
+            "canonical_fixture_state_provenance_audit",
         }.issubset(tables)
 
         shadow_ledger_trigger = connection.execute(
