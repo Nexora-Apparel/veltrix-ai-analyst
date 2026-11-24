@@ -261,7 +261,6 @@ def _provenance_is_valid(row: dict[str, Any]) -> bool:
         )
         and REQUIRED_USES.issubset(permitted_uses)
         and int(row["canonical_source_count"]) == 1
-        and row["provider_fixture_id"] == str(row["provider_fixture_id"])
         and row["kickoff_at"] == row["canonical_kickoff_at"]
         and row["status"] == row["canonical_status"]
         and row["home_goals"] == row["canonical_home_goals"]
@@ -315,10 +314,19 @@ def _adjudicate_scope(
             "competition_id": scope.competition_id,
             "provider_fixture_row_id": int(row["provider_fixture_row_id"]),
             "provider_fixture_id": row["provider_fixture_id"],
+            "provider_home_team_id": row["home_team_provider_id"],
+            "provider_away_team_id": row["away_team_provider_id"],
             "source_observation_id": int(row["source_observation_id"]),
             "source_sighting_id": int(row["source_sighting_id"]),
             "provider_response_id": int(row["provider_response_id"]),
             "payload_sha256": str(row["payload_sha256"]).strip(),
+            "response_sha256": str(row["response_sha256"]).strip(),
+            "retrieved_at": row["retrieved_at"],
+            "system_observed_at": row["system_observed_at"],
+            "effective_approval_status": row["effective_approval_status"],
+            "approval_valid_from": row["approval_valid_from"],
+            "approval_valid_until": row["approval_valid_until"],
+            "permitted_uses": sorted(row["permitted_uses"] or ()),
             "rights_approval_id": row["rights_approval_id"],
             "canonical_fixture_id": str(row["canonical_fixture_id"]),
             "canonical_competition_id": str(row["canonical_competition_id"]),
