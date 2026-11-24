@@ -265,3 +265,17 @@ Branch: fix/daily-canonical-fixture-linkage
 - Stage 6 workflow file on main exposes `workflow_dispatch` and restricts manual execution to `refs/heads/main`. The available GitHub connector has no workflow-dispatch operation; no new Stage 6 run exists after PR #171 merge. User must start one Stage 6 run from Actions UI using branch `main` at current main commit.
 - Next: dispatch Stage 6 once; inspect its complete report and artifact. Require 47 upcoming fixtures to be either fully reviewed/verified or explicitly conflicted, zero unresolved, and verify persisted PIT snapshots before allowing Stage 7. Do not interpret preflight provenance completeness as successful materialization.
 - Production API publication, production promotion, certification and Value Bet remain locked.
+
+
+### PR #172 merged — exact Cuiabá EC source-local alias (24 November 2026)
+
+- Stage 6 manual run `45387946552`, job `138423716184`, ran on main commit `370225af4d76ebf8d004be752fb372c617c6124d` and failed in the canonical fixture materializer with `EXISTING_TEAM_MAPPING_DRIFT:4227927162`. Backend dependency installation succeeded; no later dataset/snapshot/persistence step ran.
+- PR #172: https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/172 — title: `Allow exact source-local Cuiabá EC label alias`.
+- Exact PR head `7aef7c35a90ce2b4f3b24bd557a40afe9fd3e410`; squash merge commit `2c69effa8b84f6978da3e96decddd6064b570a5f`.
+- Exact-head CI run `45391482453` completed successfully. Backend tests/lint job `138436050959` passed (including actionlint, compile, tests and Ruff); Android debug build job `138436050504` passed and uploaded the APK.
+- Diff reviewed: `backend/app/canonicalization.py` adds one exact alias pair scoped to provider `5DollarFootballAPI`, source `5dollarfootballapi`, and provider team ID `4227927162`, allowing only `Cuiaba` / `Cuiabá EC`. Existing diacritic-only comparison remains unchanged for all other labels. Tests reject other provider, source, team ID and altered label variants.
+- PR reported mergeable/clean; review submissions and inline review threads were empty. Merged using expected head SHA `7aef7c35a90ce2b4f3b24bd557a40afe9fd3e410`; GitHub confirmed merge success.
+- No database rows, provider APIs or Odds API were changed/requested by PR #172. The alias does not change identity mapping status or bypass rights/provenance checks.
+- The Stage 6 failure run occurred before this merge and remains a valid failure record; it was not rerun automatically by merging the code.
+- Next: inspect current main head and post-merge CI, then manually dispatch Stage 6 on main. Require all 47 upcoming fixtures to be verified or explicitly conflicted, zero unresolved, and confirm persisted fresh PIT snapshots. Only then inspect automatic Stage 7 inference, research API and Android test-app visibility.
+- Production publication, promotion, certification and Value Bet remain locked. No forecast availability is claimed.
