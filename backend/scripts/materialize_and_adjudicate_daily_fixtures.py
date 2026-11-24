@@ -338,6 +338,7 @@ def _adjudicate_scope(
             "permitted_uses": sorted(row["permitted_uses"] or ()),
             "rights_approval_id": row["rights_approval_id"],
             "canonical_fixture_id": str(row["canonical_fixture_id"]),
+            "materializer_identity_status": row["identity_status"],
             "canonical_competition_id": str(row["canonical_competition_id"]),
             "home_canonical_team_id": str(row["home_canonical_team_id"]),
             "away_canonical_team_id": str(row["away_canonical_team_id"]),
