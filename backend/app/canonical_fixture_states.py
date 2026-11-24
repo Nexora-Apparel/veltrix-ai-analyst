@@ -86,6 +86,7 @@ def sync_canonical_fixture_states(
             JOIN veltrix_ai_analyst.effective_canonical_fixture_sources effective_link
               ON effective_link.id = source_link.id
              AND effective_link.effective_mapping_status = 'SOURCE_FIXTURE_LINK_REVIEWED'
+             AND source_link.mapping_method = 'EXACT_PROVIDER_FIXTURE_ID'
             JOIN veltrix_ai_analyst.canonical_fixtures canonical
               ON canonical.id = source_link.canonical_fixture_id
              AND canonical.identity_status = 'VERIFIED'
