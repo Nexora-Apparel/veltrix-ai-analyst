@@ -119,3 +119,12 @@ Branch: fix/daily-canonical-fixture-linkage
 - The migration workflow applies migration 020 and synchronizes existing reviewed fixture states before running its canonical provenance verification. This is required so the existing 50 stale projections are reconciled from valid source observations rather than silently overwritten.
 - The state sync runner is serializable, exact-database guarded, competition-scoped and provider-request-free. The Stage 6 workflow can be manually dispatched on main for recovery; automatic capture completion still triggers it. A merge alone does not trigger Stage 6 canonicalization.
 - No production database rows have been changed by this branch. The state-event migration and workflow changes are still under PR review; exact-head CI and the migration workflow must pass before Stage 6 is manually dispatched.
+
+
+### PR #170 CI correction and next verification
+
+- Exact-head CI initially exposed a PostgreSQL migration parse failure in the PL/pgSQL payload score comparison. The score extraction was simplified into typed local variables before comparison, and the follow-up CI run was queued against head `758c15bcb424a8fe398a0656776a6a6341f06976`.
+- Migration 020's state-event table constraint was also corrected to allow a live match to carry a score while still requiring home/away score values to be both present or both absent.
+- The source-link audit confirms 963 existing links across the six prospective competitions have matching original observation, first sighting, provider response, rights approval and payload hash. All six competition groups have zero team/competition materializer drift.
+- The migration and state sync remain unmerged. The live Neon branch checks were read-only; no production DB changes have been made by PR #170.
+- Next gate: exact-head CI must pass both backend tests/lint and Android debug build. Then review PR diff and mergeability. After merge, the main-branch migration workflow applies migration 020 and runs the guarded state sync. Only after that succeeds should Stage 6 be manually dispatched on main to materialize the 47 already-captured upcoming fixtures; no additional provider capture is required for that recovery attempt.
