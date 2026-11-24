@@ -59,6 +59,33 @@ def snapshot_conflict_context(
     }
 
 
+def resolve_existing_snapshot(row: dict, existing: tuple | None) -> int:
+    """Accept an exact immutable replay or fail without mutating stored data."""
+    digest = snapshot_digest(row)
+    if existing is not None and existing[1].strip() == digest:
+        return existing[0]
+    if existing is None:
+        context = {
+            "canonical_fixture_id": row["canonical_fixture_id"],
+            "provider_fixture_id": row["provider_fixture_id"],
+            "prediction_cutoff_at": row["prediction_cutoff_at"],
+            "feature_schema_version": FEATURE_SCHEMA_VERSION,
+            "existing_row_missing_after_conflict": True,
+            "proposed_snapshot_sha256": digest,
+        }
+    else:
+        context = snapshot_conflict_context(
+            row,
+            existing_id=existing[0],
+            existing_digest=existing[1],
+            existing_features=existing[2],
+            existing_lineage=existing[3],
+        )
+    raise RuntimeError(
+        "IMMUTABLE_SNAPSHOT_IDEMPOTENCY_CONFLICT:" + canonical_json(context)
+    )
+
+
 def label_digest(row: dict) -> str:
     label_payload = {
         "label": row["label"],
@@ -279,29 +306,7 @@ def persist_report(database_url: str, report: dict) -> dict:
                         ),
                     )
                     existing = cursor.fetchone()
-                    if existing is None or existing[1].strip() != digest:
-                        if existing is None:
-                            context = {
-                                "canonical_fixture_id": row["canonical_fixture_id"],
-                                "provider_fixture_id": row["provider_fixture_id"],
-                                "prediction_cutoff_at": row["prediction_cutoff_at"],
-                                "feature_schema_version": FEATURE_SCHEMA_VERSION,
-                                "existing_row_missing_after_conflict": True,
-                                "proposed_snapshot_sha256": digest,
-                            }
-                        else:
-                            context = snapshot_conflict_context(
-                                row,
-                                existing_id=existing[0],
-                                existing_digest=existing[1],
-                                existing_features=existing[2],
-                                existing_lineage=existing[3],
-                            )
-                        raise RuntimeError(
-                            "IMMUTABLE_SNAPSHOT_IDEMPOTENCY_CONFLICT:"
-                            + canonical_json(context)
-                        )
-                    snapshot_id = existing[0]
+                    snapshot_id = resolve_existing_snapshot(row, existing)
                     unchanged += 1
 
                 if row.get("label") is None:
