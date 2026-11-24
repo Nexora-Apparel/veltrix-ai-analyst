@@ -44,7 +44,8 @@ def snapshot_conflict_context(
     """Describe an immutable-key collision without exposing feature payloads."""
     return {
         "canonical_fixture_id": row["canonical_fixture_id"],
-        "provider_fixture_id": row["provider_fixture_id"],
+        "provider_fixture_id": row.get("provider_fixture_id")
+        or row["fixture_id"].split(":", 1)[1],
         "prediction_cutoff_at": row["prediction_cutoff_at"],
         "feature_schema_version": FEATURE_SCHEMA_VERSION,
         "existing_snapshot_id": existing_id,
@@ -67,7 +68,8 @@ def resolve_existing_snapshot(row: dict, existing: tuple | None) -> int:
     if existing is None:
         context = {
             "canonical_fixture_id": row["canonical_fixture_id"],
-            "provider_fixture_id": row["provider_fixture_id"],
+            "provider_fixture_id": row.get("provider_fixture_id")
+            or row["fixture_id"].split(":", 1)[1],
             "prediction_cutoff_at": row["prediction_cutoff_at"],
             "feature_schema_version": FEATURE_SCHEMA_VERSION,
             "existing_row_missing_after_conflict": True,
