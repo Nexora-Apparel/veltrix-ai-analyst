@@ -205,7 +205,7 @@ BEGIN
        OR approval.valid_from > NEW.observed_at
        OR (approval.valid_until IS NOT NULL AND approval.valid_until <= NEW.observed_at)
        OR NOT (
-           approval.permitted_uses @> '["FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb
+           approval.permitted_uses @> '["STORAGE", "INTERNAL_ANALYSIS", "FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb
        ) THEN
         RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_SOURCE_RIGHTS_INVALID';
     END IF;
