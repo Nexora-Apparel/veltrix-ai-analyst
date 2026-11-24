@@ -206,3 +206,25 @@ Branch: fix/daily-canonical-fixture-linkage
 - Android `PredictionApi.parseResearchPredictions` expects the same envelope metadata returned by `backend/app/routes/research_predictions.py`: `research_only=true`, `publication_status=NOT_PUBLISHED`, `production_promotion=LOCKED`, `value_betting=LOCKED`, plus the nested fixture/markets DTO. The app feed parser and backend serializer contract are structurally aligned in the inspected code.
 - The research API intentionally returns a quarantined/empty response unless `VELTRIX_RESEARCH_SHADOW_DISPLAY_ENABLED=true` and the model admission record passes its hash/tier/lock checks. The production environment flag was not inspected and must not be assumed enabled. Verify it only after a fresh non-zero Stage 7 inference exists; do not weaken the admission record or release gates.
 - The production API URL could not be independently opened by the available public web reader in this pass. No successful live API response or on-device prediction display is claimed.
+
+
+### Stage 6 manual dispatch failure and PR #171 fix (24 November 2026)
+
+- User supplied Stage 6 manual workflow run `45347792540` (job `138286480834`). The run completed with failure at the canonical fixture adjudication step; all downstream dataset/snapshot/persistence steps were skipped.
+- Exact failure: `EXISTING_TEAM_MAPPING_DRIFT:1446563615`.
+- Read-only production Neon inspection of provider team `1446563615` established:
+  - Provider catalogue label: `Avaí`.
+  - Existing canonical display label: `Avai`.
+  - Canonical identity basis: `SOURCE_LOCAL_ONLY`.
+  - Mapping: `EXACT_PROVIDER_ID`, status `REVIEW_REQUIRED`.
+  - Provider team observation, source sighting, provider response, rights approval, payload SHA-256, source/provider IDs, and mapping provenance all match.
+  - The only mismatch in the materializer's strict tuple comparison is the Unicode diacritic in the display label.
+- No production rows were changed by the failed run. The materializer ran inside a transaction and failed before later stages; no fixture snapshots were built or persisted by this workflow attempt.
+- PR #171: https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/171
+  - Branch: `fix/canonical-team-diacritic-drift`.
+  - Head at PR creation: `f310855b6f86c66757a0cc9eed72d6445f8ed8c5`.
+  - Narrow change: compare canonical/source team labels after Unicode NFD decomposition and removal of combining marks, while preserving canonical display labels. Every other field in the mapping tuple remains exact; substantive name changes and provenance/rights/identity mismatches still fail closed.
+  - Unit cases cover accent-only equivalence (`Avai`/`Avaí`, `Sao Paulo`/`São Paulo`) and substantive mismatches.
+  - PR CI run `45355197842` was still in progress at ledger update time; no merge authorized or performed yet.
+- After PR CI passes and the diff is reviewed, merge PR #171. Then rerun Stage 6 once on main. Require its linkage report to resolve all 47 upcoming fixtures as verified or explicitly conflicted, with zero unresolved fixtures, before proceeding to PIT dataset build and persistence.
+- No provider or Odds API calls were made during the incident investigation or fix preparation.
