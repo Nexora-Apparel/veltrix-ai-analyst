@@ -43,3 +43,32 @@ PR #169 merged successfully as commit `81ff45e2b7e3658d458abb5ee20aa407e85000cb`
 - Manual dispatch path: repository Actions → `VELTRIX prospective 5Dollar evidence capture` → Run workflow → select `main` → Run workflow. Do not dispatch Stage 6 or Stage 7 separately; successful capture automatically triggers Stage 6, and successful Stage 6 on main automatically triggers Stage 7.
 - A manual run after 09:00 WAT cannot restore the missed morning delivery. It may still produce forecasts for eligible upcoming fixtures if capture, PIT validation, Stage 6, freshness checks, and Stage 7 all succeed.
 - After dispatch, verify the capture event/run conclusion, its exact Stage 6 child, exact Stage 7 child, and actual forecast count. A green capture run alone does not mean forecasts exist.
+
+
+## Manual recovery execution and downstream diagnosis (24 November 2026)
+
+### Verified execution
+
+- Manual capture run `45336063708` completed successfully on `main` at 06:02:38 UTC (07:02:38 WAT), commit `96d1add7aad6239021c89b7876297d32fc849461`. Workflow event: `workflow_dispatch`.
+- Capture covered 23 November 00:00 UTC through 2 December 00:00 UTC, six approved competitions, request budget 4 per competition. It used 12 provider requests and reported zero failed competitions.
+- Import runs 51–56: Brazil Serie A inserted 2 records; Brazil Serie B inserted 2; England Premier League inserted 1; Germany Bundesliga I, Italy Serie A, and Spain La Liga inserted 0. All six imports were `COMPLETED_VALIDATED`. Total new records: 5.
+- Stage 6 child run `45337517651` completed successfully. Dataset artifact `veltrix-stage6-daily-materialization-audit` (artifact `14894139168`) reported 9 eligible prospective rows, 9 distinct fixtures, 9 feature-lineage records, 0 settled labels, and 0 expanding folds. Persistence reported 0 inserted and 9 unchanged; verification found 9 snapshots and 0 latest label events.
+- The downloaded Stage 6 dataset artifact was inspected directly. It contains 9 rows from a single provider competition (`3614399544`), all with kickoff times 20–22 November and a prediction cutoff of 19 November 05:45:59 UTC. Every listed team/competition last-five/last-twenty feature coverage value is 0.0. The dataset's `created_at` is 24 November 06:04:23 UTC, but its underlying snapshot cutoffs are old.
+- Automatic Stage 7 inference child run `45337758682` completed successfully at 06:07 UTC (07:07 WAT) but its report explicitly returned `NO_FRESH_UPCOMING_SNAPSHOTS`: 0 fixtures considered, 0 fitted fixtures, 0 shown fixtures, 0 forecasts, 0 provider calls. Research ledger run was recorded, but contained no forecasts.
+- Independent Stage 7 evaluation run `45337758751` also completed successfully and returned `INSUFFICIENT_PROSPECTIVE_DATA`: 0 fixtures evaluated, 0 folds, 0 settled labels, 0 distinct settled-label dates, and zero walk-forward fixtures for all reported markets. Production certification remains `BLOCKED_INSUFFICIENT_OR_UNCERTIFIED_EVIDENCE`; production promotion and Value Betting remain locked.
+
+### Diagnosis and boundaries
+
+- The immediate reason no forecasts were produced is verified: Stage 7 had no fresh, upcoming snapshots. Its six-hour freshness and upcoming-fixture eligibility were not bypassed.
+- The Stage 6 artifact shows why its nine rows could not support current inference: all nine fixture kickoffs were already in the past by 24 November, and their prediction cutoffs were 19 November. Snapshot rows were unchanged, not refreshed by the 24 November capture.
+- Although the capture inserted five records across three competitions, those records did not result in eligible fresh canonical snapshots in this Stage 6 dataset. The exact upstream cause is not yet established. Investigate import-to-canonical identity mapping, prospective dataset selection, and why newly captured fixture observations did not enter the Stage 6 eligible set. Do not assume the five inserts were forecast-eligible.
+- Public API endpoint checks through the available web reader were inaccessible; API payload and Android visibility have therefore not been independently verified in this pass.
+- No Android UI change, production prediction publication, model promotion, certification pass, or Value Bet unlock occurred. Do not describe this run as successful forecast delivery.
+
+### Next actions
+
+1. Trace import runs 51–56 and their inserted source observation/fixture IDs through canonical fixture identity mapping.
+2. Inspect Stage 6 selection predicates and verify why the nine old rows remained eligible while the five newly inserted records were excluded.
+3. Confirm fresh prospective snapshots are actually persisted for upcoming fixtures before Stage 7 starts; preserve the six-hour freshness and PIT gates.
+4. Re-run only after the upstream eligibility defect is fixed and tests cover current upcoming fixtures, stale kickoff exclusion, and fresh snapshot selection.
+5. Then verify non-zero research forecasts in Stage 7, the research API response, and the existing Android feed/parser/display path. Production publication and certification remain separate locked workstreams.
