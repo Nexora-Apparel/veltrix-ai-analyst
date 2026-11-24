@@ -165,3 +165,35 @@ Branch: fix/daily-canonical-fixture-linkage
 - Stage 6's actual canonical fixture linkage/materialization is a separate `workflow_dispatch` on main. The connector does not expose a workflow-dispatch action. Do not infer that it ran from the migration or read-only preview. User-facing recovery path: repository Actions → “Stage 6 daily immutable snapshot and outcome materialization” → Run workflow on `main`.
 - After manual Stage 6 completion, verify canonical linkage report, eligible fresh upcoming snapshots, and exact Stage 7 automatic inference child. Only a non-zero forecast count plus research API and Android visibility can establish research forecast availability.
 - Production publication, certification, model promotion, and Value Bet remain locked. Do not claim the 47 upcoming fixtures have been linked until the Stage 6 canonicalization report confirms it.
+
+
+
+## Post-migration preview recovery and canonicalization blocker (24 November 2026)
+
+### Verified reruns after migration 020
+
+- The Stage 6 read-only preview rerun in workflow run `45346493500` / job `138282758658` completed successfully after migration 020. Its log reports dataset SHA-256 `a8fdf0e9840a3fffcc4577c6a8cb3cc31d9ab8a9b0b2b9f2a49b18372040eb73`, 50 eligible prospective rows, 50 settled-label rows, and 2 expanding folds. Snapshot validation returned `VALIDATED_READ_ONLY`. This job did not write canonical fixture links or persist snapshots.
+- The Stage 7 read-only evaluation rerun in workflow run `45346493504` / job `138282768937` completed successfully. It evaluated 50 fixtures and 50 settled labels across 2 folds. All reported markets had 50 walk-forward fixtures; only 6 distinct settled-label dates were represented. Status remained `RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL`; certification was `BLOCKED_INSUFFICIENT_OR_UNCERTIFIED_EVIDENCE`; production promotion and Value Bet remained `LOCKED`.
+- Stage 5 identity reconciliation preview run `45346632797` completed successfully. This was also read-only and is not the Stage 6 canonicalization operation.
+- Main CI run `45346889551` on ledger commit `bf075f98bc2b3c8df61159d1f8a49a0ff6b52d50` completed successfully: Android debug build and backend tests/lint passed.
+
+### Current live database blocker — independently rechecked
+
+- A fresh read-only Neon query on production branch `br-jolly-darkness-balgmi2t`, database `veltrix_ai_analyst`, and the six approved 5Dollar competition IDs returned:
+  - Upcoming provider fixtures: **47**
+  - Upcoming fixtures with canonical source links: **0**
+  - Upcoming fixtures without canonical source links: **47**
+  - Upcoming fixtures with fully verified canonical source/state provenance: **0**
+- Therefore the successful read-only preview/evaluation jobs do not resolve the 47-fixture linkage gap. The 50-row research evaluation is a historical/settled evidence evaluation and is not proof of fresh upcoming snapshots or forecasts.
+- No post-merge actual Stage 6 `workflow_dispatch` run has been verified. The actual Stage 6 workflow is configured with `workflow_dispatch` on `main`; it performs the guarded canonical materialization/adjudication, builds the strict PIT dataset, persists immutable snapshots and append-only labels, then verifies persistence.
+- The GitHub connector available in this session does not expose workflow dispatch. Do not claim the operation was started. Manual action remains: https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/stage-6-daily-snapshot-materialization.yml — select branch `main`, then run “Stage 6 daily immutable snapshot and outcome materialization”.
+
+### Next execution sequence
+
+1. Run Stage 6 manually on `main` once; it does not make provider or Odds API requests.
+2. Inspect the Stage 6 canonical linkage report. Require all 47 upcoming fixtures to be either verified eligible or explicitly conflicted; unresolved upcoming fixtures must remain a hard failure.
+3. Verify fresh upcoming PIT snapshots and their cutoff timestamps in the Stage 6 artifact and database.
+4. Confirm the exact automatic Stage 7 inference child run and require a non-zero research forecast count.
+5. Verify `/v1/research/predictions` and the existing Android test-app feed/parser/display without redesigning the app.
+6. Keep production publication, model promotion, certification, and Value Bet locked. The current 50 labels across 6 dates are far below the user's 300 settled selections and 90 distinct-date certification thresholds; no certification pass is claimed.
+
