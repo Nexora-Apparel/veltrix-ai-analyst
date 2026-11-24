@@ -21,6 +21,7 @@ from app.canonical_fixture_adjudication import (
     REVIEWED_MAPPING_STATUSES,
     REVIEWER_ID,
     evidence_sha256,
+    exact_fixture_link_decision,
     find_fixture_link_collisions,
 )
 from app.canonicalization import (
@@ -298,15 +299,10 @@ def _adjudicate_scope(
             continue
 
         collision_ids = collisions.get(int(row["link_id"]), ())
-        mappings_reviewed = _identity_mappings_are_reviewed(row)
-        decision = (
-            "CONFLICT"
-            if row["identity_status"] == "CONFLICT"
-            else "CONFLICT"
-            if collision_ids and mappings_reviewed
-            else "SOURCE_FIXTURE_LINK_REVIEWED"
-            if mappings_reviewed
-            else None
+        decision = exact_fixture_link_decision(
+            identity_status=row["identity_status"],
+            collision_link_ids=collision_ids,
+            mappings_reviewed=_identity_mappings_are_reviewed(row),
         )
         if decision is None:
             pending += 1
