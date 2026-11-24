@@ -33,7 +33,7 @@ def sync_canonical_fixture_states(
                 fixture.away_team_provider_id,
                 source_link.id AS fixture_source_link_id,
                 canonical.id AS canonical_fixture_id,
-                COUNT(*) OVER (PARTITION BY canonical.id) AS canonical_source_count,
+                (SELECT COUNT(*) FROM veltrix_ai_analyst.canonical_fixture_sources source_count WHERE source_count.canonical_fixture_id = canonical.id) AS canonical_source_count,
                 observation.id AS source_observation_id,
                 sighting.id AS source_sighting_id,
                 sighting.provider_response_id,
