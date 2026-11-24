@@ -51,7 +51,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          python scripts/materialize_and_adjudicate_daily_fixtures.py \\
+          python scripts/materialize_and_adjudicate_daily_fixtures.py \
             | tee artifacts/canonical-fixture-linkage.json
 
       - name: Build canonical identity and strict PIT dataset (read only)
