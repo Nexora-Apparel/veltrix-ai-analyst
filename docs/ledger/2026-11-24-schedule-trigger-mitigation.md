@@ -228,3 +228,24 @@ Branch: fix/daily-canonical-fixture-linkage
   - PR CI run `45355197842` was still in progress at ledger update time; no merge authorized or performed yet.
 - After PR CI passes and the diff is reviewed, merge PR #171. Then rerun Stage 6 once on main. Require its linkage report to resolve all 47 upcoming fixtures as verified or explicitly conflicted, with zero unresolved fixtures, before proceeding to PIT dataset build and persistence.
 - No provider or Odds API calls were made during the incident investigation or fix preparation.
+
+
+### PR #171 completed — canonical team diacritic drift correction (24 November 2026)
+
+- PR #171 merged safely into `main` on 24 November 2026 at 08:25:13 UTC.
+- PR head: `a2b0a6970a6702169e465094ade4881022339193`.
+- Squash merge commit: `e3d3c4bae57860f176c0219693b8609837fffeda`.
+- Exact-head CI run `45355726925` completed successfully:
+  - Backend tests: success.
+  - Ruff/lint: success.
+  - Actionlint: success.
+  - Backend compile: success.
+  - Android debug build: success; debug APK artifact uploaded.
+- Earlier failed CI attempt `45355356381` was due only to import ordering; that was corrected before the successful exact-head run. Its Android build had also passed.
+- The code change preserves canonical display labels and relaxes only accent/diacritic differences. Provider identity, canonical team ID, rights, provenance, mapping method and mapping status comparisons remain strict.
+- The PR's review-thread and review-submission lists were empty at merge time. No outstanding review threads were present.
+- Vercel status for the branch was a deployment-rate-limit failure, not a code-check failure. No website changes were included and no deployment success is claimed.
+- PR #171 resolves the specific `Avaí` vs `Avai` materializer drift at provider team ID `1446563615`; it does not itself create the 47 missing fixture links or persist Stage 6 snapshots.
+- Stage 6 manual dispatch must now be run again once against `main` at merge commit `e3d3c4bae57860f176c0219693b8609837fffeda`. The available GitHub connector still has no workflow-dispatch action; use the workflow page and select branch `main`.
+- Before dispatch, current last-known production state remains 47 upcoming fixtures, 0 canonical links, 47 unlinked, with no review events created by the failed Stage 6 attempt. Re-query before and after the next dispatch.
+- Continue to keep production publication, model promotion, certification and Value Bet locked until fresh Stage 6/Stage 7/API/Android evidence and the full certification criteria pass.
