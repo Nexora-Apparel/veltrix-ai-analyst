@@ -23,6 +23,7 @@ def valid_report():
             "canonical_competition_id": "00000000-0000-0000-0000-000000000002",
             "home_team_id": "00000000-0000-0000-0000-000000000003",
             "away_team_id": "00000000-0000-0000-0000-000000000004",
+            "provider_fixture_id": "fixture-1",
             "fixture_id": "league:fixture-1",
             "features": {"home_matches_last5": 3.0},
             "kickoff_at": "2026-01-02T12:00:00+00:00",
