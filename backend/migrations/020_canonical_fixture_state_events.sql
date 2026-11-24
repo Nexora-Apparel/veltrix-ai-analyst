@@ -30,9 +30,9 @@ CREATE TABLE veltrix_ai_analyst.canonical_fixture_state_events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (fixture_source_link_id, source_observation_id, source_sighting_id),
     CHECK (
-        (status = 'FINISHED' AND home_goals IS NOT NULL AND away_goals IS NOT NULL)
+        (home_goals IS NULL AND away_goals IS NULL)
         OR
-        (status <> 'FINISHED' AND home_goals IS NULL AND away_goals IS NULL)
+        (home_goals IS NOT NULL AND away_goals IS NOT NULL)
     )
 );
 
