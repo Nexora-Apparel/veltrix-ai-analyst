@@ -23,7 +23,6 @@ def valid_report():
             "canonical_competition_id": "00000000-0000-0000-0000-000000000002",
             "home_team_id": "00000000-0000-0000-0000-000000000003",
             "away_team_id": "00000000-0000-0000-0000-000000000004",
-            "provider_fixture_id": "fixture-1",
             "fixture_id": "league:fixture-1",
             "features": {"home_matches_last5": 3.0},
             "kickoff_at": "2026-01-02T12:00:00+00:00",
@@ -184,7 +183,7 @@ def test_snapshot_conflict_context_identifies_key_and_payload_differences():
         existing_lineage=existing_lineage,
     )
     assert context["canonical_fixture_id"] == row["canonical_fixture_id"]
-    assert context["provider_fixture_id"] == row["provider_fixture_id"]
+    assert context["provider_fixture_id"] == "fixture-1"
     assert context["prediction_cutoff_at"] == row["prediction_cutoff_at"]
     assert context["feature_schema_version"] == "veltrix-pit-features-v1"
     assert context["existing_snapshot_id"] == 99
