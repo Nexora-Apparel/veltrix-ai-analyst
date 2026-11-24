@@ -33,6 +33,7 @@ def sync_canonical_fixture_states(
                 fixture.away_team_provider_id,
                 source_link.id AS fixture_source_link_id,
                 canonical.id AS canonical_fixture_id,
+                COUNT(*) OVER (PARTITION BY canonical.id) AS canonical_source_count,
                 observation.id AS source_observation_id,
                 sighting.id AS source_sighting_id,
                 sighting.provider_response_id,
@@ -132,6 +133,7 @@ def sync_canonical_fixture_states(
             FROM ranked
             WHERE observation_rank = 1
               AND source_sighting_id IS NOT NULL
+              AND canonical_source_count = 1
               AND provider_response_id IS NOT NULL
               AND availability_basis = 'SYSTEM_OBSERVED_AT'
               AND point_in_time_certifiable IS TRUE
