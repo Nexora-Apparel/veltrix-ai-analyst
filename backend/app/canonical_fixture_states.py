@@ -27,6 +27,10 @@ def sync_canonical_fixture_states(
         WITH ranked AS (
             SELECT
                 fixture.id AS provider_fixture_row_id,
+                fixture.provider_fixture_id,
+                fixture.provider_competition_id,
+                fixture.home_team_provider_id,
+                fixture.away_team_provider_id,
                 source_link.id AS fixture_source_link_id,
                 canonical.id AS canonical_fixture_id,
                 observation.id AS source_observation_id,
@@ -134,7 +138,6 @@ def sync_canonical_fixture_states(
               AND source_published_at IS NULL
               AND observation_provider = %s
               AND observation_source_id = %s
-              AND observation_data_type_placeholder IS NULL
         )
         INSERT INTO veltrix_ai_analyst.canonical_fixture_state_events (
             canonical_fixture_id,
@@ -187,26 +190,10 @@ def sync_canonical_fixture_states(
           AND latest.permitted_uses @> '["FEATURE_ENGINEERING", "MODEL_TRAINING", "MODEL_VALIDATION"]'::jsonb
           AND lower(latest.payload->>'status') = lower(latest.status)
           AND NULLIF(latest.payload->>'kickoff_at', '')::timestamptz = latest.kickoff_at
-          AND latest.payload->>'competition_id' = (
-              SELECT provider_competition_id
-              FROM veltrix_ai_analyst.provider_fixtures
-              WHERE id = latest.provider_fixture_row_id
-          )
-          AND latest.payload->>'home_team_id' = (
-              SELECT home_team_provider_id
-              FROM veltrix_ai_analyst.provider_fixtures
-              WHERE id = latest.provider_fixture_row_id
-          )
-          AND latest.payload->>'away_team_id' = (
-              SELECT away_team_provider_id
-              FROM veltrix_ai_analyst.provider_fixtures
-              WHERE id = latest.provider_fixture_row_id
-          )
-          AND latest.payload #>> '{provenance,provider_record_id}' = (
-              SELECT provider_fixture_id
-              FROM veltrix_ai_analyst.provider_fixtures
-              WHERE id = latest.provider_fixture_row_id
-          )
+          AND latest.payload->>'competition_id' = latest.provider_competition_id
+          AND latest.payload->>'home_team_id' = latest.home_team_provider_id
+          AND latest.payload->>'away_team_id' = latest.away_team_provider_id
+          AND latest.payload #>> '{provenance,provider_record_id}' = latest.provider_fixture_id
           AND CASE
                 WHEN jsonb_typeof(latest.payload->'home_goals') = 'number'
                     THEN (latest.payload->>'home_goals')::integer
