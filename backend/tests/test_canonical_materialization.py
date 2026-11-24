@@ -14,6 +14,7 @@ from app.canonicalization import (
     CanonicalMaterializationScope,
     _expected_fixture_identity_status,
     _identity_collision_fixture_ids,
+    _team_display_names_compatible,
     _team_display_names_equivalent,
     materialize_brazil_serie_b_canonical_entities,
 )
@@ -65,6 +66,64 @@ def test_canonical_team_label_comparison_only_ignores_diacritics(
     canonical_name: str, source_name: str, equivalent: bool
 ) -> None:
     assert _team_display_names_equivalent(canonical_name, source_name) is equivalent
+
+
+@pytest.mark.parametrize(
+    ("provider", "source_id", "provider_team_id", "canonical_name", "source_name", "compatible"),
+    [
+        (
+            "5DollarFootballAPI",
+            "5dollarfootballapi",
+            "4227927162",
+            "Cuiaba",
+            "Cuiabá EC",
+            True,
+        ),
+        (
+            "5DollarFootballAPI",
+            "5dollarfootballapi",
+            "different-team-id",
+            "Cuiaba",
+            "Cuiabá EC",
+            False,
+        ),
+        (
+            "another-provider",
+            "5dollarfootballapi",
+            "4227927162",
+            "Cuiaba",
+            "Cuiabá EC",
+            False,
+        ),
+        (
+            "5DollarFootballAPI",
+            "another-source",
+            "4227927162",
+            "Cuiaba",
+            "Cuiabá EC",
+            False,
+        ),
+        (
+            "5DollarFootballAPI",
+            "5dollarfootballapi",
+            "4227927162",
+            "Cuiaba",
+            "Cuiabá EC FC",
+            False,
+        ),
+    ],
+)
+def test_source_local_cuiaba_label_alias_is_exactly_scoped(
+    provider: str,
+    source_id: str,
+    provider_team_id: str,
+    canonical_name: str,
+    source_name: str,
+    compatible: bool,
+) -> None:
+    assert _team_display_names_compatible(
+        provider, source_id, provider_team_id, canonical_name, source_name
+    ) is compatible
 
 
 def test_supported_fixture_statuses_match_database_contract() -> None:
