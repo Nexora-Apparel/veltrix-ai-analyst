@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import UTC, datetime
 from urllib.parse import urlsplit
 from typing import Any
 
