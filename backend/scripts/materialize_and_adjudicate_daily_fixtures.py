@@ -328,6 +328,8 @@ def _adjudicate_scope(
             "provider_response_id": int(row["provider_response_id"]),
             "payload_sha256": str(row["payload_sha256"]).strip(),
             "response_sha256": str(row["response_sha256"]).strip(),
+            "http_status": int(row["http_status"]),
+            "source_fixture_provenance_status": row["source_fixture_provenance_status"],
             "retrieved_at": row["retrieved_at"],
             "system_observed_at": row["system_observed_at"],
             "approval_provider": row["approval_provider"],
