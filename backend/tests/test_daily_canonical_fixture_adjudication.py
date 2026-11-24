@@ -10,6 +10,7 @@ from app.canonical_fixture_adjudication import (
     REVIEWED_MAPPING_STATUSES,
     REVIEWER_ID,
     evidence_sha256,
+    exact_fixture_link_decision,
     find_fixture_link_collisions,
 )
 
@@ -96,3 +97,25 @@ def test_policy_uses_explicit_non_human_reviewer_and_only_reviewed_identity_stat
 def test_evidence_hash_rejects_naive_datetimes() -> None:
     with pytest.raises(ValueError, match="timezone-aware"):
         evidence_sha256({"kickoff_at": datetime(2026, 11, 24, 12)})
+
+
+
+@pytest.mark.parametrize(
+    ("identity_status", "collision_ids", "mappings_reviewed", "expected"),
+    [
+        ("IDENTITY_REVIEW_REQUIRED", (), True, "SOURCE_FIXTURE_LINK_REVIEWED"),
+        ("IDENTITY_REVIEW_REQUIRED", (99,), True, "CONFLICT"),
+        ("IDENTITY_REVIEW_REQUIRED", (), False, None),
+        ("IDENTITY_REVIEW_REQUIRED", (99,), False, None),
+        ("CONFLICT", (), False, "CONFLICT"),
+        ("CONFLICT", (99,), True, "CONFLICT"),
+    ],
+)
+def test_exact_fixture_link_decision_is_fail_closed(
+    identity_status, collision_ids, mappings_reviewed, expected
+) -> None:
+    assert exact_fixture_link_decision(
+        identity_status=identity_status,
+        collision_link_ids=collision_ids,
+        mappings_reviewed=mappings_reviewed,
+    ) == expected
