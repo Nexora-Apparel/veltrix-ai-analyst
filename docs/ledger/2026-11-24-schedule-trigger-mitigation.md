@@ -197,3 +197,12 @@ Branch: fix/daily-canonical-fixture-linkage
 5. Verify `/v1/research/predictions` and the existing Android test-app feed/parser/display without redesigning the app.
 6. Keep production publication, model promotion, certification, and Value Bet locked. The current 50 labels across 6 dates are far below the user's 300 settled selections and 90 distinct-date certification thresholds; no certification pass is claimed.
 
+
+
+### Research inference and Android feed contract recheck
+
+- Independent read-only Neon inspection of `research_shadow_forecast_runs` shows the latest inference record is still `NO_FRESH_UPCOMING_SNAPSHOTS`, generated 24 November at 06:07:43 UTC, with 0 training fixtures and 0 forecasts. The newer Stage 7 run `45346493504` was an evaluation/certification workflow, not a shadow inference run; it did not create forecasts.
+- The last stored non-empty inference is 21 forecasts from 22 November at 07:51:24 UTC, trained on 996 fixtures. It is now older than the research API's 36-hour freshness window, so it cannot serve as current upcoming forecasts.
+- Android `PredictionApi.parseResearchPredictions` expects the same envelope metadata returned by `backend/app/routes/research_predictions.py`: `research_only=true`, `publication_status=NOT_PUBLISHED`, `production_promotion=LOCKED`, `value_betting=LOCKED`, plus the nested fixture/markets DTO. The app feed parser and backend serializer contract are structurally aligned in the inspected code.
+- The research API intentionally returns a quarantined/empty response unless `VELTRIX_RESEARCH_SHADOW_DISPLAY_ENABLED=true` and the model admission record passes its hash/tier/lock checks. The production environment flag was not inspected and must not be assumed enabled. Verify it only after a fresh non-zero Stage 7 inference exists; do not weaken the admission record or release gates.
+- The production API URL could not be independently opened by the available public web reader in this pass. No successful live API response or on-device prediction display is claimed.
