@@ -285,7 +285,12 @@ def _adjudicate_scope(
     scope: CanonicalMaterializationScope,
 ) -> dict[str, int]:
     rows = _fixture_links_for_adjudication(connection, scope)
-    collisions = find_fixture_link_collisions(rows)
+    collision_candidates = [
+        row
+        for row in rows
+        if _provenance_is_valid(row) and _identity_mappings_are_reviewed(row)
+    ]
+    collisions = find_fixture_link_collisions(collision_candidates)
     reviewed = 0
     conflicts = 0
     pending = 0
