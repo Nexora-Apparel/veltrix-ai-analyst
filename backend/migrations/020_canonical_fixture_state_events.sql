@@ -53,6 +53,8 @@ DECLARE
     response RECORD;
     approval RECORD;
     effective_approval_status TEXT;
+    payload_home_goals INTEGER;
+    payload_away_goals INTEGER;
 BEGIN
     SELECT source_link.id,
            source_link.provider_fixture_row_id,
@@ -140,22 +142,25 @@ BEGIN
         RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_OBSERVATION_MISMATCH';
     END IF;
 
+    payload_home_goals := CASE
+        WHEN jsonb_typeof(observation.payload->'home_goals') = 'number'
+            THEN (observation.payload->>'home_goals')::integer
+        ELSE NULL
+    END;
+    payload_away_goals := CASE
+        WHEN jsonb_typeof(observation.payload->'away_goals') = 'number'
+            THEN (observation.payload->>'away_goals')::integer
+        ELSE NULL
+    END;
+
     IF lower(COALESCE(observation.payload->>'status', '')) <> lower(NEW.status)
        OR NULLIF(observation.payload->>'kickoff_at', '')::timestamptz IS DISTINCT FROM NEW.kickoff_at
        OR observation.payload->>'competition_id' IS DISTINCT FROM link.provider_competition_id
        OR observation.payload->>'home_team_id' IS DISTINCT FROM link.home_team_provider_id
        OR observation.payload->>'away_team_id' IS DISTINCT FROM link.away_team_provider_id
        OR observation.payload #>> '{provenance,provider_record_id}' IS DISTINCT FROM link.provider_fixture_id
-       OR CASE
-            WHEN jsonb_typeof(observation.payload->'home_goals') = 'number'
-                THEN (observation.payload->>'home_goals')::integer
-            ELSE NULL
-          END IS DISTINCT FROM NEW.home_goals
-       OR CASE
-            WHEN jsonb_typeof(observation.payload->'away_goals') = 'number'
-                THEN (observation.payload->>'away_goals')::integer
-            ELSE NULL
-          END IS DISTINCT FROM NEW.away_goals THEN
+       OR payload_home_goals IS DISTINCT FROM NEW.home_goals
+       OR payload_away_goals IS DISTINCT FROM NEW.away_goals THEN
         RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_PAYLOAD_FACTS_MISMATCH';
     END IF;
 
