@@ -131,7 +131,7 @@ jobs:
             echo "### Prospective capture timing"
             echo "- Event: $GITHUB_EVENT_NAME"
             echo "- Scheduled cron: 00:17 UTC (01:17 WAT); offset from the top of the hour to reduce scheduler contention risk"
-            echo "- Target downstream research readiness: 07:00–10:00 WAT"
+            echo "- Target forecast availability window: 07:00–09:00 WAT (Nigeria time)"
             echo "- Run created: $created"
             echo "- Run started: $started"
             echo "- Capture step conclusion: $outcome"
