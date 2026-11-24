@@ -5,8 +5,8 @@ explicit execute=True call inside a caller-owned PostgreSQL connection.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import unicodedata
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
