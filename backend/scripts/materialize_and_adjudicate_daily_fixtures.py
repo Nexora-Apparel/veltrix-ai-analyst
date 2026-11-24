@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 import os
 import sys
-from urllib.parse import urlsplit
 from typing import Any
+from urllib.parse import urlsplit
 
 import psycopg
 from psycopg.rows import dict_row
