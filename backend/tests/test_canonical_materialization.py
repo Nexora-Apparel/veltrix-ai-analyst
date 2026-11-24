@@ -14,6 +14,7 @@ from app.canonicalization import (
     CanonicalMaterializationScope,
     _expected_fixture_identity_status,
     _identity_collision_fixture_ids,
+    _team_display_names_equivalent,
     materialize_brazil_serie_b_canonical_entities,
 )
 from app.db.migrations import apply_migrations
@@ -48,6 +49,22 @@ def test_materializer_defaults_to_read_only() -> None:
     assert inspect.signature(materialize_brazil_serie_b_canonical_entities).parameters[
         "execute"
     ].default is False
+
+
+@pytest.mark.parametrize(
+    ("canonical_name", "source_name", "equivalent"),
+    [
+        ("Avai", "Avaí", True),
+        ("Sao Paulo", "São Paulo", True),
+        ("Avai FC", "Avaí FC", True),
+        ("Avai", "Avaí FC", False),
+        ("America", "América Mineiro", False),
+    ],
+)
+def test_canonical_team_label_comparison_only_ignores_diacritics(
+    canonical_name: str, source_name: str, equivalent: bool
+) -> None:
+    assert _team_display_names_equivalent(canonical_name, source_name) is equivalent
 
 
 def test_supported_fixture_statuses_match_database_contract() -> None:

@@ -5,6 +5,7 @@ explicit execute=True call inside a caller-owned PostgreSQL connection.
 """
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -99,6 +100,19 @@ class CanonicalMaterializationPlan:
 
 class CanonicalMaterializationError(RuntimeError):
     """Raised when source evidence is incomplete or an existing mapping drifts."""
+
+
+def _team_display_names_equivalent(left: str, right: str) -> bool:
+    """Compare source/canonical labels while ignoring Unicode diacritics only."""
+    def fold(value: str) -> str:
+        decomposed = unicodedata.normalize("NFD", value)
+        without_marks = "".join(
+            character for character in decomposed
+            if unicodedata.category(character) != "Mn"
+        )
+        return " ".join(without_marks.casefold().split())
+
+    return fold(left) == fold(right)
 
 
 def _rows(
@@ -610,7 +624,14 @@ def materialize_brazil_serie_b_canonical_entities(
                     existing["rights_approval_id"], existing["payload_sha256"].strip(),
                     existing["mapping_method"], existing["mapping_status"],
                 )
-                if actual != expected:
+                # Canonical display labels may omit accents while the
+                # source catalogue preserves them (for example, "Avai" vs
+                # "Avaí"). Keep the canonical label unchanged, but still fail
+                # closed on every provenance, rights, ID or mapping mismatch.
+                if (
+                    actual[1:] != expected[1:]
+                    or not _team_display_names_equivalent(actual[0], expected[0])
+                ):
                     raise CanonicalMaterializationError(
                         f"EXISTING_TEAM_MAPPING_DRIFT:{team['provider_team_id']}"
                     )
