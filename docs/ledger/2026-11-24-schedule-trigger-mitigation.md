@@ -136,3 +136,32 @@ Branch: fix/daily-canonical-fixture-linkage
 - Ruff findings: move `Sequence` from `typing` to `collections.abc` in `backend/app/canonical_fixture_states.py`; sort `typing.Any` before `urllib.parse.urlsplit` in `backend/scripts/materialize_and_adjudicate_daily_fixtures.py`.
 - No test, migration, runtime, database or Android failure was reported in this run. These are formatting/import-order corrections; no functional behavior is changed.
 - Next gate: rerun exact-head CI after the two corrections. Do not merge or apply migration 020 until all required checks pass.
+
+
+## PR #170 merged and migration 020 production verification (24 November 2026)
+
+### Merge and CI
+
+- PR #170, `Automate guarded daily canonical fixture linkage`, was marked ready and squash-merged into `main` at 07:14:44 UTC.
+- Merge commit: `1e7fc7b62cbf7c1b23a314f8e2995e1a7d10cb00`; merged PR: https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/170.
+- Exact PR-head CI run `45345669929` passed: backend tests/lint and Android debug build.
+- Post-merge main CI run `45346493526` also passed both backend tests/lint and Android debug build.
+- The Vercel commit status was `failure` with target `build-rate-limit`; this was a deployment-capacity limitation, not a code-test failure. PR #170 changes backend/workflow/database behavior, not website UI. Do not claim a Vercel deployment succeeded.
+
+### Production migration and state sync — verified
+
+- Automatic migration workflow run `45346493574` completed successfully on merge commit `1e7fc7b62cbf7c1b23a314f8e2995e1a7d10cb00`.
+- Migration `020_canonical_fixture_state_events.sql` was applied; migration checksum verified as `2523bc886a801116fa722a89cbfab4483257b7bcf610bd190ff23f3888b15872`.
+- Guarded PIT state synchronization completed successfully: 958 state events inserted, 958 state-provenance records verified.
+- Migration workflow verified the required relations, functions, trigger set, and existing migration checksum/object ledgers. Entire workflow concluded success.
+- Independent read-only Neon query on production branch `br-jolly-darkness-balgmi2t` / database `veltrix_ai_analyst` confirmed: 958 state events, 958 verified state-provenance rows, 963 existing 5Dollar canonical fixture source links, 47 upcoming scheduled fixtures, and one recorded migration-020 checksum row.
+- No provider or Odds API requests were made during the migration or state sync.
+
+### Post-merge preview ordering issue and recovery
+
+- Merge push launched migration run `45346493574`, Stage 6 read-only preview `45346493500`, Stage 7 read-only evaluation `45346493504`, and CI `45346493526` concurrently.
+- The first Stage 6 preview and Stage 7 evaluation attempts raced ahead of migration 020 and failed with `UndefinedTable: canonical_fixture_state_provenance_audit does not exist`. This was a migration-ordering race, not a data-integrity failure.
+- After migration 020 and state sync completed, the failed read-only preview/evaluation jobs were rerun. At ledger update time, those reruns were still in progress; inspect exact run/job outcomes before claiming success.
+- Stage 6's actual canonical fixture linkage/materialization is a separate `workflow_dispatch` on main. The connector does not expose a workflow-dispatch action. Do not infer that it ran from the migration or read-only preview. User-facing recovery path: repository Actions → “Stage 6 daily immutable snapshot and outcome materialization” → Run workflow on `main`.
+- After manual Stage 6 completion, verify canonical linkage report, eligible fresh upcoming snapshots, and exact Stage 7 automatic inference child. Only a non-zero forecast count plus research API and Android visibility can establish research forecast availability.
+- Production publication, certification, model promotion, and Value Bet remain locked. Do not claim the 47 upcoming fixtures have been linked until the Stage 6 canonicalization report confirms it.
