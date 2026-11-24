@@ -47,7 +47,6 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     link RECORD;
-    fixture RECORD;
     canonical RECORD;
     observation RECORD;
     sighting RECORD;
@@ -55,8 +54,14 @@ DECLARE
     approval RECORD;
     effective_approval_status TEXT;
 BEGIN
-    SELECT source_link.*, provider_fixture.provider,
-           provider_fixture.source_id, provider_fixture.provider_fixture_id,
+    SELECT source_link.id,
+           source_link.provider_fixture_row_id,
+           source_link.canonical_fixture_id,
+           source_link.provider,
+           source_link.source_id,
+           source_link.provider_fixture_id,
+           source_link.mapping_method,
+           provider_fixture.provider_fixture_id AS provider_fixture_row_fixture_id,
            provider_fixture.provider_competition_id,
            provider_fixture.home_team_provider_id,
            provider_fixture.away_team_provider_id,
@@ -70,11 +75,13 @@ BEGIN
       ON provider_fixture.id = source_link.provider_fixture_row_id
     WHERE source_link.id = NEW.fixture_source_link_id;
 
-    IF NOT FOUND
-       OR link.provider_fixture_row_id <> NEW.provider_fixture_row_id
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_SOURCE_LINK_MISSING';
+    END IF;
+    IF link.provider_fixture_row_id <> NEW.provider_fixture_row_id
        OR link.canonical_fixture_id <> NEW.canonical_fixture_id
        OR link.mapping_method <> 'EXACT_PROVIDER_FIXTURE_ID'
-       OR link.provider_fixture_id <> link.provider_fixture_id THEN
+       OR link.provider_fixture_id <> link.provider_fixture_row_fixture_id THEN
         RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_SOURCE_LINK_MISMATCH';
     END IF;
 
@@ -92,7 +99,10 @@ BEGIN
     FROM veltrix_ai_analyst.canonical_fixtures
     WHERE id = NEW.canonical_fixture_id;
 
-    IF NOT FOUND OR canonical.identity_status <> 'VERIFIED'
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_CANONICAL_FIXTURE_MISSING';
+    END IF;
+    IF canonical.identity_status <> 'VERIFIED'
        OR canonical.kickoff_at <> NEW.kickoff_at THEN
         RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_IDENTITY_NOT_VERIFIED';
     END IF;
@@ -109,8 +119,10 @@ BEGIN
     FROM veltrix_ai_analyst.source_observations
     WHERE id = NEW.source_observation_id;
 
-    IF NOT FOUND
-       OR observation.provider <> link.provider
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_OBSERVATION_MISSING';
+    END IF;
+    IF observation.provider <> link.provider
        OR observation.source_id <> link.source_id
        OR observation.data_type <> 'fixtures_and_results'
        OR observation.entity_type <> 'fixture'
@@ -144,8 +156,10 @@ BEGIN
     FROM veltrix_ai_analyst.source_observation_sightings
     WHERE id = NEW.source_sighting_id;
 
-    IF NOT FOUND
-       OR sighting.source_observation_id <> NEW.source_observation_id
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_SIGHTING_MISSING';
+    END IF;
+    IF sighting.source_observation_id <> NEW.source_observation_id
        OR sighting.provider_response_id <> NEW.provider_response_id
        OR sighting.payload_sha256 <> NEW.payload_sha256
        OR sighting.availability_basis <> 'SYSTEM_OBSERVED_AT'
@@ -163,8 +177,10 @@ BEGIN
     FROM veltrix_ai_analyst.provider_responses
     WHERE id = NEW.provider_response_id;
 
-    IF NOT FOUND
-       OR response.provider <> link.provider
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_RESPONSE_MISSING';
+    END IF;
+    IF response.provider <> link.provider
        OR response.source_id <> link.source_id
        OR response.rights_approval_id <> NEW.rights_approval_id
        OR response.http_status NOT BETWEEN 200 AND 299
@@ -179,8 +195,10 @@ BEGIN
     FROM veltrix_ai_analyst.source_approvals
     WHERE approval_id = NEW.rights_approval_id;
 
-    IF NOT FOUND
-       OR approval.provider <> link.provider
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'CANONICAL_FIXTURE_STATE_APPROVAL_MISSING';
+    END IF;
+    IF approval.provider <> link.provider
        OR approval.source_id <> link.source_id
        OR approval.valid_from > NEW.observed_at
        OR (approval.valid_until IS NOT NULL AND approval.valid_until <= NEW.observed_at)
