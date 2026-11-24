@@ -87,6 +87,9 @@ def build_report(
             JOIN veltrix_ai_analyst.canonical_fixtures cf
               ON cf.id = link.canonical_fixture_id
              AND cf.identity_status = 'VERIFIED'
+            JOIN veltrix_ai_analyst.canonical_fixture_state_provenance_audit state_provenance
+              ON state_provenance.fixture_source_link_id = link.id
+             AND state_provenance.state_provenance_status = 'STATE_PROVENANCE_VERIFIED'
             JOIN veltrix_ai_analyst.effective_provider_team_identity_links ht
               ON ht.provider = pf.provider AND ht.source_id = pf.source_id
              AND ht.provider_team_id = pf.home_team_provider_id
