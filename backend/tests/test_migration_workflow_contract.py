@@ -135,3 +135,40 @@ def test_shadow_forecast_workflow_runs_after_successful_snapshot_materialization
     assert "github.event.workflow_run.conclusion == 'success'" in workflow
     assert 'cron: "0 5 * * *"' in workflow
     assert "--max-snapshot-age-hours 6" in workflow
+
+
+def test_canonical_fixture_state_migration_is_append_only_and_pit_gated() -> None:
+    migration = (
+        ROOT / "backend/migrations/020_canonical_fixture_state_events.sql"
+    ).read_text()
+    assert "CREATE TABLE veltrix_ai_analyst.canonical_fixture_state_events" in migration
+    assert "canonical_fixture_state_events_append_only" in migration
+    assert "canonical_fixture_state_event_provenance_guard" in migration
+    assert "canonical_fixture_state_projection" in migration
+    assert "SYSTEM_OBSERVED_AT" in migration
+    assert "point_in_time_certifiable IS NOT TRUE" in migration
+    assert "MODEL_TRAINING" in migration
+    assert "MODEL_VALIDATION" in migration
+    assert "SOURCE_FIXTURE_LINK_REVIEWED" in migration
+    assert "CANONICAL_FIXTURE_STATE_EVENT_NOT_MONOTONIC" in migration
+    assert "latest_canonical_fixture_states" in migration
+    assert "canonical_fixture_state_provenance_audit" in migration
+
+
+def test_migration_workflow_syncs_and_verifies_canonical_fixture_states() -> None:
+    workflow = (
+        ROOT / ".github/workflows/apply-database-migrations.yml"
+    ).read_text()
+    assert "sync_canonical_fixture_states.py" in workflow
+    assert "SYNC_PIT_BACKED_CANONICAL_FIXTURE_STATES_V1" in workflow
+    assert "020_canonical_fixture_state_events.sql" in workflow
+    assert "MIGRATION_020_CHECKSUM_NOT_APPLIED" in workflow
+    assert "MIGRATION_020_TRIGGER_SET_MISMATCH" in workflow
+
+
+def test_prospective_dataset_requires_canonical_state_provenance() -> None:
+    builder = (
+        ROOT / "backend/scripts/build_prospective_dataset.py"
+    ).read_text()
+    assert "canonical_fixture_state_provenance_audit" in builder
+    assert "STATE_PROVENANCE_VERIFIED" in builder
