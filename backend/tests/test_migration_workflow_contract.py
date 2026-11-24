@@ -172,3 +172,34 @@ def test_prospective_dataset_requires_canonical_state_provenance() -> None:
     ).read_text()
     assert "canonical_fixture_state_provenance_audit" in builder
     assert "STATE_PROVENANCE_VERIFIED" in builder
+
+
+def test_canonical_fixture_state_sync_runner_is_guarded_and_transactional() -> None:
+    runner = (
+        ROOT / "backend/scripts/sync_canonical_fixture_states.py"
+    ).read_text()
+    assert "CANONICAL_FIXTURE_STATE_SYNC_CONFIRMATION_REQUIRED" in runner
+    assert "SYNC_PIT_BACKED_CANONICAL_FIXTURE_STATES_V1" in runner
+    assert "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE" in runner
+    assert "CANONICAL_FIXTURE_STATE_DRIFT_REMAINS" in runner
+    assert "sync_canonical_fixture_states(connection, competition_ids)" in runner
+
+
+def test_daily_fixture_materializer_syncs_state_before_and_after_linkage() -> None:
+    runner = (
+        ROOT / "backend/scripts/materialize_and_adjudicate_daily_fixtures.py"
+    ).read_text()
+    assert "pre_materialization_state_sync" in runner
+    assert "post_materialization_state_sync" in runner
+    assert "UPCOMING_CANONICAL_FIXTURE_LINKS_UNRESOLVED" in runner
+    assert "NO_ELIGIBLE_UPCOMING_CANONICAL_FIXTURES" in runner
+
+
+def test_stage6_can_be_manually_dispatched_only_on_main_for_recovery() -> None:
+    workflow = (
+        ROOT / ".github/workflows/stage-6-daily-snapshot-materialization.yml"
+    ).read_text()
+    assert "workflow_dispatch:" in workflow
+    assert "github.ref == 'refs/heads/main'" in workflow
+    assert "materialize_and_adjudicate_daily_fixtures.py" in workflow
+    assert "RUN_DAILY_EXACT_SOURCE_FIXTURE_LINK_ADJUDICATION_V1" in workflow
