@@ -128,6 +128,7 @@ def _fixture_links_for_adjudication(
                 link.rights_approval_id,
                 link.payload_sha256,
                 provider_fixture.id AS provider_fixture_row_id,
+                provider_fixture.provider_fixture_id AS provider_fixture_row_fixture_id,
                 provider_fixture.provider_competition_id,
                 provider_fixture.home_team_provider_id,
                 provider_fixture.away_team_provider_id,
@@ -163,6 +164,9 @@ def _fixture_links_for_adjudication(
                 response.source_id AS response_source_id,
                 response.http_status,
                 response.rights_approval_id AS response_approval_id,
+                response.fetched_at AS response_fetched_at,
+                response.system_observed_at AS response_system_observed_at,
+                response.response_sha256,
                 approval.status AS approval_status,
                 approval.valid_from AS approval_valid_from,
                 approval.valid_until AS approval_valid_until,
@@ -230,6 +234,7 @@ def _provenance_is_valid(row: dict[str, Any]) -> bool:
     permitted_uses = set(row["permitted_uses"] or ())
     return bool(
         row["mapping_method"] == "EXACT_PROVIDER_FIXTURE_ID"
+        and row["provider_fixture_id"] == row["provider_fixture_row_fixture_id"]
         and row["provider_fixture_id"] == row["provider_entity_id"]
         and row["source_fixture_provenance_status"] == "PROVENANCE_VERIFIED"
         and row["observation_provider"] == EXPECTED_PROVIDER
@@ -243,6 +248,9 @@ def _provenance_is_valid(row: dict[str, Any]) -> bool:
         and row["response_provider"] == EXPECTED_PROVIDER
         and row["response_source_id"] == EXPECTED_SOURCE_ID
         and row["response_approval_id"] == row["rights_approval_id"]
+        and row["response_fetched_at"] == row["retrieved_at"]
+        and row["response_system_observed_at"] == row["system_observed_at"]
+        and len(str(row["response_sha256"] or "").strip()) == 64
         and row["http_status"] is not None
         and 200 <= int(row["http_status"]) <= 299
         and row["effective_approval_status"] == "APPROVED"
@@ -428,6 +436,7 @@ def run(connection: psycopg.Connection[Any]) -> dict[str, Any]:
         cursor.execute(
             """
             SELECT
+                COUNT(*) AS total_upcoming,
                 COUNT(*) FILTER (
                     WHERE link.id IS NOT NULL
                       AND effective_link.effective_mapping_status = 'SOURCE_FIXTURE_LINK_REVIEWED'
@@ -467,7 +476,7 @@ def run(connection: psycopg.Connection[Any]) -> dict[str, Any]:
             "UPCOMING_CANONICAL_FIXTURE_LINKS_UNRESOLVED:"
             + str(coverage["unresolved_upcoming"])
         )
-    if int(coverage["eligible_upcoming"]) < 1:
+    if int(coverage["total_upcoming"]) > 0 and int(coverage["eligible_upcoming"]) < 1:
         raise RuntimeError("NO_ELIGIBLE_UPCOMING_CANONICAL_FIXTURES")
 
     return {
@@ -479,6 +488,7 @@ def run(connection: psycopg.Connection[Any]) -> dict[str, Any]:
         "materialized_scopes": materialized,
         "adjudication_scopes": adjudication,
         "upcoming_fixture_coverage": {
+            "total": int(coverage["total_upcoming"]),
             "eligible": int(coverage["eligible_upcoming"]),
             "conflicted_excluded": int(coverage["conflicted_upcoming"]),
             "unresolved": int(coverage["unresolved_upcoming"]),
