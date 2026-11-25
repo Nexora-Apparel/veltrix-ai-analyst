@@ -331,3 +331,33 @@ Branch: fix/daily-canonical-fixture-linkage
 - Next engineering task: reproduce the builder's historical PIT feature/lineage selection for this fixture at the original snapshot creation and compare it with the current builder. Inspect Espanyol last-five selection, competition last-20 selection, SQL ordering/tie-breaks, visibility/transaction timing of source observation 11197, and dataset-builder code history around the original snapshot. Establish whether late-committed observations, unstable selection ordering, or a changed selection rule caused the lineage substitution. Add deterministic regression coverage for identical feature values with a changed contributing-observation set.
 - Preserve the immutable key and existing snapshot. Do not rewrite/delete snapshot 239, change its lineage, widen/alter cutoffs, or introduce a new schema/key until the evidence establishes the correct versioning semantics. After a reviewed deterministic PIT fix, run exact-head CI, then rerun Stage 6 and verify persisted counts plus automatic Stage 7 fresh research forecasts.
 - Production publication, model promotion, certification and Value Betting remain locked.
+
+
+### Stage 6 immutable snapshot replay repair — PR #174 (25 November 2026)
+
+#### Confirmed implementation defect
+
+- Inspected the live `main` versions of `backend/scripts/build_prospective_dataset.py`, `backend/app/validation/prospective_dataset.py`, and `backend/scripts/materialize_prospective_snapshots.py`.
+- The dataset builder opened PostgreSQL with `autocommit=True`. Its fixture, provenance, source-observation, historical-training, and existing-snapshot reads were therefore not protected by one repeatable MVCC view. A single dataset build could observe concurrent ingestion between statements.
+- More importantly, the builder regenerated feature and lineage payloads for already-persisted immutable keys from the current source-observation set. That is not a valid immutable replay: the currently selected recent-match contributor can differ from the contributor recorded when the snapshot was first materialized, even when aggregate feature values happen to be equal.
+- The precise historical visibility event that caused observation 11197 to replace 9845 in the original rebuild cannot be proven from persisted data because the old snapshot did not record its original PostgreSQL transaction snapshot. The repair does not depend on guessing that historical event.
+
+#### Repair implemented in PR #174
+
+- Branch: `fix/stage6-immutable-pit-snapshot-replay`.
+- PR: https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/174
+- Current PR head at ledger entry time: `72a1b8d95427c906500cb4f9ff6ec888175d22f9`.
+- All Stage 6 source/identity/rights/existing-snapshot reads now execute in one read-only PostgreSQL `REPEATABLE READ` transaction.
+- The report records the transaction start timestamp and PostgreSQL MVCC snapshot token outside the canonical dataset hash.
+- The builder loads already-persisted v1 snapshots for selected canonical fixture IDs. When the same canonical fixture/cutoff/schema key exists, it reuses the exact persisted feature payload and feature-lineage array instead of recomputing or substituting contributors.
+- New outcome labels remain independently derived and append-only. A canonical competition/team/kickoff identity mismatch against an existing snapshot fails closed.
+- Regression tests reproduce the observed equal-feature/different-lineage case: the current candidate uses observation 11197, while the persisted immutable record uses observation 9845; replay must retain 9845. A separate test rejects canonical identity drift.
+- No migration, key/schema change, update/delete of snapshots, provider/Odds API call, production promotion, certification, or Value Betting unlock was made. Snapshot 239 remains immutable.
+
+#### Verification state and next steps
+
+- PR #174 opened; GitHub reports mergeable and no review threads. No human review comments are present at the time of this entry.
+- Exact-head CI run `45622159869` was still in progress at the time of this ledger update; do not merge until it completes successfully for the latest PR head.
+- Review the full diff and CI logs, fix any failures, and rerun exact-head checks after any further edit.
+- After safe merge, manually dispatch Stage 6 from GitHub Actions (the connected GitHub interface cannot dispatch workflows). Confirm the dataset report records `REPEATABLE READ` and a nonempty transaction snapshot, confirms existing immutable snapshots are reused, and persists with zero immutable conflicts.
+- Verify snapshot and label counts, then verify automatic Stage 7 inference produces nonzero fresh research forecasts. Production publication, promotion, certification, and Value Betting remain locked.
