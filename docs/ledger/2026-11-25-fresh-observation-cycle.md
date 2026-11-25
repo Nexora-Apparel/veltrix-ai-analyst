@@ -20,5 +20,5 @@ The daily capture collector treated any previously validated import with the sam
 
 ## Validation status
 - Branch: `fix/daily-fresh-observation-cycle`.
-- Implementation and unit tests are committed; exact-head CI and integration verification are pending.
+- Implementation and unit tests are committed. Exact-head CI run [45651504018](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45651504018) passed both Android debug build and backend tests/lint; the backend actionlint step, compile step, pytest and Ruff lint all passed. No provider integration run has been executed yet.
 - Before merge, CI must pass backend tests/lint and actionlint. After merge, verify new import_run IDs, provider_response and source_observation_sighting timestamps, fresh Stage 6 snapshot cutoffs, Stage 7 report and isolated research-ledger forecast rows.
