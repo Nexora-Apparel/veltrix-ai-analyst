@@ -4,6 +4,7 @@ import hashlib
 
 import pytest
 
+from scripts.build_prospective_dataset import preserve_existing_snapshot_payloads
 from scripts.materialize_prospective_snapshots import (
     canonical_json,
     resolve_existing_snapshot,
@@ -231,3 +232,68 @@ def test_same_key_and_different_digest_fails_closed_without_mutating_existing_pa
         )
     assert existing_features == original_features
     assert existing_lineage == original_lineage
+
+
+
+def test_existing_snapshot_replay_reuses_original_lineage_when_new_history_has_equal_features():
+    cutoff = __import__("datetime").datetime.fromisoformat(
+        "2026-11-21T05:52:31.140752+00:00"
+    )
+    kickoff = __import__("datetime").datetime.fromisoformat(
+        "2026-11-22T15:00:00+00:00"
+    )
+    row = {
+        "canonical_fixture_id": "00000000-0000-0000-0000-000000000001",
+        "canonical_competition_id": "00000000-0000-0000-0000-000000000002",
+        "home_team_id": "00000000-0000-0000-0000-000000000003",
+        "away_team_id": "00000000-0000-0000-0000-000000000004",
+        "kickoff_at": kickoff.isoformat(),
+        "prediction_cutoff_at": cutoff.isoformat(),
+        "features": {"home_goals_for_per_match_last5": 1.2},
+        "feature_lineage": [{"source_observation_id": 11197}],
+    }
+    persisted = {
+        "canonical_competition_id": row["canonical_competition_id"],
+        "home_team_id": row["home_team_id"],
+        "away_team_id": row["away_team_id"],
+        "kickoff_at": kickoff,
+        "features": {"home_goals_for_per_match_last5": 1.2},
+        "feature_lineage": [{"source_observation_id": 9845}],
+    }
+
+    reused = preserve_existing_snapshot_payloads(
+        [row], {(row["canonical_fixture_id"], cutoff): persisted}
+    )
+
+    assert reused == 1
+    assert row["features"] == persisted["features"]
+    assert row["feature_lineage"] == [{"source_observation_id": 9845}]
+
+
+def test_existing_snapshot_replay_rejects_canonical_identity_drift():
+    from datetime import UTC, datetime
+
+    cutoff = datetime(2026, 11, 21, 5, 52, tzinfo=UTC)
+    kickoff = datetime(2026, 11, 22, 15, tzinfo=UTC)
+    row = {
+        "canonical_fixture_id": "fixture",
+        "canonical_competition_id": "competition",
+        "home_team_id": "home",
+        "away_team_id": "away",
+        "kickoff_at": kickoff.isoformat(),
+        "prediction_cutoff_at": cutoff.isoformat(),
+        "features": {},
+        "feature_lineage": [],
+    }
+    persisted = {
+        "canonical_competition_id": "competition",
+        "home_team_id": "different-home",
+        "away_team_id": "away",
+        "kickoff_at": kickoff,
+        "features": {},
+        "feature_lineage": [],
+    }
+    with pytest.raises(RuntimeError, match="EXISTING_IMMUTABLE_SNAPSHOT_IDENTITY_DRIFT"):
+        preserve_existing_snapshot_payloads(
+            [row], {("fixture", cutoff): persisted}
+        )
