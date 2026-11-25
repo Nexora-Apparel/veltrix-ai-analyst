@@ -130,3 +130,23 @@ Production publication, model promotion, certification and Value Betting remain 
 4. Investigate fold construction and minimum inner-OOF sample sufficiency for rho estimation; do not force nonzero rho when evidence is insufficient.
 5. A later 1X2 certification attempt must use timestamped bookmaker odds; current research baseline cannot satisfy that gate. Odds API credits remain protected; first inventory available licensed odds history and coverage before any paid calls.
 6. Continue to keep app display, public publication, production promotion, certification and Value Betting locked.
+
+
+## Follow-up — Android research-display contract and quarantine-path audit (2026-11-25)
+
+- Re-read the current mainline research API, model admission record, Stage 7 inference workflow, builder, concentration monitor, and 21 November integration ledger.
+- Corrected interpretation of the API admission contract: `app_display_enabled=false` in the committed model record is intentional for this SHADOW-only model. The API requires that exact value alongside tier SHADOW, certification RETROSPECTIVE_NOT_PIT_CERTIFIED, production promotion LOCKED, and Value Betting LOCKED. A separate deployment environment switch, `VELTRIX_RESEARCH_SHADOW_DISPLAY_ENABLED=true`, is the explicit app-display control. Do not change the admission record to true; that would cause the current model-admission check to reject it.
+- The hard `if: false` quarantine belongs to the separate legacy `.github/workflows/prospective-shadow-predictions.yml` path. It is not the active selected Stage 7 inference path.
+- The active `.github/workflows/research-shadow-inference.yml` is enabled for successful Stage 6 `workflow_run` events (workflow ID 423623285, main branch, success conclusion) and explicit manual dispatch with `confirm_research_ledger_write=true`. It builds selected Newton v2 forecasts and persists only through the isolated research-ledger writer.
+- Stage 7 v2 applies the concentration monitor to all fitted fixtures before team-history abstentions. For slates >=15 it quarantines on P(home) population SD outside [0.08, 0.22], any 1X2 top-pick share >0.85, BTTS-Yes pick share >0.90, or Over-2.5 pick share >0.90. Smaller slates are not concentration-gated. A quarantined run returns no prediction rows and a non-ready status.
+- The 21 November Stage 7 integration ledger confirms the monitor was part of the selected v2 design; it also records a 5-match-per-team abstention rule. It does not document a particular 21 November concentration violation value in the reviewed excerpt. Do not infer a specific failed threshold without the corresponding run summary/artifact.
+- Existing model probabilities use historical goal outcomes only. Captured auxiliary features are intentionally excluded because the source eligibility policy says post-match corners/cards/statistics and non-PIT availability proxies are not valid pre-match features without verified availability timestamps and rights. Feature integration must wait for eligible evidence; adding these fields now would introduce temporal leakage risk.
+- Existing Android research feed wiring is present. The API's two-part display gate is intentional: SHADOW admission record remains false for production display eligibility, while the deployment env switch controls whether the research-only endpoint is exposed. Existing Android parser/screens need no redesign.
+- No code, admission flag, workflow quarantine, production setting, provider credential, or Odds API usage was changed in this audit.
+
+### Next actions
+1. Retrieve the most recent run/artifact for the active `research-shadow-inference.yml` workflow associated with Stage 6 run #22 and inspect its sanitized summary: fitted/shown/abstained counts, concentration violations, model version, dataset hash, training cutoff, forecast cutoff and fixture identities.
+2. If the run is non-ready or quarantined, diagnose the actual per-run monitor values before proposing threshold/model changes. Do not bypass the monitor.
+3. If a fresh non-quarantined report was persisted, verify isolated ledger read-back and direct research API response while the deployment display switch remains off.
+4. Then correct/verify any API admission or display-path defects with tests; only after a reviewed first-run summary may the separate deployment display switch be enabled for research-only app visibility.
+5. Keep the legacy forecast workflow quarantine, production publication, model promotion, certification, Telegram delivery and Value Betting locks unchanged.
