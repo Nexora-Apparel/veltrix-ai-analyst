@@ -106,6 +106,19 @@ jobs:
             --input artifacts/prospective-dataset.json \
             --confirm-persist
 
+      # Preserve the exact read-only dataset even when immutable persistence fails.
+      # This is required to diagnose key collisions without rebuilding a different PIT view.
+      - name: Upload Stage 6 diagnostic dataset and lineage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veltrix-stage6-diagnostic-dataset
+          path: |
+            backend/artifacts/prospective-dataset.json
+            backend/artifacts/canonical-fixture-linkage.json
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Verify persisted snapshots and exact latest label events
         id: verify
         run: |
@@ -203,16 +216,6 @@ jobs:
               "dataset_sha256": report["dataset_sha256"],
           }, sort_keys=True))
           PY
-
-      - name: Upload daily lineage and persistence audit
-        uses: actions/upload-artifact@v4
-        with:
-          name: veltrix-stage6-daily-materialization-audit
-          path: |
-            backend/artifacts/prospective-dataset.json
-            backend/artifacts/canonical-fixture-linkage.json
-          if-no-files-found: error
-          retention-days: 90
 
       - name: Report Stage 6 completion and capture timing
         if: always() && github.event_name == 'workflow_run'

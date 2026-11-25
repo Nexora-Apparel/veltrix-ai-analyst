@@ -6,6 +6,8 @@ import pytest
 
 from scripts.materialize_prospective_snapshots import (
     canonical_json,
+    resolve_existing_snapshot,
+    snapshot_conflict_context,
     snapshot_digest,
     validate_report,
 )
@@ -23,6 +25,7 @@ def valid_report():
             "away_team_id": "00000000-0000-0000-0000-000000000004",
             "provider_fixture_id": "fixture-1",
             "fixture_id": "league:fixture-1",
+            "features": {"home_matches_last5": 3.0},
             "kickoff_at": "2026-01-02T12:00:00+00:00",
             "prediction_cutoff_at": "2026-01-02T10:00:00+00:00",
             "feature_lineage": [{
@@ -167,3 +170,64 @@ def test_snapshot_digest_preserves_existing_null_label_hash():
     }
     expected = hashlib.sha256(canonical_json(legacy_row).encode("utf-8")).hexdigest()
     assert snapshot_digest(row) == expected
+
+
+def test_snapshot_conflict_context_identifies_key_and_payload_differences():
+    row = valid_report()["rows"][0]
+    existing_features = {"home_matches_last5": 4.0}
+    existing_lineage = [{"source_observation_id": 10}]
+    context = snapshot_conflict_context(
+        row,
+        existing_id=99,
+        existing_digest="f" * 64,
+        existing_features=existing_features,
+        existing_lineage=existing_lineage,
+    )
+    assert context["canonical_fixture_id"] == row["canonical_fixture_id"]
+    assert context["provider_fixture_id"] == "fixture-1"
+    assert context["prediction_cutoff_at"] == row["prediction_cutoff_at"]
+    assert context["feature_schema_version"] == "veltrix-pit-features-v1"
+    assert context["existing_snapshot_id"] == 99
+    assert context["existing_snapshot_sha256"] == "f" * 64
+    assert context["proposed_snapshot_sha256"] == snapshot_digest(row)
+    assert context["feature_payloads_differ"] is True
+    assert context["feature_lineage_payloads_differ"] is True
+    assert "features" not in context
+    assert "feature_lineage" not in context
+
+
+def test_snapshot_conflict_context_reports_matching_payloads():
+    row = valid_report()["rows"][0]
+    context = snapshot_conflict_context(
+        row,
+        existing_id=99,
+        existing_digest=snapshot_digest(row),
+        existing_features=row["features"],
+        existing_lineage=row["feature_lineage"],
+    )
+    assert context["feature_payloads_differ"] is False
+    assert context["feature_lineage_payloads_differ"] is False
+
+
+def test_same_key_and_same_digest_is_an_idempotent_replay():
+    row = valid_report()["rows"][0]
+    snapshot_id = resolve_existing_snapshot(
+        row,
+        (123, snapshot_digest(row), row["features"], row["feature_lineage"]),
+    )
+    assert snapshot_id == 123
+
+
+def test_same_key_and_different_digest_fails_closed_without_mutating_existing_payload():
+    row = valid_report()["rows"][0]
+    existing_features = {"home_matches_last5": 4.0}
+    existing_lineage = [{"source_observation_id": 10}]
+    original_features = dict(existing_features)
+    original_lineage = list(existing_lineage)
+    with pytest.raises(RuntimeError, match="IMMUTABLE_SNAPSHOT_IDEMPOTENCY_CONFLICT"):
+        resolve_existing_snapshot(
+            row,
+            (123, "f" * 64, existing_features, existing_lineage),
+        )
+    assert existing_features == original_features
+    assert existing_lineage == original_lineage
