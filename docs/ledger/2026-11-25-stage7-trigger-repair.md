@@ -13,19 +13,24 @@
 - Retained all other gates: downstream event must be `workflow_run`; upstream workflow ID must be `423623285`; upstream branch must be `main`; upstream conclusion must be `success`. Manual Stage 7 dispatch still requires explicit `confirm_research_ledger_write=true`.
 - Existing inference limits, six-hour snapshot freshness check, 25-fixture cap, database environment and isolated research-ledger write step are unchanged.
 
-## Verification
+## Verification and CI correction
 
-- Read back the branch workflow file after the update; exact contents confirm the restrictive predicate is absent and all other gates remain.
-- PR #176 is open, targets `main`, is based on `3a301f6b5f92120c25c5722038b5172dde4a6c12`, and GitHub now reports it mergeable.
-- Vercel Preview deployment is Ready. This is not backend CI evidence.
-- The commit status exposes only Vercel; the available workflow-run lookup returns no PR CI runs for the exact head. Backend tests, lint, actionlint/workflow validation and Android build remain unverified. Do not merge.
-- No workflow was dispatched. No database write, provider/Odds API request, forecast publication, promotion, certification or Value Bet unlock occurred.
+- Read back the branch workflow file after the update; restrictive predicate is absent and all other conditions remain.
+- PR #176 remains open and targets `main`. Latest branch head after regression-test correction: `1a5380b820e84c00e4c7eaef9742ec9937be26a4`.
+- CI run `45636926794` was executed against the prior PR revision/merge ref `c0103ae712834de4bc78c4a4803bd2fc054faa02` (containing head `a1308b0f14d52e1e66c0fd1841ac109aa03075b9`).
+- Android debug build and APK upload passed in job `139284963866`.
+- Backend job `139284964650`: actionlint passed; backend compilation passed; test suite reported 580 passed and 1 failed. Failure was a stale assertion in `backend/tests/test_stage7_shadow.py` requiring the intentionally removed `github.event.workflow_run.event == 'workflow_run'` predicate. Lint was skipped because tests failed.
+- Corrected the regression test to assert the predicate is absent and document that the downstream `workflow_run` event is independent of the upstream Stage 6 trigger type, while retaining checks for workflow ID, main branch, success conclusion, manual confirmation, freshness and fixture cap.
+- Test correction committed as `1a5380b820e84c00e4c7eaef9742ec9937be26a4`; read-back confirms the updated assertion.
+- A fresh exact-head CI run for `1a5380b...` has not yet been verified. PR currently reports non-mergeable during update/CI recalculation. Do not merge.
+- Vercel Preview for the previous revision was Ready; the latest test commit triggered a new Preview build, which was Building at last observation. Vercel is not a substitute for backend CI.
+- No workflow dispatch, production database write, provider/Odds API request, forecast publication, promotion, certification or Value Bet unlock occurred.
 
 ## Next gates
 
-1. Obtain exact-head CI evidence for PR #176: backend tests, lint, actionlint/workflow validation and Android debug build.
-2. Resolve any CI failure and rerun against the new exact head.
-3. Merge only after required CI passes and the PR remains mergeable.
+1. Verify a new CI run for exact head `1a5380b...`.
+2. Require backend tests, lint, actionlint/workflow validation, Android debug build and APK upload to pass.
+3. Recheck PR mergeability and merge only after all required exact-head checks pass.
 4. Manually dispatch Stage 6 on `main` only; verify the successful Stage 6 run automatically starts Stage 7.
 5. Inspect the Stage 7 report and isolated research ledger for fresh nonzero forecasts, timestamps, fixture identities and eligibility decisions.
 6. Then validate research API exposure and the existing Android feed/parser/screens. Do not redesign the app.
