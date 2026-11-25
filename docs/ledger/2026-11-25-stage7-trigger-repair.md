@@ -87,3 +87,21 @@ Production publication, model promotion, certification and Value Betting remain 
 2. Treat the prospective forecast quarantine as a separate model-admission task. Review the 2026-11-21 concentration monitor, archived model-fit audit, and current prospective evaluation before proposing any change. Do not set if: false to true as a shortcut.
 3. Only after a forecast report exists and passes fresh-snapshot, training-cutoff, rights, identity, concentration, and model-diagnostic checks, review isolated research-ledger persistence and then the already-built read-only API/Android display path.
 4. Keep publication, app display, model promotion, certification, and Value Betting locked until their separate approvals/evidence gates are met.
+
+
+## Follow-up — Stage 7 evaluation #32 completed (2026-11-25)
+
+- Stage 7 evaluation run [45640909794](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45640909794), run #32, completed successfully on main at b875cd3f71fc18e8021c76a9f1c0dabb3690f294. Job 139298951956 completed all steps, including read-only expanding-window evaluation, independent certification gates and artifact upload.
+- Evaluation output printed: 54 fixtures, 3 folds, source dataset SHA-256 414d8333f8f8bf7dd9d2318994ac64521f1448d2c5c04eee34d5297c2e50bd54, status RESEARCH_ONLY_NOT_PRODUCTION_APPROVAL, production promotion LOCKED, Value Betting LOCKED.
+- Independent certification output: 54 fixtures evaluated; 54 settled labels; 6 distinct kickoff dates; walk-forward market fixture counts 54 each for 1X2, BTTS, OVER_UNDER_1_5, OVER_UNDER_2_5 and OVER_UNDER_3_5. Gate result BLOCKED_INSUFFICIENT_OR_UNCERTIFIED_EVIDENCE. Production promotion and Value Betting remain LOCKED.
+- Artifact uploaded: veltrix-stage7-prospective-research-evaluation, artifact ID 15036396581, 531139 bytes, SHA-256 04bf575701bbb92259d5d75acdc4a15d0d460dece6a6a6b0e9907855b70b62d9, 90-day retention. Workflow logs confirm two files (prospective-model-evaluation.json and prospective-dataset.json) were uploaded. The job log itself contains the decisive gate summary; full artifact contents have not yet been independently unpacked/reviewed.
+- Interpretation: workflow success means the research evaluation and certification gate executed successfully, not that the model passed certification. Current evidence is far below the required 1000 walk-forward fixtures per market, 300 prospective settled selections and 90 distinct dates. Do not infer ROI/odds/Brier/log-loss pass from the summary; inspect full artifact before any model diagnostic conclusions.
+- No publication, Telegram delivery, app display enablement, production model promotion, Value Betting unlock, provider calls or Odds API calls occurred.
+
+### Next steps
+
+1. Retrieve and inspect both JSON files in artifact 15036396581, including per-market metrics, fold-level scores, calibration, concentration, rights/odds coverage and dataset lineage. Preserve artifact digest for integrity checks.
+2. Continue prospective data accumulation through the existing approved capture/materialization pipeline; do not manufacture labels, relax PIT cutoffs, or bypass eligibility rules to accelerate sample counts.
+3. Review the 2026-11-21 concentration audit using repository search/tree discovery (the assumed ledger filename was not found at that exact path); inspect the actual audit artifact before proposing any forecast-quarantine change.
+4. Keep prospective forecast workflow quarantine and model admission flags unchanged until the full report and concentration audit support a reviewed change.
+5. Keep app display, publication, production promotion, certification and Value Betting locked.
