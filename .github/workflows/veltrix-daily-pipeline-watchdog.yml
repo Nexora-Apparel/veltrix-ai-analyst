@@ -29,7 +29,24 @@ jobs:
           today="$(date -u +%F)"
           day_start="${today}T00:00:00Z"
           now_epoch="$(date -u +%s)"
-          runs="$(gh api "repos/${REPOSITORY}/actions/workflows/${workflow}/runs?per_page=50")"
+          runs="$(gh api "repos/${REPOSITORY}/actions/workflows/${workflow}/runs?per_page=100")"
+
+          # Never dispatch while any main-branch capture is running or awaiting
+          # an environment/concurrency decision, even if it started yesterday.
+          active="$(jq -c '[.workflow_runs[] | select(.head_branch == "main") | select(.status == "in_progress" or .status == "waiting" or .status == "pending")] | last // empty' <<< "${runs}")"
+          if [[ -n "${active}" ]]; then
+            run_id="$(jq -r '.id' <<< "${active}")"
+            status="$(jq -r '.status' <<< "${active}")"
+            echo "Capture run ${run_id} is ${status}; no duplicate dispatch."
+            {
+              echo "### Capture recovery"
+              echo "- Result: no action"
+              echo "- Blocking capture run: ${run_id}"
+              echo "- Status: ${status}"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
           todays_runs="$(jq -c --arg start "${day_start}" '[.workflow_runs[] | select(.created_at >= $start) | select(.head_branch == "main")] | sort_by(.created_at)' <<< "${runs}")"
           count="$(jq 'length' <<< "${todays_runs}")"
 
@@ -41,19 +58,6 @@ jobs:
               echo "- Result: dispatched fallback capture"
               echo "- Reason: no main-branch capture run exists for UTC date ${today}"
               echo "- Provider request caps and importer idempotency remain unchanged"
-            } >> "${GITHUB_STEP_SUMMARY}"
-            exit 0
-          fi
-
-          active="$(jq -c '[.[] | select(.status == "in_progress")] | last // empty' <<< "${todays_runs}")"
-          if [[ -n "${active}" ]]; then
-            run_id="$(jq -r '.id' <<< "${active}")"
-            echo "Capture run ${run_id} is already in progress; no duplicate dispatch."
-            {
-              echo "### Capture recovery"
-              echo "- Result: no action"
-              echo "- Active capture run: ${run_id}"
-              echo "- Reason: an existing capture is in progress"
             } >> "${GITHUB_STEP_SUMMARY}"
             exit 0
           fi
@@ -79,8 +83,8 @@ jobs:
             exit 0
           fi
 
-          if [[ "${status}" == "completed" && "${conclusion}" != "success" && "${attempt}" -lt 2 ]]; then
-            echo "Capture run ${run_id} failed on attempt ${attempt}; retrying failed jobs only."
+          if [[ "${status}" == "completed" && ( "${conclusion}" == "failure" || "${conclusion}" == "timed_out" ) && "${attempt}" -lt 2 ]]; then
+            echo "Capture run ${run_id} ended with ${conclusion} on attempt ${attempt}; retrying failed jobs only."
             gh api --method POST "repos/${REPOSITORY}/actions/runs/${run_id}/rerun-failed-jobs"
             {
               echo "### Capture recovery"
@@ -106,7 +110,7 @@ jobs:
           fi
 
           if [[ "${status}" == "completed" ]]; then
-            echo "Latest capture is completed with conclusion ${conclusion}; retry limit reached or no safe failed-job retry is available."
+            echo "Latest capture is completed with conclusion ${conclusion}; retry limit reached or terminal state is not eligible for automatic retry."
             {
               echo "### Capture recovery"
               echo "- Result: no automatic retry"
