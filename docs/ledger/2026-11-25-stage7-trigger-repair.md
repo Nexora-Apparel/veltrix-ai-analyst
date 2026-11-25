@@ -36,3 +36,25 @@
 6. Then validate research API exposure and the existing Android feed/parser/screens. Do not redesign the app.
 
 Production publication, model promotion, certification and Value Betting remain locked until their independent evidence gates pass.
+
+
+## Merge and exact-head verification
+
+- PR #176 was merged successfully by squash after all exact-head CI jobs passed.
+- Exact PR head: `f829c9cd858b6d01367f43d49e2ea3bacc4f23bd`.
+- Exact-head Actions run: `45637339585`; Android debug build job `139286410139` succeeded, including APK upload; backend job `139286411108` succeeded, including actionlint, compilation, tests and lint.
+- GitHub reported PR mergeable before merge. Merge commit: `b6c8fead3d59fbe4865a9e797e0ed2e5dd67a5d5`.
+- Vercel Preview status context was successful/Ready for the PR revision.
+- Read back `.github/workflows/research-shadow-inference.yml` from `main` after merge. The incorrect upstream event-type predicate is absent; workflow ID `423623285`, `main` branch and successful conclusion guards remain. Manual Stage 7 still requires explicit confirmation.
+- Connected GitHub tools expose no workflow-dispatch action. Stage 6 production dispatch therefore remains a manual blocker; no dispatch or production research-ledger write is claimed.
+- No Odds API/provider request, publication, model promotion, certification or Value Betting unlock occurred during this repair.
+
+## Current next gates
+
+1. Manually run **Stage 6 daily immutable snapshot and outcome materialization** on `main` through GitHub Actions.
+2. Verify Stage 6 completes successfully and automatically triggers Stage 7 via the corrected `workflow_run` condition.
+3. Inspect the Stage 7 artifact and isolated research ledger: dataset/snapshot freshness, fixture IDs, timestamps, nonzero forecasts, write counts and eligibility/rejection reasons.
+4. If Stage 7 fails or emits no eligible forecasts, diagnose from its artifact/logs before any retry; do not bypass freshness or validation gates.
+5. Only after fresh research forecasts are verified, validate the research API route and connect its response to the existing Android UI/parser. Preserve current design.
+
+Production publication, model promotion, certification and Value Betting remain locked until their independent evidence gates pass.
