@@ -18,6 +18,7 @@ from app.providers.historical_import import (
     run_competition_historical_import,
 )
 from app.providers.historical_validation import validate_competition_import
+from app.providers.prospective_capture_cycle import completed_prospective_capture_run_ids
 from app.providers.prospective_capture_scope import PROSPECTIVE_CAPTURE_COMPETITIONS
 
 COMPETITIONS = PROSPECTIVE_CAPTURE_COMPETITIONS
@@ -29,17 +30,26 @@ def completed_run(
     start_at: datetime,
     end_at: datetime,
     import_type: str,
+    capture_day_start: datetime | None = None,
 ):
     with psycopg.connect(database_url) as connection:
-        rows = connection.execute(
-            """
-            SELECT id FROM veltrix_ai_analyst.import_runs
-            WHERE scope_value = %s AND boundary_start = %s AND boundary_end = %s
-              AND import_type = %s AND status = 'COMPLETED'
-            ORDER BY finished_at DESC NULLS LAST, id DESC
-            """,
-            (competition_id, start_at, end_at, import_type),
-        ).fetchall()
+        if import_type == "prospective_capture":
+            run_ids = completed_prospective_capture_run_ids(
+                connection,
+                competition_id=competition_id,
+                utc_day=capture_day_start or datetime.now(UTC),
+            )
+            rows = [(run_id,) for run_id in run_ids]
+        else:
+            rows = connection.execute(
+                """
+                SELECT id FROM veltrix_ai_analyst.import_runs
+                WHERE scope_value = %s AND boundary_start = %s AND boundary_end = %s
+                  AND import_type = %s AND status = 'COMPLETED'
+                ORDER BY finished_at DESC NULLS LAST, id DESC
+                """,
+                (competition_id, start_at, end_at, import_type),
+            ).fetchall()
         for (run_id,) in rows:
             try:
                 report = validate_competition_import(connection, int(run_id), competition_id)
@@ -136,10 +146,18 @@ def main() -> int:
         api_key=api_key,
         min_request_interval_seconds=60.0,
     )
+    capture_day_start = datetime.now(UTC).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
     for competition_id, name in COMPETITIONS:
         print(f"BATCH_START {name} ({competition_id})", flush=True)
         existing = completed_run(
-            database_url, competition_id, start_at, end_at, args.import_type
+            database_url,
+            competition_id,
+            start_at,
+            end_at,
+            args.import_type,
+            capture_day_start=capture_day_start,
         )
         if existing:
             run_id, report = existing
