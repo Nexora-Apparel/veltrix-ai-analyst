@@ -167,3 +167,23 @@ Production publication, model promotion, certification and Value Betting remain 
 2. If the summary is `SHADOW_FORECASTS_READY`, verify it has nonzero shown fixtures, zero concentration violations, fresh cutoffs, verified canonical identities, and the expected v2 model version.
 3. Read back the isolated research ledger and call the live research API; confirm the same fixture set and all research-only / NOT_PUBLISHED / LOCKED fields.
 4. Verify the existing Android app on-device. Do not redesign it; retain the research label and existing published-fixture precedence.
+
+
+## Follow-up — Stage 7 zero-forecast diagnosis (2026-11-25)
+
+- Retrieved active inference run [45640909666](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45640909666), triggered by successful Stage 6 run #22. Job 139298952312 completed successfully; artifact 15036481511 (veltrix-stage7-shadow-run-summary) was downloaded and inspected.
+- Artifact SHA-256 from GitHub metadata: 5a3d74310704ea103911877128c2c0393f5f315c3cf9f43ba5b92a33efbad311. Report dataset SHA matches Stage 6: 414d8333f8f8bf7dd9d2318994ac64521f1448d2c5c04eee34d5297c2e50bd54.
+- Actual report status: NO_FRESH_UPCOMING_SNAPSHOTS; forecast_count=0; abstention_count=0; predictions=[]; database_writes=0; provider_calls=0; odds_used=false. Concentration monitor PASS with zero fitted fixtures; this was not a concentration quarantine.
+- Independent inspection of Stage 6 artifact 15034519300 (prospective-dataset.json) confirms 114 rows: 54 settled and 60 unsettled. All 60 unsettled rows have prediction_cutoff_at=2026-11-25T08:40:05.859675Z; Stage 7 generated at 2026-11-25T15:15:02.210501Z. They were ~6h35m old, exceeding the configured six-hour freshness limit. All 54 other rows are labelled/settled. The exact target selector in backend/app/research/stage7_shadow.py correctly returned zero.
+- Stage 6 run #22 logs confirm immutable persistence inserted 0 snapshots and marked all 114 unchanged; it reused the old PIT snapshot payloads. This is consistent with the Stage 7 freshness rejection and does not justify relaxing the six-hour cutoff.
+- Upstream capture run [45578789004](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45578789004) succeeded at 08:43 UTC. It ran the approved rolling capture, reported all six competitions validated and no failures; import statuses were SKIPPED_ALREADY_VALIDATED, with request accounting shown in its batch summary. The automatically triggered Stage 6 run [45578874211](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45578874211) failed at immutable persistence with IMMUTABLE_SNAPSHOT_IDEMPOTENCY_CONFLICT. The later owner-dispatched Stage 6 #22 succeeded after the repair, but its dataset still reused the original 08:40 snapshots. The later Stage 7 workflow therefore had no fresh target cutoffs.
+- Confirmed Stage 6 is automatically triggered by successful completion of the capture workflow, while the capture workflow is scheduled daily at 00:17 UTC and may start later (the observed scheduled run began at 08:43 UTC). The successful Stage 6 #22 was manually dispatched hours after that capture.
+- No freshness threshold, immutable snapshot, rights, identity, model, or concentration gate was changed. No additional provider/Odds API calls were made during this diagnosis. No forecast rows were persisted; only the zero-forecast run record was inserted by the isolated ledger writer. App display remains unverified because the live API has no verified forecasts to return.
+
+### Next steps
+
+1. Obtain a fresh approved 5DollarFootballAPI capture on main, then let its workflow_run trigger Stage 6 and Stage 7 in sequence. Do not rerun Stage 7 against the stale dataset or weaken the six-hour cutoff.
+2. Connected GitHub actions tools expose no workflow-dispatch operation. A fresh capture dispatch is therefore a manual GitHub Actions operation unless a reviewed trigger mechanism is added; no such dispatch is claimed here.
+3. After fresh capture, verify Stage 6 creates new immutable snapshot keys with fresh system-observed prediction cutoffs (rather than reusing the 08:40 snapshots), then inspect Stage 7 report for nonzero shown forecasts and all gate fields.
+4. Verify isolated research-ledger forecast rows, live GET /v1/research/predictions payload, and physical Android rendering in that order. Preserve the existing Android design.
+5. Keep public publication, production model promotion, certification, Telegram delivery and Value Betting locked.
