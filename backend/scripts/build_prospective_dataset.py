@@ -18,7 +18,8 @@ from app.validation.prospective_dataset import (
     build_expanding_window_folds,
     build_prospective_dataset,
 )
-from scripts.materialize_prospective_snapshots import FEATURE_SCHEMA_VERSION
+
+FEATURE_SCHEMA_VERSION = "veltrix-pit-features-v1"
 
 
 def _jsonable_row(row) -> dict:
