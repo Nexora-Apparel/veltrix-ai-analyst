@@ -58,3 +58,14 @@ Production publication, model promotion, certification and Value Betting remain 
 5. Only after fresh research forecasts are verified, validate the research API route and connect its response to the existing Android UI/parser. Preserve current design.
 
 Production publication, model promotion, certification and Value Betting remain locked until their independent evidence gates pass.
+
+
+## Post-merge API and Android integration audit
+
+- Confirmed Stage 6 workflow file is `.github/workflows/stage-6-daily-snapshot-materialization.yml`, named exactly `Stage 6 daily immutable snapshot and outcome materialization`. Manual dispatch accepts no custom inputs and is gated to `refs/heads/main`; its pipeline retains closed release/promotion/value-betting gates and database identity checks.
+- Confirmed `backend/app/main.py` registers both published and research prediction routers.
+- Confirmed `GET /v1/research/predictions` is read-only, uses only the admitted shadow model, requires `VELTRIX_RESEARCH_SHADOW_DISPLAY_ENABLED=true` plus an admission record with `app_display_enabled=true`, and filters to fresh (36-hour) upcoming forecasts with publication/promotion/value-betting locks intact.
+- Current admission record remains `SHADOW`, `RETROSPECTIVE_NOT_PIT_CERTIFIED`, `app_display_enabled=false`, `production_promotion=LOCKED`, and `value_betting=LOCKED`. Do not flip this flag before the first fresh Stage 7 report is inspected and approved.
+- Confirmed Android already has `PredictionApi.fetchResearchUpcoming()`, validates research-only/unpublished/locked response fields, and fetches research feed plus published feed and history on startup and every five minutes while active.
+- Existing dashboard already stores research feed state and passes it into Home, BTTS and Over/Under screens. No UI redesign or premature app wiring change is required; first-run data verification and display-admission review are the remaining prerequisites.
+- Android source files inspected: `PredictionApi.kt` and `VeltrixDashboard.kt`. Existing design is preserved.
