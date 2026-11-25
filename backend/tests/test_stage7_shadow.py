@@ -107,7 +107,6 @@ def test_unadmitted_model_version_stays_quarantined(monkeypatch, tmp_path):
     assert response["predictions"] == []
 
 
-
 def test_committed_admission_is_shadow_only_and_app_display_is_off():
     root = Path(__file__).resolve().parents[2]
     admission = json.loads(
@@ -119,7 +118,6 @@ def test_committed_admission_is_shadow_only_and_app_display_is_off():
     assert admission["app_display_enabled"] is False
 
 
-
 def test_inference_workflow_runs_after_verified_stage6_and_keeps_manual_gate():
     root = Path(__file__).resolve().parents[2]
     workflow = (root / ".github/workflows/research-shadow-inference.yml").read_text()
@@ -127,7 +125,9 @@ def test_inference_workflow_runs_after_verified_stage6_and_keeps_manual_gate():
     assert "workflow_run:" in workflow
     assert 'workflows: ["Stage 6 daily immutable snapshot and outcome materialization"]' in workflow
     assert "github.event.workflow_run.workflow_id == 423623285" in workflow
-    assert "github.event.workflow_run.event == 'workflow_run'" in workflow
+    # The downstream event is workflow_run regardless of whether Stage 6 was
+    # started by schedule, workflow_dispatch, or another supported trigger.
+    assert "github.event.workflow_run.event == 'workflow_run'" not in workflow
     assert "github.event.workflow_run.head_branch == 'main'" in workflow
     assert "github.event.workflow_run.conclusion == 'success'" in workflow
     assert "workflow_dispatch:" in workflow
@@ -135,6 +135,7 @@ def test_inference_workflow_runs_after_verified_stage6_and_keeps_manual_gate():
     assert "max-snapshot-age-hours 6" in workflow
     assert "--max-fixtures 25" in workflow
     assert "if: false" in existing
+
 
 def test_research_query_has_two_placeholders_and_model_version_filter():
     from app.routes import research_predictions
