@@ -69,3 +69,21 @@ Production publication, model promotion, certification and Value Betting remain 
 - Confirmed Android already has `PredictionApi.fetchResearchUpcoming()`, validates research-only/unpublished/locked response fields, and fetches research feed plus published feed and history on startup and every five minutes while active.
 - Existing dashboard already stores research feed state and passes it into Home, BTTS and Over/Under screens. No UI redesign or premature app wiring change is required; first-run data verification and display-admission review are the remaining prerequisites.
 - Android source files inspected: `PredictionApi.kt` and `VeltrixDashboard.kt`. Existing design is preserved.
+
+## Follow-up — 2026-11-25 Stage 6 run #22 and Stage 7 orchestration verification
+
+- Owner-dispatched Stage 6 run: [45638434818](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45638434818), job 139290105035, completed successfully on main at b875cd3f71fc18e8021c76a9f1c0dabb3690f294.
+- Stage 6 independently reported DAILY_MATERIALIZATION_VERIFIED: 114 immutable snapshots for 114 distinct fixtures; 54 latest settled-label events; dataset SHA-256 414d8333f8f8bf7dd9d2318994ac64521f1448d2c5c04eee34d5297c2e50bd54.
+- Corrected automatic workflow_run orchestration fired. Stage 7 evaluation run 45640909794, run #32, started from the successful Stage 6 event on main. At latest inspection (2026-11-25 15:07 UTC), evaluation job 139298951956 remained in_progress at the read-only expanding-window evaluation step; certification and artifact-upload steps had not started, and no artifact was present. GitHub Actions job-log download returned BlobNotFound, so no log-level cause is asserted. Do not rerun/cancel until status is refreshed and active execution is understood.
+- Sibling prospective forecast workflow 45640909772, run #22, was skipped by design. Read-back of .github/workflows/prospective-shadow-predictions.yml confirms a hard if: false quarantine, documented as a hold following the 2026-11-21 cross-market concentration audit. This is not a trigger-repair regression. Do not remove quarantine without a reviewed model-admission change and passing evidence.
+- Forecast builder source inspection confirms a fresh target snapshot must be within six hours, have a pre-kickoff prediction cutoff, and use at least 30 cutoff-valid, rights-valid training labels. It emits an auditable abstention when fresh targets or sufficient eligible training data are absent. Forecast construction makes zero provider calls and zero DB writes; isolated research-ledger persistence is a separate step.
+- Re-read model admission record: tier SHADOW, certification RETROSPECTIVE_NOT_PIT_CERTIFIED, app display disabled, production promotion locked, Value Betting locked. No release/display flags were changed.
+- PR #176 remains the merged trigger repair (merge commit b6c8fead3d59fbe4865a9e797e0ed2e5dd67a5d5). PR #175 is an older, divergent, unmergeable duplicate of the same trigger fix and must not be merged.
+- No Odds API or football-provider calls, public publication, Telegram delivery, production promotion, certification, or Value Betting unlock occurred.
+
+### Next steps
+
+1. Refresh Stage 7 run #32 and inspect job/step status; obtain its completed artifact and certification output once available. If it remains stuck or fails, diagnose from workflow/job evidence before retrying.
+2. Treat the prospective forecast quarantine as a separate model-admission task. Review the 2026-11-21 concentration monitor, archived model-fit audit, and current prospective evaluation before proposing any change. Do not set if: false to true as a shortcut.
+3. Only after a forecast report exists and passes fresh-snapshot, training-cutoff, rights, identity, concentration, and model-diagnostic checks, review isolated research-ledger persistence and then the already-built read-only API/Android display path.
+4. Keep publication, app display, model promotion, certification, and Value Betting locked until their separate approvals/evidence gates are met.
