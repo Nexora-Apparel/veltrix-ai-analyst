@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import UTC, datetime
 
 import pytest
 
@@ -236,12 +237,8 @@ def test_same_key_and_different_digest_fails_closed_without_mutating_existing_pa
 
 
 def test_existing_snapshot_replay_reuses_original_lineage_when_new_history_has_equal_features():
-    cutoff = __import__("datetime").datetime.fromisoformat(
-        "2026-11-21T05:52:31.140752+00:00"
-    )
-    kickoff = __import__("datetime").datetime.fromisoformat(
-        "2026-11-22T15:00:00+00:00"
-    )
+    cutoff = datetime.fromisoformat("2026-11-21T05:52:31.140752+00:00")
+    kickoff = datetime.fromisoformat("2026-11-22T15:00:00+00:00")
     row = {
         "canonical_fixture_id": "00000000-0000-0000-0000-000000000001",
         "canonical_competition_id": "00000000-0000-0000-0000-000000000002",
@@ -271,8 +268,6 @@ def test_existing_snapshot_replay_reuses_original_lineage_when_new_history_has_e
 
 
 def test_existing_snapshot_replay_rejects_canonical_identity_drift():
-    from datetime import UTC, datetime
-
     cutoff = datetime(2026, 11, 21, 5, 52, tzinfo=UTC)
     kickoff = datetime(2026, 11, 22, 15, tzinfo=UTC)
     row = {
@@ -293,7 +288,9 @@ def test_existing_snapshot_replay_rejects_canonical_identity_drift():
         "features": {},
         "feature_lineage": [],
     }
-    with pytest.raises(RuntimeError, match="EXISTING_IMMUTABLE_SNAPSHOT_IDENTITY_DRIFT"):
+    with pytest.raises(
+        RuntimeError, match="EXISTING_IMMUTABLE_SNAPSHOT_IDENTITY_DRIFT"
+    ):
         preserve_existing_snapshot_payloads(
             [row], {("fixture", cutoff): persisted}
         )
