@@ -19,6 +19,8 @@ from app.validation.prospective_dataset import (
     build_prospective_dataset,
 )
 
+FEATURE_SCHEMA_VERSION = "veltrix-pit-features-v1"
+
 
 def _jsonable_row(row) -> dict:
     result = {
@@ -53,6 +55,46 @@ def _jsonable_row(row) -> dict:
     return result
 
 
+
+def preserve_existing_snapshot_payloads(
+    rows: list[dict],
+    existing_snapshots: dict[tuple[str, datetime], dict],
+) -> int:
+    """Reuse the exact immutable feature payload for an already-materialized key.
+
+    Rebuilding features from today's source-observation set is not a valid replay:
+    late-arriving rows or changed query visibility can select a different match
+    while leaving aggregate values unchanged. The persisted snapshot is the
+    authoritative feature/lineage pair for its immutable key. Labels remain
+    independently append-only and may be added from newly observed outcomes.
+    """
+    reused = 0
+    for row in rows:
+        cutoff = datetime.fromisoformat(row["prediction_cutoff_at"])
+        key = (row["canonical_fixture_id"], cutoff)
+        existing = existing_snapshots.get(key)
+        if existing is None:
+            continue
+        identity = (
+            row["canonical_competition_id"],
+            row["home_team_id"],
+            row["away_team_id"],
+            datetime.fromisoformat(row["kickoff_at"]),
+        )
+        persisted_identity = (
+            existing["canonical_competition_id"],
+            existing["home_team_id"],
+            existing["away_team_id"],
+            existing["kickoff_at"],
+        )
+        if identity != persisted_identity:
+            raise RuntimeError("EXISTING_IMMUTABLE_SNAPSHOT_IDENTITY_DRIFT")
+        row["features"] = existing["features"]
+        row["feature_lineage"] = existing["feature_lineage"]
+        reused += 1
+    return reused
+
+
 def build_report(
     database_url: str,
     *,
@@ -62,10 +104,18 @@ def build_report(
 ) -> dict:
     if urlsplit(database_url).path.lstrip("/").split("?", 1)[0] != expected_database:
         raise RuntimeError("DATABASE_URL_PATH_MISMATCH")
-    with psycopg.connect(database_url, autocommit=True) as connection:
+    with psycopg.connect(database_url) as connection:
         if connection.info.dbname != expected_database:
             raise RuntimeError("DATABASE_NAME_MISMATCH")
-        connection.execute("SET default_transaction_read_only = on")
+        # All source, identity, rights, and existing-snapshot reads must share
+        # one PostgreSQL MVCC view. Autocommit would let concurrent ingestion
+        # change visibility between SELECT statements in a single dataset.
+        connection.execute(
+            "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"
+        )
+        database_snapshot_started_at, database_snapshot_xid = connection.execute(
+            "SELECT transaction_timestamp(), txid_current_snapshot()::text"
+        ).fetchone()
         fixture_rows = connection.execute(
             """
             SELECT pf.provider, pf.source_id, pf.provider_fixture_id,
@@ -342,6 +392,33 @@ def build_report(
             ORDER BY pf.id, ir.finished_at ASC, s.id DESC
             """
         ).fetchall()
+        canonical_fixture_ids = sorted({str(row[7]) for row in fixture_rows})
+        existing_snapshot_rows = (
+            connection.execute(
+                """
+                SELECT canonical_fixture_id::text, prediction_cutoff_at,
+                       canonical_competition_id::text,
+                       home_canonical_team_id::text, away_canonical_team_id::text,
+                       kickoff_at, features, feature_lineage
+                FROM veltrix_ai_analyst.prospective_feature_snapshots
+                WHERE canonical_fixture_id = ANY(%s::uuid[])
+                  AND feature_schema_version = %s
+                """,
+                (canonical_fixture_ids, FEATURE_SCHEMA_VERSION),
+            ).fetchall()
+            if canonical_fixture_ids else []
+        )
+    existing_snapshots = {
+        (str(row[0]), row[1]): {
+            "canonical_competition_id": str(row[2]),
+            "home_team_id": str(row[3]),
+            "away_team_id": str(row[4]),
+            "kickoff_at": row[5],
+            "features": dict(row[6]),
+            "feature_lineage": list(row[7]),
+        }
+        for row in existing_snapshot_rows
+    }
     fixtures = [
         FixtureIdentity(
             fixture_id=f"{row[3]}:{row[2]}",
@@ -451,6 +528,9 @@ def build_report(
         validation_block_fixtures=validation_block_fixtures,
     )
     serialized_rows = [_jsonable_row(row) for row in rows]
+    reused_existing_snapshot_count = preserve_existing_snapshot_payloads(
+        serialized_rows, existing_snapshots
+    )
     serialized_training_only_rows = [
         _jsonable_row(row) for row in training_only_rows
     ]
@@ -480,6 +560,12 @@ def build_report(
         "report_type": "VELTRIX_PROSPECTIVE_EXPANDING_DATASET",
         "status": "READY_FOR_RESEARCH" if rows else "NO_PROSPECTIVE_DATA_YET",
         "created_at": datetime.now(UTC).isoformat(),
+        "database_snapshot": {
+            "isolation_level": "REPEATABLE READ",
+            "started_at": database_snapshot_started_at.isoformat(),
+            "transaction_snapshot": database_snapshot_xid,
+        },
+        "existing_immutable_snapshots_reused": reused_existing_snapshot_count,
         "provider": "5DollarFootballAPI",
         "fixture_identity_rows": len(fixtures),
         "eligible_prospective_rows": len(rows),
