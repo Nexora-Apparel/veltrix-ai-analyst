@@ -1,0 +1,127 @@
+name: VELTRIX daily pipeline watchdog
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: veltrix-daily-pipeline-watchdog
+  cancel-in-progress: false
+
+jobs:
+  capture-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect today's capture and recover only when safe
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          workflow="prospective-5dollar-daily-capture.yml"
+          today="$(date -u +%F)"
+          day_start="${today}T00:00:00Z"
+          now_epoch="$(date -u +%s)"
+          runs="$(gh api "repos/${REPOSITORY}/actions/workflows/${workflow}/runs?per_page=50")"
+          todays_runs="$(jq -c --arg start "${day_start}" '[.workflow_runs[] | select(.created_at >= $start) | select(.head_branch == "main")] | sort_by(.created_at)' <<< "${runs}")"
+          count="$(jq 'length' <<< "${todays_runs}")"
+
+          if [[ "${count}" -eq 0 ]]; then
+            echo "No main-branch capture run was created today; dispatching the existing bounded capture workflow."
+            gh api --method POST "repos/${REPOSITORY}/actions/workflows/${workflow}/dispatches" -f ref=main
+            {
+              echo "### Capture recovery"
+              echo "- Result: dispatched fallback capture"
+              echo "- Reason: no main-branch capture run exists for UTC date ${today}"
+              echo "- Provider request caps and importer idempotency remain unchanged"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          active="$(jq -c '[.[] | select(.status == "in_progress")] | last // empty' <<< "${todays_runs}")"
+          if [[ -n "${active}" ]]; then
+            run_id="$(jq -r '.id' <<< "${active}")"
+            echo "Capture run ${run_id} is already in progress; no duplicate dispatch."
+            {
+              echo "### Capture recovery"
+              echo "- Result: no action"
+              echo "- Active capture run: ${run_id}"
+              echo "- Reason: an existing capture is in progress"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          latest="$(jq -c 'last' <<< "${todays_runs}")"
+          run_id="$(jq -r '.id' <<< "${latest}")"
+          status="$(jq -r '.status' <<< "${latest}")"
+          conclusion="$(jq -r '.conclusion // "pending"' <<< "${latest}")"
+          attempt="$(jq -r '.run_attempt // 1' <<< "${latest}")"
+          created="$(jq -r '.created_at' <<< "${latest}")"
+          created_epoch="$(date -u -d "${created}" +%s)"
+          age_minutes="$(( (now_epoch - created_epoch) / 60 ))"
+
+          if [[ "${status}" == "completed" && "${conclusion}" == "success" ]]; then
+            echo "Today's capture run ${run_id} completed successfully; downstream Stage 6 and Stage 7 remain event-driven."
+            {
+              echo "### Capture recovery"
+              echo "- Result: no action"
+              echo "- Capture run: ${run_id}"
+              echo "- Conclusion: success"
+              echo "- Downstream Stage 6 / Stage 7 triggers remain unchanged"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          if [[ "${status}" == "completed" && "${conclusion}" != "success" && "${attempt}" -lt 2 ]]; then
+            echo "Capture run ${run_id} failed on attempt ${attempt}; retrying failed jobs only."
+            gh api --method POST "repos/${REPOSITORY}/actions/runs/${run_id}/rerun-failed-jobs"
+            {
+              echo "### Capture recovery"
+              echo "- Result: retried failed jobs"
+              echo "- Capture run: ${run_id}"
+              echo "- Previous conclusion: ${conclusion}"
+              echo "- Attempt: ${attempt}"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          if [[ "${status}" == "queued" && "${age_minutes}" -ge 120 ]]; then
+            echo "Capture run ${run_id} has remained queued for ${age_minutes} minutes; dispatching a recovery run."
+            gh api --method POST "repos/${REPOSITORY}/actions/workflows/${workflow}/dispatches" -f ref=main
+            {
+              echo "### Capture recovery"
+              echo "- Result: dispatched queued-run recovery"
+              echo "- Previous run: ${run_id}"
+              echo "- Queue age: ${age_minutes} minutes"
+              echo "- Existing capture concurrency and importer idempotency remain active"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          if [[ "${status}" == "completed" ]]; then
+            echo "Latest capture is completed with conclusion ${conclusion}; retry limit reached or no safe failed-job retry is available."
+            {
+              echo "### Capture recovery"
+              echo "- Result: no automatic retry"
+              echo "- Capture run: ${run_id}"
+              echo "- Conclusion: ${conclusion}"
+              echo "- Attempt: ${attempt}"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          echo "Capture run ${run_id} is ${status}; no duplicate dispatch."
+          {
+            echo "### Capture recovery"
+            echo "- Result: no action"
+            echo "- Capture run: ${run_id}"
+            echo "- Status: ${status}"
+            echo "- Queue age: ${age_minutes} minutes"
+          } >> "${GITHUB_STEP_SUMMARY}"
