@@ -361,3 +361,15 @@ Branch: fix/daily-canonical-fixture-linkage
 - Review the full diff and CI logs, fix any failures, and rerun exact-head checks after any further edit.
 - After safe merge, manually dispatch Stage 6 from GitHub Actions (the connected GitHub interface cannot dispatch workflows). Confirm the dataset report records `REPEATABLE READ` and a nonempty transaction snapshot, confirms existing immutable snapshots are reused, and persists with zero immutable conflicts.
 - Verify snapshot and label counts, then verify automatic Stage 7 inference produces nonzero fresh research forecasts. Production publication, promotion, certification, and Value Betting remain locked.
+
+### PR #174 merged and exact-head verification — 25 November 2026
+
+- PR #174 merged by squash at 2026-11-25 13:21:50 UTC. Merge commit: `7210ebbceb001d963cec9102b61b8899d22c8fdf`.
+- Exact PR head tested: `dc44c8e4148e9e659c5da71b1f4878050b1b8aba`.
+- Exact-head CI run `45622501496` completed successfully. Backend suite: **581 passed, 1 warning**; Ruff lint passed; backend/script compilation and actionlint passed.
+- Android debug build passed (`BUILD SUCCESSFUL`); APK artifact ID `15025212611` uploaded successfully.
+- Vercel check for the exact PR head reported success. GitHub review-thread check returned zero unresolved threads and no submitted reviews.
+- The merged code preserves existing immutable feature/lineage payloads on replay, adds a read-only repeatable-read build transaction and records its MVCC snapshot token. No production database write, snapshot mutation, migration, provider request, Odds API request, model promotion, certification, or Value Betting unlock occurred during implementation/CI.
+- **Remaining execution blocker:** Stage 6 must now be manually dispatched on `main` to validate against production Neon. The connected GitHub Actions interface available in this session is read-only for workflow dispatch. Dispatch only `stage-6-daily-snapshot-materialization.yml` from branch `main`; do not manually dispatch Stage 7. Successful Stage 6 automatically triggers Stage 7.
+- After dispatch, verify `database_snapshot.isolation_level=REPEATABLE READ`, a nonempty `database_snapshot.transaction_snapshot`, nonzero `existing_immutable_snapshots_reused`, and zero `IMMUTABLE_SNAPSHOT_IDEMPOTENCY_CONFLICT`. Confirm snapshot/label counts and automatic Stage 7 forecast counts. Require nonzero fresh research forecasts before API/Android validation.
+- Existing snapshot 239 and its observation-9845 lineage remain unchanged. Production publication, model promotion, certification, and Value Betting remain locked.
