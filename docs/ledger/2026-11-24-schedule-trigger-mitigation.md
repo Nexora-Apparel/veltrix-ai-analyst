@@ -304,3 +304,15 @@ Branch: fix/daily-canonical-fixture-linkage
 - Read-only production inspection at 12:52 UTC confirmed the snapshot table contains 130 rows; schema confirms unique key `(canonical_fixture_id, prediction_cutoff_at, feature_schema_version)`. The exact failed-run collision still cannot be reconstructed because run `45393342406` did not upload its dataset artifact. No root cause is claimed.
 - Exact-head CI run `45397493488` started against initial PR head `2d22fb69d133d6ec50db5fb4ac4dee293be76ecb`; backend tests/lint and Android debug build were still in progress at ledger update time. Do not merge until the final PR head's backend tests/lint and Android debug build both pass and review/mergeability remain clean.
 - After CI passes and the PR is reviewed/merged, manually dispatch Stage 6 on main. The next failure, if any, should now identify the exact colliding key and whether features or lineage differ. Then trace the differing component back to PIT observation selection or feature construction before changing data/key semantics. Preserve existing immutable snapshots and all publication/certification/Value Bet locks.
+
+
+### PR #173 merged — immutable snapshot collision diagnostics (25 November 2026)
+
+- PR #173 was squash-merged into main. Exact PR head: c7ce6b5309cb0548a0d37fca53bf5b2e8c6aa130; merge commit: 1f2f21d8869e18713b753896d9355c1facd53ffa.
+- Exact-head CI run 45398729689 passed backend tests/lint and Android debug build. Vercel Preview Comments passed with zero unresolved feedback; commit status was success. PR review submissions and inline review comments were empty. Merge used expected head SHA.
+- Change adds safe collision diagnostics without feature payload leakage, exact-digest replay handling, fail-closed mismatch behavior, regression tests, and Stage 6 dataset/lineage artifact upload even on persistence failure.
+- No immutable snapshots were overwritten/deleted; no schema/key changes, production DB writes, provider/Odds API calls, or release-gate changes were made.
+- Capture run 45576326492 was a successful manual workflow_dispatch on pre-merge main f1695185ce54bd4ea07fadcdc50cdd6ac50323cc: six competitions completed, zero failed, 14 records inserted, 12 provider requests used. It did not itself trigger Stage 6 because it was manually dispatched.
+- Next: manually dispatch Stage 6 on updated main at/after 1f2f21d8869e18713b753896d9355c1facd53ffa. Inspect collision diagnostics and uploaded dataset/lineage artifact. If collision persists, trace exact key and payload-difference flags to PIT feature/lineage determinism. Never weaken immutable checks or mutate existing snapshots.
+- If persistence succeeds, verify snapshot/label counts and automatic Stage 7 inference; require non-zero fresh research forecasts before API/Android checks. Production publication, promotion, certification and Value Bet remain locked.
+- Connected GitHub Actions interface does not expose workflow dispatch; manual Stage 6 dispatch remains a UI step: https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/workflows/stage-6-daily-snapshot-materialization.yml
