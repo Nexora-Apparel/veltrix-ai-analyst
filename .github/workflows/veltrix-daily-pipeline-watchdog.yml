@@ -47,6 +47,35 @@ jobs:
             exit 0
           fi
 
+          # A queued run from the previous UTC date is not part of today's
+          # retry selection. Keep it visible and recover only after 120 minutes.
+          prior_queued="$(jq -c --arg start "${day_start}" '[.workflow_runs[] | select(.head_branch == "main") | select(.status == "queued") | select(.created_at < $start)] | sort_by(.created_at) | last // empty' <<< "${runs}")"
+          if [[ -n "${prior_queued}" ]]; then
+            run_id="$(jq -r '.id' <<< "${prior_queued}")"
+            created="$(jq -r '.created_at' <<< "${prior_queued}")"
+            created_epoch="$(date -u -d "${created}" +%s)"
+            age_minutes="$(( (now_epoch - created_epoch) / 60 ))"
+            if [[ "${age_minutes}" -ge 120 ]]; then
+              echo "Previous-day capture run ${run_id} has remained queued for ${age_minutes} minutes; dispatching recovery."
+              gh api --method POST "repos/${REPOSITORY}/actions/workflows/${workflow}/dispatches" -f ref=main
+              {
+                echo "### Capture recovery"
+                echo "- Result: dispatched previous-day queued-run recovery"
+                echo "- Previous run: ${run_id}"
+                echo "- Queue age: ${age_minutes} minutes"
+              } >> "${GITHUB_STEP_SUMMARY}"
+            else
+              echo "Previous-day capture run ${run_id} remains queued for ${age_minutes} minutes; no duplicate dispatch."
+              {
+                echo "### Capture recovery"
+                echo "- Result: no action"
+                echo "- Blocking queued capture run: ${run_id}"
+                echo "- Queue age: ${age_minutes} minutes (120-minute recovery threshold)"
+              } >> "${GITHUB_STEP_SUMMARY}"
+            fi
+            exit 0
+          fi
+
           todays_runs="$(jq -c --arg start "${day_start}" '[.workflow_runs[] | select(.created_at >= $start) | select(.head_branch == "main")] | sort_by(.created_at)' <<< "${runs}")"
           count="$(jq 'length' <<< "${todays_runs}")"
 
