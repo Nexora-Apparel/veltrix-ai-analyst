@@ -105,3 +105,28 @@ Production publication, model promotion, certification and Value Betting remain 
 3. Review the 2026-11-21 concentration audit using repository search/tree discovery (the assumed ledger filename was not found at that exact path); inspect the actual audit artifact before proposing any forecast-quarantine change.
 4. Keep prospective forecast workflow quarantine and model admission flags unchanged until the full report and concentration audit support a reviewed change.
 5. Keep app display, publication, production promotion, certification and Value Betting locked.
+
+
+## Artifact deep inspection — Stage 7 run #32
+
+- Downloaded artifact 15036396581 through the GitHub Actions artifact endpoint and unpacked both JSON files. ZIP digest matches GitHub artifact metadata: 04bf575701bbb92259d5d75acdc4a15d0d460dece6a6a6b0e9907855b70b62d9.
+- Evaluation JSON confirms dataset READY_FOR_RESEARCH; SHA-256 414d8333f8f8bf7dd9d2318994ac64521f1448d2c5c04eee34d5297c2e50bd54; 1,442 fixture identity rows; 114 eligible prospective rows; 54 settled prospective labels over 6 kickoff dates; 1,408 historical training-only labels; 6 competitions; 3,038 feature-lineage records; zero invalid system-observed sightings.
+- Critical model-scope finding: model_feature_usage is HIERARCHICAL_GOAL_RATE_ONLY; SHOT_POSSESSION_ATTACK_EVENT_FEATURES_CAPTURED_BUT_NOT_YET_USED. Thus extensive shot/possession/attack/event features are captured and lineage-tracked but do not currently contribute to model predictions.
+- 1X2: model Brier 0.61522 vs research baseline 0.63044; log loss 1.02498 vs 1.04565. Paired model-minus-baseline 95% CI is [-0.03516, 0.00189] for Brier and [-0.05002, 0.00376] for log loss; both cross zero. This does not establish reliable improvement. Baseline is not bookmaker odds.
+- BTTS: model Brier 0.26021 vs baseline 0.26754; log loss 0.71383 vs 0.72930. Paired 95% CIs [-0.01297, -0.00050] and [-0.02745, -0.00122], respectively, favour the model versus this research baseline only; n=54 and no bookmaker comparison.
+- O/U 1.5: model Brier 0.19406 vs baseline 0.19762; log loss 0.57849 vs 0.59235. Paired 95% CIs [-0.00826, 0.00198] and [-0.03188, 0.00428] cross zero.
+- O/U 2.5: model Brier 0.24931 vs baseline 0.25297; log loss 0.69179 vs 0.69974. Paired 95% CIs [-0.01221, 0.00593] and [-0.02610, 0.01214] cross zero.
+- O/U 3.5: model Brier 0.21754 vs baseline 0.21667; log loss 0.62560 vs 0.62358. Paired 95% CIs [-0.00848, 0.01131] and [-0.01816, 0.02397] cross zero; point estimates slightly favour baseline.
+- Fold diagnostics: folds validate 25, 25 and 4 fixtures. Optimizers converged in all three. Dixon-Coles rho was set to zero in folds 1 and 2 due insufficient inner out-of-fold evidence (0 and 2 inner OOF fixtures); fold 3 estimated rho=0.1291 using 28 inner OOF fixtures. The 4-fixture third validation block is particularly small.
+- Certification artifact explicitly records: 54/300 settled prospective fixtures; 6/90 settled dates; 54/1000 walk-forward fixtures per market; timestamped odds coverage NOT_EVALUATED; ROI and lower 95% bound NOT_EVALUATED; 1X2 bookmaker Brier/log-loss NOT_EVALUATED because current baseline is not bookmaker odds. All gates fail closed.
+- Bootstrap intervals are descriptive only (200 paired competition-stratified replicates, seed 20261118), not release tests. No calibration or market confidence claim should be extrapolated from these intervals.
+- Integrity check: evaluation and dataset JSON both identify the same source dataset hash. No dataset mismatch observed.
+
+### Engineering implications
+
+1. Preserve all current admission and forecast-workflow locks.
+2. Inspect model feature pipeline and admission review to determine whether the captured shot/possession/attack/event features are intentionally excluded pending validation or are a pipeline integration gap. Do not add them to the model without a separate leakage-safe feature-ablation and walk-forward evaluation.
+3. Improve prospective sample accumulation and date diversity using existing capture schedule; keep the PIT observation cutoff and rights checks intact.
+4. Investigate fold construction and minimum inner-OOF sample sufficiency for rho estimation; do not force nonzero rho when evidence is insufficient.
+5. A later 1X2 certification attempt must use timestamped bookmaker odds; current research baseline cannot satisfy that gate. Odds API credits remain protected; first inventory available licensed odds history and coverage before any paid calls.
+6. Continue to keep app display, public publication, production promotion, certification and Value Betting locked.
