@@ -150,3 +150,20 @@ Production publication, model promotion, certification and Value Betting remain 
 3. If a fresh non-quarantined report was persisted, verify isolated ledger read-back and direct research API response while the deployment display switch remains off.
 4. Then correct/verify any API admission or display-path defects with tests; only after a reviewed first-run summary may the separate deployment display switch be enabled for research-only app visibility.
 5. Keep the legacy forecast workflow quarantine, production publication, model promotion, certification, Telegram delivery and Value Betting locks unchanged.
+
+
+## Production research-display deployment check — 2026-11-25
+
+- Vercel project `veltrix-ai-analyst-api` belongs to team `team_Lj9bVie6YVKgrQTBNNwj1ieu`.
+- Read the Production environment variable inventory without decrypting secrets. `VELTRIX_RESEARCH_SHADOW_DISPLAY_ENABLED` exists with plain value `true`, Production target only. Its owner-authored comment says it is for supervisor-approved RESEARCH ONLY shadow forecast display and does not unlock production publication or Value Betting. No environment value was changed.
+- Latest Production deployment after this ledger update: `dpl_D23GricxVJXu1dWjbmmpiNowm1Fq`, state READY, commit `ea6f8e3f6d2a75d2b78b03a6753468aec16e111f` (documentation-only ledger clarification).
+- A 30-minute Vercel runtime-log query filtered to `/v1/research/predictions` returned no matching records. This means no matching API request was logged in that window; it does not prove the endpoint is broken or that the app cannot fetch it.
+- Direct endpoint inspection through the available web reader was not supported. A live API payload, Neon research-ledger row count, and physical Android display therefore remain unverified.
+- Important separation: the deployment display switch is already true, but that alone does not create forecasts. The active Stage 7 inference workflow must successfully produce a non-quarantined report and persist it to the isolated research ledger before the API can return fixtures.
+- No new deployment was triggered by this check; the READY deployment is the Git-linked production deployment for the latest documentation commit.
+
+### Immediate verification sequence
+1. Retrieve the run triggered by Stage 6 run 45638434818 for workflow `research-shadow-inference.yml`; inspect the job result and `veltrix-stage7-shadow-run-summary` artifact.
+2. If the summary is `SHADOW_FORECASTS_READY`, verify it has nonzero shown fixtures, zero concentration violations, fresh cutoffs, verified canonical identities, and the expected v2 model version.
+3. Read back the isolated research ledger and call the live research API; confirm the same fixture set and all research-only / NOT_PUBLISHED / LOCKED fields.
+4. Verify the existing Android app on-device. Do not redesign it; retain the research label and existing published-fixture precedence.
