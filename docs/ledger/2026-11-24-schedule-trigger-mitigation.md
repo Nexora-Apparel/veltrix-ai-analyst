@@ -373,3 +373,31 @@ Branch: fix/daily-canonical-fixture-linkage
 - **Remaining execution blocker:** Stage 6 must now be manually dispatched on `main` to validate against production Neon. The connected GitHub Actions interface available in this session is read-only for workflow dispatch. Dispatch only `stage-6-daily-snapshot-materialization.yml` from branch `main`; do not manually dispatch Stage 7. Successful Stage 6 automatically triggers Stage 7.
 - After dispatch, verify `database_snapshot.isolation_level=REPEATABLE READ`, a nonempty `database_snapshot.transaction_snapshot`, nonzero `existing_immutable_snapshots_reused`, and zero `IMMUTABLE_SNAPSHOT_IDEMPOTENCY_CONFLICT`. Confirm snapshot/label counts and automatic Stage 7 forecast counts. Require nonzero fresh research forecasts before API/Android validation.
 - Existing snapshot 239 and its observation-9845 lineage remain unchanged. Production publication, model promotion, certification, and Value Betting remain locked.
+
+### Stage 6 production persistence replay and Stage 7 evaluation — 25 November 2026
+
+#### Stage 6 run 45627168551 — SUCCESS
+
+- Job `139250362915` completed successfully on main commit `8e1a370b74d06eca742088f64c3d6ccdbcb63539`.
+- Exact fixture linkage: 60 upcoming eligible, zero conflicts, zero unresolved. Six scopes reused 1,442 state-provenance records; no new fixture/team rows or provider requests were required.
+- Dataset status `READY_FOR_RESEARCH`: 114 prospective rows, 54 settled-label rows, 60 unsettled, 3 expanding folds, 3,038 lineage records.
+- Dataset SHA-256: `414d8333f8f8bf7dd9d2318994ac64521f1448d2c5c04eee34d5297c2e50bd54`.
+- Artifact `15029203021` was downloaded and inspected. It confirms the builder transaction isolation is `REPEATABLE READ`, started `2026-11-25T13:54:52.163721+00:00`, transaction snapshot token `156683:156683:`, and `existing_immutable_snapshots_reused=48`.
+- Persist operation: 66 new immutable snapshots inserted, 48 unchanged/reused, 114 total rows; 54 labels inserted. Status `PERSISTED`. This resolves the previous immutable-lineage collision on this replay without mutating the prior snapshots.
+- Independent post-write verification: 114 snapshots, 114 distinct fixtures, and 54 exact latest label events; status `DAILY_MATERIALIZATION_VERIFIED`. Append-only triggers verified active.
+- Dataset release eligibility false; production promotion and Value Betting remained locked. No provider/Odds API requests.
+
+#### Automatic Stage 7 run 45629457305 — SUCCESS, RESEARCH ONLY
+
+- Stage 7 evaluation completed successfully, source dataset SHA matches Stage 6 SHA above.
+- Evaluated 54 fixtures, 54 settled labels, 3 folds; 6 distinct settled dates.
+- Certification-gate output: `BLOCKED_INSUFFICIENT_OR_UNCERTIFIED_EVIDENCE`; 54 per-market fixture evaluations for 1X2, BTTS, O/U 1.5, 2.5, and 3.5. Minimum certification targets remain unmet.
+- Production certification, promotion, and Value Betting remain LOCKED. This run does not publish predictions or certify the model.
+- Stage 7 artifact ID `15029119110` (90-day retention) uploaded.
+- Automatic inference/publication workflows triggered after Stage 6 were skipped by workflow conditions; Stage 7 evaluation itself succeeded. No fresh published research forecast count has been established from this run.
+
+#### Repair outcome and next work
+
+- The immutable PIT replay issue is operationally resolved for the tested run: repeatable-read watermark recorded, 48 existing snapshot payloads reused, 66 new snapshots persisted, and verification succeeded.
+- Continue to Stage 7 inference trigger/condition diagnosis. Inspect why automatic inference and shadow forecast workflows were skipped following the successful Stage 6 event, and correct the workflow trigger conditions without bypassing gates. Then run exact-head CI and verify nonzero fresh research forecasts/API/Android.
+- Preserve all release and value-betting gates.
