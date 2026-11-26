@@ -1,5 +1,7 @@
 import hashlib
 import json
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from pathlib import Path
 
 from app.research.stage7_shadow import (
@@ -7,6 +9,7 @@ from app.research.stage7_shadow import (
     _summary,
     concentration_violations,
     insufficient_team_history,
+    _select_daily_targets,
 )
 
 
@@ -182,3 +185,55 @@ def test_research_route_passes_model_version_then_wat_window(monkeypatch):
     assert day_start < day_end
     assert response["status"] == "NO_RESEARCH_FORECASTS_AVAILABLE"
     assert fake.closed
+
+
+
+def _target_row(fixture_id: str, kickoff_at: datetime, generated_at: datetime):
+    return SimpleNamespace(
+        fixture_id=fixture_id,
+        validation_eligible=True,
+        label=None,
+        prediction_cutoff_at=generated_at - timedelta(minutes=30),
+        canonical_fixture_id=f"canonical-{fixture_id}",
+        canonical_competition_id="competition-1",
+        kickoff_at=kickoff_at,
+    )
+
+
+def test_stage7_selects_only_current_wat_day_and_does_not_fill_from_tomorrow():
+    generated = datetime(2026, 11, 26, 8, 0, tzinfo=UTC)  # 09:00 WAT
+    rows = (
+        _target_row("today-late", datetime(2026, 11, 26, 21, 0, tzinfo=UTC), generated),
+        _target_row("tomorrow", datetime(2026, 11, 26, 23, 0, tzinfo=UTC), generated),
+        _target_row("today-early", datetime(2026, 11, 26, 10, 0, tzinfo=UTC), generated),
+    )
+    selected = _select_daily_targets(
+        rows, generated=generated, max_fixtures=25, max_snapshot_age_hours=6.0
+    )
+    assert [row.fixture_id for row in selected] == ["today-early", "today-late"]
+
+
+def test_stage7_applies_25_fixture_cap_after_wat_day_filter():
+    generated = datetime(2026, 11, 26, 8, 0, tzinfo=UTC)
+    today = [
+        _target_row(f"today-{i:02d}", datetime(2026, 11, 26, 9, i, tzinfo=UTC), generated)
+        for i in range(30)
+    ]
+    tomorrow = _target_row("tomorrow", datetime(2026, 11, 26, 23, 0, tzinfo=UTC), generated)
+    selected = _select_daily_targets(
+        tuple(today + [tomorrow]),
+        generated=generated,
+        max_fixtures=25,
+        max_snapshot_age_hours=6.0,
+    )
+    assert len(selected) == 25
+    assert all(row.fixture_id.startswith("today-") for row in selected)
+
+
+def test_stage7_returns_empty_when_no_eligible_fixture_exists_today():
+    generated = datetime(2026, 11, 26, 8, 0, tzinfo=UTC)
+    tomorrow = _target_row("tomorrow", datetime(2026, 11, 26, 23, 0, tzinfo=UTC), generated)
+    selected = _select_daily_targets(
+        (tomorrow,), generated=generated, max_fixtures=25, max_snapshot_age_hours=6.0
+    )
+    assert selected == []
