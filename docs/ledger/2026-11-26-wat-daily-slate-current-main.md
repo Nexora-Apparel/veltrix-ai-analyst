@@ -77,3 +77,10 @@ Not release-ready. Keep draft until exact-head backend tests/lint and Android bu
 - Required manifest checks: current WAT-day-only membership, no next-day fill, maximum 25 applied after date filtering, chronological order, unique fixture IDs, selector/inference count agreement, and valid empty-slate behavior. A zero-fixture day is a successful empty-slate validation, not a reason to fill with tomorrow's fixtures.
 - No candidate validation dispatch, database write, research-ledger write, provider request, Odds API request, production deployment, PR merge, publication, Telegram delivery, or model promotion has been performed in this step.
 - Release remains blocked pending review/availability of PR #180, exact-head CI for the latest PR #179 commit, a successful read-only WAT-date manifest, Android verification of fixture date membership, and the existing independent certification gates.
+
+
+## Validator edge-case hardening — 2026-11-26
+- Hardened `validate_stage7_wat_daily_slate.py` for the valid case where eligible same-day fixtures exist but Stage 7 correctly abstains because cutoff-valid training labels are unavailable. The validator now distinguishes selector validation from inference readiness instead of incorrectly reporting a selector/inference count mismatch when Stage 7 has no inference summary.
+- The validator still fails closed on non-WAT-day selection, over-cap selection, duplicate fixture IDs, non-chronological selection, missing unexpected inference summary, or count mismatch when an inference summary is present.
+- Latest validator code commit: `f888f8e1b2da999366ada1f03c04feffdd4af884`. The branch head may be a later ledger-only commit; obtain the live PR #179 head SHA immediately before any manual validation dispatch.
+- No read-only validation workflow dispatch has occurred. PR #180 remains a draft proposal for review and must be available on the default branch before the manual workflow can run.
