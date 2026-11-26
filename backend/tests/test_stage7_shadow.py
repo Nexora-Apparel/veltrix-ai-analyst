@@ -140,7 +140,7 @@ def test_inference_workflow_runs_after_verified_stage6_and_keeps_manual_gate():
     assert "if: false" in existing
 
 
-def test_research_query_has_two_placeholders_and_model_version_filter():
+def test_research_query_has_four_placeholders_and_model_version_filter():
     from app.routes import research_predictions
 
     assert research_predictions._RESEARCH_QUERY.count("%s") == 4
@@ -179,7 +179,7 @@ def test_research_route_passes_model_version_then_now(monkeypatch):
     monkeypatch.setattr(research_predictions, "_database_connection", lambda: fake)
     response = research_predictions.list_research_predictions()
     assert fake.query.count("%s") == len(fake.params) == 4
-    assert fake.query.count("%s") == 2
+    assert fake.query.count("%s") == 4
     assert fake.params[0] == research_predictions.MODEL_VERSION
     assert fake.params[1].tzinfo is not None
     assert fake.params[2].tzinfo is not None
