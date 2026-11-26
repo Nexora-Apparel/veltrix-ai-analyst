@@ -84,3 +84,11 @@ Not release-ready. Keep draft until exact-head backend tests/lint and Android bu
 - The validator still fails closed on non-WAT-day selection, over-cap selection, duplicate fixture IDs, non-chronological selection, missing unexpected inference summary, or count mismatch when an inference summary is present.
 - Latest validator code commit: `f888f8e1b2da999366ada1f03c04feffdd4af884`. The branch head may be a later ledger-only commit; obtain the live PR #179 head SHA immediately before any manual validation dispatch.
 - No read-only validation workflow dispatch has occurred. PR #180 remains a draft proposal for review and must be available on the default branch before the manual workflow can run.
+
+
+## Candidate validator CI verification — 2026-11-26
+- Candidate validator code commit `f888f8e1b2da999366ada1f03c04feffdd4af884` was rechecked through CI run [#1374](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45813000420), backend job rerun completed successfully.
+- Verified in the backend job: actionlint success, Python compilation success (including backend scripts), `592 passed` in pytest, and Ruff `All checks passed!`.
+- The Android job in run #1374 was cancelled before build. This PR adds no Android source changes; Android debug build had already completed successfully in CI run [#1368](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45811608351). Do not describe #1374 as a complete two-job pass.
+- The read-only workflow in PR #180 was tightened to require that the exact requested SHA is an ancestor of `fix/wat-daily-slate-current-main`, in addition to checking out and verifying that SHA. The workflow YAML parsed successfully in a local YAML parser; no GitHub actionlint run for PR #180 has yet been recorded.
+- PR #179 remains draft/unmerged; PR #180 remains draft/unmerged. The manual read-only validation has not been dispatched. No production or research database writes, provider requests, Odds API requests, deployments, publication, Telegram delivery, or model promotion occurred.
