@@ -151,12 +151,36 @@ def test_public_history_mapper_keeps_unsettled_results_pending() -> None:
 
 
 
-def test_published_daily_feed_uses_wat_calendar_bounds():
+def test_published_daily_feed_query_is_bounded_to_current_wat_day(monkeypatch):
     from app.routes import public_predictions
+    from app.wat_calendar import wat_day_window_utc
 
-    assert "fixture.kickoff_at >= %s" in public_predictions._FIXTURE_QUERY + """
-        WHERE fixture.kickoff_at >= %s AND fixture.kickoff_at < %s
-    """
-    assert "fixture.kickoff_at < %s" in public_predictions._FIXTURE_QUERY + """
-        WHERE fixture.kickoff_at >= %s AND fixture.kickoff_at < %s
-    """
+    class FakeConnection:
+        def __init__(self):
+            self.query = None
+            self.params = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def execute(self, query, params):
+            self.query, self.params = query, params
+            return self
+
+        def fetchall(self):
+            return []
+
+        def close(self):
+            pass
+
+    fake = FakeConnection()
+    monkeypatch.setattr(public_predictions, "_database_connection", lambda: fake)
+    assert public_predictions._load_public_predictions() == ()
+    assert fake.query.count("%s") == len(fake.params) == 3
+    assert "fixture.kickoff_at >= %s" in fake.query
+    assert "fixture.kickoff_at < %s" in fake.query
+    start, end = wat_day_window_utc(fake.params[0])
+    assert fake.params[1:] == (start, end)
