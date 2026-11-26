@@ -136,7 +136,11 @@ def main() -> int:
             "empty_slate_allowed": selected_count == 0,
             "chronological_order": True,
             "unique_fixture_ids": True,
-            "selector_matches_inference_count": (\n                reported_considered == selected_count\n                if reported_considered is not None\n                else "NOT_APPLICABLE_NO_TRAINING_DATA"\n            ),
+            "selector_matches_inference_count": (
+                reported_considered == selected_count
+                if reported_considered is not None
+                else "NOT_APPLICABLE_NO_TRAINING_DATA"
+            ),
             "database_transaction_read_only": True,
         },
     }
