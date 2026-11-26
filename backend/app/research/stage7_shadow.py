@@ -6,12 +6,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.models.hierarchical_poisson import fit_hierarchical_poisson
-from app.wat_calendar import wat_day_window_utc
 from app.research.prospective_shadow import (
     _training_data_sha256,
     select_training_rows,
 )
 from app.validation.prospective_model_evaluation import _goal_result
+from app.wat_calendar import wat_day_window_utc
 
 MODEL_VERSION = "hierarchical-poisson-newton-shadow-v2"
 MIN_TEAM_HISTORY = 5
