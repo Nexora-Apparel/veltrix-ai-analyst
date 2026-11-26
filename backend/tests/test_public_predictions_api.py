@@ -148,3 +148,15 @@ def test_public_history_mapper_keeps_unsettled_results_pending() -> None:
     assert result.settlement_status == "PENDING_RESULT"
     assert result.final_score is None
     assert result.settled_at is None
+
+
+
+def test_published_daily_feed_uses_wat_calendar_bounds():
+    from app.routes import public_predictions
+
+    assert "fixture.kickoff_at >= %s" in public_predictions._FIXTURE_QUERY + """
+        WHERE fixture.kickoff_at >= %s AND fixture.kickoff_at < %s
+    """
+    assert "fixture.kickoff_at < %s" in public_predictions._FIXTURE_QUERY + """
+        WHERE fixture.kickoff_at >= %s AND fixture.kickoff_at < %s
+    """
