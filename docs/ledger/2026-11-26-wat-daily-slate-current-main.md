@@ -24,3 +24,19 @@ Stage 7 selected upcoming fixtures by kickoff order and capped at 25 without fir
 
 ## Release decision
 Not release-ready. Keep draft until exact-head backend tests/lint and Android build pass, code review is complete, and the Android app is verified to display only today's WAT fixtures.
+
+## Exact-head CI verification
+- Verified code head: `e74a343c3912046330a3aa5d41bcbc468b2b354e`.
+- CI run [#1365](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45808399605) completed successfully against that exact head.
+- Backend: 592 tests passed; Python compile passed; actionlint passed; Ruff reported `All checks passed!`.
+- Android: debug APK assembled and uploaded successfully.
+- Vercel Preview deployment completed successfully; Vercel Preview Comments check passed.
+- Artifact: `veltrix-ai-analyst-debug-apk`, artifact ID `15110343136`, SHA-256 `d9c4a893340a562add36f19cbe747f88ae311f8287f43b3d3f7732d34dcfcc00`, expires 2026-12-03.
+- The final code head remains the PR #179 head at the time of this verification.
+
+## Remaining manual validation
+- CI cannot verify runtime rendering or the API response on the user's physical Android device.
+- Before production merge, verify on-device that today's list contains only fixtures whose kickoff date is today's Africa/Lagos date; ensure tomorrow's fixtures are absent even when today's slate has fewer than 25.
+- If there are no eligible fixtures today, the daily list must be empty rather than populated with tomorrow's fixtures.
+- This PR remains draft and unmerged pending physical-device validation. Preview deployment is not production deployment.
+
