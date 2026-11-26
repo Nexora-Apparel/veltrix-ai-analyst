@@ -41,6 +41,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # actions/checkout@v4
         with:
           ref: ${{ inputs.candidate_sha }}
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Verify checked-out candidate SHA
@@ -51,7 +52,14 @@ jobs:
             echo "Candidate SHA mismatch: expected $CANDIDATE_SHA, got $actual" >&2
             exit 1
           fi
-          echo "Validated candidate commit: $actual"
+          git fetch --no-tags origin \
+            refs/heads/fix/wat-daily-slate-current-main:refs/remotes/origin/fix/wat-daily-slate-current-main
+          if ! git merge-base --is-ancestor "$CANDIDATE_SHA" \
+            origin/fix/wat-daily-slate-current-main; then
+            echo "Candidate SHA is not contained in the WAT correction branch" >&2
+            exit 1
+          fi
+          echo "Validated candidate commit on fix/wat-daily-slate-current-main: $actual"
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # actions/setup-python@v5
