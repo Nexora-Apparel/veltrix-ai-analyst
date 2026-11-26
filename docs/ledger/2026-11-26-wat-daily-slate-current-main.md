@@ -40,3 +40,9 @@ Not release-ready. Keep draft until exact-head backend tests/lint and Android bu
 - If there are no eligible fixtures today, the daily list must be empty rather than populated with tomorrow's fixtures.
 - This PR remains draft and unmerged pending physical-device validation. Preview deployment is not production deployment.
 
+
+## User-reported Android observation — 2026-11-26 12:28 WAT
+- User reports that the Predictions screen displays 25 predictions on the Android debug build from CI run #1366.
+- This is device-level evidence that the screen renders a populated 25-item list.
+- The observation does **not** yet establish that all 25 kickoff dates fall within 2026-11-26 Africa/Lagos, nor that tomorrow's fixtures are excluded, nor the fewer-than-25/empty-slate cases.
+- Status: partial manual verification only; date membership and boundary behavior remain unverified. Keep PR #179 draft and unmerged.
