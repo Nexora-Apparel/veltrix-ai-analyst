@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.models.hierarchical_poisson import fit_hierarchical_poisson
+from app.wat_calendar import wat_day_window_utc
 from app.research.prospective_shadow import (
     _training_data_sha256,
     select_training_rows,
@@ -179,6 +180,29 @@ def concentration_violations(summary: dict[str, Any]) -> list[str]:
     return violations
 
 
+def _select_daily_targets(
+    rows: tuple[Any, ...],
+    *,
+    generated: datetime,
+    max_fixtures: int,
+    max_snapshot_age_hours: float,
+) -> list[Any]:
+    """Select only eligible fixtures kicking off during the current WAT day."""
+    day_start_utc, day_end_utc = wat_day_window_utc(generated)
+    eligible = (
+        row for row in rows
+        if row.validation_eligible and row.label is None
+        and row.prediction_cutoff_at is not None
+        and row.canonical_fixture_id and row.canonical_competition_id
+        and row.prediction_cutoff_at <= generated
+        and row.prediction_cutoff_at < row.kickoff_at
+        and day_start_utc <= row.kickoff_at < day_end_utc
+        and (generated - row.prediction_cutoff_at).total_seconds()
+            <= max_snapshot_age_hours * 3600
+    )
+    return sorted(eligible, key=lambda row: (row.kickoff_at, row.fixture_id))[:max_fixtures]
+
+
 def build_stage7_shadow_predictions(
     dataset: dict[str, Any],
     *,
@@ -191,20 +215,12 @@ def build_stage7_shadow_predictions(
         raise ValueError("GENERATED_AT_MUST_BE_TIMEZONE_AWARE")
     rows = tuple(dataset.get("rows") or ())
     training_only = tuple(dataset.get("training_only_rows") or ())
-    targets = sorted(
-        (
-            row for row in rows
-            if row.validation_eligible and row.label is None
-            and row.prediction_cutoff_at is not None
-            and row.canonical_fixture_id and row.canonical_competition_id
-            and row.prediction_cutoff_at <= generated
-            and row.prediction_cutoff_at < row.kickoff_at
-            and row.kickoff_at > generated
-            and (generated - row.prediction_cutoff_at).total_seconds()
-                <= max_snapshot_age_hours * 3600
-        ),
-        key=lambda row: (row.kickoff_at, row.fixture_id),
-    )[:max_fixtures]
+    targets = _select_daily_targets(
+        rows,
+        generated=generated,
+        max_fixtures=max_fixtures,
+        max_snapshot_age_hours=max_snapshot_age_hours,
+    )
     base = {
         "generated_at": generated.isoformat(),
         "status": "NO_FRESH_UPCOMING_SNAPSHOTS",
