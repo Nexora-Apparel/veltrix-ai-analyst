@@ -80,10 +80,18 @@ def main() -> int:
         max_snapshot_age_hours=args.max_snapshot_age_hours,
     )
     selected_count = len(selected)
-    reported_considered = int(
-        (report.get("sanitized_summary") or {}).get("fixtures_considered", 0)
-    )
-    if reported_considered != selected_count:
+    inference_summary = report.get("sanitized_summary")
+    if inference_summary is not None:
+        reported_considered = int(inference_summary.get("fixtures_considered", 0))
+    elif report["status"] == "INSUFFICIENT_CUTOFF_VALID_TRAINING_LABELS":
+        # Selection is still independently validated when the model correctly
+        # abstains because the dataset has no cutoff-valid training labels.
+        reported_considered = None
+    elif selected_count == 0 and report["status"] == "NO_FRESH_UPCOMING_SNAPSHOTS":
+        reported_considered = 0
+    else:
+        raise SystemExit("STAGE7_SELECTION_SUMMARY_MISSING")
+    if reported_considered is not None and reported_considered != selected_count:
         raise SystemExit("SELECTOR_AND_INFERENCE_FIXTURE_COUNTS_MISMATCH")
 
     manifest = {
@@ -128,7 +136,7 @@ def main() -> int:
             "empty_slate_allowed": selected_count == 0,
             "chronological_order": True,
             "unique_fixture_ids": True,
-            "selector_matches_inference_count": True,
+            "selector_matches_inference_count": (\n                reported_considered == selected_count\n                if reported_considered is not None\n                else "NOT_APPLICABLE_NO_TRAINING_DATA"\n            ),
             "database_transaction_read_only": True,
         },
     }
