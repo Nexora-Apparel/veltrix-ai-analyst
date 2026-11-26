@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from build_prospective_dataset import build_report
@@ -24,10 +26,10 @@ def main() -> int:
     args = parser.parse_args()
 
     database_url = (
-        __import__("os").environ.get("VELTRIX_AI_ANALYST_DATABASE_URL")
-        or __import__("os").environ.get("DATABASE_URL", "")
+        os.environ.get("VELTRIX_AI_ANALYST_DATABASE_URL")
+        or os.environ.get("DATABASE_URL", "")
     ).strip()
-    expected_database = __import__("os").environ.get("EXPECTED_DATABASE_NAME", "")
+    expected_database = os.environ.get("EXPECTED_DATABASE_NAME", "")
     if not database_url or expected_database != "veltrix_ai_analyst":
         parser.error("dedicated veltrix_ai_analyst database configuration is required")
     if not 1 <= args.max_fixtures <= 25 or args.max_snapshot_age_hours <= 0:
@@ -88,7 +90,7 @@ def main() -> int:
         "validation": "READ_ONLY_WAT_DAILY_SLATE",
         "status": "PASS",
         "generated_at": generated.isoformat(),
-        "wat_date": generated.astimezone(__import__("zoneinfo").ZoneInfo("Africa/Lagos")).date().isoformat(),
+        "wat_date": generated.astimezone(ZoneInfo("Africa/Lagos")).date().isoformat(),
         "wat_window_start_utc": start_utc.isoformat(),
         "wat_window_end_utc_exclusive": end_utc.isoformat(),
         "max_fixtures": args.max_fixtures,
