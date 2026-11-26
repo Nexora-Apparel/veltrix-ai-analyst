@@ -6,10 +6,10 @@ from types import SimpleNamespace
 
 from app.research.stage7_shadow import (
     MODEL_VERSION,
+    _select_daily_targets,
     _summary,
     concentration_violations,
     insufficient_team_history,
-    _select_daily_targets,
 )
 
 
