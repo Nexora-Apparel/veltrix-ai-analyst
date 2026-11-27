@@ -21,15 +21,19 @@
 - Deployment URL: https://veltrix-ai-analyst-9608qma7g-nexora-apparel.vercel.app
 - This verifies deployment readiness and commit identity, not the live API's fixture-date response or Android runtime rendering.
 
-## Read-only validator dispatch — PENDING
+## Read-only validator dispatch — PASS
 - Initial manual dispatch run [#45977944979](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45977944979) failed before checkout. Its SHA input was valid: `7fffc7fc05743f3b7fe70c4c7d2505eb7bbe40a8`.
 - Root cause from job logs: job-level `defaults.run.working-directory: backend` caused the first shell step to start in a directory that did not exist before checkout.
 - PR #181 corrected this workflow configuration and is merged as `325c2cd29e303ff9a019ee1b3ec8d8b34372f9a3`.
-- The previous run produced no validation manifest. The fix itself has not yet been verified by a post-merge dispatch.
-- Re-dispatch the workflow from `main` using exact candidate SHA `7fffc7fc05743f3b7fe70c4c7d2505eb7bbe40a8`; inspect the resulting JSON manifest before claiming validation PASS.
+- Post-fix manual dispatch [#45978626314](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/45978626314), job `140436590689`, completed successfully. Exact candidate SHA `7fffc7fc05743f3b7fe70c4c7d2505eb7bbe40a8` validated and checked out; all validator steps and artifact upload succeeded.
+- Artifact `veltrix-wat-daily-slate-readonly-validation`, ID `15188397754`, size 1,211 bytes, SHA-256 `3085398969fa58e90ac10504fb18aa6a27bcb7862451033c0d42b002e1d63464`; expires 2026-12-27.
+- Downloaded and inspected JSON manifest: `status=PASS`; WAT date `2026-11-27`; four selected fixtures and four forecasts; cap 25; max snapshot age 6 hours. All four kickoff timestamps fall within the WAT UTC window `2026-11-26T23:00:00Z` through exclusive `2026-11-27T23:00:00Z`.
+- Manifest checks passed for current WAT day only, no tomorrow fill, date filtering before cap, chronological ordering, unique fixture IDs, selector/inference count agreement, and read-only DB transaction. It records provider calls 0, DB writes 0, research-ledger writes 0, odds unused, publication `NOT_PUBLISHED`, production promotion `LOCKED`, and Value Betting `LOCKED`.
+- `checks.empty_slate_allowed` is `false` in this run because four eligible fixtures existed; it is a condition (`selected_count == 0`), not a failure. Source inspection confirms `_select_daily_targets` returns an empty list when no rows qualify and `build_stage7_shadow_predictions` returns a zero-forecast `NO_FRESH_UPCOMING_SNAPSHOTS` report when targets are empty. This run did not exercise the zero-fixture path, so empty-slate behavior remains unverified by runtime test.
 
 ## Remaining validation blockers
-- No successful post-fix read-only validator manifest is recorded yet.
+- Production API health/date-membership smoke test has not yet been recorded. Do not infer it from Vercel's READY state.
+- Android build success is not physical-device runtime verification. The user must install the artifact and confirm date membership, tomorrow exclusion, and empty-slate behavior.
 - Production API health/date-membership smoke test has not yet been recorded. Do not infer it from Vercel's READY state.
 - Android build success is not physical-device runtime verification. The user must install the artifact and confirm the Predictions screen includes only fixtures whose kickoff date is today's `Africa/Lagos` date; tomorrow must never fill the slate, and zero eligible fixtures must render an empty slate.
 - The validator source is `backend/scripts/validate_stage7_wat_daily_slate.py`; its intended manifest records provider calls, DB writes, research-ledger writes, and publication state. Confirm actual manifest values.
