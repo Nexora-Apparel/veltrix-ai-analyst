@@ -31,12 +31,18 @@
 - Manifest checks passed for current WAT day only, no tomorrow fill, date filtering before cap, chronological ordering, unique fixture IDs, selector/inference count agreement, and read-only DB transaction. It records provider calls 0, DB writes 0, research-ledger writes 0, odds unused, publication `NOT_PUBLISHED`, production promotion `LOCKED`, and Value Betting `LOCKED`.
 - `checks.empty_slate_allowed` is `false` in this run because four eligible fixtures existed; it is a condition (`selected_count == 0`), not a failure. Source inspection confirms `_select_daily_targets` returns an empty list when no rows qualify and `build_stage7_shadow_predictions` returns a zero-forecast `NO_FRESH_UPCOMING_SNAPSHOTS` report when targets are empty. This run did not exercise the zero-fixture path, so empty-slate behavior remains unverified by runtime test.
 
+## New coverage diagnostic — PR #182 OPEN
+- PR [#182](https://github.com/Nexora-Apparel/veltrix-ai-analyst/pull/182), branch `diagnostics/wat-slate-rejection-reasons-20261127`, adds mutually exclusive first-failure counts for the daily-slate selector predicates. It reports total candidate rows, each rejection category, and eligible rows before the 25-fixture cap; it does not relax eligibility rules.
+- Added unit tests cover all rejection categories and verify counts are exhaustive and mutually exclusive. PR head: `38ddd8a5c7fbe5a2f150f9ff339f746748db456d`; PR is draft/open; no GitHub Actions workflow runs have been returned yet. Vercel preview check was still pending at last inspection.
+- Source inspection identifies the selector's exact gates: validation eligibility, unlabeled fixture, non-null prediction cutoff, canonical fixture and competition IDs, cutoff not in future and strictly before kickoff, kickoff still upcoming, kickoff inside current WAT day, and snapshot age at most six hours. These are candidate rejection reasons, not measured counts; the DB-backed diagnostics have not yet run.
+- The research prediction API additionally requires `VELTRIX_RESEARCH_SHADOW_DISPLAY_ENABLED=true` and an admission record with `app_display_enabled=true`; the committed admission record currently sets `app_display_enabled=false`. Therefore the four Stage 7 shadow forecasts in the validator manifest must not be equated with four predictions currently served to the Android app. The published-predictions API reads only published rows, and publication remains disabled.
+
 ## Remaining validation blockers
-- Production API health/date-membership smoke test has not yet been recorded. Do not infer it from Vercel's READY state.
-- Android build success is not physical-device runtime verification. The user must install the artifact and confirm date membership, tomorrow exclusion, and empty-slate behavior.
-- Production API health/date-membership smoke test has not yet been recorded. Do not infer it from Vercel's READY state.
-- Android build success is not physical-device runtime verification. The user must install the artifact and confirm the Predictions screen includes only fixtures whose kickoff date is today's `Africa/Lagos` date; tomorrow must never fill the slate, and zero eligible fixtures must render an empty slate.
-- The validator source is `backend/scripts/validate_stage7_wat_daily_slate.py`; its intended manifest records provider calls, DB writes, research-ledger writes, and publication state. Confirm actual manifest values.
+- Execute PR #182's read-only candidate validator and inspect the new rejection counts before deciding which data-coverage issue to address.
+- Production API health/date-membership smoke test has not yet been recorded. Vercel READY metadata is not proof of live API response correctness.
+- Android physical-device runtime verification remains outstanding. The current APK was built on the earlier commit and is not evidence that the live research pipeline is connected to the app.
+- Runtime test the zero-fixture path; current source and unit tests support an empty slate, but the successful live validator run had four eligible fixtures.
+- Keep research display, publication, Telegram, production promotion, and Value Betting locked until their independent gates and owner controls are explicitly satisfied.
 
 ## Safety and model status
 - Research predictions remain research-only; publication remains disabled.
