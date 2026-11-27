@@ -26,9 +26,15 @@ def test_rejection_diagnostics_counts_first_failure_without_double_counting():
         _row(prediction_cutoff_at=None),
         _row(canonical_fixture_id=None),
         _row(prediction_cutoff_at=generated + timedelta(minutes=1)),
-        _row(prediction_cutoff_at=generated + timedelta(hours=3)),
-        _row(kickoff_at=generated - timedelta(minutes=1)),
-        _row(kickoff_at=datetime(2026, 11, 27, 22, 30, tzinfo=UTC)),
+        _row(
+            prediction_cutoff_at=generated - timedelta(minutes=30),
+            kickoff_at=generated - timedelta(minutes=1),
+        ),
+        _row(
+            prediction_cutoff_at=generated - timedelta(hours=2),
+            kickoff_at=generated - timedelta(hours=1),
+        ),
+        _row(kickoff_at=datetime(2026, 11, 27, 23, 30, tzinfo=UTC)),
         _row(prediction_cutoff_at=generated - timedelta(hours=7)),
         _row(),
     )
@@ -36,7 +42,7 @@ def test_rejection_diagnostics_counts_first_failure_without_double_counting():
         rows, generated=generated, max_snapshot_age_hours=6.0
     )
     counts = result["mutually_exclusive_first_failure_counts"]
-    assert result["rows_considered"] == 10
+    assert result["rows_considered"] == 11
     assert sum(counts.values()) == 10
     assert counts == {
         "not_validation_eligible": 1,
