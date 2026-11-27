@@ -18,6 +18,45 @@ from app.research.stage7_shadow import (
 from app.wat_calendar import wat_day_window_utc
 
 
+def rejection_diagnostics(rows, *, generated, max_snapshot_age_hours):
+    """Count the first failing selector predicate for each candidate row."""
+    day_start_utc, day_end_utc = wat_day_window_utc(generated)
+    counts = {
+        "not_validation_eligible": 0, "already_labelled": 0,
+        "missing_prediction_cutoff": 0, "missing_canonical_identity": 0,
+        "cutoff_in_future": 0, "cutoff_not_before_kickoff": 0,
+        "kickoff_not_upcoming": 0, "outside_current_wat_day": 0,
+        "snapshot_stale_over_limit": 0, "eligible_before_daily_cap": 0,
+    }
+    for row in rows:
+        if not row.validation_eligible:
+            reason = "not_validation_eligible"
+        elif row.label is not None:
+            reason = "already_labelled"
+        elif row.prediction_cutoff_at is None:
+            reason = "missing_prediction_cutoff"
+        elif not row.canonical_fixture_id or not row.canonical_competition_id:
+            reason = "missing_canonical_identity"
+        elif row.prediction_cutoff_at > generated:
+            reason = "cutoff_in_future"
+        elif row.prediction_cutoff_at >= row.kickoff_at:
+            reason = "cutoff_not_before_kickoff"
+        elif generated >= row.kickoff_at:
+            reason = "kickoff_not_upcoming"
+        elif not (day_start_utc <= row.kickoff_at < day_end_utc):
+            reason = "outside_current_wat_day"
+        elif (generated - row.prediction_cutoff_at).total_seconds() > max_snapshot_age_hours * 3600:
+            reason = "snapshot_stale_over_limit"
+        else:
+            reason = "eligible_before_daily_cap"
+        counts[reason] += 1
+    return {
+        "rows_considered": len(rows),
+        "mutually_exclusive_first_failure_counts": counts,
+        "eligible_before_daily_cap": counts["eligible_before_daily_cap"],
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True)
@@ -54,6 +93,9 @@ def main() -> int:
     }
     rows = tuple(typed.get("rows") or ())
     start_utc, end_utc = wat_day_window_utc(generated)
+    diagnostics = rejection_diagnostics(
+        rows, generated=generated, max_snapshot_age_hours=args.max_snapshot_age_hours
+    )
     selected = _select_daily_targets(
         rows,
         generated=generated,
@@ -104,6 +146,7 @@ def main() -> int:
         "max_fixtures": args.max_fixtures,
         "max_snapshot_age_hours": args.max_snapshot_age_hours,
         "selected_fixture_count": selected_count,
+        "selection_rejection_diagnostics": diagnostics,
         "selected_fixtures": [
             {
                 "fixture_id": str(row.fixture_id),
