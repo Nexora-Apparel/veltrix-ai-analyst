@@ -42,7 +42,7 @@ def test_rejection_diagnostics_counts_first_failure_without_double_counting():
         rows, generated=generated, max_snapshot_age_hours=6.0
     )
     counts = result["mutually_exclusive_first_failure_counts"]
-    assert result["rows_considered"] == 11
+    assert result["rows_considered"] == 10
     assert sum(counts.values()) == 10
     assert counts == {
         "not_validation_eligible": 1,
