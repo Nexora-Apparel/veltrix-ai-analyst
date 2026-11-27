@@ -15,6 +15,7 @@ from app.routes.public_predictions import (
     _database_connection,
     _public_prediction,
 )
+from app.wat_calendar import wat_day_window_utc
 
 router = APIRouter(prefix="/v1/research/predictions", tags=["research-predictions"])
 MODEL_VERSION = "hierarchical-poisson-newton-shadow-v2"
@@ -97,6 +98,8 @@ _RESEARCH_QUERY = """
       AND latest_run.report->>'release_eligible' = 'false'
       AND latest_run.generated_at > NOW() - INTERVAL '36 hours'
       AND fixture.kickoff_at > %s
+      AND fixture.kickoff_at >= %s
+      AND fixture.kickoff_at < %s
       AND forecast.value->>'publication_status' = 'NOT_PUBLISHED'
       AND forecast.value->>'value_betting_status' = 'LOCKED'
     ORDER BY fixture.kickoff_at, fixture.id
@@ -143,7 +146,12 @@ def list_research_predictions() -> dict[str, Any]:
     connection = _database_connection()
     try:
         with connection:
-            rows = connection.execute(_RESEARCH_QUERY, (MODEL_VERSION, datetime.now(UTC))).fetchall()
+            now = datetime.now(UTC)
+            day_start_utc, day_end_utc = wat_day_window_utc(now)
+            rows = connection.execute(
+                _RESEARCH_QUERY,
+                (MODEL_VERSION, now, day_start_utc, day_end_utc),
+            ).fetchall()
         if not rows:
             return {
                 "status": "NO_RESEARCH_FORECASTS_AVAILABLE",

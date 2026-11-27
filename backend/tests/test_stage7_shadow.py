@@ -1,9 +1,12 @@
 import hashlib
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 from app.research.stage7_shadow import (
     MODEL_VERSION,
+    _select_daily_targets,
     _summary,
     concentration_violations,
     insufficient_team_history,
@@ -137,10 +140,10 @@ def test_inference_workflow_runs_after_verified_stage6_and_keeps_manual_gate():
     assert "if: false" in existing
 
 
-def test_research_query_has_two_placeholders_and_model_version_filter():
+def test_research_query_has_four_placeholders_and_model_version_filter():
     from app.routes import research_predictions
 
-    assert research_predictions._RESEARCH_QUERY.count("%s") == 2
+    assert research_predictions._RESEARCH_QUERY.count("%s") == 4
     assert "WHERE model_version = %s" in research_predictions._RESEARCH_QUERY
     assert "latest_run.model_version" in research_predictions._RESEARCH_QUERY
 
@@ -175,9 +178,71 @@ def test_research_route_passes_model_version_then_now(monkeypatch):
     monkeypatch.setattr(research_predictions, "_model_admitted", lambda: True)
     monkeypatch.setattr(research_predictions, "_database_connection", lambda: fake)
     response = research_predictions.list_research_predictions()
-    assert fake.query.count("%s") == len(fake.params) == 2
-    assert fake.query.count("%s") == 2
+    assert fake.query.count("%s") == len(fake.params) == 4
+    assert fake.query.count("%s") == 4
     assert fake.params[0] == research_predictions.MODEL_VERSION
     assert fake.params[1].tzinfo is not None
+    assert fake.params[2].tzinfo is not None
+    assert fake.params[3].tzinfo is not None
+    assert fake.params[2] < fake.params[3]
     assert response["status"] == "NO_RESEARCH_FORECASTS_AVAILABLE"
     assert fake.closed
+
+
+def _daily_target(fixture_id: str, kickoff_at: datetime, generated: datetime):
+    return SimpleNamespace(
+        fixture_id=fixture_id,
+        validation_eligible=True,
+        label=None,
+        prediction_cutoff_at=generated - timedelta(minutes=30),
+        canonical_fixture_id=f"canonical-{fixture_id}",
+        canonical_competition_id="competition-1",
+        kickoff_at=kickoff_at,
+    )
+
+
+def test_stage7_daily_slate_excludes_tomorrow_and_keeps_today_chronological():
+    generated = datetime(2026, 11, 26, 8, 0, tzinfo=UTC)  # 09:00 WAT
+    rows = (
+        _daily_target("today-late", datetime(2026, 11, 26, 21, 0, tzinfo=UTC), generated),
+        _daily_target("tomorrow", datetime(2026, 11, 26, 23, 0, tzinfo=UTC), generated),
+        _daily_target("today-early", datetime(2026, 11, 26, 10, 0, tzinfo=UTC), generated),
+    )
+    selected = _select_daily_targets(
+        rows, generated=generated, max_fixtures=25, max_snapshot_age_hours=6.0
+    )
+    assert [row.fixture_id for row in selected] == ["today-early", "today-late"]
+
+
+def test_stage7_daily_slate_applies_cap_after_wat_date_filter():
+    generated = datetime(2026, 11, 26, 8, 0, tzinfo=UTC)
+    today = [
+        _daily_target(
+            f"today-{index:02d}",
+            datetime(2026, 11, 26, 9, index, tzinfo=UTC),
+            generated,
+        )
+        for index in range(30)
+    ]
+    tomorrow = _daily_target(
+        "tomorrow", datetime(2026, 11, 26, 23, 0, tzinfo=UTC), generated
+    )
+    selected = _select_daily_targets(
+        tuple(today + [tomorrow]),
+        generated=generated,
+        max_fixtures=25,
+        max_snapshot_age_hours=6.0,
+    )
+    assert len(selected) == 25
+    assert all(row.fixture_id.startswith("today-") for row in selected)
+
+
+def test_stage7_daily_slate_is_empty_when_no_today_fixture_is_eligible():
+    generated = datetime(2026, 11, 26, 8, 0, tzinfo=UTC)
+    tomorrow = _daily_target(
+        "tomorrow", datetime(2026, 11, 26, 23, 0, tzinfo=UTC), generated
+    )
+    selected = _select_daily_targets(
+        (tomorrow,), generated=generated, max_fixtures=25, max_snapshot_age_hours=6.0
+    )
+    assert selected == []

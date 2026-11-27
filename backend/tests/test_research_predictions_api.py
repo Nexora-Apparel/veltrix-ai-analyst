@@ -59,3 +59,12 @@ def test_research_query_selects_status_before_filtering_latest_run() -> None:
     cte = _RESEARCH_QUERY.split("FROM veltrix_ai_analyst.research_shadow_forecast_runs", 1)[0]
     assert "SELECT run_key, generated_at, status," in cte
     assert "WHERE latest_run.status = 'SHADOW_FORECASTS_READY'" in _RESEARCH_QUERY
+
+
+
+def test_research_daily_query_filters_to_wat_day_after_now():
+    from app.routes.research_predictions import _RESEARCH_QUERY
+
+    assert _RESEARCH_QUERY.count("%s") == 4
+    assert "fixture.kickoff_at >= %s" in _RESEARCH_QUERY
+    assert "fixture.kickoff_at < %s" in _RESEARCH_QUERY

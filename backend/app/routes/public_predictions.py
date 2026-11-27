@@ -20,6 +20,7 @@ from app.contracts.public_prediction import (
     PublicPredictionList,
     PublicPredictionMarkets,
 )
+from app.wat_calendar import wat_day_window_utc
 
 router = APIRouter(prefix="/v1/predictions", tags=["predictions"])
 DATABASE_NAME = "veltrix_ai_analyst"
@@ -108,22 +109,28 @@ def _load_public_predictions(*, prediction_id: UUID | None = None) -> tuple[Publ
     connection = _database_connection()
     try:
         with connection:
+            now = datetime.now(UTC)
+            day_start_utc, day_end_utc = wat_day_window_utc(now)
             if prediction_id is None:
                 fixtures = connection.execute(
                     _FIXTURE_QUERY + """
                     WHERE fixture.kickoff_at > %s
+                      AND fixture.kickoff_at >= %s
+                      AND fixture.kickoff_at < %s
                     ORDER BY fixture.kickoff_at, published.prediction_id
                     LIMIT 100
                     """,
-                    (datetime.now(UTC),),
+                    (now, day_start_utc, day_end_utc),
                 ).fetchall()
             else:
                 fixtures = connection.execute(
                     _FIXTURE_QUERY + """
                     WHERE published.prediction_id = %s
                       AND fixture.kickoff_at > %s
+                      AND fixture.kickoff_at >= %s
+                      AND fixture.kickoff_at < %s
                     """,
-                    (prediction_id, datetime.now(UTC)),
+                    (prediction_id, now, day_start_utc, day_end_utc),
                 ).fetchall()
 
             if not fixtures:
