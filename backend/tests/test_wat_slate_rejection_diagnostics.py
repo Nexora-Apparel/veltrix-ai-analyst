@@ -27,8 +27,8 @@ def test_rejection_diagnostics_counts_first_failure_without_double_counting():
         _row(canonical_fixture_id=None),
         _row(prediction_cutoff_at=generated + timedelta(minutes=1)),
         _row(
-            prediction_cutoff_at=generated - timedelta(minutes=30),
-            kickoff_at=generated - timedelta(minutes=1),
+            prediction_cutoff_at=generated - timedelta(minutes=1),
+            kickoff_at=generated - timedelta(minutes=2),
         ),
         _row(
             prediction_cutoff_at=generated - timedelta(hours=2),
