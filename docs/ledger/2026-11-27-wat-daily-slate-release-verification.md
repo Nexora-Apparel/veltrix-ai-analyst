@@ -79,3 +79,19 @@
 - Exact head `74364011e8c434194d34fa8d6476fe64dc8f19d6` passed CI run [#46002554481](https://github.com/Nexora-Apparel/veltrix-ai-analyst/actions/runs/46002554481), run 1389. Backend tests/lint and Android debug build both concluded success.
 - Reviewed complete PR diff: one diagnostic function mirrors selector predicate order; it adds mutually exclusive first-failure counts and eligible-before-cap count to the read-only manifest; tests cover all ten outcomes and mutually exclusive totals. No selector thresholds, model logic, Android UI, API contracts, provider behavior, publication, or release gates are changed.
 - The diagnostics remain observational only. The candidate validator workflow currently allows only commits ancestral to `fix/wat-daily-slate-current-main`; do not bypass that restriction. After merge, prepare a separate minimal workflow-guard change to allow an explicitly named diagnostics branch or main candidate while retaining exact 40-character SHA validation, checkout SHA equality, ancestry check, read-only environment, and dedicated DB guard.
+
+## PR #182 merged — 2026-11-27
+- PR #182 (WAT daily-slate rejection diagnostics) was squash-merged after final diff review and successful CI run #46002554481 (backend tests/lint PASS; Android debug build PASS). Merge commit: `73c4f48c9508ace361cbfb169c9f7ea5487fc9bd`.
+- The merge adds only selector rejection diagnostics and unit tests plus this ledger history. It does not alter eligibility gates, model logic, publication, Telegram, provider use, or odds usage.
+
+## Read-only validator lineage follow-up — PR #183 OPEN
+- The validator workflow originally accepted candidate SHAs only when ancestral to `fix/wat-daily-slate-current-main`. Since PR #182 is merged, its merge commit is now on `main` and the workflow would reject it.
+- PR #183 (`safety/wat-validator-allow-merged-main-20261127`) adds `origin/main` as a second explicitly allowed ancestry lineage while preserving exact SHA format validation, checkout SHA equality, full-history ancestry verification, dedicated database-name guard, read-only validator, and existing correction-branch lineage.
+- PR #183 is draft/open. Its one-file workflow diff has been reviewed; CI verification is pending. No workflow dispatch or database query has been run through the modified guard yet.
+- Main push CI for merge commit `73c4f48c9508ace361cbfb169c9f7ea5487fc9bd` is still running at this ledger checkpoint. Do not claim post-merge CI success until its backend and Android jobs complete.
+
+## Next execution
+1. Complete main post-merge CI and PR #183 workflow validation.
+2. Merge PR #183 only after its checks pass.
+3. Dispatch the read-only validator against the merged main candidate SHA, then inspect and hash the manifest artifact.
+4. Use measured first-failure counts to choose the next data-coverage task; keep all publication and model-promotion locks unchanged.
